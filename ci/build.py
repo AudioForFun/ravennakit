@@ -74,6 +74,30 @@ def build_windows(args, arch, build_config: Config):
     return path_to_build
 
 
+def build_linux(args, arch, build_config: Config):
+    path_to_build = Path(args.path_to_build) / ('linux-' + arch)
+
+    if args.skip_build:
+        return path_to_build
+
+    path_to_build.mkdir(parents=True, exist_ok=True)
+
+    cmake = CMake()
+    cmake.path_to_build(path_to_build)
+    cmake.path_to_source(root_dir)
+    cmake.build_config(build_config)
+    cmake.parallel(multiprocessing.cpu_count())
+
+    cmake.option('CMAKE_TOOLCHAIN_FILE', 'submodules/vcpkg/scripts/buildsystems/vcpkg.cmake')
+    cmake.option('VCPKG_TARGET_TRIPLET', arch + '-linux')
+    cmake.option('BUILD_NUMBER', args.build_number)
+
+    cmake.configure()
+    cmake.build()
+
+    return path_to_build
+
+
 def build(args):
     build_config = Config.debug if args.debug else Config.release_with_debug_info
 
@@ -93,6 +117,16 @@ def build(args):
 
         # Run tests
         subprocess.run([path_to_build_x64 / build_config.value / f'{ravenna_sdk_tests_target}.exe', '--reporter',
+                        f'JUnit::out={test_report_folder}/{test_report_file}', '--reporter',
+                        'console::out=-::colour-mode=ansi'],
+                       check=True)
+
+    elif platform.system() == 'Linux':
+        path_to_build_x64 = build_linux(args, 'x64', build_config)
+        # path_to_build_arm64 = build_linux(args, 'arm64', build_config)
+
+        # Run tests
+        subprocess.run([path_to_build_x64 / f'{ravenna_sdk_tests_target}', '--reporter',
                         f'JUnit::out={test_report_folder}/{test_report_file}', '--reporter',
                         'console::out=-::colour-mode=ansi'],
                        check=True)
