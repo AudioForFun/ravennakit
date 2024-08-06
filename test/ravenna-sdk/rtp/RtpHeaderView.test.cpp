@@ -96,7 +96,7 @@ TEST_CASE("Parse an RTP header from data", "[RTP]") {
     SECTION("Header to string should result in this string") {
         REQUIRE(
             header.to_string()
-            == "RTP Header: valid=true version=2 padding=false extension=false csrc_count=0 market_bit=false payload_type=98 sequence_number=43981 timestamp=2882400001 ssrc=16909060"
+            == "RTP Header: valid=true version=2 padding=false extension=false csrc_count=0 market_bit=false payload_type=98 sequence_number=43981 timestamp=2882400001 ssrc=16909060 payload_start_index=12"
         );
     }
 }
@@ -253,7 +253,7 @@ TEST_CASE("Header extension", "[RTP]") {
         const rav::RtpHeaderView header(data, sizeof(data));
 
         const auto header_extension_data = header.get_header_extension_data();
-        REQUIRE(header_extension_data.size_bytes() == 2);
+        REQUIRE(header_extension_data.size_bytes() == 8);
         REQUIRE(header.get_header_extension_defined_by_profile() == 513);
         REQUIRE(header_extension_data.data() == data + 24);
         REQUIRE(std::memcmp(data + 24, header_extension_data.data(), 8) == 0);
@@ -298,7 +298,7 @@ TEST_CASE("Header extension", "[RTP]") {
         const rav::RtpHeaderView header(data, sizeof(data));
 
         const auto header_extension_data = header.get_header_extension_data();
-        REQUIRE(header_extension_data.size_bytes() == 2);
+        REQUIRE(header_extension_data.size_bytes() == 8);
         REQUIRE(header.get_header_extension_defined_by_profile() == 513);
         REQUIRE(header_extension_data.is_valid());
         REQUIRE(header_extension_data.data() == data + 16);
@@ -333,5 +333,275 @@ TEST_CASE("Header extension", "[RTP]") {
         REQUIRE(header.get_header_extension_defined_by_profile() == 0);
         REQUIRE(header_extension_data.is_valid() == false);
         REQUIRE(header_extension_data.data() == nullptr);
+    }
+}
+
+TEST_CASE("Payload start index", "[RTP]") {
+    SECTION("Test payload start index without csrc and without extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10000000,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+        REQUIRE(header.payload_start_index() == 12);
+    }
+
+    SECTION("Test payload start index without csrc and with extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10010000,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            // extension header defined by profile
+            0x01,
+            0x02,
+            // extension header length (number of 32-bit words)
+            0x00,
+            0x02,
+            // extension header data
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+        REQUIRE(header.payload_start_index() == 24);
+    }
+
+    SECTION("Test payload start index with csrc and extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10010010,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            // csrc 1
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            // csrc 2
+            0x09,
+            0x10,
+            0x11,
+            0x12,
+            // extension header defined by profile
+            0x01,
+            0x02,
+            // extension header length (number of 32-bit words)
+            0x00,
+            0x02,
+            // extension header data
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+        REQUIRE(header.payload_start_index() == 32);
+    }
+}
+
+TEST_CASE("Payload buffer view", "[RTP]") {
+    SECTION("Test getting payload without csrc and without extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10000000,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            // payload data
+            0x11,
+            0x22,
+            0x33,
+            0x44,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+        auto payload = header.payload_data();
+        REQUIRE(payload.size() == 4);
+        REQUIRE(payload.size() == payload.size_bytes());
+        REQUIRE(payload.data() == data + 12);
+        REQUIRE(payload.data()[0] == 0x11);
+        REQUIRE(payload.data()[1] == 0x22);
+        REQUIRE(payload.data()[2] == 0x33);
+        REQUIRE(payload.data()[3] == 0x44);
+    }
+
+    SECTION("Test getting payload without csrc and with extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10010000,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            // extension header defined by profile
+            0x01,
+            0x02,
+            // extension header length (number of 32-bit words)
+            0x00,
+            0x02,
+            // extension header data
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            // payload data
+            0x11,
+            0x22,
+            0x33,
+            0x44,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+        auto payload = header.payload_data();
+        REQUIRE(payload.size() == 4);
+        REQUIRE(payload.size() == payload.size_bytes());
+        REQUIRE(payload.data() == data + 24);
+        REQUIRE(payload.data()[0] == 0x11);
+        REQUIRE(payload.data()[1] == 0x22);
+        REQUIRE(payload.data()[2] == 0x33);
+        REQUIRE(payload.data()[3] == 0x44);
+    }
+
+    SECTION("Test getting payload with csrc and extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10010010,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            // csrc 1
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            // csrc 2
+            0x09,
+            0x10,
+            0x11,
+            0x12,
+            // extension header defined by profile
+            0x01,
+            0x02,
+            // extension header length (number of 32-bit words)
+            0x00,
+            0x02,
+            // extension header data
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            // payload data
+            0x11,
+            0x22,
+            0x33,
+            0x44,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+        auto payload = header.payload_data();
+        REQUIRE(payload.size() == 4);
+        REQUIRE(payload.size() == payload.size_bytes());
+        REQUIRE(payload.data() == data + 32);
+        REQUIRE(payload.data()[0] == 0x11);
+        REQUIRE(payload.data()[1] == 0x22);
+        REQUIRE(payload.data()[2] == 0x33);
+        REQUIRE(payload.data()[3] == 0x44);
     }
 }

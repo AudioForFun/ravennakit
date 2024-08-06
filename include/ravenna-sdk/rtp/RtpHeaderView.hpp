@@ -107,6 +107,16 @@ class RtpHeaderView {
     [[nodiscard]] BufferView<const uint8_t> get_header_extension_data() const;
 
     /**
+     * @returns Returns the start index of the payload data.
+     */
+    [[nodiscard]] size_t payload_start_index() const;
+
+    /**
+     * @return Returns a view to the payload data.
+     */
+    [[nodiscard]] BufferView<const uint8_t> payload_data() const;
+
+    /**
      * @returns A string representation of the RTP header.
      */
     [[nodiscard]] std::string to_string() const;
