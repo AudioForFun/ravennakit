@@ -1,0 +1,337 @@
+/*
+ * Owllab License Agreement
+ *
+ * This software is provided by Owllab and may not be used, copied, modified,
+ * merged, published, distributed, sublicensed, or sold without a valid and
+ * explicit agreement with Owllab.
+ *
+ * Copyright (c) 2024 Owllab. All rights reserved.
+ */
+
+#include <asio/detail/socket_ops.hpp>
+#include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/catch_test_macros.hpp>
+
+#include "ravenna-sdk/rtp/RtpHeaderView.hpp"
+
+TEST_CASE("Parse an RTP header from data", "[RTP]") {
+    uint8_t data[] = {
+
+        // v, p, x, cc
+        0b10000000,
+        // m, pt
+        0b01100010,
+        // sequence number
+        0xAB,
+        0xCD,
+        // timestamp
+        0xAB,
+        0xCD,
+        0xEF,
+        0x01,
+        // ssrc
+        0x01,
+        0x02,
+        0x03,
+        0x04
+    };
+
+    SECTION("A header with invalid data should result in Status::InvalidLength") {
+        rav::RtpHeaderView header(data, sizeof(data) - 1);
+        REQUIRE(header.validate() == rav::RtpHeaderView::ValidationResult::InvalidHeaderLength);
+    }
+
+    SECTION("A header with more data should result in Status::Ok") {
+        rav::RtpHeaderView header(data, sizeof(data) + 1);
+        REQUIRE(header.validate() == rav::RtpHeaderView::ValidationResult::Ok);
+    }
+
+    rav::RtpHeaderView header(data, sizeof(data));
+
+    SECTION("Status should be ok") {
+        REQUIRE(header.validate() == rav::RtpHeaderView::ValidationResult::Ok);
+    }
+
+    SECTION("Version should be 2") {
+        REQUIRE(header.version() == 2);
+    }
+
+    SECTION("There should be no padding") {
+        REQUIRE(header.padding() == false);
+    }
+
+    SECTION("Extension should be false") {
+        REQUIRE(header.extension() == false);
+    }
+
+    SECTION("CSRC Count should be 0") {
+        REQUIRE(header.csrc_count() == 0);
+    }
+
+    SECTION("Marker bit should not be set") {
+        REQUIRE(header.marker_bit() == false);
+    }
+
+    SECTION("Payload type should be 98 (L24)") {
+        REQUIRE(header.payload_type() == 98);
+    }
+
+    SECTION("Sequence number should be 43981") {
+        REQUIRE(header.sequence_number() == 43981);
+    }
+
+    SECTION("Timestamp should be 2882400001") {
+        REQUIRE(header.timestamp() == 2882400001);
+    }
+
+    SECTION("SSRC should be 16909060") {
+        REQUIRE(header.ssrc() == 16909060);
+    }
+
+    SECTION("A version higher than should result in InvalidVersion") {
+        data[0] = 0b11000000;
+        REQUIRE(header.validate() == rav::RtpHeaderView::ValidationResult::InvalidVersion);
+    }
+
+    SECTION("Header to string should result in this string") {
+        REQUIRE(
+            header.to_string()
+            == "RTP Header: valid=true version=2 padding=false extension=false csrc_count=0 market_bit=false payload_type=98 sequence_number=43981 timestamp=2882400001 ssrc=16909060"
+        );
+    }
+}
+
+TEST_CASE("Parsing header data should not lead to undefined behaviour or invalid memory access", "[RTP]") {
+    rav::RtpHeaderView header(nullptr, 0);
+
+    SECTION("Status should be ok") {
+        REQUIRE(header.validate() == rav::RtpHeaderView::ValidationResult::InvalidPointer);
+    }
+
+    SECTION("Version should be 0") {
+        REQUIRE(header.version() == 0);
+    }
+
+    SECTION("There should be no padding") {
+        REQUIRE(header.padding() == false);
+    }
+
+    SECTION("Extension should be false") {
+        REQUIRE(header.extension() == false);
+    }
+
+    SECTION("CSRC Count should be 0") {
+        REQUIRE(header.csrc_count() == 0);
+    }
+
+    SECTION("Marker bit should not be set") {
+        REQUIRE(header.marker_bit() == false);
+    }
+
+    SECTION("Payload type should be 0") {
+        REQUIRE(header.payload_type() == 0);
+    }
+
+    SECTION("Sequence number should be 0") {
+        REQUIRE(header.sequence_number() == 0);
+    }
+
+    SECTION("Timestamp should be 0") {
+        REQUIRE(header.timestamp() == 0);
+    }
+
+    SECTION("SSRC should be 0") {
+        REQUIRE(header.ssrc() == 0);
+    }
+
+    SECTION("CSRC 1 (which does not exist) should be 0") {
+        REQUIRE(header.csrc(0) == 0);
+    }
+}
+
+TEST_CASE("Correctly handle CSRCs", "[RTP]") {
+    const uint8_t data[] = {
+        // v, p, x, cc
+        0b10000010,
+        // m, pt
+        0b01100001,
+        // sequence number
+        0xAB,
+        0xCD,
+        // timestamp
+        0xAB,
+        0xCD,
+        0xEF,
+        0x01,
+        // ssrc
+        0x01,
+        0x02,
+        0x03,
+        0x04,
+        // csrc 1
+        0x05,
+        0x06,
+        0x07,
+        0x08,
+        // csrc 2
+        0x09,
+        0x10,
+        0x11,
+        0x12,
+    };
+
+    const rav::RtpHeaderView header(data, sizeof(data) - sizeof(uint32_t) * 2);
+
+    SECTION("Status should be ok") {
+        REQUIRE(header.validate() == rav::RtpHeaderView::ValidationResult::InvalidHeaderLength);
+    }
+
+    SECTION("CSRC Count should be 2") {
+        REQUIRE(header.csrc_count() == 2);
+    }
+
+    SECTION("CSRC 1 should be 84281096") {
+        REQUIRE(header.csrc(0) == 84281096);
+    }
+
+    SECTION("CSRC 2 should be 152047890") {
+        REQUIRE(header.csrc(1) == 152047890);
+    }
+
+    SECTION("CSRC 3 (which does not exist) should be 0") {
+        REQUIRE(header.csrc(2) == 0);
+    }
+}
+
+TEST_CASE("Header extension", "[RTP]") {
+    SECTION("Test header extension with csrc and extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10010010,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            // csrc 1
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+            // csrc 2
+            0x09,
+            0x10,
+            0x11,
+            0x12,
+            // extension header defined by profile
+            0x01,
+            0x02,
+            // extension header length (number of 32-bit words)
+            0x00,
+            0x02,
+            // extension header data
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+
+        const auto header_extension_data = header.get_header_extension_data();
+        REQUIRE(header_extension_data.size_bytes() == 2);
+        REQUIRE(header.get_header_extension_defined_by_profile() == 513);
+        REQUIRE(header_extension_data.data() == data + 24);
+        REQUIRE(std::memcmp(data + 24, header_extension_data.data(), 8) == 0);
+    }
+
+    SECTION("Test header extension without csrc and with extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10010000,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            // extension header defined by profile
+            0x01,
+            0x02,
+            // extension header length (number of 32-bit words)
+            0x00,
+            0x02,
+            // extension header data
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+            0x05,
+            0x06,
+            0x07,
+            0x08,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+
+        const auto header_extension_data = header.get_header_extension_data();
+        REQUIRE(header_extension_data.size_bytes() == 2);
+        REQUIRE(header.get_header_extension_defined_by_profile() == 513);
+        REQUIRE(header_extension_data.is_valid());
+        REQUIRE(header_extension_data.data() == data + 16);
+        REQUIRE(std::memcmp(header_extension_data.data(), data + 16, 8) == 0);
+    }
+
+    SECTION("Test header extension without csrc and without extension") {
+        const uint8_t data[] = {
+            // v, p, x, cc
+            0b10000000,
+            // m, pt
+            0b01100001,
+            // sequence number
+            0xAB,
+            0xCD,
+            // timestamp
+            0xAB,
+            0xCD,
+            0xEF,
+            0x01,
+            // ssrc
+            0x01,
+            0x02,
+            0x03,
+            0x04,
+        };
+
+        const rav::RtpHeaderView header(data, sizeof(data));
+
+        const auto header_extension_data = header.get_header_extension_data();
+        REQUIRE(header_extension_data.size_bytes() == 0);
+        REQUIRE(header.get_header_extension_defined_by_profile() == 0);
+        REQUIRE(header_extension_data.is_valid() == false);
+        REQUIRE(header_extension_data.data() == nullptr);
+    }
+}

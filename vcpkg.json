@@ -4,6 +4,7 @@
   "dependencies": [
     "spdlog",
     "fmt",
-    "catch2"
+    "catch2",
+    "asio"
   ]
 }

@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 3.22)
 
 include(submodules/build_tools/cmake/git_version.cmake)
 
-project(RavennaSDK VERSION ${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH} LANGUAGES C CXX)
+project(kitbrew-ravenna-sdk VERSION ${GIT_VERSION_MAJOR}.${GIT_VERSION_MINOR}.${GIT_VERSION_PATCH} LANGUAGES C CXX)
+
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/HelperTargets.cmake)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
@@ -27,6 +29,35 @@ if (WITH_THREAD_SANITIZER)
     link_libraries(-fsanitize=thread)
 endif ()
 
+################
+# _WIN32_WINNT #
+################
+
+if (WIN32)
+    # Sets the correct _WIN32_WINNT version based on the OS version
+    # Borrowed from: https://stackoverflow.com/a/40217291
+
+    macro(get_WIN32_WINNT version)
+        if (CMAKE_SYSTEM_VERSION)
+            set(ver ${CMAKE_SYSTEM_VERSION})
+            string(REGEX MATCH "^([0-9]+).([0-9])" ver ${ver})
+            string(REGEX MATCH "^([0-9]+)" verMajor ${ver})
+            # Check for Windows 10, b/c we'll need to convert to hex 'A'.
+            if ("${verMajor}" MATCHES "10")
+                set(verMajor "A")
+                string(REGEX REPLACE "^([0-9]+)" ${verMajor} ver ${ver})
+            endif ()
+            # Remove all remaining '.' characters.
+            string(REPLACE "." "" ver ${ver})
+            # Prepend each digit with a zero.
+            string(REGEX REPLACE "([0-9A-Z])" "0\\1" ver ${ver})
+            set(${version} "0x${ver}")
+        endif ()
+    endmacro()
+
+    get_WIN32_WINNT(ver)
+    add_definitions(-D_WIN32_WINNT=${ver})
+endif ()
 
 #########
 # VCPKG #
@@ -35,12 +66,57 @@ endif ()
 find_package(spdlog CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
+find_package(asio CONFIG REQUIRED)
+
+#######################
+# RAVENNA SDK Library #
+#######################
+
+add_library(kitbrew_ravenna_sdk STATIC
+        include/ravenna-sdk/containers/BufferView.hpp
+        include/ravenna-sdk/rtp/RtpHeaderView.hpp
+        include/ravenna-sdk/platform/ByteOrder.hpp
+        include/ravenna-sdk/util/Util.hpp
+        src/ravenna-sdk/rtp/RtpHeaderView.cpp
+        src/ravenna-sdk/util/empty_source.cpp
+)
+
+target_include_directories(kitbrew_ravenna_sdk PUBLIC include)
+
+target_link_libraries(kitbrew_ravenna_sdk
+        PUBLIC
+        rsdk_recommended_warning_flags
+        rsdk_recommended_lto_flags
+        asio::asio
+        spdlog::spdlog
+)
+
+##############################
+# Multicast receiver example #
+##############################
+
+add_executable(multicast_receiver_example
+        examples/multicast_receiver_example.cpp
+)
+
+target_link_libraries(multicast_receiver_example
+        PUBLIC
+        kitbrew_ravenna_sdk
+)
+
+##############
+# Unit Tests #
+##############
 
 add_executable(ravenna_sdk_tests
-        src/test/TestUnitTest.cpp
+        test/ravenna-sdk/rtp/RtpHeaderView.test.cpp
+        test/ravenna-sdk/util/Util.test.cpp
+        test/ravenna-sdk/containers/BufferView.test.cpp
+        test/ravenna-sdk/platform/ByteOrder.test.cpp
 )
 
 target_link_libraries(ravenna_sdk_tests
         PRIVATE
         Catch2::Catch2 Catch2::Catch2WithMain
+        kitbrew_ravenna_sdk
 )
