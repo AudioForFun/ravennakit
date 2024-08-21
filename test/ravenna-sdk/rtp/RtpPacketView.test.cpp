@@ -38,18 +38,18 @@ TEST_CASE("Parse an RTP header from data", "[RTP]") {
 
     SECTION("A header with invalid data should result in Status::InvalidLength") {
         rav::RtpPacketView header(data, sizeof(data) - 1);
-        REQUIRE(header.validate() == rav::RtpPacketView::ValidationResult::InvalidHeaderLength);
+        REQUIRE(header.verify() == rav::RtpPacketView::VerificationResult::InvalidHeaderLength);
     }
 
     SECTION("A header with more data should result in Status::Ok") {
         rav::RtpPacketView header(data, sizeof(data) + 1);
-        REQUIRE(header.validate() == rav::RtpPacketView::ValidationResult::Ok);
+        REQUIRE(header.verify() == rav::RtpPacketView::VerificationResult::Ok);
     }
 
     rav::RtpPacketView header(data, sizeof(data));
 
     SECTION("Status should be ok") {
-        REQUIRE(header.validate() == rav::RtpPacketView::ValidationResult::Ok);
+        REQUIRE(header.verify() == rav::RtpPacketView::VerificationResult::Ok);
     }
 
     SECTION("Version should be 2") {
@@ -90,7 +90,7 @@ TEST_CASE("Parse an RTP header from data", "[RTP]") {
 
     SECTION("A version higher than should result in InvalidVersion") {
         data[0] = 0b11000000;
-        REQUIRE(header.validate() == rav::RtpPacketView::ValidationResult::InvalidVersion);
+        REQUIRE(header.verify() == rav::RtpPacketView::VerificationResult::InvalidVersion);
     }
 
     SECTION("Header to string should result in this string") {
@@ -105,7 +105,7 @@ TEST_CASE("Parsing header data should not lead to undefined behaviour or invalid
     rav::RtpPacketView header(nullptr, 0);
 
     SECTION("Status should be ok") {
-        REQUIRE(header.validate() == rav::RtpPacketView::ValidationResult::InvalidPointer);
+        REQUIRE(header.verify() == rav::RtpPacketView::VerificationResult::InvalidPointer);
     }
 
     SECTION("Version should be 0") {
@@ -147,6 +147,10 @@ TEST_CASE("Parsing header data should not lead to undefined behaviour or invalid
     SECTION("CSRC 1 (which does not exist) should be 0") {
         REQUIRE(header.csrc(0) == 0);
     }
+
+    SECTION("The buffer view should be invalid") {
+        REQUIRE_FALSE(header.payload_data().is_valid());
+    }
 }
 
 TEST_CASE("Correctly handle CSRCs", "[RTP]") {
@@ -183,7 +187,7 @@ TEST_CASE("Correctly handle CSRCs", "[RTP]") {
     const rav::RtpPacketView header(data, sizeof(data) - sizeof(uint32_t) * 2);
 
     SECTION("Status should be ok") {
-        REQUIRE(header.validate() == rav::RtpPacketView::ValidationResult::InvalidHeaderLength);
+        REQUIRE(header.verify() == rav::RtpPacketView::VerificationResult::InvalidHeaderLength);
     }
 
     SECTION("CSRC Count should be 2") {

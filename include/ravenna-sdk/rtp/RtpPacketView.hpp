@@ -10,10 +10,10 @@
 
 #pragma once
 
-#include "ravenna-sdk/containers/BufferView.hpp"
-
 #include <cstdint>
 #include <string>
+
+#include "ravenna-sdk/containers/BufferView.hpp"
 
 namespace rav {
 
@@ -24,7 +24,7 @@ namespace rav {
  */
 class RtpPacketView {
   public:
-    enum class ValidationResult {
+    enum class VerificationResult {
         Ok,
         InvalidPointer,
         InvalidHeaderLength,
@@ -39,10 +39,11 @@ class RtpPacketView {
     RtpPacketView(const uint8_t* data, size_t data_length);
 
     /**
-     * Validates the RTP header data.
-     * @returns The result of the validation.
+     * Verifies the RTP header data. After this method returns all other methods should return valid data and not lead
+     * to undefined behavior.
+     * @returns The result of the verification.
      */
-    [[nodiscard]] ValidationResult validate() const;
+    [[nodiscard]] VerificationResult verify() const;
 
     /**
      * @returns The version of the RTP header.
@@ -126,4 +127,4 @@ class RtpPacketView {
     size_t data_length_ {0};
 };
 
-}  // namespace rsdk
+}  // namespace rav

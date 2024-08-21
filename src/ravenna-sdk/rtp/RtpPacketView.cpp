@@ -23,24 +23,20 @@ constexpr size_t kHeaderExtensionLengthOctets = sizeof(uint16_t) * 2;
 rav::RtpPacketView::RtpPacketView(const uint8_t* data, const size_t data_length) :
     data_(data), data_length_(data_length) {}
 
-rav::RtpPacketView::ValidationResult rav::RtpPacketView::validate() const {
+rav::RtpPacketView::VerificationResult rav::RtpPacketView::verify() const {
     if (data_ == nullptr) {
-        return ValidationResult::InvalidPointer;
+        return VerificationResult::InvalidPointer;
     }
 
-    if (data_length_ < kHeaderBaseLengthOctets) {
-        return ValidationResult::InvalidHeaderLength;
-    }
-
-    if (data_length_ < kHeaderBaseLengthOctets + csrc_count() * sizeof(uint32_t)) {
-        return ValidationResult::InvalidHeaderLength;
+    if (data_length_ < kHeaderBaseLengthOctets || data_length_ < header_total_length()) {
+        return VerificationResult::InvalidHeaderLength;
     }
 
     if (version() > 2) {
-        return ValidationResult::InvalidVersion;
+        return VerificationResult::InvalidVersion;
     }
 
-    return ValidationResult::Ok;
+    return VerificationResult::Ok;
 }
 
 bool rav::RtpPacketView::marker_bit() const {
@@ -165,7 +161,7 @@ rav::BufferView<const unsigned char> rav::RtpPacketView::payload_data() const {
 std::string rav::RtpPacketView::to_string() const {
     return fmt::format(
         "RTP Header: valid={} version={} padding={} extension={} csrc_count={} market_bit={} payload_type={} sequence_number={} timestamp={} ssrc={} payload_start_index={}",
-        validate() == ValidationResult::Ok,
+        verify() == VerificationResult::Ok,
         version(),
         padding(),
         extension(),
