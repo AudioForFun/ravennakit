@@ -35,7 +35,7 @@ class RtcpReportBlockView {
 
 class RtcpPacketView {
   public:
-    enum class RtcpPacketType {
+    enum class PacketType {
         /// Unknown packet type
         Unknown,
         /// Sender report, for transmission and reception statistics from participants that are active senders
@@ -83,7 +83,7 @@ class RtcpPacketView {
     /**
      * @return The packet type
      */
-    [[nodiscard]] RtcpPacketType packet_type() const;
+    [[nodiscard]] PacketType packet_type() const;
 
     /**
      * @returns The length of this RTCP packet in 32-bit words.
@@ -125,7 +125,7 @@ class RtcpPacketView {
      * @param packet_type The type to get a string representation for.
      * @return A string representation of given packet type.
      */
-    static const char* packet_type_to_string(RtcpPacketType packet_type);
+    static const char* packet_type_to_string(PacketType packet_type);
 
   private:
     const uint8_t* data_ {};

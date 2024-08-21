@@ -44,7 +44,7 @@ rav::rtp::VerificationResult rav::RtcpPacketView::verify() const {
         return rtp::VerificationResult::InvalidVersion;
     }
 
-    if (packet_type() == RtcpPacketType::SenderReport) {
+    if (packet_type() == PacketType::SenderReport) {
         if (data_length_ < kHeaderLength + kSenderInfoLength) {
             return rtp::VerificationResult::InvalidSenderInfoLength;
         }
@@ -74,24 +74,24 @@ uint8_t rav::RtcpPacketView::reception_report_count() const {
     return data_[0] & 0b00011111;
 }
 
-rav::RtcpPacketView::RtcpPacketType rav::RtcpPacketView::packet_type() const {
+rav::RtcpPacketView::PacketType rav::RtcpPacketView::packet_type() const {
     if (data_length_ < 2) {
-        return RtcpPacketType::Unknown;
+        return PacketType::Unknown;
     }
 
     switch (data_[1]) {
         case 200:
-            return RtcpPacketType::SenderReport;
+            return PacketType::SenderReport;
         case 201:
-            return RtcpPacketType::ReceiverReport;
+            return PacketType::ReceiverReport;
         case 202:
-            return RtcpPacketType::SourceDescriptionItems;
+            return PacketType::SourceDescriptionItems;
         case 203:
-            return RtcpPacketType::Bye;
+            return PacketType::Bye;
         case 204:
-            return RtcpPacketType::App;
+            return PacketType::App;
         default:
-            return RtcpPacketType::Unknown;
+            return PacketType::Unknown;
     }
 }
 
@@ -113,7 +113,7 @@ uint32_t rav::RtcpPacketView::ssrc() const {
 }
 
 rav::ntp::TimeStamp rav::RtcpPacketView::ntp_timestamp() const {
-    if (packet_type() != RtcpPacketType::SenderReport) {
+    if (packet_type() != PacketType::SenderReport) {
         return {};
     }
 
@@ -128,7 +128,7 @@ rav::ntp::TimeStamp rav::RtcpPacketView::ntp_timestamp() const {
 }
 
 uint32_t rav::RtcpPacketView::rtp_timestamp() const {
-    if (packet_type() != RtcpPacketType::SenderReport) {
+    if (packet_type() != PacketType::SenderReport) {
         return {};
     }
 
@@ -141,7 +141,7 @@ uint32_t rav::RtcpPacketView::rtp_timestamp() const {
 }
 
 uint32_t rav::RtcpPacketView::packet_count() const {
-    if (packet_type() != RtcpPacketType::SenderReport) {
+    if (packet_type() != PacketType::SenderReport) {
         return {};
     }
 
@@ -154,7 +154,7 @@ uint32_t rav::RtcpPacketView::packet_count() const {
 }
 
 uint32_t rav::RtcpPacketView::octet_count() const {
-    if (packet_type() != RtcpPacketType::SenderReport) {
+    if (packet_type() != PacketType::SenderReport) {
         return {};
     }
 
@@ -179,24 +179,24 @@ std::string rav::RtcpPacketView::to_string() const {
         ssrc()
     );
 
-    if (packet_type() == RtcpPacketType::SenderReport) {}
+    if (packet_type() == PacketType::SenderReport) {}
 
     return header;
 }
 
-const char* rav::RtcpPacketView::packet_type_to_string(const RtcpPacketType packet_type) {
+const char* rav::RtcpPacketView::packet_type_to_string(const PacketType packet_type) {
     switch (packet_type) {
-        case RtcpPacketType::SenderReport:
+        case PacketType::SenderReport:
             return "SenderReport";
-        case RtcpPacketType::ReceiverReport:
+        case PacketType::ReceiverReport:
             return "ReceiverReport";
-        case RtcpPacketType::SourceDescriptionItems:
+        case PacketType::SourceDescriptionItems:
             return "SourceDescriptionItems";
-        case RtcpPacketType::Bye:
+        case PacketType::Bye:
             return "Bye";
-        case RtcpPacketType::App:
+        case PacketType::App:
             return "App";
-        case RtcpPacketType::Unknown:
+        case PacketType::Unknown:
             return "Unknown";
     }
     return "";

@@ -133,31 +133,31 @@ TEST_CASE("RtcpPacketView | packet_type()", "[RtcpPacketView]") {
     uint8_t data[] = {0b11111111, 0};
     const rav::RtcpPacketView packet(data, sizeof(data));
 
-    REQUIRE(packet.packet_type() == rav::RtcpPacketView::RtcpPacketType::Unknown);
+    REQUIRE(packet.packet_type() == rav::RtcpPacketView::PacketType::Unknown);
 
     SECTION("Sender report") {
         data[1] = 200;
-        REQUIRE(packet.packet_type() == rav::RtcpPacketView::RtcpPacketType::SenderReport);
+        REQUIRE(packet.packet_type() == rav::RtcpPacketView::PacketType::SenderReport);
     }
 
     SECTION("Receiver report") {
         data[1] = 201;
-        REQUIRE(packet.packet_type() == rav::RtcpPacketView::RtcpPacketType::ReceiverReport);
+        REQUIRE(packet.packet_type() == rav::RtcpPacketView::PacketType::ReceiverReport);
     }
 
     SECTION("Source description items") {
         data[1] = 202;
-        REQUIRE(packet.packet_type() == rav::RtcpPacketView::RtcpPacketType::SourceDescriptionItems);
+        REQUIRE(packet.packet_type() == rav::RtcpPacketView::PacketType::SourceDescriptionItems);
     }
 
     SECTION("Bye") {
         data[1] = 203;
-        REQUIRE(packet.packet_type() == rav::RtcpPacketView::RtcpPacketType::Bye);
+        REQUIRE(packet.packet_type() == rav::RtcpPacketView::PacketType::Bye);
     }
 
     SECTION("App specific") {
         data[1] = 204;
-        REQUIRE(packet.packet_type() == rav::RtcpPacketView::RtcpPacketType::App);
+        REQUIRE(packet.packet_type() == rav::RtcpPacketView::PacketType::App);
     }
 }
 
@@ -438,14 +438,14 @@ TEST_CASE("RtcpPacketView | octet_count()", "[RtcpPacketView]") {
 }
 
 TEST_CASE("RtcpPacketView | packet_type_to_string()") {
-    auto expect = [](const rav::RtcpPacketView::RtcpPacketType packet_type, const char* str) {
+    auto expect = [](const rav::RtcpPacketView::PacketType packet_type, const char* str) {
         return std::strcmp(rav::RtcpPacketView::packet_type_to_string(packet_type), str) == 0;
     };
 
-    REQUIRE(expect(rav::RtcpPacketView::RtcpPacketType::SourceDescriptionItems, "SourceDescriptionItems"));
-    REQUIRE(expect(rav::RtcpPacketView::RtcpPacketType::SenderReport, "SenderReport"));
-    REQUIRE(expect(rav::RtcpPacketView::RtcpPacketType::ReceiverReport, "ReceiverReport"));
-    REQUIRE(expect(rav::RtcpPacketView::RtcpPacketType::Unknown, "Unknown"));
-    REQUIRE(expect(rav::RtcpPacketView::RtcpPacketType::Bye, "Bye"));
-    REQUIRE(expect(rav::RtcpPacketView::RtcpPacketType::App, "App"));
+    REQUIRE(expect(rav::RtcpPacketView::PacketType::SourceDescriptionItems, "SourceDescriptionItems"));
+    REQUIRE(expect(rav::RtcpPacketView::PacketType::SenderReport, "SenderReport"));
+    REQUIRE(expect(rav::RtcpPacketView::PacketType::ReceiverReport, "ReceiverReport"));
+    REQUIRE(expect(rav::RtcpPacketView::PacketType::Unknown, "Unknown"));
+    REQUIRE(expect(rav::RtcpPacketView::PacketType::Bye, "Bye"));
+    REQUIRE(expect(rav::RtcpPacketView::PacketType::App, "App"));
 }
