@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace rav::ntp {
 
@@ -44,6 +45,13 @@ class Timestamp {
     }
 
     /**
+     * @return A string representation of the timestamp.
+     */
+    [[nodiscard]] std::string to_string() const {
+        return std::to_string(integer_) + "." + std::to_string(fraction_);
+    }
+
+    /**
      * Generates a timestamp from a compact 32-bit integer representation. The compact representation consists of the
      * most significant 16 bits as the integer part and the least significant 16 bits representing the high-order bits
      * of the fractional part.
@@ -63,6 +71,14 @@ class Timestamp {
      */
     static Timestamp from_compact(const uint16_t integer, const uint16_t fraction) {
         return {integer, static_cast<uint32_t>(fraction << 16)};
+    }
+
+    friend bool operator==(const Timestamp& lhs, const Timestamp& rhs) {
+        return lhs.integer_ == rhs.integer_ && lhs.fraction_ == rhs.fraction_;
+    }
+
+    friend bool operator!=(const Timestamp& lhs, const Timestamp& rhs) {
+        return !(lhs == rhs);
     }
 
   private:

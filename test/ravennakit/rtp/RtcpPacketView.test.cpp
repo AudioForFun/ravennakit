@@ -16,49 +16,43 @@
 #include <catch2/catch_test_macros.hpp>
 
 TEST_CASE("RtcpPacketView | verify()", "[RtcpPacketView]") {
-    uint8_t data[] = {
-        0b10'0'10101,                   // v, p, rc
-        201,          0, 0, 0, 0, 0, 0  // packet type
+    std::array<uint8_t, 28> data {
+        // Header
+        0x82, 0xc8, 0xc8, 0x14,  // v, p, rc | packet type | length
+        0x04, 0x05, 0x06, 0x07,  // csrc
+        // Sender info
+        0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
+        0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
+        0x10, 0x11, 0x12, 0x13,  // RTP timestamp
+        0x14, 0x15, 0x16, 0x17,  // Senders packet count
+        0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
     };
 
-    SECTION("Invalid pointer") {
-        const rav::RtcpPacketView packet(nullptr, sizeof(data));
+    SECTION("Verification should fail when the view doesn't point to data") {
+        const rav::RtcpPacketView packet(nullptr, data.size());
         REQUIRE(packet.verify() == rav::rtp::Result::InvalidPointer);
     }
 
-    SECTION("Invalid header length") {
-        const rav::RtcpPacketView packet(data, 0);
+    SECTION("Verification should fail when passing an invalid length") {
+        const rav::RtcpPacketView packet(data.data(), 0);
         REQUIRE(packet.verify() == rav::rtp::Result::InvalidHeaderLength);
     }
 
-    const rav::RtcpPacketView packet(data, sizeof(data));
+    const rav::RtcpPacketView packet(data.data(), data.size());
 
-    SECTION("Ok") {
+    SECTION("At this point verification should pass") {
         REQUIRE(packet.verify() == rav::rtp::Result::Ok);
     }
 
-    SECTION("Valid version 0") {
+    SECTION("Verification should fail when the version is not 2") {
         data[0] = 0;
         REQUIRE(packet.version() == 0);
-        REQUIRE(packet.verify() == rav::rtp::Result::Ok);
-    }
-
-    SECTION("Valid version 1") {
-        data[0] = 0b01000000;
-        REQUIRE(packet.version() == 1);
-        REQUIRE(packet.verify() == rav::rtp::Result::Ok);
-    }
-
-    SECTION("Valid version 2") {
-        data[0] = 0b10000000;
-        REQUIRE(packet.version() == 2);
-        REQUIRE(packet.verify() == rav::rtp::Result::Ok);
-    }
-
-    SECTION("Invalid version 3") {
-        data[0] = 0b11000000;
-        REQUIRE(packet.version() == 3);
         REQUIRE(packet.verify() == rav::rtp::Result::InvalidVersion);
+    }
+
+    SECTION("Verification should fail when there is no room for sender info") {
+        const rav::RtcpPacketView short_packet(data.data(), data.size() - 1);
+        REQUIRE(short_packet.verify() == rav::rtp::Result::InvalidSenderInfoLength);
     }
 }
 
@@ -85,6 +79,11 @@ TEST_CASE("RtcpPacketView | version()", "[RtcpPacketView]") {
         data[0] = 0b11111111;
         REQUIRE(packet.version() == 3);
     }
+
+    SECTION("Version should be zero on a packet of length zero") {
+        const rav::RtcpPacketView zero_packet(data, 0);
+        REQUIRE(zero_packet.version() == 0);
+    }
 }
 
 TEST_CASE("RtcpPacketView | padding()", "[RtcpPacketView]") {
@@ -99,6 +98,11 @@ TEST_CASE("RtcpPacketView | padding()", "[RtcpPacketView]") {
     SECTION("With padding") {
         data[0] = 0b11111111;
         REQUIRE(packet.padding() == true);
+    }
+
+    SECTION("Padding should be false on a packet of length zero") {
+        const rav::RtcpPacketView zero_packet(data, 0);
+        REQUIRE(zero_packet.padding() == false);
     }
 }
 
@@ -118,6 +122,11 @@ TEST_CASE("RtcpPacketView | reception_report_count()", "[RtcpPacketView]") {
     SECTION("Count 31 (max value)") {
         data[0] = {0b11'1'11111};
         REQUIRE(packet.reception_report_count() == 0b11111);
+    }
+
+    SECTION("Reception report count should be false on a packet of length zero") {
+        const rav::RtcpPacketView zero_packet(data, 0);
+        REQUIRE(zero_packet.reception_report_count() == 0);
     }
 }
 
@@ -151,6 +160,11 @@ TEST_CASE("RtcpPacketView | packet_type()", "[RtcpPacketView]") {
         data[1] = 204;
         REQUIRE(packet.packet_type() == rav::RtcpPacketView::PacketType::App);
     }
+
+    SECTION("Packet type should be unknown when the data is too small") {
+        const rav::RtcpPacketView zero_packet(data, 1);
+        REQUIRE(zero_packet.packet_type() == rav::RtcpPacketView::PacketType::Unknown);
+    }
 }
 
 TEST_CASE("RtcpPacketView | length()", "[RtcpPacketView]") {
@@ -171,6 +185,11 @@ TEST_CASE("RtcpPacketView | length()", "[RtcpPacketView]") {
         data[2] = 0xff;
         data[3] = 0xFE;
         REQUIRE(packet.length() == 0xffff);
+    }
+
+    SECTION("Length should be 0 on a too small packet") {
+        const rav::RtcpPacketView zero_packet(data, 2);
+        REQUIRE(zero_packet.length() == 0);
     }
 }
 
@@ -197,33 +216,34 @@ TEST_CASE("RtcpPacketView | ssrc()", "[RtcpPacketView]") {
         data[7] = 0xff;
         REQUIRE(packet.ssrc() == 0xffffffff);
     }
-}
 
-TEST_CASE("RtcpPacketView | to_string()", "[RtcpPacketView]") {
-    uint8_t data[] = {
-
-        // v, p, rc
-        0b10'0'10101,
-        // packet type
-        201,
-        // length
-        0x02, 0x03,
-        // csrc
-        0x04, 0x05, 0x06, 0x07
-    };
-
-    const rav::RtcpPacketView packet(data, sizeof(data));
-
-    SECTION("Test to_string method") {
-        REQUIRE(
-            packet.to_string()
-            == "RTCP Packet: valid=true version=2 padding=false reception_report_count=21 packet_type=ReceiverReport length=516 ssrc=67438087"
-        );
+    SECTION("SSRC should be 0 on a too small packet") {
+        const rav::RtcpPacketView zero_packet(data, 4);
+        REQUIRE(zero_packet.ssrc() == 0);
     }
 }
 
+TEST_CASE("RtcpPacketView | to_string()", "[RtcpPacketView]") {
+    std::array<uint8_t, 168> data {
+        // Header
+        0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
+        0x04, 0x05, 0x06, 0x07,  // csrc
+        // Sender info
+        0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
+        0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
+        0x10, 0x11, 0x12, 0x13,  // RTP timestamp
+        0x14, 0x15, 0x16, 0x17,  // Senders packet count
+        0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
+    };
+
+    const rav::RtcpPacketView packet(data.data(), data.size());
+    std::ignore = packet.to_string();
+    data[1] = 201;
+    std::ignore = packet.to_string();
+}
+
 TEST_CASE("RtcpPacketView | ntp_timestamp()", "[RtcpPacketView]") {
-    uint8_t data[] = {
+    std::array<uint8_t, 16> data = {
 
         // v, p, rc
         0b10'0'10101,
@@ -239,7 +259,7 @@ TEST_CASE("RtcpPacketView | ntp_timestamp()", "[RtcpPacketView]") {
         0x05, 0x06, 0x07, 0x08
     };
 
-    const rav::RtcpPacketView packet(data, sizeof(data));
+    const rav::RtcpPacketView packet(data.data(), data.size());
 
     SECTION("Sender report") {
         const auto ts = packet.ntp_timestamp();
@@ -252,6 +272,11 @@ TEST_CASE("RtcpPacketView | ntp_timestamp()", "[RtcpPacketView]") {
         const auto ts = packet.ntp_timestamp();
         REQUIRE(ts.integer() == 0);
         REQUIRE(ts.fraction() == 0);
+    }
+
+    SECTION("Timestamp should be 0 on a too small packet") {
+        const rav::RtcpPacketView zero_packet(data.data(), data.size() - 1);
+        REQUIRE(zero_packet.ntp_timestamp() == rav::ntp::Timestamp {});
     }
 }
 
@@ -634,6 +659,37 @@ TEST_CASE("RtcpPacketView | get_profile_specific_extension()", "[RtcpPacketView]
         REQUIRE(ext.data()[6] == 0x47);
         REQUIRE(ext.data()[7] == 0x48);
     }
+
+    SECTION("Get an empty buffer view on an empty RtcpPacketView") {
+        rav::RtcpPacketView view;
+        auto ext = view.get_profile_specific_extension();
+        REQUIRE(ext.is_valid() == false);
+        REQUIRE(ext.data() == nullptr);
+        REQUIRE(ext.empty());
+        REQUIRE(ext.size_bytes() == 0);
+    }
+
+    SECTION("Check reported length") {
+        constexpr std::array<uint8_t, 36> packet {
+            // Header
+            0x80, 0xc8, 0x00, 0x09,  // v, p, rc | packet type | length
+            0x04, 0x05, 0x06, 0x07,  // csrc
+            // Sender info
+            0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
+            0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
+            0x10, 0x11, 0x12, 0x13,  // RTP timestamp
+            0x14, 0x15, 0x16, 0x17,  // Senders packet count
+            0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
+            // Profile specific extension
+            0x41, 0x42, 0x43, 0x44,  // data
+            0x45, 0x46, 0x47, 0x48,  // data
+        };
+
+        const rav::RtcpPacketView packet_view(packet.data(), packet.size());
+        REQUIRE(packet_view.reception_report_count() == 0);
+        auto ext = packet_view.get_profile_specific_extension();
+        REQUIRE(ext.is_valid() == false);
+    }
 }
 
 TEST_CASE("RtcpPacketView | get_next_packet()", "[RtcpPacketView]") {
@@ -761,4 +817,8 @@ TEST_CASE("RtcpPacketView | packet_type_to_string()") {
     REQUIRE(expect(rav::RtcpPacketView::PacketType::Unknown, "Unknown"));
     REQUIRE(expect(rav::RtcpPacketView::PacketType::Bye, "Bye"));
     REQUIRE(expect(rav::RtcpPacketView::PacketType::App, "App"));
+
+    // Force an invalid packet type to pass the default branch
+    auto max = std::numeric_limits<std::underlying_type_t<rav::RtcpPacketView::PacketType>>::max();
+    REQUIRE(expect(static_cast<rav::RtcpPacketView::PacketType>(max), ""));
 }

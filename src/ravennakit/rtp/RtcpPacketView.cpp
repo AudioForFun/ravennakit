@@ -37,7 +37,7 @@ rav::rtp::Result rav::RtcpPacketView::verify() const {
         return rtp::Result::InvalidHeaderLength;
     }
 
-    if (version() > 2) {
+    if (version() != 2) {
         return rtp::Result::InvalidVersion;
     }
 
@@ -192,11 +192,11 @@ rav::BufferView<const uint8_t> rav::RtcpPacketView::get_profile_specific_extensi
         return {};
     }
 
-    if (reported_length < data_length_) {
+    if (reported_length > data_length_) {
         return {};
     }
 
-    return {data_ + offset, length() * 4 - offset};
+    return {data_ + offset, reported_length - offset};
 }
 
 rav::RtcpPacketView rav::RtcpPacketView::get_next_packet() const {
@@ -224,12 +224,17 @@ size_t rav::RtcpPacketView::data_length() const {
 
 std::string rav::RtcpPacketView::to_string() const {
     auto header = fmt::format(
-        "RTCP Packet: valid={} version={} padding={} reception_report_count={} packet_type={} length={} ssrc={}",
+        "RTCP Packet valid={} | Header version={} padding={} reception_report_count={} packet_type={} length={} ssrc={}",
         verify() == rtp::Result::Ok, version(), padding(), reception_report_count(),
         packet_type_to_string(packet_type()), length(), ssrc()
     );
 
-    if (packet_type() == PacketType::SenderReport) {}
+    if (packet_type() == PacketType::SenderReport) {
+        return fmt::format(
+            "{} | Sender info ntp={} rtp={} packet_count={} octet_count={}", header, ntp_timestamp().to_string(),
+            rtp_timestamp(), packet_count(), octet_count()
+        );
+    }
 
     return header;
 }
@@ -248,6 +253,7 @@ const char* rav::RtcpPacketView::packet_type_to_string(const PacketType packet_t
             return "App";
         case PacketType::Unknown:
             return "Unknown";
+        default:
+            return "";
     }
-    return "";
 }

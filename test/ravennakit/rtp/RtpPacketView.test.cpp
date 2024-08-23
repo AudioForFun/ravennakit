@@ -604,4 +604,18 @@ TEST_CASE("RtpPacketView | Payload buffer view", "[RtpPacketView]") {
         REQUIRE(payload.data()[2] == 0x33);
         REQUIRE(payload.data()[3] == 0x44);
     }
+
+    SECTION("Getting payload from an invalid packet should return an invalid buffer view") {
+        std::array<uint8_t, 28> data {
+            0x90, 0x61, 0xab, 0xcd,  // v, p, x, cc | m, pt | sequence number
+            0xab, 0xcd, 0xef, 0x01,  // timestamp
+            0x01, 0x02, 0x03, 0x04,  // ssrc
+            0x11, 0x22, 0x33, 0x44   // payload data
+        };
+
+        const rav::RtpPacketView packet(data.data(), data.size() - 1);
+        auto payload = packet.payload_data();
+        REQUIRE(payload.is_valid() == false);
+        REQUIRE(payload.empty());
+    }
 }

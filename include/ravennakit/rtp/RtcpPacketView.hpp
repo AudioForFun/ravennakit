@@ -87,7 +87,7 @@ class RtcpPacketView {
     [[nodiscard]] uint32_t ssrc() const;
 
     /**
-     * @return The NTP timestamp is a send report then this method returns the NTP timestamp, otherwise returns an empty
+     * @return If the packet is a send report then this method returns the NTP timestamp, otherwise returns an empty
      * (0) timestamp.
      */
     [[nodiscard]] ntp::Timestamp ntp_timestamp() const;

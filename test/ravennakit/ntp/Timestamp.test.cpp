@@ -31,3 +31,26 @@ TEST_CASE("Timestamp from compact uint32", "[Timestamp]") {
     REQUIRE(ts.integer() == 0x0123);
     REQUIRE(ts.fraction() == 0x45670000);
 }
+
+TEST_CASE("Timestamp equality", "[Timestamp]") {
+    SECTION("Equal") {
+        const rav::ntp::Timestamp ts1 {0x01234567, 0x89abcdef};
+        const rav::ntp::Timestamp ts2 {0x01234567, 0x89abcdef};
+        REQUIRE(ts1 == ts2);
+        REQUIRE_FALSE(ts1 != ts2);
+    }
+
+    SECTION("Not equal 1") {
+        const rav::ntp::Timestamp ts1 {0x01234568, 0x89abcdef};
+        const rav::ntp::Timestamp ts2 {0x01234567, 0x89abcdef};
+        REQUIRE(ts1 != ts2);
+        REQUIRE_FALSE(ts1 == ts2);
+    }
+
+    SECTION("Not equal 2") {
+        const rav::ntp::Timestamp ts1 {0x01234567, 0x89abcdee};
+        const rav::ntp::Timestamp ts2 {0x01234567, 0x89abcdef};
+        REQUIRE(ts1 != ts2);
+        REQUIRE_FALSE(ts1 == ts2);
+    }
+}
