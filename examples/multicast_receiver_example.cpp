@@ -13,7 +13,7 @@
 #include <asio.hpp>
 #include <iostream>
 
-#include "../include/ravenna-sdk/rtp/RtpPacketView.hpp"
+#include "../include/ravennakit/rtp/RtpPacketView.hpp"
 
 constexpr short port = 5004;
 

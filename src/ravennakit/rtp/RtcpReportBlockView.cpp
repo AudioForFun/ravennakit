@@ -8,11 +8,11 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravenna-sdk/rtp/RtcpReportBlockView.h"
+#include "ravennakit/rtp/RtcpReportBlockView.h"
 
 #include <array>
 
-#include "ravenna-sdk/platform/ByteOrder.hpp"
+#include "ravennakit/platform/ByteOrder.hpp"
 
 rav::RtcpReportBlockView::RtcpReportBlockView(const uint8_t* data, const size_t data_length) :
     data_(data), data_length_(data_length) {}

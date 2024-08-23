@@ -8,11 +8,11 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravenna-sdk/containers/BufferView.hpp"
-#include "ravenna-sdk/util/Util.hpp"
+#include "ravennakit/containers/BufferView.hpp"
 
 #include <catch2/catch_all.hpp>
 
+#include "ravennakit/util/Util.hpp"
 
 static_assert(std::is_trivially_copyable_v<rav::BufferView<double>> == true);
 static_assert(std::is_trivially_copyable_v<rav::BufferView<float>> == true);

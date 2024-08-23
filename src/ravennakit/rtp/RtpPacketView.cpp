@@ -8,13 +8,13 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravenna-sdk/rtp/RtpPacketView.hpp"
+#include "ravennakit/rtp/RtpPacketView.hpp"
 
 #include <fmt/core.h>
 
 #include <asio/detail/socket_ops.hpp>
 
-#include "ravenna-sdk/platform/ByteOrder.hpp"
+#include "ravennakit/platform/ByteOrder.hpp"
 
 namespace {
 constexpr size_t kRtpHeaderBaseLengthOctets = 12;

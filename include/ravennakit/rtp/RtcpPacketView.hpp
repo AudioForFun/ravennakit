@@ -16,8 +16,8 @@
 
 #include "RtcpReportBlockView.h"
 #include "Rtp.hpp"
-#include "ravenna-sdk/containers/BufferView.hpp"
-#include "ravenna-sdk/ntp/Timestamp.hpp"
+#include "ravennakit/containers/BufferView.hpp"
+#include "ravennakit/ntp/Timestamp.hpp"
 
 namespace rav {
 

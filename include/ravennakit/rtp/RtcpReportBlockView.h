@@ -14,7 +14,7 @@
 #include <cstdint>
 
 #include "Rtp.hpp"
-#include "ravenna-sdk/ntp/Timestamp.hpp"
+#include "ravennakit/ntp/Timestamp.hpp"
 
 namespace rav {
 

@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include <ravenna-sdk/rtp/RtcpReportBlockView.h>
+#include <ravennakit/rtp/RtcpReportBlockView.h>
 
 #include <catch2/catch_all.hpp>
 

@@ -8,11 +8,11 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravenna-sdk/rtp/RtcpPacketView.hpp"
+#include "ravennakit/rtp/RtcpPacketView.hpp"
 
 #include <fmt/core.h>
 
-#include "ravenna-sdk/platform/ByteOrder.hpp"
+#include "ravennakit/platform/ByteOrder.hpp"
 
 namespace {
 constexpr auto kHeaderLength = 8;
@@ -183,7 +183,7 @@ rav::BufferView<const uint8_t> rav::RtcpPacketView::get_profile_specific_extensi
     const auto offset = static_cast<size_t>(kSenderReportMinLength)
         + RtcpReportBlockView::kReportBlockLength * reception_report_count();
 
-    const auto reported_length = length() * 4;
+    const auto reported_length = static_cast<size_t>(length()) * 4;
 
     if (offset >= data_length_) {
         return {};

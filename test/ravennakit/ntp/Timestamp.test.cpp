@@ -9,7 +9,7 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <ravenna-sdk/ntp/Timestamp.hpp>
+#include <ravennakit/ntp/Timestamp.hpp>
 
 TEST_CASE("Timestamp full resolution", "[Timestamp]") {
     const rav::ntp::Timestamp timestamp {0x01234567, 0x89abcdef};

@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravenna-sdk/rtp/RtcpPacketView.hpp"
+#include "ravennakit/rtp/RtcpPacketView.hpp"
 
 #include <array>
 #include <asio/detail/socket_ops.hpp>

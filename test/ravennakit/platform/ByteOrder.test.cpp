@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravenna-sdk/platform/ByteOrder.hpp"
+#include "ravennakit/platform/ByteOrder.hpp"
 
 #include <catch2/catch_all.hpp>
 
