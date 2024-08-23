@@ -31,42 +31,42 @@ TEST_CASE("RtcpPacketView | verify()", "[RtcpPacketView]") {
 
     SECTION("Invalid pointer") {
         const rav::RtcpPacketView packet(nullptr, sizeof(data));
-        REQUIRE(packet.verify() == rav::rtp::VerificationResult::InvalidPointer);
+        REQUIRE(packet.verify() == rav::rtp::Result::InvalidPointer);
     }
 
     SECTION("Invalid header length") {
         const rav::RtcpPacketView packet(data, 0);
-        REQUIRE(packet.verify() == rav::rtp::VerificationResult::InvalidHeaderLength);
+        REQUIRE(packet.verify() == rav::rtp::Result::InvalidHeaderLength);
     }
 
     const rav::RtcpPacketView packet(data, sizeof(data));
 
     SECTION("Ok") {
-        REQUIRE(packet.verify() == rav::rtp::VerificationResult::Ok);
+        REQUIRE(packet.verify() == rav::rtp::Result::Ok);
     }
 
     SECTION("Valid version 0") {
         data[0] = 0;
         REQUIRE(packet.version() == 0);
-        REQUIRE(packet.verify() == rav::rtp::VerificationResult::Ok);
+        REQUIRE(packet.verify() == rav::rtp::Result::Ok);
     }
 
     SECTION("Valid version 1") {
         data[0] = 0b01000000;
         REQUIRE(packet.version() == 1);
-        REQUIRE(packet.verify() == rav::rtp::VerificationResult::Ok);
+        REQUIRE(packet.verify() == rav::rtp::Result::Ok);
     }
 
     SECTION("Valid version 2") {
         data[0] = 0b10000000;
         REQUIRE(packet.version() == 2);
-        REQUIRE(packet.verify() == rav::rtp::VerificationResult::Ok);
+        REQUIRE(packet.verify() == rav::rtp::Result::Ok);
     }
 
     SECTION("Invalid version 3") {
         data[0] = 0b11000000;
         REQUIRE(packet.version() == 3);
-        REQUIRE(packet.verify() == rav::rtp::VerificationResult::InvalidVersion);
+        REQUIRE(packet.verify() == rav::rtp::Result::InvalidVersion);
     }
 }
 

@@ -37,7 +37,7 @@ class RtpPacketView {
      * to undefined behavior.
      * @returns The result of the verification.
      */
-    [[nodiscard]] rtp::VerificationResult verify() const;
+    [[nodiscard]] rtp::Result verify() const;
 
     /**
      * @returns The version of the RTP header.

@@ -25,20 +25,20 @@ bool rav::RtcpReportBlockView::is_valid() const {
     return data_ != nullptr;
 }
 
-rav::rtp::VerificationResult rav::RtcpReportBlockView::verify() const {
+rav::rtp::Result rav::RtcpReportBlockView::verify() const {
     if (data_ == nullptr) {
-        return rtp::VerificationResult::InvalidPointer;
+        return rtp::Result::InvalidPointer;
     }
 
     if (data_length_ < kReportBlockLength) {
-        return rtp::VerificationResult::InvalidReportBlockLength;
+        return rtp::Result::InvalidReportBlockLength;
     }
 
     if (data_length_ > kReportBlockLength) {
-        return rtp::VerificationResult::InvalidReportBlockLength;
+        return rtp::Result::InvalidReportBlockLength;
     }
 
-    return rtp::VerificationResult::Ok;
+    return rtp::Result::Ok;
 }
 
 uint32_t rav::RtcpReportBlockView::ssrc() const {

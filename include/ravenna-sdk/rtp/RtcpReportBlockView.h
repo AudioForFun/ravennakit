@@ -42,7 +42,7 @@ class RtcpReportBlockView {
     /**
      * @returns True if this report block appears to be correct, or false if not.
      */
-    [[nodiscard]] rtp::VerificationResult verify() const;
+    [[nodiscard]] rtp::Result verify() const;
 
     /**
      * @returns The SSRC of the sender of the RTCP report block.
