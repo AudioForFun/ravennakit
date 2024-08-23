@@ -180,6 +180,9 @@ rav::RtcpReportBlockView rav::RtcpPacketView::get_report_block(const size_t inde
 }
 
 rav::BufferView<const uint8_t> rav::RtcpPacketView::get_profile_specific_extension() const {
+    if (data_ == nullptr) {
+        return {};
+    }
     const auto offset = static_cast<size_t>(kSenderReportMinLength)
         + RtcpReportBlockView::kReportBlockLength * reception_report_count();
 
@@ -194,6 +197,29 @@ rav::BufferView<const uint8_t> rav::RtcpPacketView::get_profile_specific_extensi
     }
 
     return {data_ + offset, length() * 4 - offset};
+}
+
+rav::RtcpPacketView rav::RtcpPacketView::get_next_packet() const {
+    if (data_ == nullptr) {
+        return {};
+    }
+    const auto reported_length = static_cast<size_t>(length()) * 4;
+    if (reported_length >= data_length_) {
+        return {};
+    }
+    return {data_ + reported_length, data_length_ - reported_length};
+}
+
+bool rav::RtcpPacketView::is_valid() const {
+    return data_ != nullptr;
+}
+
+const uint8_t* rav::RtcpPacketView::data() const {
+    return data_;
+}
+
+size_t rav::RtcpPacketView::data_length() const {
+    return data_length_;
 }
 
 std::string rav::RtcpPacketView::to_string() const {

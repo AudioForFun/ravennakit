@@ -39,6 +39,8 @@ class RtcpPacketView {
         App
     };
 
+    RtcpPacketView() = default;
+
     /**
      * Constructs an RTCP packet view from the given data.
      * @param data The RTCP packet data.
@@ -74,8 +76,8 @@ class RtcpPacketView {
     [[nodiscard]] PacketType packet_type() const;
 
     /**
-     * @returns The length of this RTCP packet in 32-bit words. While the length is stored as n-1 in the data, this
-     * method returns the actual length.
+     * @returns The reported length of this RTCP packet in 32-bit words as encoded inside the data. While the length is
+     * stored as n-1 in the data, this method returns the actual length (i.e. encoded length +1).
      */
     [[nodiscard]] uint16_t length() const;
 
@@ -116,6 +118,28 @@ class RtcpPacketView {
      * @returns The profile specific extension data, or an empty buffer if no extension data is present.
      */
     [[nodiscard]] BufferView<const uint8_t> get_profile_specific_extension() const;
+
+    /**
+     * @return The next RTCP packet in the buffer, or an empty (invalid) view if no more packets are available.
+     */
+    [[nodiscard]] RtcpPacketView get_next_packet() const;
+
+    /**
+     * Checks if this view references data. Note that this method does not validate the data itself; use verify() for
+     * data validation.
+     * @returns True if this view points to data.
+     */
+    [[nodiscard]] bool is_valid() const;
+
+    /**
+     * @returns The pointer to the data, or nullptr if not pointing to any data.
+     */
+    [[nodiscard]] const uint8_t* data() const;
+
+    /**
+     * @return The length of the data in bytes.
+     */
+    [[nodiscard]] size_t data_length() const;
 
     /**
      * @returns A string representation of the RTCP header.

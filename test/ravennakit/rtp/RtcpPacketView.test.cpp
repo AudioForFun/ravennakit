@@ -207,7 +207,7 @@ TEST_CASE("RtcpPacketView | to_string()", "[RtcpPacketView]") {
         // packet type
         201,
         // length
-        0x02, 0X03,
+        0x02, 0x03,
         // csrc
         0x04, 0x05, 0x06, 0x07
     };
@@ -230,7 +230,7 @@ TEST_CASE("RtcpPacketView | ntp_timestamp()", "[RtcpPacketView]") {
         // packet type
         200,
         // length
-        0xab, 0XCD,
+        0xab, 0xCD,
         // csrc
         0x01, 0x02, 0x03, 0x04,
         // NTP MSW
@@ -261,7 +261,7 @@ TEST_CASE("RtcpPacketView | rtp_timestamp()", "[RtcpPacketView]") {
                       // packet type
                       200,
                       // length
-                      0x02, 0X03,
+                      0x02, 0x03,
                       // csrc
                       0x04, 0x05, 0x06, 0x07,
                       // NTP MSW
@@ -295,7 +295,7 @@ TEST_CASE("RtcpPacketView | packet_count()", "[RtcpPacketView]") {
                       // packet type
                       200,
                       // length
-                      0x02, 0X03,
+                      0x02, 0x03,
                       // csrc
                       0x04, 0x05, 0x06, 0x07,
                       // NTP MSW
@@ -331,7 +331,7 @@ TEST_CASE("RtcpPacketView | octet_count()", "[RtcpPacketView]") {
                       // packet type
                       200,
                       // length
-                      0x02, 0X03,
+                      0x02, 0x03,
                       // csrc
                       0x04, 0x05, 0x06, 0x07,
                       // NTP MSW
@@ -363,6 +363,66 @@ TEST_CASE("RtcpPacketView | octet_count()", "[RtcpPacketView]") {
     }
 }
 
+TEST_CASE("RtcpPacketView | is_valid()", "[RtcpReportBlockView]") {
+    constexpr std::array<uint8_t, 28> data {
+        // Header
+        0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
+        0x04, 0x05, 0x06, 0x07,  // csrc
+        // Sender info
+        0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
+        0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
+        0x10, 0x11, 0x12, 0x13,  // RTP timestamp
+        0x14, 0x15, 0x16, 0x17,  // Senders packet count
+        0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
+    };
+
+    SECTION("Valid when the view points to data") {
+        const rav::RtcpPacketView packet(data.data(), data.size());
+        REQUIRE(packet.is_valid());
+    }
+
+    SECTION("Also valid when pointing to data with a size of 0") {
+        const rav::RtcpReportBlockView packet(data.data(), 0);
+        REQUIRE(packet.is_valid());
+    }
+
+    SECTION("Not valid when pointing to nullptr and no size") {
+        const rav::RtcpReportBlockView packet(nullptr, 0);
+        REQUIRE_FALSE(packet.is_valid());
+    }
+
+    SECTION("Also not valid when pointing to nullptr but with size") {
+        const rav::RtcpReportBlockView packet(nullptr, 1);
+        REQUIRE_FALSE(packet.is_valid());
+    }
+}
+
+TEST_CASE("RtcpPacketView | data()", "[RtcpReportBlockView]") {
+    constexpr std::array<uint8_t, 28> data {
+        // Header
+        0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
+        0x04, 0x05, 0x06, 0x07,  // csrc
+        // Sender info
+        0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
+        0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
+        0x10, 0x11, 0x12, 0x13,  // RTP timestamp
+        0x14, 0x15, 0x16, 0x17,  // Senders packet count
+        0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
+    };
+
+    SECTION("Data and length should point to the packet above") {
+        const rav::RtcpPacketView view(data.data(), data.size());
+        REQUIRE(view.data() == data.data());
+        REQUIRE(view.data_length() == 28);
+    }
+
+    SECTION("An empty view should return nullptr and 0") {
+        constexpr rav::RtcpPacketView view;
+        REQUIRE(view.data() == nullptr);
+        REQUIRE(view.data_length() == 0);
+    }
+}
+
 TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
     SECTION("A packet without report block should return an invalid report view") {
         constexpr std::array<uint8_t, 28> packet {
@@ -383,7 +443,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
     SECTION("A packet with report count but without the data should return an invalid report view") {
         constexpr std::array<uint8_t, 28> packet {
             // Header
-            0x81, 0xc8, 0x02, 0X03,  // v, p, rc, packet type, length
+            0x81, 0xc8, 0x02, 0x03,  // v, p, rc, packet type, length
             0x04, 0x05, 0x06, 0x07,  // csrc
             // Sender info
             0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
@@ -401,7 +461,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
     SECTION("A packet with report count and with the data should return a valid report view") {
         constexpr std::array<uint8_t, 52> packet {
             // Header
-            0x81, 0xc8, 0x02, 0X03,  // v, p, rc | packet type | length
+            0x81, 0xc8, 0x02, 0x03,  // v, p, rc | packet type | length
             0x04, 0x05, 0x06, 0x07,  // csrc
             // Sender info
             0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
@@ -436,7 +496,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
     SECTION("A packet with report count two and with the data should return a valid report view") {
         constexpr std::array<uint8_t, 76> packet {
             // Header
-            0x82, 0xc8, 0x02, 0X03,  // v, p, rc | packet type | length
+            0x82, 0xc8, 0x02, 0x03,  // v, p, rc | packet type | length
             0x04, 0x05, 0x06, 0x07,  // csrc
             // Sender info
             0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
@@ -493,7 +553,7 @@ TEST_CASE("RtcpPacketView | get_profile_specific_extension()", "[RtcpPacketView]
     SECTION("A packet with report count two and with the data should return a valid report view") {
         constexpr std::array<uint8_t, 76> packet {
             // Header
-            0x82, 0xc8, 0x00, 0X12,  // v, p, rc | packet type | length
+            0x82, 0xc8, 0x00, 0x12,  // v, p, rc | packet type | length
             0x04, 0x05, 0x06, 0x07,  // csrc
             // Sender info
             0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
@@ -529,7 +589,7 @@ TEST_CASE("RtcpPacketView | get_profile_specific_extension()", "[RtcpPacketView]
     SECTION("A packet with report count two and with the data should return a valid report view") {
         constexpr std::array<uint8_t, 84> packet {
             // Header
-            0x82, 0xc8, 0x00, 0X14,  // v, p, rc | packet type | length
+            0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
             0x04, 0x05, 0x06, 0x07,  // csrc
             // Sender info
             0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
@@ -573,6 +633,120 @@ TEST_CASE("RtcpPacketView | get_profile_specific_extension()", "[RtcpPacketView]
         REQUIRE(ext.data()[5] == 0x46);
         REQUIRE(ext.data()[6] == 0x47);
         REQUIRE(ext.data()[7] == 0x48);
+    }
+}
+
+TEST_CASE("RtcpPacketView | get_next_packet()", "[RtcpPacketView]") {
+    SECTION("A single packet should not return a valid next packet") {
+        constexpr std::array<uint8_t, 84> data {
+            // Header
+            0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
+            0x04, 0x05, 0x06, 0x07,  // csrc
+            // Sender info
+            0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
+            0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
+            0x10, 0x11, 0x12, 0x13,  // RTP timestamp
+            0x14, 0x15, 0x16, 0x17,  // Senders packet count
+            0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
+            // Report block 1
+            0x01, 0x02, 0x03, 0x04,  // SSRC
+            0x05, 0x06, 0x07, 0x08,  // fraction lost | cumulative number of packets lost
+            0x09, 0x0a, 0x0b, 0x0c,  // extended highest sequence number received
+            0x0d, 0x0e, 0x0f, 0x10,  // inter-arrival jitter
+            0x11, 0x12, 0x13, 0x14,  // last SR timestamp
+            0x15, 0x16, 0x17, 0x18,  // delay since last SR
+            // Report block 2
+            0x21, 0x22, 0x23, 0x24,  // SSRC
+            0x25, 0x26, 0x27, 0x28,  // fraction lost | cumulative number of packets lost
+            0x29, 0x2a, 0x2b, 0x2c,  // extended highest sequence number received
+            0x2d, 0x2e, 0x2f, 0x30,  // inter-arrival jitter
+            0x31, 0x32, 0x33, 0x34,  // last SR timestamp
+            0x35, 0x36, 0x37, 0x38,  // delay since last SR
+            // Profile specific extension
+            0x41, 0x42, 0x43, 0x44,  // data
+            0x45, 0x46, 0x47, 0x48,  // data
+        };
+
+        const rav::RtcpPacketView packet_view(data.data(), data.size());
+        const auto packet_view2 = packet_view.get_next_packet();
+        REQUIRE(packet_view2.is_valid() == false);
+    }
+
+    SECTION("A single packet should not return a valid next packet") {
+        constexpr std::array<uint8_t, 168> data {
+            // Header
+            0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
+            0x04, 0x05, 0x06, 0x07,  // csrc
+            // Sender info
+            0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
+            0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
+            0x10, 0x11, 0x12, 0x13,  // RTP timestamp
+            0x14, 0x15, 0x16, 0x17,  // Senders packet count
+            0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
+            // Report block 1
+            0x01, 0x02, 0x03, 0x04,  // SSRC
+            0x05, 0x06, 0x07, 0x08,  // fraction lost | cumulative number of packets lost
+            0x09, 0x0a, 0x0b, 0x0c,  // extended highest sequence number received
+            0x0d, 0x0e, 0x0f, 0x10,  // inter-arrival jitter
+            0x11, 0x12, 0x13, 0x14,  // last SR timestamp
+            0x15, 0x16, 0x17, 0x18,  // delay since last SR
+            // Report block 2
+            0x21, 0x22, 0x23, 0x24,  // SSRC
+            0x25, 0x26, 0x27, 0x28,  // fraction lost | cumulative number of packets lost
+            0x29, 0x2a, 0x2b, 0x2c,  // extended highest sequence number received
+            0x2d, 0x2e, 0x2f, 0x30,  // inter-arrival jitter
+            0x31, 0x32, 0x33, 0x34,  // last SR timestamp
+            0x35, 0x36, 0x37, 0x38,  // delay since last SR
+            // Profile specific extension
+            0x41, 0x42, 0x43, 0x44,  // data
+            0x45, 0x46, 0x47, 0x48,  // data
+
+            // Header
+            0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
+            0x58, 0x59, 0x5a, 0x5b,  // csrc
+            // Sender info
+            0x5c, 0x5d, 0x5e, 0x5f,  // NTP MSW
+            0x60, 0x61, 0x62, 0x63,  // NTP LSW
+            0x64, 0x65, 0x66, 0x67,  // RTP timestamp
+            0x68, 0x69, 0x6a, 0x6b,  // Senders packet count
+            0x6c, 0x6d, 0x6e, 0x6f,  // Senders octet count
+            // Report block 1
+            0x55, 0x56, 0x57, 0x58,  // SSRC
+            0x59, 0x5a, 0x5b, 0x5c,  // fraction lost | cumulative number of packets lost
+            0x5d, 0x5e, 0x5f, 0x60,  // extended highest sequence number received
+            0x61, 0x62, 0x63, 0x64,  // inter-arrival jitter
+            0x65, 0x66, 0x67, 0x68,  // last SR timestamp
+            0x69, 0x6a, 0x6b, 0x6c,  // delay since last SR
+            // Report block 2
+            0x75, 0x76, 0x77, 0x78,  // SSRC
+            0x79, 0x7a, 0x7b, 0x7c,  // fraction lost | cumulative number of packets lost
+            0x7d, 0x7e, 0x7f, 0x80,  // extended highest sequence number received
+            0x81, 0x82, 0x83, 0x84,  // inter-arrival jitter
+            0x85, 0x86, 0x87, 0x88,  // last SR timestamp
+            0x89, 0x8a, 0x8b, 0x8c,  // delay since last SR
+            // Profile specific extension
+            0x95, 0x96, 0x97, 0x98,  // data
+            0x99, 0x9a, 0x9b, 0x9c,  // data
+        };
+
+        const rav::RtcpPacketView packet_view(data.data(), data.size());
+        const auto packet_view2 = packet_view.get_next_packet();
+        REQUIRE(packet_view2.is_valid() == true);
+        REQUIRE(packet_view2.data() == data.data() + 84);
+        REQUIRE(packet_view2.data_length() == 84);
+
+        auto ext = packet_view2.get_profile_specific_extension();
+        REQUIRE(ext.data() == data.data() + 160);
+        REQUIRE(ext.size() == 8);
+        REQUIRE(ext.size_bytes() == 8);
+        REQUIRE(ext.data()[0] == 0x95);
+        REQUIRE(ext.data()[7] == 0x9c);
+    }
+
+    SECTION("Getting a next packet from an invalid packet should not lead to undefined behavior") {
+        rav::RtcpPacketView invalid;
+        auto next_packet = invalid.get_next_packet();
+        REQUIRE(next_packet.is_valid() == false);
     }
 }
 

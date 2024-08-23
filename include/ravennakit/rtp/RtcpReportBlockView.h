@@ -35,13 +35,6 @@ class RtcpReportBlockView {
     RtcpReportBlockView(const uint8_t* data, size_t data_length);
 
     /**
-     * Checks if this view references data. Note that this method does not validate the data itself; use verify() for
-     * data validation.
-     * @returns True if this view points to data.
-     */
-    [[nodiscard]] bool is_valid() const;
-
-    /**
      * @returns True if this report block appears to be correct, or false if not.
      */
     [[nodiscard]] rtp::Result verify() const;
@@ -82,12 +75,19 @@ class RtcpReportBlockView {
     [[nodiscard]] uint32_t delay_since_last_sr() const;
 
     /**
+     * Checks if this view references data. Note that this method does not validate the data itself; use verify() for
+     * data validation.
+     * @returns True if this view points to data.
+     */
+    [[nodiscard]] bool is_valid() const;
+
+    /**
      * @returns The pointer to the data, or nullptr if not pointing to any data.
      */
     [[nodiscard]] const uint8_t* data() const;
 
     /**
-     * @return The length of the data.
+     * @return The length of the data in bytes.
      */
     [[nodiscard]] size_t data_length() const;
 
