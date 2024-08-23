@@ -14,6 +14,7 @@
 #include <cstdint>
 
 #include "Rtp.hpp"
+#include "ravenna-sdk/ntp/Timestamp.hpp"
 
 namespace rav {
 
@@ -32,7 +33,9 @@ class RtcpReportBlockView {
     RtcpReportBlockView(const uint8_t* data, size_t data_length);
 
     /**
-     * @returns True if this view points to data and has a size of > 0.
+     * Checks if this view references data. Note that this method does not validate the data itself; use verify() for
+     * data validation.
+     * @returns True if this view points to data.
      */
     [[nodiscard]] bool is_valid() const;
 
@@ -40,6 +43,41 @@ class RtcpReportBlockView {
      * @returns True if this report block appears to be correct, or false if not.
      */
     [[nodiscard]] rtp::VerificationResult verify() const;
+
+    /**
+     * @returns The SSRC of the sender of the RTCP report block.
+     */
+    [[nodiscard]] uint32_t ssrc() const;
+
+    /**
+     * @returns The fraction of packets lost.
+     */
+    [[nodiscard]] uint8_t fraction_lost() const;
+
+    /**
+     * @returns The cumulative number of packets lost.
+     */
+    [[nodiscard]] uint32_t number_of_packets_lost() const;
+
+    /**
+     * @returns The extended highest sequence number received.
+     */
+    [[nodiscard]] uint32_t extended_highest_sequence_number_received() const;
+
+    /**
+     * @returns The inter-arrival jitter.
+     */
+    [[nodiscard]] uint32_t inter_arrival_jitter() const;
+
+    /**
+     * @return The last SR timestamp.
+     */
+    [[nodiscard]] ntp::Timestamp last_sr_timestamp() const;
+
+    /**
+     * @return The delay since the last SR.
+     */
+    [[nodiscard]] uint32_t delay_since_last_sr() const;
 
   private:
     const uint8_t* data_ {};

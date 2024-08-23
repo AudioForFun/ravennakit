@@ -109,7 +109,7 @@ uint32_t rav::RtcpPacketView::ssrc() const {
     return byte_order::read_be<uint32_t>(&data_[kOffset]);
 }
 
-rav::ntp::TimeStamp rav::RtcpPacketView::ntp_timestamp() const {
+rav::ntp::Timestamp rav::RtcpPacketView::ntp_timestamp() const {
     if (packet_type() != PacketType::SenderReport) {
         return {};
     }

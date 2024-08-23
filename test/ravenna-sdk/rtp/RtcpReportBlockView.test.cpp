@@ -8,42 +8,123 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
+#include <ravenna-sdk/rtp/RtcpReportBlockView.h>
+
 #include <catch2/catch_all.hpp>
 
-TEST_CASE("RtcpReportBlockView", "[RtcpReportBlockView]") {
-    std::array<uint8_t, 24> packet {
-        // SSRC
-        0x00,
-        0x01,
-        0x02,
-        0x03,
-        // Fraction lost
-        0x04,
-        // Cumulative number of packets lost
-        0x05,
-        0x06,
-        0x07,
-        // Extended highest sequence number received
-        0x08,
-        0x09,
-        0x0A,
-        0x0B,
-        // Inter arrival jitter
-        0x0C,
-        0x0D,
-        0x0E,
-        0x0F,
-        // Last SR (LSR)
-        0x10,
-        0x11,
-        0x12,
-        0x13,
-        // Delay since last SR (DLSR)
-        0x14,
-        0x15,
-        0x16,
-        0x17,
-    };
+namespace {
+std::array<uint8_t, 24> default_packet {
+    // SSRC
+    0x00,
+    0x01,
+    0x02,
+    0x03,
+    // Fraction lost
+    0x04,
+    // Cumulative number of packets lost
+    0x05,
+    0x06,
+    0x07,
+    // Extended highest sequence number received
+    0x08,
+    0x09,
+    0x0A,
+    0x0B,
+    // Inter arrival jitter
+    0x0C,
+    0x0D,
+    0x0E,
+    0x0F,
+    // Last SR (LSR)
+    0x10,
+    0x11,
+    0x12,
+    0x13,
+    // Delay since last SR (DLSR)
+    0x14,
+    0x15,
+    0x16,
+    0x17,
+};
+}
 
-    
+TEST_CASE("RtcpReportBlockView | is_valid()", "[RtcpReportBlockView]") {
+    SECTION("Valid when the view points to data") {
+        const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+        REQUIRE(report.is_valid());
+    }
+
+    SECTION("Also valid when pointing to data with a size of 0") {
+        const rav::RtcpReportBlockView report(default_packet.data(), 0);
+        REQUIRE(report.is_valid());
+    }
+
+    SECTION("Not valid when pointing to nullptr and no size") {
+        const rav::RtcpReportBlockView report(nullptr, 0);
+        REQUIRE_FALSE(report.is_valid());
+    }
+
+    SECTION("Also not valid when pointing to nullptr but with size") {
+        const rav::RtcpReportBlockView report(nullptr, 1);
+        REQUIRE_FALSE(report.is_valid());
+    }
+}
+
+TEST_CASE("RtcpReportBlockView | verify()", "[RtcpReportBlockView]") {
+    SECTION("Verification should fail when the view doesn't point to data") {
+        const rav::RtcpReportBlockView report(nullptr, 0);
+        REQUIRE(rav::rtp::VerificationResult::InvalidPointer == report.verify());
+    }
+
+    SECTION("Verification should fail when the packet is too short") {
+        const rav::RtcpReportBlockView report(default_packet.data(), 23);
+        REQUIRE(rav::rtp::VerificationResult::InvalidReportBlockLength == report.verify());
+    }
+
+    SECTION("Verification should fail when the packet is too long") {
+        const rav::RtcpReportBlockView report(default_packet.data(), 25);
+        REQUIRE(rav::rtp::VerificationResult::InvalidReportBlockLength == report.verify());
+    }
+
+    SECTION("Or else verification should pass") {
+        const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+        REQUIRE(rav::rtp::VerificationResult::Ok == report.verify());
+    }
+}
+
+TEST_CASE("RtcpReportBlockView | ssrc()", "[RtcpReportBlockView]") {
+    const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+    REQUIRE(report.ssrc() == 0x00010203);
+}
+
+TEST_CASE("RtcpReportBlockView | fraction_lost()", "[RtcpReportBlockView]") {
+    const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+    REQUIRE(report.fraction_lost() == 0x04);
+}
+
+TEST_CASE("RtcpReportBlockView | number_of_packets_lost()", "[RtcpReportBlockView]") {
+    const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+    REQUIRE(report.number_of_packets_lost() == 0x00050607);
+}
+
+TEST_CASE("RtcpReportBlockView | extended_highest_sequence_number_received()", "[RtcpReportBlockView]") {
+    const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+    REQUIRE(report.extended_highest_sequence_number_received() == 0x08090A0B);
+}
+
+TEST_CASE("RtcpReportBlockView | inter_arrival_jitter()", "[RtcpReportBlockView]") {
+    const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+    REQUIRE(report.inter_arrival_jitter() == 0x0C0D0E0F);
+}
+
+TEST_CASE("RtcpReportBlockView | last_sr_timestamp()", "[RtcpReportBlockView]") {
+    const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+    const auto ts = report.last_sr_timestamp();
+    REQUIRE(ts.integer() == 0x1011);
+    REQUIRE(ts.fraction() == 0x12130000);
+}
+
+TEST_CASE("RtcpReportBlockView | delay_since_last_sr()", "[RtcpReportBlockView]") {
+    const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
+    REQUIRE(report.delay_since_last_sr() == 0x14151617);
 }

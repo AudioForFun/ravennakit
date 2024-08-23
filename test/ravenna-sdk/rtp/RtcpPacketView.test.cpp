@@ -262,16 +262,16 @@ TEST_CASE("RtcpPacketView | ntp_timestamp()", "[RtcpPacketView]") {
     const rav::RtcpPacketView packet(data, sizeof(data));
 
     SECTION("Sender report") {
-        const auto [integer, fraction] = packet.ntp_timestamp();
-        REQUIRE(integer == 16909060);
-        REQUIRE(fraction == 84281096);
+        const auto ts = packet.ntp_timestamp();
+        REQUIRE(ts.integer() == 16909060);
+        REQUIRE(ts.fraction() == 84281096);
     }
 
     SECTION("Receiver report") {
         data[1] = 201;
-        const auto [integer, fraction] = packet.ntp_timestamp();
-        REQUIRE(integer == 0);
-        REQUIRE(fraction == 0);
+        const auto ts = packet.ntp_timestamp();
+        REQUIRE(ts.integer() == 0);
+        REQUIRE(ts.fraction() == 0);
     }
 }
 

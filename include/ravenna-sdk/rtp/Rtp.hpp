@@ -12,9 +12,12 @@
 
 namespace rav::rtp {
 
+using ssrc = uint32_t;
+
 constexpr auto kSsrcLength = 4;
 constexpr auto kRtpTimestampLength = 4;
 
+// TODO: Rename to Result
 enum class VerificationResult {
     Ok,
     InvalidPointer,
