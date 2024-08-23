@@ -169,22 +169,30 @@ rav::RtcpReportBlockView rav::RtcpPacketView::get_report_block(const size_t inde
         return {};
     }
 
-    if (data_length_ < kSenderReportMinLength + RtcpReportBlockView::kReportBlockLength * (index + 1)) {
+    auto offset = kHeaderLength;
+
+    if (packet_type() == PacketType::SenderReport) {
+        offset += kSenderInfoLength;
+    }
+
+    if (data_length_ < offset + RtcpReportBlockView::kReportBlockLength * (index + 1)) {
         return {};
     }
 
-    return {
-        data_ + kSenderReportMinLength + RtcpReportBlockView::kReportBlockLength * index,
-        RtcpReportBlockView::kReportBlockLength
-    };
+    return {data_ + offset + RtcpReportBlockView::kReportBlockLength * index, RtcpReportBlockView::kReportBlockLength};
 }
 
 rav::BufferView<const uint8_t> rav::RtcpPacketView::get_profile_specific_extension() const {
     if (data_ == nullptr) {
         return {};
     }
-    const auto offset = static_cast<size_t>(kSenderReportMinLength)
-        + RtcpReportBlockView::kReportBlockLength * reception_report_count();
+
+    auto offset =
+        static_cast<size_t>(kHeaderLength) + RtcpReportBlockView::kReportBlockLength * reception_report_count();
+
+    if (packet_type() == PacketType::SenderReport) {
+        offset += kSenderInfoLength;
+    }
 
     const auto reported_length = static_cast<size_t>(length()) * 4;
 
