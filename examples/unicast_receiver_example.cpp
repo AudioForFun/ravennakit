@@ -14,6 +14,7 @@
 #include <iostream>
 
 #include "../include/ravennakit/rtp/RtpPacketView.hpp"
+#include "ravennakit/event/IoContextRunner.hpp"
 #include "ravennakit/rtp/RtcpPacketView.hpp"
 
 constexpr short port = 5004;
@@ -92,9 +93,9 @@ int main(int const argc, char* argv[]) {
             return 1;
         }
 
-        asio::io_context io_context;
-        Receiver r(io_context, asio::ip::make_address(argv[1]));
-        io_context.run();
+        IoContextRunner runner;
+        Receiver r(runner.io_context(), asio::ip::make_address(argv[1]));
+        runner.run();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << "\n";
     }
