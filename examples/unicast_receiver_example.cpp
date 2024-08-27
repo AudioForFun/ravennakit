@@ -46,8 +46,7 @@ class Receiver {
   private:
     void receive_rtp() {
         rtp_socket_.async_receive_from(
-            asio::buffer(rtp_data_),
-            rtp_endpoint_,
+            asio::buffer(rtp_data_), rtp_endpoint_,
             [this](std::error_code const ec, const std::size_t length) {
                 if (!ec) {
                     const rav::RtpPacketView header(rtp_data_.data(), length);
@@ -62,8 +61,7 @@ class Receiver {
 
     void receive_rtcp() {
         rtcp_socket_.async_receive_from(
-            asio::buffer(rtcp_data_),
-            rtcp_endpoint_,
+            asio::buffer(rtcp_data_), rtcp_endpoint_,
             [this](std::error_code const ec, const std::size_t length) {
                 if (!ec) {
                     const rav::RtcpPacketView packet(rtcp_data_.data(), length);
@@ -95,7 +93,12 @@ int main(int const argc, char* argv[]) {
 
         IoContextRunner runner;
         Receiver r(runner.io_context(), asio::ip::make_address(argv[1]));
-        runner.run();
+        runner.run_async();
+
+        std::cout << "Hit return to exit\n";
+        std::getchar();
+
+        runner.stop();
     } catch (std::exception& e) {
         std::cerr << "Exception: " << e.what() << "\n";
     }

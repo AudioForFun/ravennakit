@@ -11,6 +11,7 @@
 #pragma once
 
 #include <asio.hpp>
+#include <iostream>
 
 class IoContextRunner {
   public:
@@ -27,20 +28,36 @@ class IoContextRunner {
     }
 
     /**
-     * Starts the runner asynchronously, returning immediately. Suitable for cases where this runner works alongside an
-     * event loop. Call stop() to stop the runner.
+     * Runs the runner until stop() is called.
+     */
+    void run() {
+        start();
+        io_context_.run();
+    }
+
+    /**
+     * Runs the runner until stop() is called, returning immediately.
      */
     void run_async() {
         start();
     }
 
     /**
-     * Starts the runner synchronously, and executes work on the io_context until it is stopped. Suitable for cases
-     * where this runner is the main event loop. Call stop() to stop the runner.
+     * Runs all tasks to completion, returning when all tasks are done.
      */
-    void run() {
+    void run_to_completion() {
         start();
+        work_guard_.reset();
         io_context_.run();
+        stop();
+    }
+
+    /**
+     * Runs all tasks to completion, returning immediately.
+     */
+    void run_to_completion_async() {
+        start();
+        work_guard_.reset();
     }
 
     /**
@@ -52,6 +69,7 @@ class IoContextRunner {
             thread.join();
         }
         threads_.clear();
+        work_guard_.reset();
     }
 
     /**
@@ -64,17 +82,19 @@ class IoContextRunner {
   private:
     const size_t num_threads_ = std::thread::hardware_concurrency();
     asio::io_context io_context_ {};
-    asio::executor_work_guard<asio::io_context::executor_type> work_guard_ {make_work_guard(io_context_)};
+    asio::executor_work_guard<asio::io_context::executor_type> work_guard_{asio::make_work_guard(io_context_)};
     std::vector<std::thread> threads_ {};
 
+    /**
+     * Starts the runner asynchronously, returning immediately. If the runner is already running, it will be stopped
+     * first.
+     */
     void start() {
-        stop();
-
         threads_.clear();
         io_context_.restart();
 
         for (size_t i = 0; i < num_threads_; i++) {
-            threads_.emplace_back([this, i] {
+            threads_.emplace_back([this] {
                 try {
                     io_context_.run();
                 } catch (const std::exception& e) {
@@ -82,8 +102,6 @@ class IoContextRunner {
                 } catch (...) {
                     std::cerr << "Unknown exception thrown on io_context runner thread\n";
                 }
-
-                std::cout << "IoContextRunner thread " << i << " exited\n";
             });
         }
     }
