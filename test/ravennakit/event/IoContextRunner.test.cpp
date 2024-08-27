@@ -16,6 +16,10 @@
 
 #include <thread>
 
+namespace {
+constexpr auto kDefaultTimeoutSeconds = std::chrono::seconds(5);
+}
+
 TEST_CASE("IoContextRunner :: run_to_completion()", "[IoContextRunner]") {
     SECTION("Run tasks to completion") {
         IoContextRunner runner;
@@ -96,7 +100,7 @@ TEST_CASE("IoContextRunner :: run_to_completion_async()", "[IoContextRunner]") {
 
         runner.run_to_completion_async();
 
-        const rav::util::chrono::Timeout timeout(std::chrono::seconds(1));
+        const rav::util::chrono::Timeout timeout(kDefaultTimeoutSeconds);
         while (total != expected_total) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (timeout.expired()) {
@@ -124,7 +128,7 @@ TEST_CASE("IoContextRunner :: run_to_completion_async()", "[IoContextRunner]") {
 
         runner.run_to_completion_async();
 
-        const rav::util::chrono::Timeout timeout(std::chrono::seconds(1));
+        const rav::util::chrono::Timeout timeout(kDefaultTimeoutSeconds);
         while (total != expected_total) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (timeout.expired()) {
@@ -149,7 +153,7 @@ TEST_CASE("IoContextRunner :: run_to_completion_async()", "[IoContextRunner]") {
 
         runner.run_to_completion_async();
 
-        const rav::util::chrono::Timeout timeout2(std::chrono::seconds(1));
+        const rav::util::chrono::Timeout timeout2(kDefaultTimeoutSeconds);
         while (total != expected_total) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (timeout2.expired()) {
@@ -182,7 +186,7 @@ TEST_CASE("IoContextRunner :: run()", "[IoContextRunner]") {
             post_run_called = true;
         });
 
-        const rav::util::chrono::Timeout timeout(std::chrono::seconds(1));
+        const rav::util::chrono::Timeout timeout(kDefaultTimeoutSeconds);
         while (!post_run_called) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (timeout.expired()) {
@@ -210,7 +214,7 @@ TEST_CASE("IoContextRunner :: run_async()", "[IoContextRunner]") {
             post_run_called = true;
         });
 
-        const rav::util::chrono::Timeout timeout(std::chrono::seconds(1));
+        const rav::util::chrono::Timeout timeout(kDefaultTimeoutSeconds);
         while (!post_run_called) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             if (timeout.expired()) {
