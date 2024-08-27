@@ -388,40 +388,6 @@ TEST_CASE("RtcpPacketView | octet_count()", "[RtcpPacketView]") {
     }
 }
 
-TEST_CASE("RtcpPacketView | is_valid()", "[RtcpReportBlockView]") {
-    constexpr std::array<uint8_t, 28> data {
-        // Header
-        0x82, 0xc8, 0x00, 0x14,  // v, p, rc | packet type | length
-        0x04, 0x05, 0x06, 0x07,  // csrc
-        // Sender info
-        0x08, 0x09, 0x0a, 0x0b,  // NTP MSW
-        0x0c, 0x0d, 0x0e, 0x0f,  // NTP LSW
-        0x10, 0x11, 0x12, 0x13,  // RTP timestamp
-        0x14, 0x15, 0x16, 0x17,  // Senders packet count
-        0x18, 0x19, 0x1a, 0x1b,  // Senders octet count
-    };
-
-    SECTION("Valid when the view points to data") {
-        const rav::RtcpPacketView packet(data.data(), data.size());
-        REQUIRE(packet.is_valid());
-    }
-
-    SECTION("Also valid when pointing to data with a size of 0") {
-        const rav::RtcpReportBlockView packet(data.data(), 0);
-        REQUIRE(packet.is_valid());
-    }
-
-    SECTION("Not valid when pointing to nullptr and no size") {
-        const rav::RtcpReportBlockView packet(nullptr, 0);
-        REQUIRE_FALSE(packet.is_valid());
-    }
-
-    SECTION("Also not valid when pointing to nullptr but with size") {
-        const rav::RtcpReportBlockView packet(nullptr, 1);
-        REQUIRE_FALSE(packet.is_valid());
-    }
-}
-
 TEST_CASE("RtcpPacketView | data()", "[RtcpReportBlockView]") {
     constexpr std::array<uint8_t, 28> data {
         // Header
@@ -462,7 +428,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
 
         const rav::RtcpPacketView packet_view(packet.data(), packet.size());
         const auto view = packet_view.get_report_block(0);
-        REQUIRE(view.is_valid() == false);
+        REQUIRE(view.data() == nullptr);
     }
 
     SECTION("A packet with report count but without the data should return an invalid report view") {
@@ -480,7 +446,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
 
         const rav::RtcpPacketView packet_view(packet.data(), packet.size());
         const auto view = packet_view.get_report_block(0);
-        REQUIRE(view.is_valid() == false);
+        REQUIRE(view.data() == nullptr);
     }
 
     SECTION("A packet with report count and with the data should return a valid report view") {
@@ -505,7 +471,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
 
         const rav::RtcpPacketView packet_view(packet.data(), packet.size());
         const auto view = packet_view.get_report_block(0);
-        REQUIRE(view.is_valid() == true);
+        REQUIRE(view.data() != nullptr);
         REQUIRE(view.ssrc() == 0x01020304);
         REQUIRE(view.fraction_lost() == 0x05);
         REQUIRE(view.number_of_packets_lost() == 0x060708);
@@ -547,7 +513,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
 
         const rav::RtcpPacketView packet_view(packet.data(), packet.size());
         const auto report1 = packet_view.get_report_block(0);
-        REQUIRE(report1.is_valid() == true);
+        REQUIRE(report1.data() != nullptr);
         REQUIRE(report1.ssrc() == 0x01020304);
         REQUIRE(report1.fraction_lost() == 0x05);
         REQUIRE(report1.number_of_packets_lost() == 0x060708);
@@ -560,7 +526,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
         REQUIRE(report1.data_length() == 24);
 
         const auto report2 = packet_view.get_report_block(1);
-        REQUIRE(report2.is_valid() == true);
+        REQUIRE(report2.data() != nullptr);
         REQUIRE(report2.ssrc() == 0x21222324);
         REQUIRE(report2.fraction_lost() == 0x25);
         REQUIRE(report2.number_of_packets_lost() == 0x262728);
@@ -596,7 +562,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
 
         const rav::RtcpPacketView packet_view(packet.data(), packet.size());
         const auto report1 = packet_view.get_report_block(0);
-        REQUIRE(report1.is_valid() == true);
+        REQUIRE(report1.data() != nullptr);
         REQUIRE(report1.ssrc() == 0x01020304);
         REQUIRE(report1.fraction_lost() == 0x05);
         REQUIRE(report1.number_of_packets_lost() == 0x060708);
@@ -609,7 +575,7 @@ TEST_CASE("RtcpPacketView | get_report_block()", "[RtcpPacketView]") {
         REQUIRE(report1.data_length() == 24);
 
         const auto report2 = packet_view.get_report_block(1);
-        REQUIRE(report2.is_valid() == true);
+        REQUIRE(report2.data() != nullptr);
         REQUIRE(report2.ssrc() == 0x21222324);
         REQUIRE(report2.fraction_lost() == 0x25);
         REQUIRE(report2.number_of_packets_lost() == 0x262728);
@@ -817,7 +783,7 @@ TEST_CASE("RtcpPacketView | get_next_packet()", "[RtcpPacketView]") {
 
         const rav::RtcpPacketView packet_view(data.data(), data.size());
         const auto packet_view2 = packet_view.get_next_packet();
-        REQUIRE(packet_view2.is_valid() == false);
+        REQUIRE(packet_view2.data() == nullptr);
     }
 
     SECTION("A single packet should not return a valid next packet") {
@@ -879,7 +845,7 @@ TEST_CASE("RtcpPacketView | get_next_packet()", "[RtcpPacketView]") {
 
         const rav::RtcpPacketView packet_view(data.data(), data.size());
         const auto packet_view2 = packet_view.get_next_packet();
-        REQUIRE(packet_view2.is_valid() == true);
+        REQUIRE(packet_view2.data() != nullptr);
         REQUIRE(packet_view2.data() == data.data() + 84);
         REQUIRE(packet_view2.data_length() == 84);
 
@@ -894,7 +860,7 @@ TEST_CASE("RtcpPacketView | get_next_packet()", "[RtcpPacketView]") {
     SECTION("Getting a next packet from an invalid packet should not lead to undefined behavior") {
         rav::RtcpPacketView invalid;
         auto next_packet = invalid.get_next_packet();
-        REQUIRE(next_packet.is_valid() == false);
+        REQUIRE(next_packet.data() == nullptr);
     }
 }
 

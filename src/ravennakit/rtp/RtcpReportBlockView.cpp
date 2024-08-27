@@ -17,10 +17,6 @@
 rav::RtcpReportBlockView::RtcpReportBlockView(const uint8_t* data, const size_t data_length) :
     data_(data), data_length_(data_length) {}
 
-bool rav::RtcpReportBlockView::is_valid() const {
-    return data_ != nullptr;
-}
-
 rav::rtp::Result rav::RtcpReportBlockView::validate() const {
     if (data_ == nullptr) {
         return rtp::Result::InvalidPointer;

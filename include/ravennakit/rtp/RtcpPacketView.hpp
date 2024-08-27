@@ -126,13 +126,6 @@ class RtcpPacketView {
     [[nodiscard]] RtcpPacketView get_next_packet() const;
 
     /**
-     * Checks if this view references data. Note that this method does not validate the data itself; use validate() for
-     * data validation.
-     * @returns True if this view points to data.
-     */
-    [[nodiscard]] bool is_valid() const;
-
-    /**
      * @returns The pointer to the data, or nullptr if not pointing to any data.
      */
     [[nodiscard]] const uint8_t* data() const;

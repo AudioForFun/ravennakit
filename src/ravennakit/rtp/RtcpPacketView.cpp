@@ -216,10 +216,6 @@ rav::RtcpPacketView rav::RtcpPacketView::get_next_packet() const {
     return {data_ + reported_length, data_length_ - reported_length};
 }
 
-bool rav::RtcpPacketView::is_valid() const {
-    return data_ != nullptr;
-}
-
 const uint8_t* rav::RtcpPacketView::data() const {
     return data_;
 }

@@ -23,28 +23,6 @@ std::array<uint8_t, 24> default_packet {
 };
 }
 
-TEST_CASE("RtcpReportBlockView | is_valid()", "[RtcpReportBlockView]") {
-    SECTION("Valid when the view points to data") {
-        const rav::RtcpReportBlockView report(default_packet.data(), default_packet.size());
-        REQUIRE(report.is_valid());
-    }
-
-    SECTION("Also valid when pointing to data with a size of 0") {
-        const rav::RtcpReportBlockView report(default_packet.data(), 0);
-        REQUIRE(report.is_valid());
-    }
-
-    SECTION("Not valid when pointing to nullptr and no size") {
-        const rav::RtcpReportBlockView report(nullptr, 0);
-        REQUIRE_FALSE(report.is_valid());
-    }
-
-    SECTION("Also not valid when pointing to nullptr but with size") {
-        const rav::RtcpReportBlockView report(nullptr, 1);
-        REQUIRE_FALSE(report.is_valid());
-    }
-}
-
 TEST_CASE("RtcpReportBlockView | validate()", "[RtcpReportBlockView]") {
     SECTION("Validation should fail when the view doesn't point to data") {
         const rav::RtcpReportBlockView report(nullptr, 0);
