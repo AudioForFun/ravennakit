@@ -12,8 +12,6 @@
 
 #include <fmt/core.h>
 
-#include <asio/detail/socket_ops.hpp>
-
 #include "ravennakit/platform/ByteOrder.hpp"
 
 namespace {

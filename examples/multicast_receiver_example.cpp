@@ -11,7 +11,6 @@
 #include <fmt/core.h>
 #include <uvw/udp.h>
 
-#include <asio.hpp>
 #include <iostream>
 
 #include "../include/ravennakit/rtp/RtpPacketView.hpp"

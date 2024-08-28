@@ -68,9 +68,6 @@ find_package(fmt CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(uvw CONFIG REQUIRED)
 
-find_package(asio CONFIG REQUIRED)
-target_compile_definitions(asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
-
 #######################
 # RAVENNA SDK Library #
 #######################
@@ -86,7 +83,6 @@ target_link_libraries(ravennakit
         PUBLIC
         rav_recommended_warning_flags
         rav_recommended_lto_flags
-        asio::asio
         spdlog::spdlog
         uvw::uvw
 )
@@ -129,7 +125,7 @@ target_link_libraries(ravennakit_tests
         PUBLIC
         rav_recommended_warning_flags
         rav_recommended_lto_flags
+        ravennakit
         PRIVATE
         Catch2::Catch2 Catch2::Catch2WithMain
-        ravennakit
 )
