@@ -14,6 +14,7 @@
 #include <uvw.hpp>
 
 #include "../include/ravennakit/rtp/rtp_packet_view.hpp"
+#include "ravennakit/rtp/rtp_receiver.hpp"
 
 constexpr short port = 5004;
 
@@ -30,31 +31,16 @@ int main(int const argc, char* argv[]) {
         return 1;
     }
 
-    const auto socket = loop->resource<uvw::udp_handle>();
-
-    if (socket == nullptr) {
-        return 1;
-    }
-
-    int count = 100;
-    socket->on<uvw::udp_data_event>([&count](const uvw::udp_data_event& event, uvw::udp_handle& handle) {
-        const rav::rtp_packet_view header(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
-        fmt::println("{}", header.to_string());
-        if (--count <= 0) {
-            handle.close();
-        }
+    rav::rtp_receiver receiver(loop);
+    receiver.on<rav::rtp_packet_event>([](const rav::rtp_packet_event& event,
+                                          [[maybe_unused]] rav::rtp_receiver& recv) {
+        fmt::println("{}", event.packet.to_string());
     });
 
-    socket->on<uvw::error_event>([](const uvw::error_event& event, uvw::udp_handle& handle) {
-        fmt::print(stderr, "Error: {}\n", event.what());
-        handle.close();
-    });
-
-    if (socket->bind(argv[1], port) != 0) {
-        return 1;
+    if (auto result = receiver.start_receiving_unicast(argv[1], port); result != 0) {
+        fmt::println(stderr, "Error: {}", result);
+        return result;
     }
-
-    socket->recv();
 
     return loop->run();
 }
