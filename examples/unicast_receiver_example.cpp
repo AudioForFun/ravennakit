@@ -13,7 +13,7 @@
 #include <iostream>
 #include <uvw.hpp>
 
-#include "../include/ravennakit/rtp/RtpPacketView.hpp"
+#include "../include/ravennakit/rtp/rtp_packet_view.hpp"
 
 constexpr short port = 5004;
 
@@ -38,7 +38,7 @@ int main(int const argc, char* argv[]) {
 
     int count = 100;
     socket->on<uvw::udp_data_event>([&count](const uvw::udp_data_event& event, uvw::udp_handle& handle) {
-        const rav::RtpPacketView header(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
+        const rav::rtp_packet_view header(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
         fmt::println("{}", header.to_string());
         if (--count <= 0) {
             handle.close();

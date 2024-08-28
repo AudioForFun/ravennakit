@@ -8,9 +8,9 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/platform/ByteOrder.hpp"
-
 #include <catch2/catch_all.hpp>
+
+#include "ravennakit/platform/byte_order.hpp"
 
 TEST_CASE("byte_order :: swap_bytes()", "[byte_order]") {
     constexpr uint16_t u16 = 0x1234;

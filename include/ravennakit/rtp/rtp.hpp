@@ -17,13 +17,13 @@ using ssrc = uint32_t;
 constexpr auto kSsrcLength = 4;
 constexpr auto kRtpTimestampLength = 4;
 
-enum class Result {
-    Ok,
-    InvalidPointer,
-    InvalidHeaderLength,
-    InvalidSenderInfoLength,
-    InvalidReportBlockLength,
-    InvalidVersion,
+enum class result {
+    ok,
+    invalid_pointer,
+    invalid_header_length_length,
+    invalid_sender_info_length_length,
+    invalid_report_block_length_length,
+    invalid_version_version,
 };
 
 }  // namespace rav::rtp

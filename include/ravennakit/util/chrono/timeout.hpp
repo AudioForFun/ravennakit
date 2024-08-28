@@ -19,9 +19,9 @@ namespace rav::util::chrono {
  * Simple timeout class which can be probed for expiration.
  */
 template<class Rep, class Period>
-class Timeout {
+class timeout {
   public:
-    explicit Timeout(const std::chrono::duration<Rep, Period>& duration) : duration_(duration) {}
+    explicit timeout(const std::chrono::duration<Rep, Period>& duration) : duration_(duration) {}
 
     /**
      * @returns True if the timeout has expired.
@@ -31,7 +31,7 @@ class Timeout {
     }
 
     /**
-     * Busy-waits (with 100ms sleep) until condition becomes true or timeout expires.
+     * Busy-waits (with 100ms sleeps) until condition becomes true or timeout expires.
      * @param condition The condition to wait for.
      * @return True if the condition became true before the timeout expired, or false if the timeout expired.
      */
