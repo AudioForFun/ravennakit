@@ -29,6 +29,21 @@ class Timeout {
         return std::chrono::steady_clock::now() - start_point_ > duration_;
     }
 
+    /**
+     * Busy-waits (with 100ms sleep) until condition becomes true or timeout expires.
+     * @param condition The condition to wait for.
+     * @return True if the condition became true before the timeout expired, or false if the timeout expired.
+     */
+    bool wait_until(const std::function<bool()>& condition) const {
+        while (!condition) {
+            if (expired()) {
+                return false;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        return true;
+    }
+
   private:
     const std::chrono::time_point<std::chrono::steady_clock> start_point_ {std::chrono::steady_clock::now()};
     const std::chrono::duration<Rep, Period>& duration_;
