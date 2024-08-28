@@ -11,6 +11,7 @@
 #pragma once
 
 #include <chrono>
+#include <thread>
 
 namespace rav::util::chrono {
 
@@ -34,7 +35,7 @@ class Timeout {
      * @param condition The condition to wait for.
      * @return True if the condition became true before the timeout expired, or false if the timeout expired.
      */
-    bool wait_until(const std::function<bool()>& condition) const {
+    [[maybe_unused]] bool wait_until(const std::function<bool()>& condition) const {
         while (!condition) {
             if (expired()) {
                 return false;

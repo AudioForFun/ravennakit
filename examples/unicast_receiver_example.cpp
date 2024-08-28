@@ -50,7 +50,7 @@ int main(int const argc, char* argv[]) {
         handle.close();
     });
 
-    if (socket->bind("0.0.0.0", port) != 0) {
+    if (socket->bind(argv[1], port) != 0) {
         return 1;
     }
 
