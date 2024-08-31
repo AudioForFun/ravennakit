@@ -16,13 +16,7 @@
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 
 rav::rtp_receiver::~rtp_receiver() {
-    if (rtp_socket_ != nullptr) {
-        rtp_socket_->close();
-    }
-
-    if (rtcp_socket_ != nullptr) {
-        rtcp_socket_->close();
-    }
+    stop();
 }
 
 int rav::rtp_receiver::start_receiving_unicast(const std::string& address, const uint16_t port, udp_flags opts) {
@@ -80,4 +74,18 @@ int rav::rtp_receiver::start_receiving_unicast(const std::string& address, const
     rtcp_socket_ = std::move(rtcp_socket);
 
     return 0;
+}
+
+void rav::rtp_receiver::stop() const {
+    if (rtp_socket_ != nullptr) {
+        rtp_socket_->stop();
+        rtp_socket_->close();
+        rtp_socket_->reset();
+    }
+
+    if (rtcp_socket_ != nullptr) {
+        rtcp_socket_->stop();
+        rtcp_socket_->close();
+        rtcp_socket_->reset();
+    }
 }

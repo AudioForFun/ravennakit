@@ -42,5 +42,12 @@ int main(int const argc, char* argv[]) {
         return result;
     }
 
+    const auto signal = loop->resource<uvw::signal_handle>();
+    signal->on<uvw::signal_event>([&receiver, &signal](const uvw::signal_event&, uvw::signal_handle&) {
+        receiver.stop();
+        signal->close(); // Need to close ourselves, otherwise the loop will not stop.
+    });
+    signal->start(SIGTERM);
+
     return loop->run();
 }

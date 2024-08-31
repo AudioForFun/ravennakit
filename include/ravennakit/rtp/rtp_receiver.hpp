@@ -21,7 +21,7 @@ struct rtp_packet_event {
     rtp_packet_view packet;
 };
 
-class rtp_receiver : public uvw::emitter<rtp_receiver, rtp_packet_event> {
+class rtp_receiver final: public uvw::emitter<rtp_receiver, rtp_packet_event> {
   public:
     using udp_flags = uvw::udp_handle::udp_flags;
 
@@ -38,6 +38,11 @@ class rtp_receiver : public uvw::emitter<rtp_receiver, rtp_packet_event> {
 
     int
     start_receiving_unicast(const std::string& address, uint16_t port = 5004, udp_flags opts = udp_flags::_UVW_ENUM);
+
+    /**
+     * Stops and closes the sockets, removing all event listeners.
+     */
+    void stop() const;
 
   private:
     std::shared_ptr<uvw::loop> loop_;
