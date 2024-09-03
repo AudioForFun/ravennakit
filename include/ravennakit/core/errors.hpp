@@ -18,8 +18,8 @@ enum class error {
     invalid_sender_info_length_length,
     invalid_report_block_length_length,
     invalid_version_version,
-    already_active,
-    allocation_failure,
+    invalid_state,
+    resource_failure,
 };
 
 /**

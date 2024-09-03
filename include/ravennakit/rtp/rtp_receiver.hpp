@@ -53,6 +53,16 @@ class rtp_receiver final: public uvw::emitter<rtp_receiver, rtp_packet_event> {
     result bind(const std::string& address, uint16_t port = 5004, udp_flags opts = udp_flags::REUSEADDR);
 
     /**
+     * @return Starts receiving datagrams on the bound sockets.
+     */
+    [[nodiscard]] result start() const;
+
+    /**
+     * Stops receiving datagrams on the bound sockets.
+     */
+    [[nodiscard]] result stop() const;
+
+    /**
      * Stops and closes the sockets, removing all event listeners.
      */
     void stop_close_reset() const;

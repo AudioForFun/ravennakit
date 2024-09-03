@@ -42,6 +42,11 @@ int main(int const argc, char* argv[]) {
         return 2;
     }
 
+    if (const auto result = receiver.start(); result.holds_error()) {
+        fmt::println(stderr, "Error: {}", result.what());
+        return 3;
+    }
+
     const auto signal = loop->resource<uvw::signal_handle>();
     signal->on<uvw::signal_event>([&receiver, &signal](const uvw::signal_event&, uvw::signal_handle&) {
         receiver.stop_close_reset();

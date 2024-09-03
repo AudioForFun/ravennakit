@@ -22,9 +22,9 @@ const char* rav::error_to_description(const error error) {
             return "Invalid report block length length";
         case error::invalid_version_version:
             return "Invalid version version";
-        case error::already_active:
+        case error::invalid_state:
             return "Invalid state";
-        case error::allocation_failure:
+        case error::resource_failure:
             return "Allocation failure";
         default:
             return "Unknown error";
@@ -43,9 +43,9 @@ const char* rav::error_to_name(const error error) {
             return "invalid_report_block_length_length";
         case error::invalid_version_version:
             return "invalid_version_version";
-        case error::already_active:
+        case error::invalid_state:
             return "invalid_state";
-        case error::allocation_failure:
+        case error::resource_failure:
             return "allocation_failure";
         default:
             return "unknown_error";

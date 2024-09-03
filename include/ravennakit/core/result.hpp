@@ -24,6 +24,18 @@ class result {
   public:
     result() = default;
 
+    template<class T>
+    result& operator=(const T& error) {
+        error_.emplace<T>(error);
+        return *this;
+    }
+
+    template<class T>
+    result& operator=(T&& error) {
+        error_.emplace<T>(std::forward<T>(error));
+        return *this;
+    }
+
     /**
      * Constructs a result object from a library specific error code.
      * @param error The library specific error code.

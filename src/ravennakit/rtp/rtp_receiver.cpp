@@ -24,7 +24,7 @@ rav::result rav::rtp_receiver::bind(const std::string& address, const uint16_t p
 
     auto rtp_socket = loop_->resource<uvw::udp_handle>();
     if (rtp_socket == nullptr) {
-        return result(error::allocation_failure);
+        return result(error::resource_failure);
     }
 
     rtp_socket->on<uvw::udp_data_event>(
@@ -48,7 +48,7 @@ rav::result rav::rtp_receiver::bind(const std::string& address, const uint16_t p
 
     auto rtcp_socket = loop_->resource<uvw::udp_handle>();
     if (rtcp_socket == nullptr) {
-        return result(error::allocation_failure);
+        return result(error::resource_failure);
     }
 
     rtcp_socket->on<uvw::udp_data_event>([](const uvw::udp_data_event& event,
@@ -69,13 +69,50 @@ rav::result rav::rtp_receiver::bind(const std::string& address, const uint16_t p
         }
     }
 
-    rtp_socket->recv();
-    rtcp_socket->recv();
-
     rtp_socket_ = std::move(rtp_socket);
     rtcp_socket_ = std::move(rtcp_socket);
 
     return ok();
+}
+
+rav::result rav::rtp_receiver::start() const {
+    if (rtp_socket_ == nullptr || rtcp_socket_ == nullptr) {
+        return result(error::invalid_state);
+    }
+
+    const uvw::error_event rtp_error(rtp_socket_->recv());
+    if (rtp_error) {
+        std::ignore = stop();
+        return result(rtp_error);
+    }
+
+    const uvw::error_event rtcp_error(rtcp_socket_->recv());
+    if (rtcp_error) {
+        std::ignore = stop();
+        return result(rtcp_error);
+    }
+
+    return ok();
+}
+
+rav::result rav::rtp_receiver::stop() const {
+    result r;
+
+    if (rtp_socket_ != nullptr) {
+        const uvw::error_event rtp_error(rtp_socket_->stop());
+        if (rtp_error) {
+            r = rtp_error;
+        }
+    }
+
+    if (rtcp_socket_ != nullptr) {
+        const uvw::error_event rtcp_error(rtcp_socket_->stop());
+        if (rtcp_error && r.is_ok()) {
+            r = rtcp_error;
+        }
+    }
+
+    return r;
 }
 
 void rav::rtp_receiver::stop_close_reset() const {
