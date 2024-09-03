@@ -13,7 +13,7 @@
 #if defined(_WIN32) || defined(_WIN64)
     #define RAV_WINDOWS 1
     #define RAV_OPERATING_SYSTEM_NAME "Windows"
-#elif __ANDROID__
+#elif defined(__ANDROID__)
     #define RAV_ANDROID 1
     #define RAV_OPERATING_SYSTEM_NAME "Android"
 #elif defined(LINUX) || defined(__linux__)
@@ -39,7 +39,7 @@
     #error "Unknown platform!"
 #endif
 
-#if RAV_WINDOWS
+#ifdef RAV_WINDOWS
     #ifndef NOMINMAX
         #error "Please define NOMINMAX as compile constant in your build system."
     #endif
