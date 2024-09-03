@@ -89,6 +89,12 @@ target_link_libraries(ravennakit
         uvw::uvw
 )
 
+target_compile_definitions(ravennakit
+        PUBLIC
+        NOMINMAX=1
+        WIN32_LEAN_AND_MEAN
+)
+
 if (RAV_ENABLE_SPDLOG)
     target_compile_definitions(ravennakit PUBLIC RAV_ENABLE_SPDLOG=1)
     target_link_libraries(ravennakit PUBLIC spdlog::spdlog)

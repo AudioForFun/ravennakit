@@ -40,7 +40,7 @@
 #endif
 
 #if RAV_WINDOWS
-    // Un-define min and max macros which can cause problems if c-headers are included before the c++ headers
-    #undef min
-    #undef max
+    #ifndef NOMINMAX
+        #error "Please define NOMINMAX as compile constant in your build system."
+    #endif
 #endif
