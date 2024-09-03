@@ -38,14 +38,14 @@ rav::result rav::rtp_receiver::bind(const std::string& address, const uint16_t p
 
     rtp_socket->on<uvw::udp_data_event>(
         [this](const uvw::udp_data_event& event, [[maybe_unused]] uvw::udp_handle& handle) {
-            const rav::rtp_packet_view rtp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
+            const rtp_packet_view rtp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
             publish(rtp_packet_event {rtp_packet});
         }
     );
 
-    rtp_socket->on<uvw::error_event>([](const uvw::error_event& event, uvw::udp_handle& handle) {
+    rtp_socket->on<uvw::error_event>([this](const uvw::error_event& event, uvw::udp_handle& handle) {
         RAV_ERROR("Error: {}", event.what());
-        handle.close();
+        close().log_if_error();
     });
 
     {
@@ -60,15 +60,16 @@ rav::result rav::rtp_receiver::bind(const std::string& address, const uint16_t p
         return RESULT(error::resource_failure);
     }
 
-    rtcp_socket->on<uvw::udp_data_event>([](const uvw::udp_data_event& event,
-                                            [[maybe_unused]] uvw::udp_handle& handle) {
-        const rav::rtcp_packet_view rtcp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
-        fmt::println("{}", rtcp_packet.to_string());
-    });
+    rtcp_socket->on<uvw::udp_data_event>(
+        [this](const uvw::udp_data_event& event, [[maybe_unused]] uvw::udp_handle& handle) {
+            const rtcp_packet_view rtcp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
+            publish(rtcp_packet_event {rtcp_packet});
+        }
+    );
 
-    rtcp_socket->on<uvw::error_event>([](const uvw::error_event& event, uvw::udp_handle& handle) {
+    rtcp_socket->on<uvw::error_event>([this](const uvw::error_event& event, uvw::udp_handle& handle) {
         RAV_ERROR("Error: {}", event.what());
-        handle.close();
+        close().log_if_error();
     });
 
     {
@@ -110,14 +111,14 @@ rav::result rav::rtp_receiver::stop() const {
     if (rtp_socket_ != nullptr) {
         const uvw::error_event rtp_error(rtp_socket_->stop());
         if (rtp_error) {
-            result = rtp_error; // TODO: Use RESULT macro
+            result = rtp_error;  // TODO: Use RESULT macro
         }
     }
 
     if (rtcp_socket_ != nullptr) {
         const uvw::error_event rtcp_error(rtcp_socket_->stop());
         if (rtcp_error && result.is_ok()) {
-            result = rtcp_error; // TODO: Use RESULT macro
+            result = rtcp_error;  // TODO: Use RESULT macro
         }
     }
 

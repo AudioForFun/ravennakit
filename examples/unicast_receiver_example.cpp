@@ -40,6 +40,10 @@ int main(int const argc, char* argv[]) {
                                           [[maybe_unused]] rav::rtp_receiver& recv) {
         fmt::println("{}", event.packet.to_string());
     });
+    receiver.on<rav::rtcp_packet_event>([](const rav::rtcp_packet_event& event,
+                                           [[maybe_unused]] rav::rtp_receiver& recv) {
+        fmt::println("{}", event.packet.to_string());
+    });
 
     if (const auto result = receiver.bind(argv[1], port); result.holds_error()) {
         result.log_if_error();

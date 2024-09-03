@@ -14,6 +14,7 @@
 #include <uvw/udp.h>
 
 #include "ravennakit/core/result.hpp"
+#include "rtcp_packet_view.hpp"
 #include "rtp_packet_view.hpp"
 
 namespace rav {
@@ -22,7 +23,11 @@ struct rtp_packet_event {
     rtp_packet_view packet;
 };
 
-class rtp_receiver final: public uvw::emitter<rtp_receiver, rtp_packet_event> {
+struct rtcp_packet_event {
+    rtcp_packet_view packet;
+};
+
+class rtp_receiver final: public uvw::emitter<rtp_receiver, rtp_packet_event, rtcp_packet_event> {
   public:
     using udp_flags = uvw::udp_handle::udp_flags;
 
