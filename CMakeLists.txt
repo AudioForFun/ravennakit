@@ -100,28 +100,15 @@ if (RAV_ENABLE_SPDLOG)
     target_link_libraries(ravennakit PUBLIC spdlog::spdlog)
 endif()
 
-##############################
-# Multicast receiver example #
-##############################
+####################
+# Receiver example #
+####################
 
-add_executable(multicast_receiver_example
-        examples/multicast_receiver_example.cpp
+add_executable(receiver_example
+        examples/receiver_example.cpp
 )
 
-target_link_libraries(multicast_receiver_example
-        PUBLIC
-        ravennakit
-)
-
-############################
-# Unicast receiver example #
-############################
-
-add_executable(unicast_receiver_example
-        examples/unicast_receiver_example.cpp
-)
-
-target_link_libraries(unicast_receiver_example
+target_link_libraries(receiver_example
         PUBLIC
         ravennakit
 )

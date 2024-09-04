@@ -26,6 +26,8 @@ const char* rav::error_to_description(const error error) {
             return "Invalid state";
         case error::resource_failure:
             return "Allocation failure";
+        case error::multicast_membership_failure:
+            return "Multicast membership failure";
         default:
             return "Unknown error";
     }
@@ -47,6 +49,8 @@ const char* rav::error_to_name(const error error) {
             return "invalid_state";
         case error::resource_failure:
             return "allocation_failure";
+        case error::multicast_membership_failure:
+            return "multicast_membership_failure";
         default:
             return "unknown_error";
     }
