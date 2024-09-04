@@ -13,7 +13,6 @@
 #include <cstddef>
 #include <cstdint>
 
-#include "ravennakit/core/result.hpp"
 #include "ravennakit/ntp/timestamp.hpp"
 
 namespace rav {
@@ -37,7 +36,7 @@ class rtcp_report_block_view {
     /**
      * @returns True if this report block appears to be correct, or false if not.
      */
-    [[nodiscard]] rav::result validate() const;
+    [[nodiscard]] bool validate() const;
 
     /**
      * @returns The SSRC of the sender of the RTCP report block.

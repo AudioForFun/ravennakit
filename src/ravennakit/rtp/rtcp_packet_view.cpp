@@ -27,26 +27,26 @@ constexpr size_t kSenderInfoLength = kSenderReportNtpTimestampFullLength + rav::
 rav::rtcp_packet_view::rtcp_packet_view(const uint8_t* data, const size_t size_bytes) :
     data_(data), size_bytes_(size_bytes) {}
 
-rav::result rav::rtcp_packet_view::validate() const {
+bool rav::rtcp_packet_view::validate() const {
     if (data_ == nullptr) {
-        return RESULT(error::invalid_pointer);
+        return false;
     }
 
     if (size_bytes_ < kHeaderLength) {
-        return RESULT(error::invalid_header_length_length);
+        return false;
     }
 
     if (version() != 2) {
-        return RESULT(error::invalid_version_version);
+        return false;
     }
 
     if (type() == packet_type::sender_report_report) {
         if (size_bytes_ < kHeaderLength + kSenderInfoLength) {
-            return RESULT(error::invalid_sender_info_length_length);
+            return false;
         }
     }
 
-    return ok();
+    return true;
 }
 
 uint8_t rav::rtcp_packet_view::version() const {
@@ -230,8 +230,7 @@ size_t rav::rtcp_packet_view::size() const {
 std::string rav::rtcp_packet_view::to_string() const {
     auto header = fmt::format(
         "RTCP Packet valid={} | Header version={} padding={} reception_report_count={} packet_type={} length={} ssrc={}",
-        validate().is_ok(), version(), padding(), reception_report_count(), packet_type_to_string(type()), length(),
-        ssrc()
+        validate(), version(), padding(), reception_report_count(), packet_type_to_string(type()), length(), ssrc()
     );
 
     if (type() == packet_type::sender_report_report) {

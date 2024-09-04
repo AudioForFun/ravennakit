@@ -14,7 +14,6 @@
 #include <string>
 
 #include "ravennakit/containers/buffer_view.hpp"
-#include "ravennakit/core/result.hpp"
 
 namespace rav {
 
@@ -33,11 +32,11 @@ class rtp_packet_view {
     rtp_packet_view(const uint8_t* data, size_t size_bytes);
 
     /**
-     * ies the RTP header data. After this method returns all other methods should return valid data and not lead
+     * Validated the RTP header data. After this method returns all other methods should return valid data and not lead
      * to undefined behavior.
-     * @returns The result of the validation.
+     * @returns True if the RTP header data is valid, or false if not.
      */
-    [[nodiscard]] rav::result validate() const;
+    [[nodiscard]] bool validate() const;
 
     /**
      * @returns The version of the RTP header.

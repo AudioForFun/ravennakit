@@ -15,6 +15,7 @@
 
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
+#include "ravennakit/core/log.hpp"
 
 constexpr short port = 5004;
 

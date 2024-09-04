@@ -29,29 +29,29 @@ TEST_CASE("rtcp_packet_view::validate()", "[rtcp_packet_view]") {
 
     SECTION("Validation should fail when the view doesn't point to data") {
         const rav::rtcp_packet_view packet(nullptr, data.size());
-        REQUIRE(packet.validate().holds_error_of_type(rav::error::invalid_pointer));
+        REQUIRE_FALSE(packet.validate());
     }
 
     SECTION("Validation should fail when passing an invalid size") {
         const rav::rtcp_packet_view packet(data.data(), 0);
-        REQUIRE(packet.validate().holds_error_of_type(rav::error::invalid_header_length_length));
+        REQUIRE_FALSE(packet.validate());
     }
 
     const rav::rtcp_packet_view packet(data.data(), data.size());
 
     SECTION("At this point validation should pass") {
-        REQUIRE(packet.validate().is_ok());
+        REQUIRE(packet.validate());
     }
 
     SECTION("Validation should fail when the version is not 2") {
         data[0] = 0;
         REQUIRE(packet.version() == 0);
-        REQUIRE(packet.validate().holds_error_of_type(rav::error::invalid_version_version));
+        REQUIRE_FALSE(packet.validate());
     }
 
     SECTION("Validation should fail when there is no room for sender info") {
         const rav::rtcp_packet_view short_packet(data.data(), data.size() - 1);
-        REQUIRE(short_packet.validate().holds_error_of_type(rav::error::invalid_sender_info_length_length));
+        REQUIRE_FALSE(short_packet.validate());
     }
 }
 

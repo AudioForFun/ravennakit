@@ -54,7 +54,7 @@ class rtcp_packet_view {
      * TODO: Add more validation checks.
      * @returns The result of the validation.
      */
-    [[nodiscard]] result validate() const;
+    [[nodiscard]] bool validate() const;
 
     /**
      * @returns The version of the RTP header.

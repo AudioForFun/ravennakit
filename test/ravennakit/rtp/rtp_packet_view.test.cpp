@@ -29,20 +29,20 @@ TEST_CASE("rtp_packet_view::rtp_packet_view()", "[rtp_packet_view]") {
         0x01, 0x02, 0x03, 0x04
     };
 
-    SECTION("A header with invalid data should result in Status::InvalidLength") {
+    SECTION("A header with invalid data should result not pass validation") {
         rav::rtp_packet_view packet(data, sizeof(data) - 1);
-        REQUIRE(packet.validate().holds_error_of_type(rav::error::invalid_header_length_length));
+        REQUIRE_FALSE(packet.validate());
     }
 
-    SECTION("A header with more data should result in Status::Ok") {
+    SECTION("A header with more data should pass validation") {
         rav::rtp_packet_view packet(data, sizeof(data) + 1);
-        REQUIRE(packet.validate().is_ok());
+        REQUIRE(packet.validate());
     }
 
     rav::rtp_packet_view packet(data, sizeof(data));
 
     SECTION("Status should be ok") {
-        REQUIRE(packet.validate().is_ok());
+        REQUIRE(packet.validate());
     }
 
     SECTION("Version should be 2") {
@@ -81,9 +81,9 @@ TEST_CASE("rtp_packet_view::rtp_packet_view()", "[rtp_packet_view]") {
         REQUIRE(packet.ssrc() == 16909060);
     }
 
-    SECTION("A version higher than should result in InvalidVersion") {
+    SECTION("A version higher than should not pass validation") {
         data[0] = 0b11000000;
-        REQUIRE(packet.validate().holds_error_of_type(rav::error::invalid_version_version));
+        REQUIRE_FALSE(packet.validate());
     }
 
     SECTION("Header to string should result in this string") {
@@ -97,8 +97,8 @@ TEST_CASE("rtp_packet_view::rtp_packet_view()", "[rtp_packet_view]") {
 TEST_CASE("rtp_packet_view::validate()", "[rtp_packet_view]") {
     rav::rtp_packet_view packet(nullptr, 0);
 
-    SECTION("Status should be ok") {
-        REQUIRE(packet.validate().holds_error_of_type(rav::error::invalid_pointer));
+    SECTION("Validation should fail when the packet is too short") {
+        REQUIRE_FALSE(packet.validate());
     }
 
     SECTION("Version should be 0") {
@@ -179,8 +179,8 @@ TEST_CASE("rtp_packet_view::ssrc()", "[rtp_packet_view]") {
 
     const rav::rtp_packet_view packet(data, sizeof(data) - sizeof(uint32_t) * 2);
 
-    SECTION("Status should be ok") {
-        REQUIRE(packet.validate().holds_error_of_type(rav::error::invalid_header_length_length));
+    SECTION("Should not pass validation") {
+        REQUIRE_FALSE(packet.validate());
     }
 
     SECTION("CSRC Count should be 2") {

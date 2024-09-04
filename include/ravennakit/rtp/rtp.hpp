@@ -19,4 +19,15 @@ using ssrc = uint32_t;
 constexpr auto kSsrcLength = 4;
 constexpr auto kRtpTimestampLength = 4;
 
+enum class validation_result {
+    invalid_pointer,
+    invalid_header_length_length,
+    invalid_sender_info_length_length,
+    invalid_report_block_length_length,
+    invalid_version_version,
+    invalid_state,
+    resource_failure,
+    multicast_membership_failure,
+};
+
 }  // namespace rav::rtp
