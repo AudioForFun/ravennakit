@@ -104,11 +104,11 @@ endif()
 # Receiver example #
 ####################
 
-add_executable(receiver_example
-        examples/receiver_example.cpp
+add_executable(rtp_receiver_example
+        examples/rtp_receiver_example.cpp
 )
 
-target_link_libraries(receiver_example
+target_link_libraries(rtp_receiver_example
         PUBLIC
         ravennakit
 )

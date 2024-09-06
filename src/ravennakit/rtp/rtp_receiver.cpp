@@ -18,12 +18,34 @@
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/uv/uv_exception.hpp"
 
+#define CATCH_LOG_UNCAUGHT_EXCEPTIONS(work)                                                                          \
+    try {                                                                                                            \
+        work                                                                                                         \
+    } catch (const rav::uv::uv_exception& e) {                                                                       \
+        RAV_CRITICAL(                                                                                                \
+            "rav::uv::uv_exception caught: {} - please handle your exceptions before reaching this point.", e.what() \
+        );                                                                                                           \
+    } catch (const rav::exception& e) {                                                                              \
+        RAV_CRITICAL(                                                                                                \
+            "rav::exception caught: {} - please handle your exceptions before reaching this point.", e.what()        \
+        );                                                                                                           \
+    } catch (const std::exception& e) {                                                                              \
+        RAV_CRITICAL(                                                                                                \
+            "std::exception caucght: {} - please handle your exceptions before reaching this point.", e.what()       \
+        );                                                                                                           \
+    } catch (...) {                                                                                                  \
+        RAV_CRITICAL("unknown exception caucght - please handle your exceptions before reaching this point.");       \
+    }
+
 rav::rtp_receiver::rtp_receiver(const std::shared_ptr<uvw::loop>& loop) :
     loop_(loop), rtp_socket_(loop_->resource<uvw::udp_handle>()), rtcp_socket_(loop_->resource<uvw::udp_handle>()) {
     rtp_socket_->on<uvw::udp_data_event>(
         [this](const uvw::udp_data_event& event, [[maybe_unused]] uvw::udp_handle& handle) {
-            const rtp_packet_view rtp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
-            publish(rtp_packet_event {rtp_packet});
+            // This is the last point where exceptions can be caught before going back into c-land and crashing
+            CATCH_LOG_UNCAUGHT_EXCEPTIONS(
+                const rtp_packet_view rtp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
+                publish(rtp_packet_event {rtp_packet});
+            )
         }
     );
 
@@ -34,8 +56,11 @@ rav::rtp_receiver::rtp_receiver(const std::shared_ptr<uvw::loop>& loop) :
 
     rtcp_socket_->on<uvw::udp_data_event>(
         [this](const uvw::udp_data_event& event, [[maybe_unused]] uvw::udp_handle& handle) {
-            const rtcp_packet_view rtcp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
-            publish(rtcp_packet_event {rtcp_packet});
+            // This is the last point where exception can be caught before going back into c-land and crashing
+            CATCH_LOG_UNCAUGHT_EXCEPTIONS(
+                const rtcp_packet_view rtcp_packet(reinterpret_cast<const uint8_t*>(event.data.get()), event.length);
+                publish(rtcp_packet_event {rtcp_packet});
+            )
         }
     );
 
@@ -53,7 +78,8 @@ rav::rtp_receiver::~rtp_receiver() {
 void rav::rtp_receiver::bind(const std::string& address, const uint16_t port, const udp_flags opts) const {
     UV_THROW_IF_ERROR(rtp_socket_->bind(address, port, opts));
     rollback rollback([this] {
-        rtp_socket_->stop(); // TODO: Log if error
+        const uvw::error_event err(rtp_socket_->stop());
+        RAV_ERROR("Error: {}", err.what());
     });
 
     UV_THROW_IF_ERROR(rtcp_socket_->bind(address, port + 1, opts));
@@ -83,7 +109,8 @@ void rav::rtp_receiver::start() const {
     UV_THROW_IF_ERROR(rtp_socket_->recv());
 
     rollback rollback([this] {
-        rtp_socket_->stop();  // TODO: Log if error
+        const uvw::error_event err(rtp_socket_->stop());
+        RAV_ERROR("Error: {}", err.what());
     });
 
     UV_THROW_IF_ERROR(rtcp_socket_->recv())

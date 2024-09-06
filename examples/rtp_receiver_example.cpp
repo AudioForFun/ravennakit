@@ -13,9 +13,9 @@
 #include <iostream>
 #include <uvw.hpp>
 
+#include "ravennakit/core/log.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
-#include "ravennakit/core/log.hpp"
 
 constexpr short port = 5004;
 
@@ -51,7 +51,7 @@ int main(int const argc, char* argv[]) {
     if (argc == 4) {
         receiver.set_multicast_membership(argv[2], argv[3], uvw::udp_handle::membership::JOIN_GROUP);
     } else if (argc == 3) {
-        receiver.set_multicast_membership(argv[2], "", uvw::udp_handle::membership::JOIN_GROUP);
+        receiver.set_multicast_membership(argv[2], {}, uvw::udp_handle::membership::JOIN_GROUP);
     }
 
     receiver.start();
