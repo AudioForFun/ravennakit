@@ -48,10 +48,10 @@ int main(int const argc, char* argv[]) {
 
     receiver.bind(argv[1], port);
 
-    if (argc == 4) {
-        receiver.set_multicast_membership(argv[2], argv[3], uvw::udp_handle::membership::JOIN_GROUP);
-    } else if (argc == 3) {
+    if (argc == 3) {
         receiver.set_multicast_membership(argv[2], {}, uvw::udp_handle::membership::JOIN_GROUP);
+    } else if (argc == 4) {
+        receiver.set_multicast_membership(argv[2], argv[3], uvw::udp_handle::membership::JOIN_GROUP);
     }
 
     receiver.start();

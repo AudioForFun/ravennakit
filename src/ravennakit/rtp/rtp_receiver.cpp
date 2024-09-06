@@ -18,26 +18,6 @@
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/uv/uv_exception.hpp"
 
-#define CATCH_LOG_UNCAUGHT_EXCEPTIONS                                                                                \
-    catch (const rav::uv::uv_exception& e) {                                                                         \
-        RAV_CRITICAL(                                                                                                \
-            "rav::uv::uv_exception caught: {} - please handle your exceptions before reaching this point.", e.what() \
-        );                                                                                                           \
-    }                                                                                                                \
-    catch (const rav::exception& e) {                                                                                \
-        RAV_CRITICAL(                                                                                                \
-            "rav::exception caught: {} - please handle your exceptions before reaching this point.", e.what()        \
-        );                                                                                                           \
-    }                                                                                                                \
-    catch (const std::exception& e) {                                                                                \
-        RAV_CRITICAL(                                                                                                \
-            "std::exception caucght: {} - please handle your exceptions before reaching this point.", e.what()       \
-        );                                                                                                           \
-    }                                                                                                                \
-    catch (...) {                                                                                                    \
-        RAV_CRITICAL("unknown exception caucght - please handle your exceptions before reaching this point.");       \
-    }
-
 rav::rtp_receiver::rtp_receiver(const std::shared_ptr<uvw::loop>& loop) :
     loop_(loop), rtp_socket_(loop_->resource<uvw::udp_handle>()), rtcp_socket_(loop_->resource<uvw::udp_handle>()) {
     rtp_socket_->on<uvw::udp_data_event>(
