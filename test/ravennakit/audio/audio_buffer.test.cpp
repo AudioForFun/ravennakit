@@ -33,6 +33,22 @@ void check_sample_values(const rav::audio_buffer<T>& buffer, const T& fill_value
     }
 }
 
+// Helper function to create a test buffer with a given number of channels and samples. The values of the samples will
+// be an increasing sequence starting from 1.
+template<class T>
+rav::audio_buffer<T> get_test_buffer(const size_t num_channels, const size_t num_samples) {  // NOLINT
+    rav::audio_buffer<T> buffer(num_channels, num_samples);
+
+    int value = 1;
+    for (size_t ch = 0; ch < num_channels; ch++) {
+        for (size_t sample = 0; sample < num_samples; sample++) {
+            buffer.set_sample(ch, sample, value++);
+        }
+    }
+
+    return buffer;
+}
+
 }  // namespace
 
 TEST_CASE("audio_buffer::audio_buffer()", "[audio_buffer]") {
@@ -211,5 +227,61 @@ TEST_CASE("audio_buffer::copy_from()", "[audio_buffer]") {
         REQUIRE(dst_data[1][0] == 4);
         REQUIRE(dst_data[1][1] == 4);
         REQUIRE(dst_data[1][2] == 5);
+    }
+}
+
+TEST_CASE("audio_buffer::copy_to()", "[audio_buffer]") {
+    constexpr size_t num_channels = 2;
+    constexpr size_t num_samples = 3;
+
+    SECTION("Single channel") {
+        auto buffer = get_test_buffer<int>(num_channels, num_samples);
+
+        int channel0[num_samples] = {};
+        int channel1[num_samples] = {};
+
+        buffer.copy_to(channel0, 0, 0, num_samples);
+        buffer.copy_to(channel1, 1, 0, num_samples);
+
+        REQUIRE(channel0[0] == 1);
+        REQUIRE(channel0[1] == 2);
+        REQUIRE(channel0[2] == 3);
+        REQUIRE(channel1[0] == 4);
+        REQUIRE(channel1[1] == 5);
+        REQUIRE(channel1[2] == 6);
+    }
+
+    SECTION("Multiple channels") {
+        auto buffer = get_test_buffer<int>(num_channels, num_samples);
+
+        int channel0[3] = {};
+        int channel1[3] = {};
+        int* channels[num_channels] = {channel0, channel1};
+
+        buffer.copy_to(channels, num_channels, num_samples);
+
+        REQUIRE(channel0[0] == 1);
+        REQUIRE(channel0[1] == 2);
+        REQUIRE(channel0[2] == 3);
+        REQUIRE(channel1[0] == 4);
+        REQUIRE(channel1[1] == 5);
+        REQUIRE(channel1[2] == 6);
+    }
+
+    SECTION("Single channel not all samples") {
+        auto buffer = get_test_buffer<int>(num_channels, num_samples);
+
+        int channel0[num_samples] = {};
+        int channel1[num_samples] = {};
+
+        buffer.copy_to(channel0 + 1, 0, 1, num_samples -1);
+        buffer.copy_to(channel1 + 1, 1, 1, num_samples -1);
+
+        REQUIRE(channel0[0] == 0);
+        REQUIRE(channel0[1] == 2);
+        REQUIRE(channel0[2] == 3);
+        REQUIRE(channel1[0] == 0);
+        REQUIRE(channel1[1] == 5);
+        REQUIRE(channel1[2] == 6);
     }
 }

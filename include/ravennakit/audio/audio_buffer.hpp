@@ -41,11 +41,11 @@ class audio_buffer {
         std::fill(data_.begin(), data_.end(), value_to_fill_with);
     }
 
-    audio_buffer(const audio_buffer& other) = delete;
-    audio_buffer(audio_buffer&& other) noexcept = delete;
+    // audio_buffer(const audio_buffer& other) = delete;
+    // audio_buffer(audio_buffer&& other) noexcept = delete;
 
-    audio_buffer& operator=(const audio_buffer& other) = delete;
-    audio_buffer& operator=(audio_buffer&& other) noexcept = delete;
+    // audio_buffer& operator=(const audio_buffer& other) = delete;
+    // audio_buffer& operator=(audio_buffer&& other) noexcept = delete;
 
     /**
      * Prepares the audio buffer for the given number of channels and samples. New space will be zero initialized.
@@ -185,6 +185,36 @@ class audio_buffer {
         }
 
         std::memcpy(channels_[dst_channel_index] + dst_start_sample, src, num_samples_to_copy * sizeof(T));
+    }
+
+    /**
+     * Copies data from all channels of this buffer into dst.
+     * @param dst The destination data to copy to.
+     * @param num_channels The number of channels.
+     * @param num_samples The number of samples per channel.
+     */
+    void copy_to(T* const* dst, const size_t num_channels, const size_t num_samples) {
+        for (size_t i = 0; i < num_channels; ++i) {
+            copy_to(dst[i], i, 0, num_samples);
+        }
+    }
+
+    /**
+     * Copies data from this buffer into dst.
+     * @param dst
+     * @param src_channel_index
+     * @param src_start_sample
+     * @param num_samples_to_copy
+     */
+    void copy_to(T* dst, size_t src_channel_index, size_t src_start_sample, const size_t num_samples_to_copy) {
+        RAV_ASSERT(src_channel_index < num_channels());
+        RAV_ASSERT(src_start_sample + num_samples_to_copy <= num_samples());
+
+        if (num_samples_to_copy == 0) {
+            return;
+        }
+
+        std::memcpy(dst, channels_[src_channel_index] + src_start_sample, num_samples_to_copy * sizeof(T));
     }
 
   private:
