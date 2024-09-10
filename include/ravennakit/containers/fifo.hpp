@@ -48,7 +48,7 @@ struct single {
     };
 
     lock prepare_for_write(const size_t number_of_elements) {
-        if (size() + number_of_elements > capacity_ - 1) {
+        if (size_ + number_of_elements > capacity_) {
             return {};
         }
 
@@ -58,7 +58,7 @@ struct single {
     }
 
     lock prepare_for_read(const size_t number_of_elements) {
-        if (size() < number_of_elements) {
+        if (size_ < number_of_elements) {
             return {};
         }
 
@@ -68,31 +68,37 @@ struct single {
     }
 
     [[nodiscard]] size_t size() const {
-        return head_ < tail_ ? tail_ - head_ : head_ - tail_;
+        return size_;
     }
 
     void commit_write(const lock& lock) {
-        tail_ = (tail_ + lock.position.size1 + lock.position.size2) % capacity_;
+        const auto size = lock.position.size1 + lock.position.size2;
+        tail_ = (tail_ + size) % capacity_;
+        size_ += size;
     }
 
     void commit_read(const lock& lock) {
-        head_ = (head_ + lock.position.size1 + lock.position.size2) % capacity_;
+        const auto size = lock.position.size1 + lock.position.size2;
+        head_ = (head_ + size) % capacity_;
+        size_ -= size;
     }
 
     void resize(const size_t num_elements) {
         reset();
-        capacity_ = num_elements + 1;
+        capacity_ = num_elements;
     }
 
     void reset() {
         head_ = 0;
         tail_ = 0;
+        size_ = 0;
     }
 
   private:
     size_t head_ = 0;  // Consumer index
     size_t tail_ = 0;  // Producer index
     size_t capacity_ = 0;
+    size_t size_ = 0;
 };
 
 struct spsc {
