@@ -111,6 +111,26 @@ class audio_buffer {
     }
 
     /**
+     * Accesses the channel at the given index.
+     * @param channel_index The index of the channel to get.
+     * @return A pointer to the beginning of the channel.
+     */
+    T* operator[](size_t channel_index) {
+        RAV_ASSERT(channel_index < num_channels());
+        return channels_[channel_index];
+    }
+
+    /**
+     * Accesses the channel at the given index.
+     * @param channel_index The index of the channel to get.
+     * @return A pointer to the beginning of the channel.
+     */
+    const T* operator[](size_t channel_index) const {
+        RAV_ASSERT(channel_index < num_channels());
+        return channels_[channel_index];
+    }
+
+    /**
      * Prepares the audio buffer for the given number of channels and frames. New space will be zero initialized.
      * Existing data will be kept, except if the number of channels or frames is less than the current number of
      * channels or frames.
@@ -220,10 +240,16 @@ class audio_buffer {
      * @param dst_start_frame The index of the start frame.
      * @param num_frames_to_copy The number of frames to copy.
      * @param src The source data to copy from.
+     * @param src_num_channels The number of channels in the source data.
+     * @param src_start_frame The index of the start frame in the source data.
      */
-    void copy_from(const size_t dst_start_frame, const size_t num_frames_to_copy, const T* const* src) {
-        for (size_t i = 0; i < num_channels(); ++i) {
-            copy_from(i, dst_start_frame, num_frames_to_copy, src[i]);
+    void copy_from(
+        const size_t dst_start_frame, const size_t num_frames_to_copy, const T* const* src,
+        const size_t src_num_channels, const size_t src_start_frame = 0
+    ) {
+        RAV_ASSERT(src_num_channels == num_channels());
+        for (size_t i = 0; i < std::min(src_num_channels, num_channels()); ++i) {
+            copy_from(i, dst_start_frame, num_frames_to_copy, src[i] + src_start_frame);
         }
     }
 
@@ -249,24 +275,31 @@ class audio_buffer {
 
     /**
      * Copies data from all channels of this buffer into dst.
-     * @param dst The destination data to copy to.
-     * @param num_channels The number of channels.
      * @param num_frames The number of frames.
+     * @param src_start_frame The index of the start frame in the source data.
+     * @param dst The destination data to copy to.
+     * @param dst_num_channels The number of channels.
+     * @param dst_start_frame The index of the start frame in the destination data.
      */
-    void copy_to(T* const* dst, const size_t num_channels, const size_t num_frames) {
-        for (size_t i = 0; i < num_channels; ++i) {
-            copy_to(dst[i], i, 0, num_frames);
+    void copy_to(
+        const size_t src_start_frame, const size_t num_frames, T* const* dst, const size_t dst_num_channels,
+        const size_t dst_start_frame = 0
+    ) {
+        RAV_ASSERT(dst_num_channels == num_channels());
+        for (size_t i = 0; i < std::min(num_channels(), dst_num_channels); ++i) {
+            copy_to(i, src_start_frame, num_frames, dst[i] + dst_start_frame);
         }
     }
 
     /**
      * Copies data from this buffer into dst.
-     * @param dst The destination data to copy to.
      * @param src_channel_index The index of the source channel.
      * @param src_start_sample The index of the start frame in the source channel.
      * @param num_samples_to_copy The number of samples to copy.
+     * @param dst The destination data to copy to.
      */
-    void copy_to(T* dst, size_t src_channel_index, size_t src_start_sample, const size_t num_samples_to_copy) {
+    void
+    copy_to(const size_t src_channel_index, const size_t src_start_sample, const size_t num_samples_to_copy, T* dst) {
         RAV_ASSERT(src_channel_index < num_channels());
         RAV_ASSERT(src_start_sample + num_samples_to_copy <= num_frames());
 

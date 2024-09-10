@@ -16,6 +16,10 @@
 
 namespace {
 
+constexpr int num_reader_threads = 4;
+constexpr int num_writer_threads = 4;
+constexpr int num_writes_per_thread = 10'000;
+
 template<typename T, typename F, size_t S>
 void test_circular_buffer_read_write() {
     std::array<T, S> src {};
@@ -101,7 +105,6 @@ TEST_CASE("circular_buffer test basic reading writing") {
     }
 
     SECTION("Test single producer single consumer") {
-        constexpr int num_writes_per_thread = 100'000;
         int64_t expected_total = 0;
 
         rav::circular_buffer<int64_t, rav::fifo::spsc> buffer(10);
@@ -142,8 +145,6 @@ TEST_CASE("circular_buffer test basic reading writing") {
     }
 
     SECTION("Test multi producer single consumer") {
-        constexpr int num_writer_threads = 4;
-        constexpr int num_writes_per_thread = 100'000;
         std::atomic<int64_t> expected_total = 0;
 
         rav::circular_buffer<int64_t, rav::fifo::mpsc> buffer(10);
@@ -191,8 +192,6 @@ TEST_CASE("circular_buffer test basic reading writing") {
     }
 
     SECTION("Test single producer multi consumer") {
-        constexpr int num_reader_threads = 4;
-        constexpr int num_writes_per_thread = 100'000;
         int64_t expected_total = 0;
 
         rav::circular_buffer<int64_t, rav::fifo::spmc> buffer(10);
@@ -240,9 +239,6 @@ TEST_CASE("circular_buffer test basic reading writing") {
     }
 
     SECTION("Test multi producer multi consumer") {
-        constexpr int num_reader_threads = 4;
-        constexpr int num_writer_threads = 4;
-        constexpr int num_writes_per_thread = 100'000;
         std::atomic<int64_t> expected_total = 0;
 
         rav::circular_buffer<int64_t, rav::fifo::mpmc> buffer(10);

@@ -199,34 +199,42 @@ TEST_CASE("audio_buffer::copy_from()", "[audio_buffer]") {
 
     SECTION("Multiple channels") {
         rav::audio_buffer<int> src(num_channels, num_frames);
-        auto* const* src_data = src.get_array_of_write_pointers();
-        src_data[0][0] = 1;
-        src_data[0][1] = 2;
-        src_data[0][2] = 3;
-        src_data[1][0] = 4;
-        src_data[1][1] = 5;
-        src_data[1][2] = 6;
+        src[0][0] = 1;
+        src[0][1] = 2;
+        src[0][2] = 3;
+        src[1][0] = 4;
+        src[1][1] = 5;
+        src[1][2] = 6;
 
         rav::audio_buffer<int> dst(num_channels, num_frames);
-        const auto* const* dst_data = dst.get_array_of_read_pointers();
 
-        dst.copy_from(0, num_frames, src_data);
+        dst.copy_from(0, num_frames, src.get_array_of_read_pointers(), src.num_channels());
 
-        REQUIRE(dst_data[0][0] == 1);
-        REQUIRE(dst_data[0][1] == 2);
-        REQUIRE(dst_data[0][2] == 3);
-        REQUIRE(dst_data[1][0] == 4);
-        REQUIRE(dst_data[1][1] == 5);
-        REQUIRE(dst_data[1][2] == 6);
+        REQUIRE(dst[0][0] == 1);
+        REQUIRE(dst[0][1] == 2);
+        REQUIRE(dst[0][2] == 3);
+        REQUIRE(dst[1][0] == 4);
+        REQUIRE(dst[1][1] == 5);
+        REQUIRE(dst[1][2] == 6);
 
-        dst.copy_from(1, num_frames - 1, src_data);
+        dst.copy_from(1, num_frames - 1, src.get_array_of_read_pointers(), src.num_channels());
 
-        REQUIRE(dst_data[0][0] == 1);
-        REQUIRE(dst_data[0][1] == 1);
-        REQUIRE(dst_data[0][2] == 2);
-        REQUIRE(dst_data[1][0] == 4);
-        REQUIRE(dst_data[1][1] == 4);
-        REQUIRE(dst_data[1][2] == 5);
+        REQUIRE(dst[0][0] == 1);
+        REQUIRE(dst[0][1] == 1);
+        REQUIRE(dst[0][2] == 2);
+        REQUIRE(dst[1][0] == 4);
+        REQUIRE(dst[1][1] == 4);
+        REQUIRE(dst[1][2] == 5);
+
+        dst.clear();
+        dst.copy_from(0, num_frames - 1, src.get_array_of_read_pointers(), src.num_channels(), 1);
+
+        REQUIRE(dst[0][0] == 2);
+        REQUIRE(dst[0][1] == 3);
+        REQUIRE(dst[0][2] == 0);
+        REQUIRE(dst[1][0] == 5);
+        REQUIRE(dst[1][1] == 6);
+        REQUIRE(dst[1][2] == 0);
     }
 }
 
@@ -240,8 +248,8 @@ TEST_CASE("audio_buffer::copy_to()", "[audio_buffer]") {
         int channel0[num_frames] = {};
         int channel1[num_frames] = {};
 
-        buffer.copy_to(channel0, 0, 0, num_frames);
-        buffer.copy_to(channel1, 1, 0, num_frames);
+        buffer.copy_to(0, 0, num_frames, channel0);
+        buffer.copy_to(1, 0, num_frames, channel1);
 
         REQUIRE(channel0[0] == 1);
         REQUIRE(channel0[1] == 2);
@@ -254,18 +262,36 @@ TEST_CASE("audio_buffer::copy_to()", "[audio_buffer]") {
     SECTION("Multiple channels") {
         auto buffer = get_test_buffer<int>(num_channels, num_frames);
 
-        int channel0[3] = {};
-        int channel1[3] = {};
-        int* channels[num_channels] = {channel0, channel1};
+        rav::audio_buffer<int> dst(num_channels, num_frames);
 
-        buffer.copy_to(channels, num_channels, num_frames);
+        buffer.copy_to(0, num_frames, dst.get_array_of_write_pointers(), num_channels);
 
-        REQUIRE(channel0[0] == 1);
-        REQUIRE(channel0[1] == 2);
-        REQUIRE(channel0[2] == 3);
-        REQUIRE(channel1[0] == 4);
-        REQUIRE(channel1[1] == 5);
-        REQUIRE(channel1[2] == 6);
+        REQUIRE(dst[0][0] == 1);
+        REQUIRE(dst[0][1] == 2);
+        REQUIRE(dst[0][2] == 3);
+        REQUIRE(dst[1][0] == 4);
+        REQUIRE(dst[1][1] == 5);
+        REQUIRE(dst[1][2] == 6);
+
+        dst.clear();
+        buffer.copy_to(1, num_frames - 1, dst.get_array_of_write_pointers(), num_channels);
+
+        REQUIRE(dst[0][0] == 2);
+        REQUIRE(dst[0][1] == 3);
+        REQUIRE(dst[0][2] == 0);
+        REQUIRE(dst[1][0] == 5);
+        REQUIRE(dst[1][1] == 6);
+        REQUIRE(dst[1][2] == 0);
+
+        dst.clear();
+        buffer.copy_to(0, num_frames - 1, dst.get_array_of_write_pointers(), num_channels, 1);
+
+        REQUIRE(dst[0][0] == 0);
+        REQUIRE(dst[0][1] == 1);
+        REQUIRE(dst[0][2] == 2);
+        REQUIRE(dst[1][0] == 0);
+        REQUIRE(dst[1][1] == 4);
+        REQUIRE(dst[1][2] == 5);
     }
 
     SECTION("Single channel not all samples") {
@@ -274,8 +300,8 @@ TEST_CASE("audio_buffer::copy_to()", "[audio_buffer]") {
         int channel0[num_frames] = {};
         int channel1[num_frames] = {};
 
-        buffer.copy_to(channel0 + 1, 0, 1, num_frames - 1);
-        buffer.copy_to(channel1 + 1, 1, 1, num_frames - 1);
+        buffer.copy_to(0, 1, num_frames - 1, channel0 + 1);
+        buffer.copy_to(1, 1, num_frames - 1, channel1 + 1);
 
         REQUIRE(channel0[0] == 0);
         REQUIRE(channel0[1] == 2);
@@ -300,8 +326,7 @@ TEST_CASE("audio_buffer::audio_buffer(copy)", "[audio_buffer]") {
     REQUIRE(buffer_data != copy_data);
     REQUIRE(buffer_data[0] != copy_data[0]);
     REQUIRE(buffer_data[1] != copy_data[1]);
-
-    // TODO: Compare the actual data.
+    REQUIRE(buffer == copy);
 }
 
 TEST_CASE("audio_buffer::operator=(copy)", "[audio_buffer]") {
@@ -318,8 +343,7 @@ TEST_CASE("audio_buffer::operator=(copy)", "[audio_buffer]") {
     REQUIRE(buffer_data != copy_data);
     REQUIRE(buffer_data[0] != copy_data[0]);
     REQUIRE(buffer_data[1] != copy_data[1]);
-
-    // TODO: Compare the actual data.
+    REQUIRE(buffer == copy);
 }
 
 TEST_CASE("audio_buffer::audio_buffer(move)", "[audio_buffer]") {
@@ -400,10 +424,10 @@ TEST_CASE("audio_buffer::operator=(move)", "[audio_buffer]") {
 }
 
 TEST_CASE("audio_buffer::operator==()", "[audio_buffer]") {
-    SECTION("Test for equality") {
-        constexpr size_t num_frames = 3;
-        constexpr size_t num_channels = 2;
+    constexpr size_t num_frames = 3;
+    constexpr size_t num_channels = 2;
 
+    SECTION("Change a sample value") {
         auto lhs = get_test_buffer<int>(num_channels, num_frames);
         auto rhs = get_test_buffer<int>(num_channels, num_frames);
 
@@ -411,6 +435,14 @@ TEST_CASE("audio_buffer::operator==()", "[audio_buffer]") {
         REQUIRE_FALSE(lhs != rhs);
 
         lhs.set_sample(0, 0, 42);
+
+        REQUIRE_FALSE(lhs == rhs);
+        REQUIRE(lhs != rhs);
+    }
+
+    SECTION("Different number of channels") {
+        auto lhs = get_test_buffer<int>(num_channels, num_frames);
+        auto rhs = get_test_buffer<int>(num_channels + 1, num_frames);
 
         REQUIRE_FALSE(lhs == rhs);
         REQUIRE(lhs != rhs);
