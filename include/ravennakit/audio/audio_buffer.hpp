@@ -195,12 +195,7 @@ class audio_buffer {
      * Clears the buffer by setting all samples to zero.
      */
     void clear() {
-        if constexpr (std::is_unsigned_v<T>) {
-            // Use half of the max value of the integral as center value.
-            std::fill(data_.begin(), data_.end(), std::numeric_limits<T>::max() / 2 + 1);
-        } else {
-            std::fill(data_.begin(), data_.end(), T {});
-        }
+        clear_audio_data(data_.begin(), data_.end());
     }
 
     /**
@@ -217,22 +212,12 @@ class audio_buffer {
      * @param start_sample The index of the first frame to clear.
      * @param num_samples_to_clear The number of samples to clear.
      */
-    void clear(size_t channel_index, size_t start_sample, size_t num_samples_to_clear) {
+    void clear(const size_t channel_index, const size_t start_sample, const size_t num_samples_to_clear) {
         RAV_ASSERT(channel_index < num_channels());
         RAV_ASSERT(start_sample + num_samples_to_clear <= num_frames());
-
-        if constexpr (std::is_unsigned_v<T>) {
-            // Use half of the max value of the integral as center value.
-            std::fill(
-                channels_[channel_index] + start_sample, channels_[channel_index] + start_sample + num_samples_to_clear,
-                std::numeric_limits<T>::max() / 2 + 1
-            );
-        } else {
-            std::fill(
-                channels_[channel_index] + start_sample, channels_[channel_index] + start_sample + num_samples_to_clear,
-                T {}
-            );
-        }
+        clear_audio_data(
+            channels_[channel_index] + start_sample, channels_[channel_index] + start_sample + num_samples_to_clear
+        );
     }
 
     /**
@@ -320,6 +305,15 @@ class audio_buffer {
     void update_channel_pointers() {
         for (size_t i = 0; i < channels_.size(); ++i) {
             channels_[i] = data_.data() + i * data_.size() / channels_.size();
+        }
+    }
+
+    template<class First, class Last>
+    void clear_audio_data(First first, Last last) {
+        if constexpr (std::is_unsigned_v<T>) {
+            std::fill(first, last, std::numeric_limits<T>::max() / 2 + 1);
+        } else {
+            std::fill(first, last, T {});
         }
     }
 };
