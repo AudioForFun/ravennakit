@@ -227,7 +227,8 @@ struct mpsc {
 
         explicit lock(mpsc* owner) : owner_(owner) {}
 
-        explicit lock(mpsc* owner, std::unique_lock<std::mutex>&& lock) : owner_(owner), lock_(std::move(lock)) {}
+        explicit lock(mpsc* owner, std::unique_lock<std::mutex>&& unique_lock) :
+            owner_(owner), lock_(std::move(unique_lock)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
@@ -315,7 +316,8 @@ struct spmc {
 
         explicit lock(spmc* owner) : owner_(owner) {}
 
-        explicit lock(spmc* owner, std::unique_lock<std::mutex>&& lock) : owner_(owner), lock_(std::move(lock)) {}
+        explicit lock(spmc* owner, std::unique_lock<std::mutex>&& unique_lock) :
+            owner_(owner), lock_(std::move(unique_lock)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
@@ -403,7 +405,8 @@ struct mpmc {
 
         explicit lock(mpmc* owner) : owner_(owner) {}
 
-        explicit lock(mpmc* owner, std::unique_lock<std::mutex>&& lock) : owner_(owner), lock_(std::move(lock)) {}
+        explicit lock(mpmc* owner, std::unique_lock<std::mutex>&& unique_lock) :
+            owner_(owner), lock_(std::move(unique_lock)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
