@@ -422,10 +422,6 @@ TEST_CASE("audio_data | specific conversions", "[audio_data]") {
                 format::int24, byte_order::be, interleaving::interleaved, format::f64, byte_order::be,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            auto f1 = rav::byte_order::read_be<double>(dst.data() + 0);
-            auto f2 = rav::byte_order::read_be<double>(dst.data() + 8);
-            auto f3 = rav::byte_order::read_be<double>(dst.data() + 16);
-
             REQUIRE(result);
             REQUIRE(rav::util::is_within(rav::byte_order::read_be<double>(dst.data() + 0), -1.0, 0.000001));
             REQUIRE(rav::util::is_within(rav::byte_order::read_be<double>(dst.data() + 8), +1.0, 0.000001));
