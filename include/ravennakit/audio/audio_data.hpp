@@ -20,16 +20,28 @@
 
 namespace rav::audio_data {
 
+/**
+ * Types for specifying interleaving.
+ */
 namespace interleaving {
     struct interleaved {};
 
     struct noninterleaved {};
 }  // namespace interleaving
 
+/**
+ * Types for specifying byte order.
+ */
 namespace byte_order {
     struct le {
         static constexpr bool is_little_endian = true;
 
+        /**
+         * Reads a uint64_t value from a byte array.
+         * @param data The data to read.
+         * @param size The size of the data.
+         * @return A uint64_t containing the read value, placed in the most significant bytes.
+         */
         static uint64_t read(const uint8_t* data, const size_t size) {
             uint64_t value {};
             RAV_ASSERT(size <= sizeof(value));
@@ -40,6 +52,14 @@ namespace byte_order {
             return value;
         }
 
+        /**
+         * Writes given value into the data array.
+         * @tparam T The value type.
+         * @param data The data to write into.
+         * @param size The size of the data. If smaller than the size of value, only the most significant bytes are
+         * written.
+         * @param value The value to write.
+         */
         template<class T>
         static void write(uint8_t* data, const size_t size, T value) {
             RAV_ASSERT(size <= sizeof(value));
@@ -53,6 +73,12 @@ namespace byte_order {
     struct be {
         static constexpr bool is_little_endian = false;
 
+        /**
+         * Reads a uint64_t value from a byte array.
+         * @param data The data to read.
+         * @param size The size of the data.
+         * @return A uint64_t containing the read value, placed in the least significant bytes.
+         */
         static uint64_t read(const uint8_t* data, const size_t size) {
             uint64_t value {};
             RAV_ASSERT(size <= sizeof(value));
@@ -65,6 +91,14 @@ namespace byte_order {
             return value;
         }
 
+        /**
+         * Writes given value into the data array.
+         * @tparam T The value type.
+         * @param data The data to write into.
+         * @param size The size of the data. If smaller than the size of value, only the most significant bytes are
+         * written.
+         * @param value The value to write.
+         */
         template<class T>
         static void write(uint8_t* data, const size_t size, T value) {
             RAV_ASSERT(size <= sizeof(value));
@@ -80,6 +114,12 @@ namespace byte_order {
     struct ne {
         static constexpr bool is_little_endian = little_endian;
 
+        /**
+         * Reads a uint64_t value from a byte array.
+         * @param data The data to read.
+         * @param size The size of the data.
+         * @return A uint64_t containing the read value, placed in the least significant bytes.
+         */
         static uint64_t read(const uint8_t* data, const size_t size) {
             uint64_t value {};
             RAV_ASSERT(size <= sizeof(value));
@@ -91,6 +131,14 @@ namespace byte_order {
             return value;
         }
 
+        /**
+         * Writes given value into the data array.
+         * @tparam T The value type.
+         * @param data The data to write into.
+         * @param size The size of the data. If smaller than the size of value, only the most significant bytes are
+         * written.
+         * @param value The value to write.
+         */
         template<class T>
         static void write(uint8_t* data, const size_t size, T value) {
             RAV_ASSERT(size <= sizeof(value));
@@ -103,6 +151,9 @@ namespace byte_order {
     };
 }  // namespace byte_order
 
+/**
+ * Types for specifying sample format.
+ */
 namespace format {
     struct int8 {
         static constexpr size_t size = 1;
@@ -138,15 +189,30 @@ namespace format {
 }  // namespace format
 
 namespace detail {
+    /**
+     * A custom type to represent a 3-byte audio sample. The size of this class is 3 bytes.
+     */
     class int24_t {
       public:
         int24_t() = default;
         ~int24_t() = default;
 
+        /**
+         * Construct an int24_t from a float value.
+         * @param value The value to store in the int24_t.
+         */
         explicit int24_t(const float value) : int24_t(static_cast<int32_t>(value)) {}
 
+        /**
+         * Construct an int24_t from a double value.
+         * @param value The value to store in the int24_t.
+         */
         explicit int24_t(const double value) : int24_t(static_cast<int32_t>(value)) {}
 
+        /**
+         * Construct an int24_t from an int32_t value. The value is truncated to 24 bits.
+         * @param value The value to store in the int24_t.
+         */
         explicit int24_t(const int32_t value) {
             std::memcpy(data, std::addressof(value), 3);
         }
@@ -156,6 +222,9 @@ namespace detail {
         int24_t& operator=(const int24_t& other) = default;
         int24_t& operator=(int24_t&& other) noexcept = default;
 
+        /**
+         * @returns The value stored in the int24_t as an int32_t.
+         */
         explicit operator int32_t() const {
             int32_t value {};
             std::memcpy(std::addressof(value), data, 3);
@@ -172,8 +241,18 @@ namespace detail {
         uint8_t data[3] {};
     };
 
+    // Ensure that int24_t is 3 bytes in size
     static_assert(sizeof(int24_t) == 3);
 
+    /**
+     * Converts a sample from one format to another.
+     * @tparam SrcFormat The source sample format. One of the structs in the format namespace.
+     * @tparam SrcByteOrder The source byte order. One of the structs in the byte_order namespace.
+     * @tparam DstFormat The destination sample format. One of the structs in the format namespace.
+     * @tparam DstByteOrder The destination byte order. One of the structs in the byte_order namespace.
+     * @param src The source data.
+     * @param dst The destination data.
+     */
     template<class SrcFormat, class SrcByteOrder, class DstFormat, class DstByteOrder>
     static void convert_sample(const uint8_t* src, uint8_t* dst) {
         if constexpr (std::is_same_v<SrcFormat, DstFormat> && std::is_same_v<SrcByteOrder, DstByteOrder>) {
@@ -245,6 +324,21 @@ namespace detail {
     }
 }  // namespace detail
 
+/**
+ * Converts audio data from one format to another and converts interleaving and byte order.
+ * @tparam SrcFormat The source sample format. One of the structs in the format namespace.
+ * @tparam SrcByteOrder The source byte order. One of the structs in the byte_order namespace.
+ * @tparam SrcInterleaving The source interleaving. One of the structs in the interleaving namespace.
+ * @tparam DstFormat The destination sample format. One of the structs in the format namespace.
+ * @tparam DstByteOrder The destination byte order. One of the structs in the byte_order namespace.
+ * @tparam DstInterleaving The destination interleaving. One of the structs in the interleaving namespace.
+ * @param src The source data.
+ * @param src_size The size of the source data.
+ * @param dst The destination data.
+ * @param dst_size The size of the destination data.
+ * @param num_channels The number of channels in the audio data.
+ * @return True if the conversion was successful, false otherwise.
+ */
 template<
     class SrcFormat, class SrcByteOrder, class SrcInterleaving, class DstFormat, class DstByteOrder,
     class DstInterleaving>
