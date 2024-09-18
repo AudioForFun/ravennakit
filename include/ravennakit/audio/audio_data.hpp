@@ -167,16 +167,24 @@ namespace detail {
                     DstByteOrder::write(dst, DstFormat::size, src_sample << 16);
                 } else if constexpr (std::is_same_v<DstFormat, format::int32>) {
                     DstByteOrder::write(dst, DstFormat::size, src_sample << 16);
+                } else if constexpr (std::is_same_v<DstFormat, format::f32>) {
+                    const bool is_negative = static_cast<int64_t>(src_sample) << 48 < 0;
+                    auto f = static_cast<float>(src_sample) * 0.000030517578125f * (is_negative ? -1 : 1);
+                    DstByteOrder::write(dst, DstFormat::size, f);
+                } else if constexpr (std::is_same_v<DstFormat, format::f64>) {
+                    const bool is_negative = static_cast<int64_t>(src_sample) << 48 < 0;
+                    auto f = static_cast<double>(src_sample) * 0.000030517578125f * (is_negative ? -1 : 1);
+                    DstByteOrder::write(dst, DstFormat::size, f);
                 } else {
                     RAV_ASSERT_FALSE("Conversion not available");
                 }
             } else if constexpr (std::is_same_v<SrcFormat, format::int24>) {
                 if constexpr (std::is_same_v<DstFormat, format::f32>) {
-                    const bool is_negative = static_cast<int32_t>(src_sample) << 8 < 0;
+                    const bool is_negative = static_cast<int64_t>(src_sample) << 40 < 0;
                     auto f = static_cast<float>(src_sample) * 0.00000011920928955078125f * (is_negative ? -1 : 1);
                     DstByteOrder::write(dst, DstFormat::size, f);
                 } else if constexpr (std::is_same_v<DstFormat, format::f64>) {
-                    const bool is_negative = static_cast<int32_t>(src_sample) << 8 < 0;
+                    const bool is_negative = static_cast<int64_t>(src_sample) << 40 < 0;
                     auto f = static_cast<double>(src_sample) * 0.00000011920928955078125f * (is_negative ? -1 : 1);
                     DstByteOrder::write(dst, DstFormat::size, f);
                 } else {
