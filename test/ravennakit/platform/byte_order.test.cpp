@@ -75,6 +75,15 @@ TEST_CASE("byte_order | swap_bytes()", "[byte_order]") {
         REQUIRE(u24 == std::array<uint8_t, 3>{0x56, 0x34, 0x12});
     }
 
+    SECTION("24 bit swapping") {
+        std::array<uint8_t, 3> u24{0x12, 0x34, 0x56};
+        REQUIRE(sizeof(u24) == 3);
+        u24 = rav::byte_order::swap_bytes(u24);
+        REQUIRE(u24[0] == 0x56);
+        REQUIRE(u24[1] == 0x34);
+        REQUIRE(u24[2] == 0x12);
+    }
+
     SECTION("32 bit swapping") {
         std::array<uint8_t, 4> u24 = {0x12, 0x34, 0x56, 0x78};
         rav::byte_order::swap_bytes(u24.data(), u24.size());

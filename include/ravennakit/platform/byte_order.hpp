@@ -67,15 +67,15 @@ inline void swap_bytes(uint8_t* data, const size_t size) {
 template<typename Type>
 Type swap_bytes(Type value) {
     if constexpr (sizeof(Type) == 2) {
-        value = static_cast<Type>(RAV_BYTE_SWAP_16(static_cast<uint16_t>(value)));
+        return static_cast<Type>(RAV_BYTE_SWAP_16(static_cast<uint16_t>(value)));
     } else if constexpr (sizeof(Type) == 4) {
-        value = static_cast<Type>(RAV_BYTE_SWAP_32(static_cast<uint32_t>(value)));
+        return static_cast<Type>(RAV_BYTE_SWAP_32(static_cast<uint32_t>(value)));
     } else if constexpr (sizeof(Type) == 8) {
-        value = static_cast<Type>(RAV_BYTE_SWAP_64(static_cast<uint64_t>(value)));
+        return static_cast<Type>(RAV_BYTE_SWAP_64(static_cast<uint64_t>(value)));
     } else {
         swap_bytes(reinterpret_cast<uint8_t*>(&value), sizeof(value));
+        return value;
     }
-    return value;
 }
 
 /**
