@@ -30,25 +30,49 @@ namespace byte_order {
     struct le {
         static constexpr bool is_little_endian = true;
 
-        template<class T>
-        static T swap(const T value) {
-#if RAV_LITTLE_ENDIAN
-            return value;
-#else
-            return rav::byte_order::swap_bytes(value);
+        static uint64_t read(const uint8_t* data, const size_t size) {
+            uint64_t value {};
+            RAV_ASSERT(size <= sizeof(value));
+            std::memcpy(std::addressof(value), data, size);
+#if RAV_BIG_ENDIAN
+            value = rav::byte_order::swap_bytes(value);
 #endif
+            return value;
+        }
+
+        template<class T>
+        static void write(uint8_t* data, const size_t size, T value) {
+            RAV_ASSERT(size <= sizeof(value));
+#if RAV_BIG_ENDIAN
+            value = rav::byte_order::swap_bytes(value);
+#endif
+            std::memcpy(data, std::addressof(value), size);
         }
     };
 
     struct be {
         static constexpr bool is_little_endian = false;
 
-        template<class T>
-        static T swap(const T value) {
+        static uint64_t read(const uint8_t* data, const size_t size) {
+            uint64_t value {};
+            RAV_ASSERT(size <= sizeof(value));
 #if RAV_LITTLE_ENDIAN
-            return rav::byte_order::swap_bytes(value);
+            std::memcpy(reinterpret_cast<uint8_t*>(std::addressof(value)) + (sizeof(value) - size), data, size);
+            value = rav::byte_order::swap_bytes(value);
 #else
+            std::memcpy(std::addressof(value), data, size);
+#endif
             return value;
+        }
+
+        template<class T>
+        static void write(uint8_t* data, const size_t size, T value) {
+            RAV_ASSERT(size <= sizeof(value));
+#if RAV_LITTLE_ENDIAN
+            value = rav::byte_order::swap_bytes(value);
+            std::memcpy(data, reinterpret_cast<uint8_t*>(std::addressof(value)) + (sizeof(value) - size), size);
+#else
+            std::memcpy(std::addressof(value), data, size);
 #endif
         }
     };
@@ -60,9 +84,25 @@ namespace byte_order {
         static constexpr bool is_little_endian = false;
 #endif
 
-        template<class T>
-        static T swap(const T value) {
+        static uint64_t read(const uint8_t* data, const size_t size) {
+            uint64_t value {};
+            RAV_ASSERT(size <= sizeof(value));
+#if RAV_LITTLE_ENDIAN
+            std::memcpy(std::addressof(value), data, size);
+#else
+    #error "Implement me"
+#endif
             return value;
+        }
+
+        template<class T>
+        static void write(uint8_t* data, const size_t size, T value) {
+            RAV_ASSERT(size <= sizeof(value));
+#if RAV_LITTLE_ENDIAN
+            std::memcpy(data, std::addressof(value), size);
+#else
+    #error "Implement me"
+#endif
         }
     };
 }  // namespace byte_order
@@ -110,90 +150,53 @@ namespace format {
 }  // namespace format
 
 namespace detail {
-    template<class Format, class ByteOrder>
-    typename Format::type read_sample(const uint8_t* data) {
-        static_assert(
-            Format::sample_size <= sizeof(typename Format::type), "sample_size is larger than the size of the value"
-        );
-        typename Format::type value;
-        std::memcpy(std::addressof(value), data, Format::sample_size);
-        const auto swapped = ByteOrder::swap(value);
-        const auto shifted = swapped >> (sizeof(value) - Format::sample_size) * 8;
-        return static_cast<typename Format::type>(shifted);
-    }
-
-    template<class Format, class ByteOrder>
-    void write_sample(uint8_t* data, typename Format::type value) {
-        static_assert(
-            Format::sample_size <= sizeof(typename Format::type), "sample_size is larger than the size of the value"
-        );
-        value = ByteOrder::swap(value);
-        if constexpr (ByteOrder::is_little_endian) {
-            std::memcpy(data, std::addressof(value), Format::sample_size);
-        } else {
-            std::memcpy(
-                data, reinterpret_cast<uint8_t*>(std::addressof(value)) + (sizeof(value) - Format::sample_size),
-                Format::sample_size
-            );
-        }
-    }
-
     template<class SrcFormat, class SrcByteOrder, class DstFormat, class DstByteOrder>
     static void convert_sample(const uint8_t* src, uint8_t* dst) {
         if constexpr (std::is_same_v<SrcFormat, DstFormat> && std::is_same_v<SrcByteOrder, DstByteOrder>) {
             std::memcpy(dst, src, SrcFormat::sample_size);
         } else if constexpr (std::is_same_v<SrcFormat, DstFormat>) {
             // Only byte order differs
-            write_sample<DstFormat, DstByteOrder>(
-                dst, static_cast<typename DstFormat::type>(read_sample<SrcFormat, SrcByteOrder>(src))
-            );
+            DstByteOrder::write(dst, DstFormat::sample_size, SrcByteOrder::read(src, SrcFormat::sample_size));
         } else {
-            const auto src_sample = read_sample<SrcFormat, SrcByteOrder>(src);
+            const auto src_sample = SrcByteOrder::read(src, SrcFormat::sample_size);
 
             if constexpr (std::is_same_v<SrcFormat, format::uint8>) {
                 if constexpr (std::is_same_v<DstFormat, format::int8>) {
-                    write_sample<DstFormat, DstByteOrder>(dst, static_cast<int8_t>(src_sample - 0x80));
-                    return;
+                    DstByteOrder::write(dst, DstFormat::sample_size, src_sample - 0x80);
+                } else {
+                    RAV_ASSERT_FALSE("Conversion not available");
                 }
             } else if constexpr (std::is_same_v<SrcFormat, format::int8>) {
                 if constexpr (std::is_same_v<DstFormat, format::int16>) {
-                    write_sample<DstFormat, DstByteOrder>(
-                        dst, static_cast<int16_t>(static_cast<uint8_t>(src_sample) << 8)
-                    );
-                    return;
+                    DstByteOrder::write(dst, DstFormat::sample_size, src_sample << 8);
+                } else {
+                    RAV_ASSERT_FALSE("Conversion not available");
                 }
             } else if constexpr (std::is_same_v<SrcFormat, format::int16>) {
                 if constexpr (std::is_same_v<DstFormat, format::int24>) {
-                    write_sample<DstFormat, DstByteOrder>(
-                        dst, static_cast<int32_t>(static_cast<uint32_t>(src_sample) << 8)
-                    );
-                    return;
+                    DstByteOrder::write(dst, DstFormat::sample_size, src_sample << 8);
                 } else if constexpr (std::is_same_v<DstFormat, format::int24in32>) {
-                    write_sample<DstFormat, DstByteOrder>(
-                        dst, static_cast<int32_t>(static_cast<uint32_t>(src_sample) << 16)
-                    );
-                    return;
+                    DstByteOrder::write(dst, DstFormat::sample_size, src_sample << 16);
                 } else if constexpr (std::is_same_v<DstFormat, format::int32>) {
-                    write_sample<DstFormat, DstByteOrder>(
-                        dst, static_cast<int32_t>(static_cast<uint32_t>(src_sample) << 16)
-                    );
-                    return;
+                    DstByteOrder::write(dst, DstFormat::sample_size, src_sample << 16);
+                } else {
+                    RAV_ASSERT_FALSE("Conversion not available");
                 }
             } else if constexpr (std::is_same_v<SrcFormat, format::int24>) {
                 if constexpr (std::is_same_v<DstFormat, format::f32>) {
-                    // auto f = (static_cast<float>(src_sample) + 8388608.0f) * 0.00000011920929665621f - 1.f;
-                    auto f = static_cast<float>(src_sample) * 0.00000011920928955078125f;
-                    write_sample<DstFormat, DstByteOrder>(dst, f);
-                    return;
+                    const bool is_negative = static_cast<int32_t>(src_sample) << 8 < 0;
+                    auto f = static_cast<float>(src_sample) * 0.00000011920928955078125f * (is_negative ? -1 : 1);
+                    DstByteOrder::write(dst, DstFormat::sample_size, f);
                 } else if constexpr (std::is_same_v<DstFormat, format::f64>) {
-                    // auto f = (static_cast<double>(src_sample) + 8388608.0) * 0.00000011920929665621 - 1.0;
-                    auto f = static_cast<double>(src_sample) * 0.00000011920928955078125;
-                    write_sample<DstFormat, DstByteOrder>(dst, f);
-                    return;
+                    const bool is_negative = static_cast<int32_t>(src_sample) << 8 < 0;
+                    auto f = static_cast<double>(src_sample) * 0.00000011920928955078125f * (is_negative ? -1 : 1);
+                    DstByteOrder::write(dst, DstFormat::sample_size, f);
+                } else {
+                    RAV_ASSERT_FALSE("Conversion not available");
                 }
+            } else {
+                RAV_ASSERT_FALSE("Conversion not available");
             }
-
-            RAV_ASSERT_FALSE("Conversion not implemented");
         }
     }
 }  // namespace detail
