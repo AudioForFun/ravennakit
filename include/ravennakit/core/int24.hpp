@@ -1,0 +1,73 @@
+/*
+ * Owllab License Agreement
+ *
+ * This software is provided by Owllab and may not be used, copied, modified,
+ * merged, published, distributed, sublicensed, or sold without a valid and
+ * explicit agreement with Owllab.
+ *
+ * Copyright (c) 2024 Owllab. All rights reserved.
+ */
+
+#pragma once
+
+#include <cstdint>
+#include <memory>
+
+namespace rav {
+
+/**
+ * A custom type to represent a 3-byte audio sample. The size of this class is 3 bytes.
+ */
+class int24_t {
+public:
+    int24_t() = default;
+    ~int24_t() = default;
+
+    /**
+     * Construct an int24_t from a float value.
+     * @param value The value to store in the int24_t.
+     */
+    explicit int24_t(const float value) : int24_t(static_cast<int32_t>(value)) {}
+
+    /**
+     * Construct an int24_t from a double value.
+     * @param value The value to store in the int24_t.
+     */
+    explicit int24_t(const double value) : int24_t(static_cast<int32_t>(value)) {}
+
+    /**
+     * Construct an int24_t from an int32_t value. The value is truncated to 24 bits.
+     * @param value The value to store in the int24_t.
+     */
+    explicit int24_t(const int32_t value) {
+        std::memcpy(data, std::addressof(value), 3);
+    }
+
+    int24_t(const int24_t& other) = default;
+    int24_t(int24_t&& other) noexcept = default;
+    int24_t& operator=(const int24_t& other) = default;
+    int24_t& operator=(int24_t&& other) noexcept = default;
+
+    /**
+     * @returns The value stored in the int24_t as an int32_t.
+     */
+    explicit operator int32_t() const {
+        int32_t value {};
+        std::memcpy(std::addressof(value), data, 3);
+
+        // If the value is negative, sign-extend it
+        if (value << 8 < 0) {
+            return value * -1;
+        }
+
+        return value;
+    }
+
+private:
+    uint8_t data[3] {};
+};
+
+// Ensure that int24_t is 3 bytes in size
+static_assert(sizeof(int24_t) == 3);
+
+}

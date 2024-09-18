@@ -30,7 +30,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::le, interleaving::interleaved, format::int16, byte_order::le,
+                int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::le,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7});
@@ -42,7 +42,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 16> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int32, byte_order::le, interleaving::interleaved, format::int32, byte_order::le,
+                int32_t, byte_order::le, interleaving::interleaved, int32_t, byte_order::le,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(
@@ -56,7 +56,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::le, interleaving::noninterleaved, format::int16, byte_order::le,
+                int16_t, byte_order::le, interleaving::noninterleaved, int16_t, byte_order::le,
                 interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7});
@@ -68,7 +68,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 16> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int32, byte_order::le, interleaving::noninterleaved, format::int32, byte_order::le,
+                int32_t, byte_order::le, interleaving::noninterleaved, int32_t, byte_order::le,
                 interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(
@@ -82,7 +82,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::le, interleaving::interleaved, format::int16, byte_order::le,
+            int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::le,
             interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -95,7 +95,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 16> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int32, byte_order::le, interleaving::interleaved, format::int32, byte_order::le,
+                int32_t, byte_order::le, interleaving::interleaved, int32_t, byte_order::le,
                 interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(
@@ -109,7 +109,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::le, interleaving::noninterleaved, format::int16, byte_order::le,
+                int16_t, byte_order::le, interleaving::noninterleaved, int16_t, byte_order::le,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0x0, 0x1, 0x4, 0x5, 0x2, 0x3, 0x6, 0x7});
@@ -121,7 +121,7 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
         std::array<uint8_t, 16> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int32, byte_order::le, interleaving::noninterleaved, format::int32, byte_order::le,
+                int32_t, byte_order::le, interleaving::noninterleaved, int32_t, byte_order::le,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(
@@ -139,7 +139,7 @@ TEST_CASE("audio_data | endian conversions", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::be, interleaving::interleaved, format::int16, byte_order::le,
+                int16_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::le,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0x1, 0x0, 0x3, 0x2, 0x5, 0x4, 0x7, 0x6});
@@ -150,7 +150,7 @@ TEST_CASE("audio_data | endian conversions", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::be, interleaving::interleaved, format::int16, byte_order::ne,
+                int16_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::ne,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
 #if RAV_LITTLE_ENDIAN
@@ -165,7 +165,7 @@ TEST_CASE("audio_data | endian conversions", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::be, interleaving::interleaved, format::int16, byte_order::be,
+                int16_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::be,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7});
@@ -176,7 +176,7 @@ TEST_CASE("audio_data | endian conversions", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::le, interleaving::interleaved, format::int16, byte_order::be,
+                int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::be,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7});
@@ -187,7 +187,7 @@ TEST_CASE("audio_data | endian conversions", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::le, interleaving::interleaved, format::int16, byte_order::ne,
+                int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::ne,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
 #if RAV_LITTLE_ENDIAN
@@ -205,7 +205,7 @@ TEST_CASE("audio_data | sample conversions", "[audio_data]") {
         constexpr std::array<uint8_t, 2> sample {0x80, 0x0};
         std::array<uint8_t, 2> dst {};
 
-        rav::audio_data::detail::convert_sample<format::int16, byte_order::be, format::int16, byte_order::le>(
+        rav::audio_data::convert_sample<int16_t, byte_order::be, int16_t, byte_order::le>(
             sample.data(), dst.data()
         );
 
@@ -217,27 +217,12 @@ TEST_CASE("audio_data | sample conversions", "[audio_data]") {
         constexpr std::array<uint8_t, 2> sample {0x7f, 0x0};
         std::array<uint8_t, 2> dst {};
 
-        rav::audio_data::detail::convert_sample<format::int16, byte_order::be, format::int16, byte_order::le>(
+        rav::audio_data::convert_sample<int16_t, byte_order::be, int16_t, byte_order::le>(
             sample.data(), dst.data()
         );
 
         REQUIRE(dst[0] == 0x0);
         REQUIRE(dst[1] == 0x7f);
-    }
-}
-
-// MARK: - int24_t
-
-TEST_CASE("audio_data | int24_t", "[audio_data]") {
-    SECTION("int32 to int24") {
-        const detail::int24_t min(-8388608);
-        REQUIRE(static_cast<int32_t>(min) == -8388608);
-
-        const detail::int24_t max(8388607);
-        REQUIRE(static_cast<int32_t>(max) == 8388607);
-
-        const detail::int24_t zero(0);
-        REQUIRE(static_cast<int32_t>(zero) == 0);
     }
 }
 
@@ -249,7 +234,7 @@ TEST_CASE("audio_data | uint8 to int8", "[audio_data]") {
         std::array<uint8_t, 4> dst {};
 
         auto result = rav::audio_data::convert<
-            format::uint8, byte_order::be, interleaving::interleaved, format::int8, byte_order::be,
+            uint8_t, byte_order::be, interleaving::interleaved, int8_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -261,7 +246,7 @@ TEST_CASE("audio_data | uint8 to int8", "[audio_data]") {
         std::array<uint8_t, 4> dst {};
 
         auto result = rav::audio_data::convert<
-            format::uint8, byte_order::be, interleaving::interleaved, format::int8, byte_order::le,
+            uint8_t, byte_order::be, interleaving::interleaved, int8_t, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -273,7 +258,7 @@ TEST_CASE("audio_data | uint8 to int8", "[audio_data]") {
         std::array<uint8_t, 4> dst {};
 
         auto result = rav::audio_data::convert<
-            format::uint8, byte_order::le, interleaving::interleaved, format::int8, byte_order::be,
+            uint8_t, byte_order::le, interleaving::interleaved, int8_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -287,7 +272,7 @@ TEST_CASE("audio_data | int8 to int16", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int8, byte_order::be, interleaving::interleaved, format::int16, byte_order::be,
+            int8_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -299,7 +284,7 @@ TEST_CASE("audio_data | int8 to int16", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int8, byte_order::le, interleaving::interleaved, format::int16, byte_order::be,
+                int8_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::be,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0xff, 0x0, 0x7f, 0x0, 0x81, 0x0, 0x1, 0x0});
@@ -310,7 +295,7 @@ TEST_CASE("audio_data | int8 to int16", "[audio_data]") {
         std::array<uint8_t, 8> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int8, byte_order::be, interleaving::interleaved, format::int16, byte_order::le,
+                int8_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::le,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 8> {0x0, 0xff, 0x0, 0x7f, 0x0, 0x81, 0x0, 0x1});
@@ -323,7 +308,7 @@ TEST_CASE("audio_data | int16 to int24", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::int24, byte_order::be,
+            int16_t, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -338,7 +323,7 @@ TEST_CASE("audio_data | int16 to int24", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::le, interleaving::interleaved, format::int24, byte_order::be,
+            int16_t, byte_order::le, interleaving::interleaved, rav::int24_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -353,7 +338,7 @@ TEST_CASE("audio_data | int16 to int24", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::int24, byte_order::le,
+            int16_t, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -364,58 +349,13 @@ TEST_CASE("audio_data | int16 to int24", "[audio_data]") {
     }
 }
 
-TEST_CASE("audio_data | int16 to int24in32", "[audio_data]") {
-    SECTION("Convert int16 to int24in32 be to be") {
-        constexpr std::array<uint8_t, 8> src {0x80, 0x0, 0x7f, 0xff, 0x0, 0x0, 0x0, 0x0};  // Min, max, zero
-        std::array<uint8_t, 16> dst {};
-
-        auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::int24in32, byte_order::be,
-            interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
-
-        REQUIRE(result);
-        REQUIRE(dst == std::array<uint8_t, 16> {
-                0x80, 0x0, 0x0, 0x0,
-                0x7f, 0xff, 0x0, 0x0,
-            });  // Remaining bytes are zero
-    }
-
-    SECTION("Convert int16 to int24in32 le to be") {
-        constexpr std::array<uint8_t, 8> src {0x0, 0x80, 0xff, 0x7f, 0x0, 0x0, 0x0, 0x0};  // Min, max, zero
-        std::array<uint8_t, 16> dst {};
-
-        REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::le, interleaving::interleaved, format::int24in32, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
-
-        REQUIRE(dst == std::array<uint8_t, 16> {
-                0x80, 0x0, 0x0, 0x0,
-                0x7f, 0xff, 0x0, 0x0,
-            });  // Remaining bytes are zero
-    }
-
-    SECTION("Convert int16 to int24in32 be to le") {
-        constexpr std::array<uint8_t, 8> src {0x80, 0x0, 0x7f, 0xff, 0x0, 0x0, 0x0, 0x0};  // Min, max, zero
-        std::array<uint8_t, 16> dst {};
-
-        REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::be, interleaving::interleaved, format::int24in32, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
-
-        REQUIRE(dst == std::array<uint8_t, 16> {
-                0x0, 0x0, 0x0, 0x80,
-                0x0, 0x0, 0xff, 0x7f,
-            });  // Remaining bytes are zero
-    }
-}
-
 TEST_CASE("audio_data | int16 to int32", "[audio_data]") {
     SECTION("Convert int16 to int32 be to be") {
         constexpr std::array<uint8_t, 8> src {0x80, 0x0, 0x7f, 0xff, 0x0, 0x0, 0x0, 0x0};  // Min, max, zero
         std::array<uint8_t, 16> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::int32, byte_order::be,
+            int16_t, byte_order::be, interleaving::interleaved, int32_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
@@ -430,7 +370,7 @@ TEST_CASE("audio_data | int16 to int32", "[audio_data]") {
         std::array<uint8_t, 16> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::be, interleaving::interleaved, format::int32, byte_order::le,
+                int16_t, byte_order::be, interleaving::interleaved, int32_t, byte_order::le,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 16> {
@@ -444,7 +384,7 @@ TEST_CASE("audio_data | int16 to int32", "[audio_data]") {
         std::array<uint8_t, 16> dst {};
 
         REQUIRE(rav::audio_data::convert<
-                format::int16, byte_order::le, interleaving::interleaved, format::int32, byte_order::be,
+                int16_t, byte_order::le, interleaving::interleaved, int32_t, byte_order::be,
                 interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2));
 
         REQUIRE(dst == std::array<uint8_t, 16> {
@@ -460,7 +400,7 @@ TEST_CASE("audio_data | int16 to float", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::f32, byte_order::be,
+            int16_t, byte_order::be, interleaving::interleaved, float, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -474,7 +414,7 @@ TEST_CASE("audio_data | int16 to float", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::f32, byte_order::le,
+            int16_t, byte_order::be, interleaving::interleaved, float, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -488,7 +428,7 @@ TEST_CASE("audio_data | int16 to float", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::f32, byte_order::le,
+            int16_t, byte_order::be, interleaving::interleaved, float, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -511,7 +451,7 @@ TEST_CASE("audio_data | int24 to float", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int24, byte_order::be, interleaving::interleaved, format::f32, byte_order::be,
+            rav::int24_t, byte_order::be, interleaving::interleaved, float, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -525,7 +465,7 @@ TEST_CASE("audio_data | int24 to float", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int24, byte_order::be, interleaving::interleaved, format::f32, byte_order::le,
+            rav::int24_t, byte_order::be, interleaving::interleaved, float, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -539,7 +479,7 @@ TEST_CASE("audio_data | int24 to float", "[audio_data]") {
         std::array<uint8_t, 12> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int24, byte_order::be, interleaving::interleaved, format::f32, byte_order::le,
+            rav::int24_t, byte_order::be, interleaving::interleaved, float, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -562,7 +502,7 @@ TEST_CASE("audio_data | int16 to double", "[audio_data]") {
         std::array<uint8_t, 24> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::f64, byte_order::be,
+            int16_t, byte_order::be, interleaving::interleaved, double, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -576,7 +516,7 @@ TEST_CASE("audio_data | int16 to double", "[audio_data]") {
         std::array<uint8_t, 24> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::f64, byte_order::le,
+            int16_t, byte_order::be, interleaving::interleaved, double, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -590,7 +530,7 @@ TEST_CASE("audio_data | int16 to double", "[audio_data]") {
         std::array<uint8_t, 24> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int16, byte_order::be, interleaving::interleaved, format::f64, byte_order::ne,
+            int16_t, byte_order::be, interleaving::interleaved, double, byte_order::ne,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -613,7 +553,7 @@ TEST_CASE("audio_data | int24 to double", "[audio_data]") {
         std::array<uint8_t, 24> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int24, byte_order::be, interleaving::interleaved, format::f64, byte_order::be,
+            rav::int24_t, byte_order::be, interleaving::interleaved, double, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -627,7 +567,7 @@ TEST_CASE("audio_data | int24 to double", "[audio_data]") {
         std::array<uint8_t, 24> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int24, byte_order::be, interleaving::interleaved, format::f64, byte_order::le,
+            rav::int24_t, byte_order::be, interleaving::interleaved, double, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -641,7 +581,7 @@ TEST_CASE("audio_data | int24 to double", "[audio_data]") {
         std::array<uint8_t, 24> dst {};
 
         auto result = rav::audio_data::convert<
-            format::int24, byte_order::be, interleaving::interleaved, format::f64, byte_order::ne,
+            rav::int24_t, byte_order::be, interleaving::interleaved, double, byte_order::ne,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -670,7 +610,7 @@ TEST_CASE("audio_data | float to int16", "[audio_data]") {
         std::array<uint8_t, 6> dst {};
 
         auto result = rav::audio_data::convert<
-            format::f32, byte_order::be, interleaving::interleaved, format::int16, byte_order::be,
+            float, byte_order::be, interleaving::interleaved, int16_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -690,7 +630,7 @@ TEST_CASE("audio_data | float to int16", "[audio_data]") {
         std::array<uint8_t, 6> dst {};
 
         auto result = rav::audio_data::convert<
-            format::f32, byte_order::be, interleaving::interleaved, format::int16, byte_order::le,
+            float, byte_order::be, interleaving::interleaved, int16_t, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -710,7 +650,7 @@ TEST_CASE("audio_data | float to int16", "[audio_data]") {
         std::array<uint8_t, 6> dst {};
 
         auto result = rav::audio_data::convert<
-            format::f32, byte_order::le, interleaving::interleaved, format::int16, byte_order::be,
+            float, byte_order::le, interleaving::interleaved, int16_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -732,7 +672,7 @@ TEST_CASE("audio_data | float to int24", "[audio_data]") {
         std::array<uint8_t, 9> dst {};
 
         auto result = rav::audio_data::convert<
-            format::f32, byte_order::be, interleaving::interleaved, format::int24, byte_order::be,
+            float, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -754,7 +694,7 @@ TEST_CASE("audio_data | float to int24", "[audio_data]") {
         std::array<uint8_t, 9> dst {};
 
         auto result = rav::audio_data::convert<
-            format::f32, byte_order::be, interleaving::interleaved, format::int24, byte_order::le,
+            float, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::le,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
@@ -776,7 +716,7 @@ TEST_CASE("audio_data | float to int24", "[audio_data]") {
         std::array<uint8_t, 9> dst {};
 
         auto result = rav::audio_data::convert<
-            format::f32, byte_order::le, interleaving::interleaved, format::int24, byte_order::be,
+            float, byte_order::le, interleaving::interleaved, rav::int24_t, byte_order::be,
             interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
         REQUIRE(result);
