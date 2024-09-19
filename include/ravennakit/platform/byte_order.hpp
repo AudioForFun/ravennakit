@@ -64,7 +64,6 @@ inline void swap_bytes(uint8_t* data, const size_t size) {
         return;
     }
 
-    // Swap the bytes
     for (size_t i = 0; i < size / 2; ++i) {
         std::swap(data[i], data[size - i - 1]);
     }
