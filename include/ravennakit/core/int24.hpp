@@ -11,16 +11,17 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <cstring>
+#include <memory>
 
 namespace rav {
 
 /**
- * A custom type to represent a 3-byte audio sample. The size of this class is 3 bytes.
+ * A custom type to represent a 3-byte audio sample. The size of this class is always 3 bytes to make it suitable to
+ * memcpy to/from audio buffers.
  */
 class int24_t {
-public:
+  public:
     int24_t() = default;
     ~int24_t() = default;
 
@@ -39,8 +40,10 @@ public:
     /**
      * Construct an int24_t from an int32_t value. The value is truncated to 24 bits.
      * @param value The value to store in the int24_t.
+     * ReSharper disable once CppNonExplicitConvertingConstructor
      */
-    explicit int24_t(const int32_t value) {
+    // ReSharper disable once CppNonExplicitConvertingConstructor
+    int24_t(const int32_t value) {  // NOLINT(google-explicit-constructor)
         std::memcpy(data, std::addressof(value), 3);
     }
 
@@ -59,20 +62,14 @@ public:
     explicit operator int32_t() const {
         int32_t value {};
         std::memcpy(std::addressof(value), data, 3);
-
-        // If the value is negative, sign-extend it
-        if (value << 8 < 0) {
-            return value * -1;
-        }
-
-        return value;
+        return value << 8 >> 8; // Sign extend the 24-bit value to 32 bits
     }
 
-private:
+  private:
     uint8_t data[3] {};
 };
 
 // Ensure that int24_t is 3 bytes in size
 static_assert(sizeof(int24_t) == 3);
 
-}
+}  // namespace rav
