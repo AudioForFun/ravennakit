@@ -66,7 +66,7 @@ namespace byte_order {
             if constexpr (big_endian) {
                 value = rav::byte_order::swap_bytes(value);
             }
-            std::memcpy(data, std::addressof(value), size);
+            std::memcpy(reinterpret_cast<uint8_t*>(data), std::addressof(value), size);
         }
     };
 
@@ -247,9 +247,6 @@ template<
     class SrcType, class SrcByteOrder, class SrcInterleaving, class DstType, class DstByteOrder, class DstInterleaving>
 static bool
 convert(const SrcType* src, const size_t src_size, DstType* dst, const size_t dst_size, const size_t num_channels) {
-    const auto src_size_bytes = src_size * sizeof(SrcType);
-    const auto dst_size_bytes = dst_size * sizeof(DstType);
-
     // Shortcut for when no conversion is needed
     if constexpr (std::is_same_v<SrcType, DstType> && std::is_same_v<SrcByteOrder, DstByteOrder> && std::is_same_v<SrcInterleaving, DstInterleaving>) {
         if (src_size == 0 || src_size != dst_size) {
@@ -257,10 +254,10 @@ convert(const SrcType* src, const size_t src_size, DstType* dst, const size_t ds
         }
         std::copy_n(src, src_size, dst);
         return true;
-    } else if (std::is_same_v<SrcType, DstType> && std::is_same_v<SrcInterleaving, DstInterleaving>) {
-        RAV_ASSERT(src_size_bytes == dst_size_bytes);
+    } else if constexpr (std::is_same_v<SrcType, DstType> && std::is_same_v<SrcInterleaving, DstInterleaving>) {
+        RAV_ASSERT(src_size == dst_size);
 
-        std::memcpy(dst, src, src_size_bytes);
+        std::copy_n(src, src_size, dst);
 
         if constexpr (SrcByteOrder::is_little_endian == DstByteOrder::is_little_endian) {
             return true;  // No need for swapping
