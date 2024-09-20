@@ -211,28 +211,22 @@ static void convert_sample(const SrcType* src, DstType* dst) {
                 RAV_ASSERT_FALSE("Conversion not available");
             }
         } else if constexpr (std::is_same_v<SrcType, float>) {
+            float f32;
+            std::memcpy(std::addressof(f32), &src_sample, sizeof(float));
             if constexpr (std::is_same_v<DstType, int16_t>) {
-                float scaled;
-                std::memcpy(std::addressof(scaled), &src_sample, sizeof(float));
-                scaled *= 32767.f;
-                // const auto scaled = *reinterpret_cast<const float*>(&src_sample) * 32767.f;
-                DstByteOrder::write(dst, sizeof(DstType), static_cast<int16_t>(scaled));
+                DstByteOrder::write(dst, sizeof(DstType), static_cast<int16_t>(f32 * 32767.f));
             } else if constexpr (std::is_same_v<DstType, int24_t>) {
-                float scaled;
-                std::memcpy(std::addressof(scaled), &src_sample, sizeof(float));
-                scaled *= 8388607.f;
-                // const auto scaled = *reinterpret_cast<const float*>(&src_sample) * 8388607.f;
-                DstByteOrder::write(dst, sizeof(DstType), static_cast<int24_t>(scaled));
+                DstByteOrder::write(dst, sizeof(DstType), static_cast<int24_t>(f32 * 8388607.f));
             } else {
                 RAV_ASSERT_FALSE("Conversion not available");
             }
         } else if constexpr (std::is_same_v<SrcType, double>) {
+            double f64;
+            std::memcpy(std::addressof(f64), &src_sample, sizeof(double));
             if constexpr (std::is_same_v<DstType, int16_t>) {
-                const auto scaled = *reinterpret_cast<const double*>(&src_sample) * 32767.0;
-                DstByteOrder::write(dst, sizeof(DstType), static_cast<int16_t>(scaled));
+                DstByteOrder::write(dst, sizeof(DstType), static_cast<int16_t>(f64 * 32767.0));
             } else if constexpr (std::is_same_v<DstType, int24_t>) {
-                const auto scaled = *reinterpret_cast<const double*>(&src_sample) * 8388607.0;
-                DstByteOrder::write(dst, sizeof(DstType), static_cast<int24_t>(scaled));
+                DstByteOrder::write(dst, sizeof(DstType), static_cast<int24_t>(f64 * 8388607.0));
             } else {
                 RAV_ASSERT_FALSE("Conversion not available");
             }
