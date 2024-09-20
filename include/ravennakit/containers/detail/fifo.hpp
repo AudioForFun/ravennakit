@@ -11,6 +11,7 @@
 #pragma once
 
 #include <atomic>
+#include <functional>
 #include <mutex>
 
 namespace rav::fifo {
@@ -44,17 +45,25 @@ struct single {
 
         lock() = default;
 
-        explicit lock(single* owner) : owner_(owner) {}
+        explicit lock(std::function<void()>&& commit) : commit_(std::move(commit)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
          */
         explicit operator bool() const {
-            return owner_ != nullptr;
+            return commit_ != nullptr;
+        }
+
+        /**
+         * Commits the operation if the lock is valid.
+         */
+        void commit() const {
+            if (commit_)
+                commit_();
         }
 
       private:
-        single* owner_ {nullptr};
+        std::function<void()> commit_;
     };
 
     /**
@@ -95,22 +104,6 @@ struct single {
     [[nodiscard]] size_t size() const;
 
     /**
-     * Commits a write operation.
-     * Thread safe: no
-     * Realtime safe: yes
-     * @param lock The lock with the write position to commit.
-     */
-    void commit_write(const lock& lock);
-
-    /**
-     * Commits a read operation.
-     * Thread safe: no
-     * Realtime safe: yes
-     * @param lock The lock with the read position to commit.
-     */
-    void commit_read(const lock& lock);
-
-    /**
      * Resizes the buffer. Implies a reset.
      * Thread safe: no
      * Realtime safe: no
@@ -141,17 +134,25 @@ struct spsc {
 
         lock() = default;
 
-        explicit lock(spsc* owner) : owner_(owner) {}
+        explicit lock(std::function<void()>&& commit) : commit_(std::move(commit)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
          */
         explicit operator bool() const {
-            return owner_ != nullptr;
+            return commit_ != nullptr;
+        }
+
+        /**
+         * Commits the operation if the lock is valid.
+         */
+        void commit() const {
+            if (commit_)
+                commit_();
         }
 
       private:
-        spsc* owner_ {nullptr};
+        std::function<void()> commit_;
     };
 
     /**
@@ -185,18 +186,6 @@ struct spsc {
     lock prepare_for_read(size_t number_of_elements);
 
     /**
-     * Commits a write operation.
-     * @param lock The lock with the write position to commit.
-     */
-    void commit_write(const lock& lock);
-
-    /**
-     * Commits a read operation.
-     * @param lock The lock with the read position to commit.
-     */
-    void commit_read(const lock& lock);
-
-    /**
      * Resizes the buffer. Implies a reset.
      * Thread safe: no
      * Realtime safe: no
@@ -225,20 +214,28 @@ struct mpsc {
 
         lock() = default;
 
-        explicit lock(mpsc* owner) : owner_(owner) {}
+        explicit lock(std::function<void()>&& commit) : commit_(commit) {}
 
-        explicit lock(mpsc* owner, std::unique_lock<std::mutex>&& unique_lock) :
-            owner_(owner), lock_(std::move(unique_lock)) {}
+        explicit lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
+            commit_(commit), lock_(std::move(unique_lock)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
          */
         explicit operator bool() const {
-            return owner_ != nullptr;
+            return commit_ != nullptr;
+        }
+
+        /**
+         * Commits the operation if the lock is valid.
+         */
+        void commit() const {
+            if (commit_)
+                commit_();
         }
 
       private:
-        mpsc* owner_ {nullptr};
+        std::function<void()> commit_;
         std::unique_lock<std::mutex> lock_;
     };
 
@@ -271,18 +268,6 @@ struct mpsc {
      * @return A valid lock if sufficient data is available; otherwise, an invalid lock.
      */
     lock prepare_for_read(size_t number_of_elements);
-
-    /**
-     * Commits a write operation.
-     * @param lock The lock with the write position to commit.
-     */
-    void commit_write(const lock& lock);
-
-    /**
-     * Commits a read operation.
-     * @param lock The lock with the read position to commit.
-     */
-    void commit_read(const lock& lock);
 
     /**
      * Resizes the buffer. Implies a reset.
@@ -314,20 +299,28 @@ struct spmc {
 
         lock() = default;
 
-        explicit lock(spmc* owner) : owner_(owner) {}
+        explicit lock(std::function<void()>&& commit) : commit_(commit) {}
 
-        explicit lock(spmc* owner, std::unique_lock<std::mutex>&& unique_lock) :
-            owner_(owner), lock_(std::move(unique_lock)) {}
+        explicit lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
+            commit_(commit), lock_(std::move(unique_lock)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
          */
         explicit operator bool() const {
-            return owner_ != nullptr;
+            return commit_ != nullptr;
+        }
+
+        /**
+         * Commits the operation if the lock is valid.
+         */
+        void commit() const {
+            if (commit_)
+                commit_();
         }
 
       private:
-        spmc* owner_ {nullptr};
+        std::function<void()> commit_;
         std::unique_lock<std::mutex> lock_;
     };
 
@@ -362,18 +355,6 @@ struct spmc {
     lock prepare_for_read(size_t number_of_elements);
 
     /**
-     * Commits a write operation.
-     * @param lock The lock with the write position to commit.
-     */
-    void commit_write(const lock& lock);
-
-    /**
-     * Commits a read operation.
-     * @param lock The lock with the read position to commit.
-     */
-    void commit_read(const lock& lock);
-
-    /**
      * Resizes the buffer. Implies a reset.
      * Thread safe: no
      * Realtime safe: no
@@ -403,18 +384,26 @@ struct mpmc {
 
         lock() = default;
 
-        explicit lock(mpmc* owner, std::unique_lock<std::mutex>&& unique_lock) :
-            owner_(owner), lock_(std::move(unique_lock)) {}
+        explicit lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
+            commit_(commit), lock_(std::move(unique_lock)) {}
 
         /**
          * Returns true if this lock is valid, or false if not.
          */
         explicit operator bool() const {
-            return owner_ != nullptr;
+            return commit_ != nullptr;
+        }
+
+        /**
+         * Commits the operation if the lock is valid.
+         */
+        void commit() const {
+            if (commit_)
+                commit_();
         }
 
       private:
-        mpmc* owner_ {nullptr};
+        std::function<void()> commit_;
         std::unique_lock<std::mutex> lock_;
     };
 
@@ -447,18 +436,6 @@ struct mpmc {
      * @return A valid lock if sufficient data is available; otherwise, an invalid lock.
      */
     lock prepare_for_read(size_t number_of_elements);
-
-    /**
-     * Commits a write operation.
-     * @param lock The lock with the write position to commit.
-     */
-    void commit_write(const lock& lock);
-
-    /**
-     * Commits a read operation.
-     * @param lock The lock with the read position to commit.
-     */
-    void commit_read(const lock& lock);
 
     /**
      * Resizes the buffer. Implies a reset.

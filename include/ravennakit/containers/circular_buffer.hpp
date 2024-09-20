@@ -50,7 +50,7 @@ class circular_buffer {
                 std::memcpy(buffer_.data(), src + lock.position.size1, lock.position.size2 * sizeof(T));
             }
 
-            fifo_.commit_write(lock);
+            lock.commit();
 
             return true;
         }
@@ -72,7 +72,7 @@ class circular_buffer {
                 std::memcpy(dst + lock.position.size1, buffer_.data(), lock.position.size2 * sizeof(T));
             }
 
-            fifo_.commit_read(lock);
+            lock.commit();
 
             return true;
         }

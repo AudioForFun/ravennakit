@@ -55,7 +55,7 @@ class circular_audio_buffer {
                 buffer_.copy_from(0, lock.position.size2, src, num_channels, lock.position.size1);
             }
 
-            fifo_.commit_write(lock);
+            lock.commit();
 
             return true;
         }
@@ -87,7 +87,7 @@ class circular_audio_buffer {
                 buffer_.copy_to(0, lock.position.size2, dst, num_channels, lock.position.size1);
             }
 
-            fifo_.commit_read(lock);
+            lock.commit();
 
             return true;
         }
@@ -121,7 +121,7 @@ class circular_audio_buffer {
                 );
             }
 
-            fifo_.commit_write(lock);
+            lock.commit();
 
             return true;
         }
