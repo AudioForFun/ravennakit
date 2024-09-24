@@ -10,7 +10,7 @@
 
 #pragma once
 
-#if defined(TRACY_ENABLE) and TRACY_ENABLE
+#if defined(TRACY_ENABLE) && TRACY_ENABLE
     #include <tracy/Tracy.hpp>
 #else
     #define ZoneScoped

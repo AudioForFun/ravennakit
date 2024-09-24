@@ -137,10 +137,10 @@ TEST_CASE("audio_data | interleaving", "[audio_data]") {
             interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
         REQUIRE(result);
-        REQUIRE(dst.read() == -2147483648);
-        REQUIRE(dst.read() == 2147418112);
+        REQUIRE(dst.read() == -2147483648LL);
+        REQUIRE(dst.read() == 2147418112LL);
         REQUIRE(dst.read() == 0);
-        REQUIRE(dst.read() == -2147418112);
+        REQUIRE(dst.read() == -2147418112LL);
     }
 }
 
@@ -410,10 +410,10 @@ TEST_CASE("audio_data | int16 to int32", "[audio_data]") {
         );
 
         REQUIRE(result);
-        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000));
-        REQUIRE(dst.read_be() == 0x7fff0000);
+        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000LL));
+        REQUIRE(dst.read_be() == 0x7fff0000LL);
         REQUIRE(dst.read_be() == 0);
-        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000));
+        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000LL));
     }
 
     SECTION("Convert int16 to int32 be to le") {
@@ -427,10 +427,10 @@ TEST_CASE("audio_data | int16 to int32", "[audio_data]") {
         );
 
         REQUIRE(result);
-        REQUIRE(dst.read_le() == static_cast<int32_t>(-0x80000000));
-        REQUIRE(dst.read_le() == 0x7fff0000);
+        REQUIRE(dst.read_le() == static_cast<int32_t>(-0x80000000LL));
+        REQUIRE(dst.read_le() == 0x7fff0000LL);
         REQUIRE(dst.read_le() == 0);
-        REQUIRE(dst.read_le() == static_cast<int32_t>(-0x80000000));
+        REQUIRE(dst.read_le() == static_cast<int32_t>(-0x80000000LL));
     }
 
     SECTION("Convert int16 to int32 le to be") {
@@ -444,10 +444,10 @@ TEST_CASE("audio_data | int16 to int32", "[audio_data]") {
         );
 
         REQUIRE(result);
-        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000));
-        REQUIRE(dst.read_be() == 0x7fff0000);
+        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000LL));
+        REQUIRE(dst.read_be() == 0x7fff0000LL);
         REQUIRE(dst.read_be() == 0);
-        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000));
+        REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000LL));
     }
 }
 

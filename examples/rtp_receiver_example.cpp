@@ -8,17 +8,17 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include <fmt/core.h>
-
-#include <CLI/CLI.hpp>
-#include <uvw.hpp>
-
-#include "portaudio.h"
 #include "ravennakit/util/tracy.hpp"
 #include "ravennakit/audio/circular_audio_buffer.hpp"
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
+
+#include <fmt/core.h>
+#include <CLI/CLI.hpp>
+#include <portaudio.h>
+#include <uvw.hpp>
+#include <optional>
 
 constexpr short k_port = 5004;
 constexpr int k_block_size = 256;
