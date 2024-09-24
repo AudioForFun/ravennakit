@@ -8,24 +8,26 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/util/tracy.hpp"
+#include <fmt/core.h>
+#include <portaudio.h>
+
+#include <CLI/CLI.hpp>
+#include <optional>
+#include <uvw.hpp>
+
 #include "ravennakit/audio/circular_audio_buffer.hpp"
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
-
-#include <fmt/core.h>
-#include <CLI/CLI.hpp>
-#include <portaudio.h>
-#include <uvw.hpp>
-#include <optional>
+#include "ravennakit/util/tracy.hpp"
 
 constexpr short k_port = 5004;
 constexpr int k_block_size = 256;
-constexpr int k_num_channels = 2;
-constexpr double k_sample_rate = 48000.0;
 
-using audio_buffer_t = rav::circular_audio_buffer<float, rav::fifo::spsc>;
+struct audio_context {
+    rav::circular_audio_buffer<float, rav::fifo::spsc> buffer;
+    size_t num_channels;
+};
 
 static int audio_callback(
     [[maybe_unused]] const void* input, void* output, const unsigned long num_frames,
@@ -37,14 +39,15 @@ static int audio_callback(
     if (num_frames != k_block_size) {
         RAV_ERROR("Unexpected number of frames: {}", num_frames);
     }
-    auto* buffer = static_cast<audio_buffer_t*>(user_data);
+    auto* context = static_cast<audio_context*>(user_data);
     const auto result =
-        buffer->read_to_data<float, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
-            static_cast<float*>(output), num_frames
-        );
+        context->buffer
+            .read_to_data<float, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+                static_cast<float*>(output), num_frames
+            );
     if (!result) {
         RAV_ERROR("Failed to read from buffer!");
-        std::memset(output, 0, num_frames * k_num_channels * sizeof(float));
+        std::memset(output, 0, num_frames * context->num_channels * sizeof(float));
     }
 
     return 0;
@@ -62,18 +65,33 @@ int main(int const argc, char* argv[]) {
     app.add_option("listen-addr", listen_addr, "The listen address");
 
     std::optional<std::string> multicast_addr;
-    app.add_option("multicast-addr", multicast_addr, "The multicast address to receive from");
+    app.add_option("multicast-addr", multicast_addr, "The multicast address to receive from (optional)");
 
     std::optional<std::string> multicast_interface;
-    app.add_option("multicast-interface", multicast_interface, "The multicast interface to receive from");
+    app.add_option("multicast-interface", multicast_interface, "The multicast interface to receive from (optional)");
+
+    size_t num_channels = 0;
+    app.add_option("-c,--num-channels", num_channels, "The number of channels in the RTP stream")->required();
+
+    double sample_rate = 0.0;
+    app.add_option("-r,--sample-rate", sample_rate, "The sample rate of the RTP stream")->required();
 
     std::optional<std::string> audio_output_device_name = "default";
     app.add_option(
-        "--audio-device", audio_output_device_name,
+        "-o,--out-device", audio_output_device_name,
         "The name of the audio output device. Uses the default device if not specified"
     );
 
     CLI11_PARSE(app, argc, argv);
+
+    if (num_channels == 0) {
+        RAV_ERROR("Number of channels must be greater than 0!");
+        exit(1);
+    }
+
+    audio_context audio_context {
+        rav::circular_audio_buffer<float, rav::fifo::spsc>(num_channels, k_block_size * 20), num_channels
+    };
 
     if (auto error = Pa_Initialize(); error != paNoError) {
         RAV_ERROR("PortAudio failed to initialize! Error: {}", Pa_GetErrorText(error));
@@ -85,22 +103,17 @@ int main(int const argc, char* argv[]) {
         return 1;
     }
 
-    audio_buffer_t audio_buffer(k_num_channels, k_block_size * 20);
-
-    rav::audio_buffer<int16_t> converted_int16(k_num_channels, k_block_size);
-    rav::audio_buffer<float> converted_float(k_num_channels, k_block_size);
-    std::vector<int16_t> audio_data_buffer(k_num_channels * k_block_size);
-
     rav::rtp_receiver receiver(loop);
-    receiver.on<rav::rtp_packet_event>([&](const rav::rtp_packet_event& event,
-                                           [[maybe_unused]] rav::rtp_receiver& recv) {
+    receiver.on<rav::rtp_packet_event>([&audio_context](
+                                           const rav::rtp_packet_event& event, [[maybe_unused]] rav::rtp_receiver& recv
+                                       ) {
         RAV_INFO("{}", event.packet.to_string());
 
         const auto payload = event.packet.payload_data().reinterpret<const int16_t>();
-        const auto num_frames = payload.size() / k_num_channels;
+        const auto num_frames = payload.size() / audio_context.num_channels;
 
         const auto result =
-            audio_buffer
+            audio_context.buffer
                 .write_from_data<int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                     payload.data(), num_frames
                 );
@@ -139,7 +152,6 @@ int main(int const argc, char* argv[]) {
         RAV_INFO("Device: {}", info->name);
         if (info->name != nullptr && audio_output_device_name == info->name) {
             selected_device = i;
-            // break;
         }
     }
 
@@ -150,14 +162,14 @@ int main(int const argc, char* argv[]) {
 
     PaStreamParameters output_params;
     output_params.device = selected_device;
-    output_params.channelCount = k_num_channels;
-    output_params.sampleFormat = paFloat32;  // | paNonInterleaved;
+    output_params.channelCount = static_cast<int>(audio_context.num_channels);
+    output_params.sampleFormat = paFloat32;
     output_params.suggestedLatency = Pa_GetDeviceInfo(selected_device)->defaultHighOutputLatency;
     output_params.hostApiSpecificStreamInfo = nullptr;
 
     PaStream* stream;
     if (auto error = Pa_OpenStream(
-            &stream, nullptr, &output_params, k_sample_rate, k_block_size, paNoFlag, audio_callback, &audio_buffer
+            &stream, nullptr, &output_params, sample_rate, k_block_size, paNoFlag, audio_callback, &audio_context
         );
         error != paNoError) {
         RAV_ERROR("PortAudio failed to open stream! Error: {}", Pa_GetErrorText(error));
