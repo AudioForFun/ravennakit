@@ -36,15 +36,15 @@ rav::session_description::origin::parse(const std::string& line) {
     }
 
     if (parts[3] == "IN") {
-        o.network_type = network_type::internet;
+        o.network_type = netw_type::internet;
     } else {
         return parse_result<origin>::err("origin: invalid network type");
     }
 
     if (parts[4] == "IP4") {
-        o.address_type = address_type::ipv4;
+        o.address_type = addr_type::ipv4;
     } else if (parts[4] == "IP6") {
-        o.address_type = address_type::ipv6;
+        o.address_type = addr_type::ipv6;
     } else {
         return parse_result<origin>::err("origin: invalid address type");
     }
@@ -68,15 +68,15 @@ rav::session_description::connection::parse(const std::string& line) {
     connection info;
 
     if (parts[0] == "IN") {
-        info.network_type = network_type::internet;
+        info.network_type = netw_type::internet;
     } else {
         return parse_result<connection>::err("connection: invalid network type");
     }
 
     if (parts[1] == "IP4") {
-        info.address_type = address_type::ipv4;
+        info.address_type = addr_type::ipv4;
     } else if (parts[1] == "IP6") {
-        info.address_type = address_type::ipv6;
+        info.address_type = addr_type::ipv6;
     } else {
         return parse_result<connection>::err("connection: invalid address type");
     }
@@ -90,19 +90,19 @@ rav::session_description::connection::parse(const std::string& line) {
     }
 
     if (address_parts.size() == 2) {
-        if (info.address_type == address_type::ipv4) {
+        if (info.address_type == addr_type::ipv4) {
             info.ttl = rav::from_string_strict<int>(address_parts[1]);
             if (!info.ttl.has_value()) {
                 return parse_result<connection>::err("connection: failed to parse number of addresses as integer");
             }
-        } else if (info.address_type == address_type::ipv6) {
+        } else if (info.address_type == addr_type::ipv6) {
             info.number_of_addresses = rav::from_string_strict<int>(address_parts[1]);
             if (!info.number_of_addresses.has_value()) {
                 return parse_result<connection>::err("connection: failed to parse number of addresses as integer");
             }
         }
     } else if (address_parts.size() == 3) {
-        if (info.address_type == address_type::ipv6) {
+        if (info.address_type == addr_type::ipv6) {
             return parse_result<connection>::err("connection: invalid address, ttl not allowed for ipv6");
         }
         info.ttl = rav::from_string_strict<int>(address_parts[1]);

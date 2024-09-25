@@ -61,16 +61,16 @@ TEST_CASE("session_description", "[session_description]") {
             REQUIRE(origin.username == "-");
             REQUIRE(origin.session_id == "13");
             REQUIRE(origin.session_version == 0);
-            REQUIRE(origin.network_type == rav::session_description::network_type::internet);
-            REQUIRE(origin.address_type == rav::session_description::address_type::ipv4);
+            REQUIRE(origin.network_type == rav::session_description::netw_type::internet);
+            REQUIRE(origin.address_type == rav::session_description::addr_type::ipv4);
             REQUIRE(origin.unicast_address == "192.168.15.52");
         }
 
         SECTION("Test connection") {
             const auto& connection = result.get_ok().get_connection();
             REQUIRE(connection.has_value());
-            REQUIRE(connection->network_type == rav::session_description::network_type::internet);
-            REQUIRE(connection->address_type == rav::session_description::address_type::ipv4);
+            REQUIRE(connection->network_type == rav::session_description::netw_type::internet);
+            REQUIRE(connection->address_type == rav::session_description::addr_type::ipv4);
             REQUIRE(connection->address == "239.1.15.52");
         }
 
@@ -108,8 +108,8 @@ TEST_CASE("session_description | origin", "[session_description]") {
         REQUIRE(origin.username == "-");
         REQUIRE(origin.session_id == "13");
         REQUIRE(origin.session_version == 0);
-        REQUIRE(origin.network_type == rav::session_description::network_type::internet);
-        REQUIRE(origin.address_type == rav::session_description::address_type::ipv4);
+        REQUIRE(origin.network_type == rav::session_description::netw_type::internet);
+        REQUIRE(origin.address_type == rav::session_description::addr_type::ipv4);
         REQUIRE(origin.unicast_address == "192.168.15.52");
     }
 }
@@ -119,8 +119,8 @@ TEST_CASE("session_description | connection", "[session_description]") {
         auto result = rav::session_description::connection::parse("c=IN IP4 239.1.15.52");
         REQUIRE(result.is_ok());
         auto connection = result.move_ok();
-        REQUIRE(connection.network_type == rav::session_description::network_type::internet);
-        REQUIRE(connection.address_type == rav::session_description::address_type::ipv4);
+        REQUIRE(connection.network_type == rav::session_description::netw_type::internet);
+        REQUIRE(connection.address_type == rav::session_description::addr_type::ipv4);
         REQUIRE(connection.address == "239.1.15.52");
         REQUIRE(connection.ttl.has_value() == false);
         REQUIRE(connection.number_of_addresses.has_value() == false);
@@ -130,8 +130,8 @@ TEST_CASE("session_description | connection", "[session_description]") {
         auto result = rav::session_description::connection::parse("c=IN IP4 239.1.15.52/15");
         REQUIRE(result.is_ok());
         auto connection = result.move_ok();
-        REQUIRE(connection.network_type == rav::session_description::network_type::internet);
-        REQUIRE(connection.address_type == rav::session_description::address_type::ipv4);
+        REQUIRE(connection.network_type == rav::session_description::netw_type::internet);
+        REQUIRE(connection.address_type == rav::session_description::addr_type::ipv4);
         REQUIRE(connection.address == "239.1.15.52");
         REQUIRE(connection.ttl.has_value());
         REQUIRE(*connection.ttl == 15);
@@ -142,8 +142,8 @@ TEST_CASE("session_description | connection", "[session_description]") {
         auto result = rav::session_description::connection::parse("c=IN IP4 239.1.15.52/15/3");
         REQUIRE(result.is_ok());
         auto connection = result.move_ok();
-        REQUIRE(connection.network_type == rav::session_description::network_type::internet);
-        REQUIRE(connection.address_type == rav::session_description::address_type::ipv4);
+        REQUIRE(connection.network_type == rav::session_description::netw_type::internet);
+        REQUIRE(connection.address_type == rav::session_description::addr_type::ipv4);
         REQUIRE(connection.address == "239.1.15.52");
         REQUIRE(connection.ttl.has_value());
         REQUIRE(*connection.ttl == 15);
@@ -155,8 +155,8 @@ TEST_CASE("session_description | connection", "[session_description]") {
         auto result = rav::session_description::connection::parse("c=IN IP6 ff00::db8:0:101/3");
         REQUIRE(result.is_ok());
         auto connection = result.move_ok();
-        REQUIRE(connection.network_type == rav::session_description::network_type::internet);
-        REQUIRE(connection.address_type == rav::session_description::address_type::ipv6);
+        REQUIRE(connection.network_type == rav::session_description::netw_type::internet);
+        REQUIRE(connection.address_type == rav::session_description::addr_type::ipv6);
         REQUIRE(connection.address == "ff00::db8:0:101");
         REQUIRE(connection.ttl.has_value() == false);
         REQUIRE(connection.number_of_addresses.has_value());

@@ -22,8 +22,8 @@ namespace rav {
  */
 class session_description {
   public:
-    enum class network_type { undefined, internet };
-    enum class address_type { undefined, ipv4, ipv6 };
+    enum class netw_type { undefined, internet };
+    enum class addr_type { undefined, ipv4, ipv6 };
 
     /// A type alias for a parse result.
     template<class T>
@@ -47,10 +47,10 @@ class session_description {
         int session_version {};
 
         /// Specifies the type of network.
-        network_type network_type {network_type::undefined};
+        netw_type network_type {netw_type::undefined};
 
         /// Specifies the type of address.
-        address_type address_type {address_type::undefined};
+        addr_type address_type {addr_type::undefined};
 
         /// The address of the machine from which the session was created.
         std::string unicast_address;
@@ -69,9 +69,9 @@ class session_description {
      */
     struct connection {
         /// Specifies the type of network.
-        network_type network_type {network_type::undefined};
+        netw_type network_type {netw_type::undefined};
         /// Specifies the type of address.
-        address_type address_type {address_type::undefined};
+        addr_type address_type {addr_type::undefined};
         /// The address at which the media can be found.
         std::string address;
         /// Optional ttl

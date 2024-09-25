@@ -24,7 +24,7 @@ elseif ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQ
             -Wshift-sign-overflow
             -Wmissing-prototypes
             -Wnullable-to-nonnull-conversion
-            -Wno-ignored-qualifiers
+            -Wignored-qualifiers
             -Wswitch-enum
             -Wpedantic
             -Wdeprecated
@@ -52,12 +52,12 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
             -Wsign-conversion
             -Wunreachable-code
             -Wcast-align
-            -Wno-implicit-fallthrough
-            -Wno-maybe-uninitialized
-            -Wno-ignored-qualifiers
+            -Wimplicit-fallthrough
+            -Wmaybe-uninitialized
+            -Wignored-qualifiers
             -Wswitch-enum
             -Wredundant-decls
-            -Wno-strict-overflow
+            -Wstrict-overflow
             -Wshadow
             -Wfloat-equal
             -Wmissing-field-initializers
