@@ -71,7 +71,7 @@ TEST_CASE("session_description", "[session_description]") {
             REQUIRE(connection.has_value());
             REQUIRE(connection->network_type == rav::session_description::network_type::internet);
             REQUIRE(connection->address_type == rav::session_description::address_type::ipv4);
-            REQUIRE(connection->address == "239.1.15.52/15");
+            REQUIRE(connection->address == "239.1.15.52");
         }
 
         SECTION("Test session name") {
