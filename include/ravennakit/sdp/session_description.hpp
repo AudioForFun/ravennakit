@@ -107,6 +107,43 @@ class session_description {
     };
 
     /**
+     * A type representing (and holding) the attributes of an SDP session description.
+     */
+    struct attribute_fields {
+        /**
+         * Holds the parts of an attribute.
+         */
+        struct attribute {
+            std::string key;
+            std::string value;
+        };
+
+        /**
+         * Parses an attribute from a string, and adds it to the attributes.
+         * @param line The string to parse.
+         * @return A pair containing the parse result and the attribute.
+         */
+        parse_result<void> parse_add(const std::string& line);
+
+        /**
+         * Gets the value of an attribute.
+         * @param key The key of the attribute.
+         * @return The value of the attribute, or an empty optional if the attribute does not exist.
+         */
+        [[nodiscard]] std::optional<std::string> get(const std::string& key) const;
+
+        /**
+         * Checks if an attribute exists.
+         * @param key The key of the attribute.
+         * @return True if the attribute exists, false otherwise.
+         */
+        [[nodiscard]] bool has_attribute(const std::string& key) const;
+
+    private:
+        std::vector<attribute> attributes_;
+    };
+
+    /**
      * A type representing a media description (m=*) of an SDP session description.
      */
     struct media_description {
@@ -122,6 +159,8 @@ class session_description {
         std::vector<std::string> formats;
         /// The connection information of the media description.
         std::vector<connection_info_field> connection_infos;
+        /// Attributes of the media description.
+        attribute_fields attributes;
 
         /**
          * Parses a media description from a string (i.e. the line starting with m=*). Does not parse the connection
@@ -171,6 +210,11 @@ class session_description {
      */
     [[nodiscard]] const std::vector<media_description>& media_descriptions() const;
 
+    /**
+     * @return The attributes of the SDP session description.
+     */
+    [[nodiscard]] const attribute_fields& attributes() const;
+
   private:
     /// Type to specify which section of the SDP we are parsing
     enum class section { session_description, media_description };
@@ -181,6 +225,7 @@ class session_description {
     std::optional<connection_info_field> connection_info_;
     time_active_field time_active_;
     std::vector<media_description> media_descriptions_;
+    attribute_fields attributes_;
 
     static parse_result<int> parse_version(std::string_view line);
 };

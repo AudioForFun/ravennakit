@@ -206,6 +206,45 @@ rav::session_description::media_description::parse(const std::string& line) {
     return parse_result<media_description>::ok(std::move(media));
 }
 
+rav::session_description::parse_result<void> rav::session_description::attribute_fields::parse_add(const std::string& line) {
+    if (!starts_with(line, "a=")) {
+        return parse_result<void>::err("attribute: expecting 'a='");
+    }
+
+    const auto key_value = std::string_view(line).substr(2);
+
+    const auto key = up_to_first_occurrence_of(key_value, ":", false);
+
+    if (key.empty()) {
+        // There is only a key, no value
+        attributes_.push_back({std::string(key_value), {}});
+    } else {
+        // There is a key and a value
+        auto value = std::string(from_first_occurrence_of(line, ":", false));
+        attributes_.push_back({std::string(key), std::move(value)});
+    }
+
+    return parse_result<void>::ok();
+}
+
+std::optional<std::string> rav::session_description::attribute_fields::get(const std::string& key) const {
+    for (auto& att : attributes_) {
+        if (att.key == key) {
+            return att.value;
+        }
+    }
+    return std::nullopt;
+}
+
+bool rav::session_description::attribute_fields::has_attribute(const std::string& key) const {
+    for (auto& att : attributes_) {
+        if (att.key == key) {
+            return true;
+        }
+    }
+    return false;
+}
+
 rav::session_description::parse_result<rav::session_description>
 rav::session_description::parse(const std::string& sdp_text) {
     session_description sd;
@@ -278,6 +317,20 @@ rav::session_description::parse(const std::string& sdp_text) {
                 sd.media_descriptions_.push_back(result.move_ok());
                 break;
             }
+            case 'a': {
+                if (!sd.media_descriptions_.empty()) {
+                    auto result = sd.media_descriptions_.back().attributes.parse_add(line);
+                    if (result.is_err()) {
+                        return parse_result<session_description>::err(result.get_err());
+                    }
+                } else {
+                    auto result = sd.attributes_.parse_add(line);
+                    if (result.is_err()) {
+                        return parse_result<session_description>::err(result.get_err());
+                    }
+                }
+                break;
+            }
             default:
                 continue;
         }
@@ -308,6 +361,10 @@ rav::session_description::time_active_field rav::session_description::time_activ
 
 const std::vector<rav::session_description::media_description>& rav::session_description::media_descriptions() const {
     return media_descriptions_;
+}
+
+const rav::session_description::attribute_fields& rav::session_description::attributes() const {
+    return attributes_;
 }
 
 rav::session_description::parse_result<int> rav::session_description::parse_version(const std::string_view line) {

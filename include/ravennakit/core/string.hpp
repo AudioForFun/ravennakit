@@ -124,12 +124,12 @@ inline std::string_view from_first_occurrence_of(
  * @param nth Nth needle to find, 0 will always return the full string, 1 will find the 1st needle, and so on.
  * @param string_to_search_in String to search in.
  * @param string_to_search_for String to search for.
- * @param includeSubStringInResult If true the needle will be included in the resulting string, when false it will not.
+ * @param include_sub_string_in_result If true the needle will be included in the resulting string, when false it will not.
  * @return The truncated string, or an empty string when no needle was found.
  */
 inline std::string_view from_nth_occurrence_of(
     const size_t nth, std::string_view string_to_search_in, const std::string_view string_to_search_for,
-    const bool includeSubStringInResult
+    const bool include_sub_string_in_result
 ) {
     size_t pos = std::string_view::npos;
 
@@ -146,20 +146,20 @@ inline std::string_view from_nth_occurrence_of(
     }
 
     return string_to_search_in.substr(
-        includeSubStringInResult ? pos : pos + string_to_search_for.size(), string_to_search_in.size()
+        include_sub_string_in_result ? pos : pos + string_to_search_for.size(), string_to_search_in.size()
     );
 }
 
 /**
- * Returns a string truncated starting from to last last occurrence of a needle.
+ * Returns a string truncated starting from to last occurrence of a needle.
  * @param string_to_search_in String to search in.
  * @param string_to_search_for String to search for.
- * @param includeSubStringInResult If true the needle will be included in the resulting string, when false it will not.
+ * @param include_sub_string_in_result If true the needle will be included in the resulting string, when false it will not.
  * @return The truncated string, or an empty string when no needle was found.
  */
 inline std::string_view from_last_occurrence_of(
     const std::string_view string_to_search_in, const std::string_view string_to_search_for,
-    const bool includeSubStringInResult
+    const bool include_sub_string_in_result
 ) {
     const auto pos = string_to_search_in.rfind(string_to_search_for);
 
@@ -167,7 +167,7 @@ inline std::string_view from_last_occurrence_of(
         return {};
     }
 
-    return string_to_search_in.substr(includeSubStringInResult ? pos : pos + string_to_search_for.size());
+    return string_to_search_in.substr(include_sub_string_in_result ? pos : pos + string_to_search_for.size());
 }
 
 /**

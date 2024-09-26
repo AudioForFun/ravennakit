@@ -119,6 +119,29 @@ TEST_CASE("session_description | description from anubis", "[session_description
         REQUIRE(conn.ttl.has_value() == true);
         REQUIRE(*conn.ttl == 15);
     }
+
+    SECTION("Test attributes") {
+        const auto& attributes = result.get_ok().attributes();
+        REQUIRE(attributes.get("clock-domain") == "PTPv2 0");
+        REQUIRE(attributes.get("ts-refclk") == "ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0");
+        REQUIRE(attributes.get("mediaclk") == "direct=0");
+        REQUIRE_FALSE(attributes.has_attribute("asfasdfasd"));
+
+        const auto& media = result.get_ok().media_descriptions();
+        REQUIRE(media.size() == 1);
+        const auto& media_attributes = media[0].attributes;
+        REQUIRE(media_attributes.get("rtpmap") == "98 L16/48000/2");
+        REQUIRE(media_attributes.get("source-filter") == " incl IN IP4 239.1.15.52 192.168.15.52");
+        REQUIRE(media_attributes.get("clock-domain") == "PTPv2 0");
+        REQUIRE(media_attributes.get("sync-time") == "0");
+        REQUIRE(media_attributes.get("framecount") == "48");
+        REQUIRE(media_attributes.get("palign") == "0");
+        REQUIRE(media_attributes.get("ptime") == "1");
+        REQUIRE(media_attributes.get("ts-refclk") == "ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0");
+        REQUIRE(media_attributes.get("mediaclk") == "direct=0");
+        REQUIRE(media_attributes.has_attribute("recvonly"));
+        REQUIRE(media_attributes.get("midi-pre2") == "50040 0,0;0,1");
+    }
 }
 
 TEST_CASE("session_description | origin_field", "[session_description]") {
@@ -235,5 +258,22 @@ TEST_CASE("session_description | media_description", "[session_description]") {
         REQUIRE(media.formats[0] == "98");
         REQUIRE(media.formats[1] == "99");
         REQUIRE(media.formats[2] == "100");
+    }
+}
+
+TEST_CASE("session_description | attributes", "[session_description]") {
+    SECTION("Test attributes") {
+        rav::session_description::attribute_fields attributes;
+        REQUIRE(attributes.parse_add("a=recvonly").is_ok());
+        REQUIRE(attributes.parse_add("a=clock-domain:PTPv2 0").is_ok());
+        REQUIRE(attributes.parse_add("a=mediaclk:direct=0").is_ok());
+        REQUIRE(attributes.parse_add("a=ts-refclk:ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0").is_ok());
+
+        REQUIRE(attributes.has_attribute("recvonly"));
+        REQUIRE(attributes.get("recvonly") == "");
+        REQUIRE(attributes.get("clock-domain") == "PTPv2 0");
+        REQUIRE(attributes.get("mediaclk") == "direct=0");
+        REQUIRE(attributes.get("ts-refclk") == "ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0");
+        REQUIRE_FALSE(attributes.has_attribute("nonexistent"));
     }
 }
