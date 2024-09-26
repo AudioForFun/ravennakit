@@ -256,7 +256,7 @@ rav::session_description::parse(const std::string& sdp_text) {
                     return parse_result<session_description>::err(result.get_err());
                 }
                 if (!sd.media_descriptions_.empty()) {
-                    sd.media_descriptions_.back().connection_info = result.move_ok();
+                    sd.media_descriptions_.back().connection_infos.push_back(result.move_ok());
                 } else {
                     sd.connection_info_ = result.move_ok();
                 }

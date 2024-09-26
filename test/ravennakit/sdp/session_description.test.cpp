@@ -111,8 +111,8 @@ TEST_CASE("session_description | description from anubis", "[session_description
         REQUIRE(media.protocol == "RTP/AVP");
         REQUIRE(media.formats.size() == 1);
         REQUIRE(media.formats[0] == "98");
-        REQUIRE(media.connection_info.has_value());
-        const auto& conn = media.connection_info.value();
+        REQUIRE(!media.connection_infos.empty());
+        const auto& conn = media.connection_infos.back();
         REQUIRE(conn.network_type == rav::session_description::netw_type::internet);
         REQUIRE(conn.address_type == rav::session_description::addr_type::ipv4);
         REQUIRE(conn.address == "239.1.15.52");

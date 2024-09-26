@@ -121,7 +121,7 @@ class session_description {
         /// The formats of the media description.
         std::vector<std::string> formats;
         /// The connection information of the media description.
-        std::optional<connection_info_field> connection_info;
+        std::vector<connection_info_field> connection_infos;
 
         /**
          * Parses a media description from a string (i.e. the line starting with m=*). Does not parse the connection
