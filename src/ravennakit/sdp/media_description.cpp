@@ -401,6 +401,12 @@ rav::sdp::media_description::parse_result<void> rav::sdp::media_description::par
         } else {
             return parse_result<void>::err("media: failed to parse clock domain value");
         }
+    } else if (key == "sync-time") {
+        if (const auto rtp_ts = parser.read_int<uint32_t>()) {
+            sync_time_ = *rtp_ts;
+        } else {
+            return parse_result<void>::err("media: failed to parse sync-time value");
+        }
     }
 
     else {
@@ -464,4 +470,8 @@ const std::optional<rav::sdp::media_clock>& rav::sdp::media_description::media_c
 
 const std::optional<std::string>& rav::sdp::media_description::session_information() const {
     return session_information_;
+}
+
+std::optional<uint32_t> rav::sdp::media_description::sync_time() const {
+    return sync_time_;
 }

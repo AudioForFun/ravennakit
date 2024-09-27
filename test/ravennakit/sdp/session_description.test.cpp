@@ -138,6 +138,10 @@ TEST_CASE("session_description | description from anubis", "[session_description
             REQUIRE(refclk->domain() == 0);
         }
 
+        SECTION("Test sync-time") {
+            REQUIRE(media.sync_time().value() == 0);
+        }
+
         SECTION("Test mediaclk on media") {
             const auto& media_clock = media.media_clock().value();
             REQUIRE(media_clock.mode() == rav::sdp::media_clock::clock_mode::direct);

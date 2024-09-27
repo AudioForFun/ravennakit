@@ -263,6 +263,11 @@ class media_description {
      */
     [[nodiscard]] const std::optional<std::string>& session_information() const;
 
+    /**
+     * @return The sync-time of the stream. This is a RAVENNA-specific attribute extension.
+     */
+    [[nodiscard]] std::optional<uint32_t> sync_time() const;
+
   private:
     std::string media_type_;
     uint16_t port_ {};
@@ -273,10 +278,11 @@ class media_description {
     std::optional<double> ptime_;
     std::optional<double> max_ptime_;
     std::optional<media_direction> media_direction_;
-    std::optional<sdp::reference_clock> reference_clock_;
+    std::optional<reference_clock> reference_clock_;
     std::optional<sdp::media_clock> media_clock_;
     std::optional<std::string> session_information_;
-    std::optional<ravenna_clock_domain> clock_domain_;
+    std::optional<ravenna_clock_domain> clock_domain_;  // RAVENNA-specific attribute
+    std::optional<uint32_t> sync_time_;                 // RAVENNA-specific attribute
 };
 
 }  // namespace rav::sdp
