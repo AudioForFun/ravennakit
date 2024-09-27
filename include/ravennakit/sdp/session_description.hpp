@@ -19,7 +19,8 @@
 namespace rav {
 
 /**
- * A class that represents an SDP session description.
+ * A class that represents an SDP session description as defined in RFC 8866.
+ * https://datatracker.ietf.org/doc/html/rfc8866
  */
 class session_description {
   public:
@@ -184,6 +185,12 @@ class session_description {
         [[nodiscard]] std::optional<double> ptime() const;
 
         /**
+         * @return The value of the "maxptime" attribute, or an empty optional if the attribute does not exist or the
+         * value is invalid.
+         */
+        [[nodiscard]] std::optional<double> max_ptime() const;
+
+        /**
          * @return The direction of the media description.
          */
         [[nodiscard]] std::optional<media_direction> direction() const;
@@ -196,6 +203,7 @@ class session_description {
         std::vector<format> formats_;
         std::vector<connection_info_field> connection_infos_;
         std::optional<double> ptime_;
+        std::optional<double> max_ptime_;
         std::optional<media_direction> media_direction_;
     };
 

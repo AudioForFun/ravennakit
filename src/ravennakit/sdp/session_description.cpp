@@ -17,6 +17,7 @@
 
 namespace {
 constexpr auto k_sdp_ptime = "ptime";
+constexpr auto k_sdp_max_ptime = "maxptime";
 constexpr auto k_sdp_rtp_map = "rtpmap";
 constexpr auto k_sdp_inet = "IN";
 constexpr auto k_sdp_ipv4 = "IP4";
@@ -283,6 +284,15 @@ rav::session_description::media_description::parse_attribute(const std::string& 
         } else {
             return parse_result<void>::err("media: failed to parse ptime as double");
         }
+    } else if (key == k_sdp_max_ptime) {
+        if (const auto maxptime = rav::stod(value)) {
+            if (*maxptime < 0) {
+                return parse_result<void>::err("media: maxptime must be a positive number");
+            }
+            max_ptime_ = *maxptime;
+        } else {
+            return parse_result<void>::err("media: failed to parse ptime as double");
+        }
     } else if (key == "sendrecv") {
         media_direction_ = media_direction::sendrecv;
     } else if (key == "sendonly") {
@@ -292,7 +302,7 @@ rav::session_description::media_description::parse_attribute(const std::string& 
     } else if (key == "inactive") {
         media_direction_ = media_direction::inactive;
     } else {
-        RAV_WARNING("Ignoring unknown attribute: {}", key);
+        RAV_WARNING("Ignoring unknown attribute on media: {}", key);
     }
 
     return parse_result<void>::ok();
@@ -329,6 +339,10 @@ void rav::session_description::media_description::add_connection_info(connection
 
 std::optional<double> rav::session_description::media_description::ptime() const {
     return ptime_;
+}
+
+std::optional<double> rav::session_description::media_description::max_ptime() const {
+    return max_ptime_;
 }
 
 std::optional<rav::session_description::media_direction>
@@ -536,7 +550,7 @@ rav::session_description::parse_result<void> rav::session_description::parse_att
     } else if (key == "inactive") {
         media_direction_ = media_direction::inactive;
     } else {
-        RAV_WARNING("Ignoring unknown attribute: {}", key);
+        RAV_WARNING("Ignoring unknown attribute on session: {}", key);
     }
 
     return parse_result<void>::ok();

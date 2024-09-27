@@ -295,4 +295,14 @@ TEST_CASE("session_description | media_description", "[session_description]") {
         REQUIRE(media.direction().has_value());
         REQUIRE(*media.direction() == rav::session_description::media_direction::recvonly);
     }
+
+    SECTION("Test maxptime attribute") {
+        auto result = rav::session_description::media_description::parse_new("m=audio 5004/2 RTP/AVP 98 99 100");
+        REQUIRE(result.is_ok());
+        auto media = result.move_ok();
+        REQUIRE_FALSE(media.max_ptime().has_value());
+        media.parse_attribute("a=maxptime:60.5");
+        REQUIRE(media.max_ptime().has_value());
+        REQUIRE(rav::util::is_within(*media.max_ptime(), 60.5, 0.0001));
+    }
 }
