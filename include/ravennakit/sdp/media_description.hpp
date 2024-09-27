@@ -251,7 +251,7 @@ class media_description {
     /**
      * @return The reference clock of the media description.
      */
-    [[nodiscard]] const std::optional<reference_clock>& reference_clock() const;
+    [[nodiscard]] const std::optional<reference_clock>& ref_clock() const;
 
     /**
      * @return The media clock of the media description.

@@ -454,7 +454,7 @@ const std::optional<rav::sdp::media_direction>& rav::sdp::media_description::dir
     return media_direction_;
 }
 
-const std::optional<rav::sdp::reference_clock>& rav::sdp::media_description::reference_clock() const {
+const std::optional<rav::sdp::reference_clock>& rav::sdp::media_description::ref_clock() const {
     return reference_clock_;
 }
 

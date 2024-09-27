@@ -130,7 +130,7 @@ TEST_CASE("session_description | description from anubis", "[session_description
         REQUIRE(static_cast<int64_t>(media.ptime().value()) == 1);
 
         SECTION("Test refclk on media") {
-            const auto& refclk = media.reference_clock();
+            const auto& refclk = media.ref_clock();
             REQUIRE(refclk.has_value());
             REQUIRE(refclk->source() == rav::sdp::reference_clock::clock_source::ptp);
             REQUIRE(refclk->ptp_version() == rav::sdp::reference_clock::ptp_ver::IEEE_1588_2008);
@@ -221,8 +221,8 @@ TEST_CASE("session_description | description from AES67 spec", "[session_descrip
     REQUIRE(format.num_channels == 8);
     REQUIRE(media.direction() == rav::sdp::media_direction::recvonly);
     REQUIRE(static_cast<int64_t>(media.ptime().value()) == 1);
-    REQUIRE(media.reference_clock().has_value());
-    const auto& refclk = media.reference_clock().value();
+    REQUIRE(media.ref_clock().has_value());
+    const auto& refclk = media.ref_clock().value();
     REQUIRE(refclk.source() == rav::sdp::reference_clock::clock_source::ptp);
     REQUIRE(refclk.ptp_version() == rav::sdp::reference_clock::ptp_ver::IEEE_1588_2008);
     REQUIRE(refclk.gmid() == "39-A7-94-FF-FE-07-CB-D0");
@@ -284,8 +284,8 @@ TEST_CASE("session_description | description from AES67 spec 2", "[session_descr
     REQUIRE(format.num_channels == 8);
     REQUIRE(media.direction() == rav::sdp::media_direction::sendonly);
     REQUIRE(rav::util::is_within(media.ptime().value(), 0.250, 0.00001));
-    REQUIRE(media.reference_clock().has_value());
-    const auto& refclk = media.reference_clock().value();
+    REQUIRE(media.ref_clock().has_value());
+    const auto& refclk = media.ref_clock().value();
     REQUIRE(refclk.source() == rav::sdp::reference_clock::clock_source::ptp);
     REQUIRE(refclk.ptp_version() == rav::sdp::reference_clock::ptp_ver::IEEE_1588_2008);
     REQUIRE(refclk.gmid() == "39-A7-94-FF-FE-07-CB-D0");
