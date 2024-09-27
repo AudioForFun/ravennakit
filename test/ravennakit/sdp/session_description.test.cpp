@@ -137,6 +137,13 @@ TEST_CASE("session_description | description from anubis", "[session_description
             REQUIRE(refclk->gmid() == "00-1D-C1-FF-FE-51-9E-F7");
             REQUIRE(refclk->domain() == 0);
         }
+
+        SECTION("Test mediaclk on media") {
+            const auto& media_clock = media.media_clock().value();
+            REQUIRE(media_clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+            REQUIRE(media_clock.offset().value() == 0);
+            REQUIRE_FALSE(media_clock.rate().has_value());
+        }
     }
 
     SECTION("Media direction") {
@@ -150,6 +157,13 @@ TEST_CASE("session_description | description from anubis", "[session_description
         REQUIRE(refclk->ptp_version() == rav::sdp::reference_clock::ptp_ver::IEEE_1588_2008);
         REQUIRE(refclk->gmid() == "00-1D-C1-FF-FE-51-9E-F7");
         REQUIRE(refclk->domain() == 0);
+    }
+
+    SECTION("Test mediaclk attribute") {
+        auto media_clock = result.move_ok().media_clock().value();
+        REQUIRE(media_clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+        REQUIRE(media_clock.offset().value() == 0);
+        REQUIRE_FALSE(media_clock.rate().has_value());
     }
 }
 
@@ -328,5 +342,20 @@ TEST_CASE("session_description | media_description", "[session_description]") {
         media.parse_attribute("a=maxptime:60.5");
         REQUIRE(media.max_ptime().has_value());
         REQUIRE(rav::util::is_within(*media.max_ptime(), 60.5, 0.0001));
+    }
+
+    SECTION("Test mediaclk attribute") {
+        auto result = rav::session_description::media_description::parse_new("m=audio 5004/2 RTP/AVP 98 99 100");
+        REQUIRE(result.is_ok());
+        auto media = result.move_ok();
+        REQUIRE_FALSE(media.media_clock().has_value());
+        media.parse_attribute("a=mediaclk:direct=5 rate=48000/1");
+        REQUIRE(media.media_clock().has_value());
+        const auto& clock = media.media_clock().value();
+        REQUIRE(clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+        REQUIRE(clock.offset().value() == 5);
+        REQUIRE(clock.rate().has_value());
+        REQUIRE(clock.rate().value().numerator == 48000);
+        REQUIRE(clock.rate().value().denominator == 1);
     }
 }

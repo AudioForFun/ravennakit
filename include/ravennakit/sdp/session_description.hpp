@@ -13,6 +13,7 @@
 #include <sstream>
 #include <vector>
 
+#include "media_clock.hpp"
 #include "ravennakit/core/result.hpp"
 #include "ravennakit/core/string.hpp"
 #include "reference_clock.hpp"
@@ -200,12 +201,17 @@ class session_description {
         /**
          * @return The direction of the media description.
          */
-        [[nodiscard]] std::optional<media_direction> direction() const;
+        [[nodiscard]] const std::optional<media_direction>& direction() const;
 
         /**
          * @return The reference clock of the media description.
          */
-        [[nodiscard]] std::optional<sdp::reference_clock> reference_clock() const;
+        [[nodiscard]] const std::optional<sdp::reference_clock>& reference_clock() const;
+
+        /**
+         * @return The media clock of the media description.
+         */
+        [[nodiscard]] const std::optional<sdp::media_clock>& media_clock() const;
 
       private:
         std::string media_type_;
@@ -218,6 +224,7 @@ class session_description {
         std::optional<double> max_ptime_;
         std::optional<media_direction> media_direction_;
         std::optional<sdp::reference_clock> reference_clock_;
+        std::optional<sdp::media_clock> media_clock_;
     };
 
     /**
@@ -269,6 +276,11 @@ class session_description {
      */
     [[nodiscard]] std::optional<sdp::reference_clock> reference_clock() const;
 
+    /**
+     * @return The media clock of the session description.
+     */
+    [[nodiscard]] const std::optional<sdp::media_clock>& media_clock() const;
+
   private:
     /// Type to specify which section of the SDP we are parsing
     enum class section { session_description, media_description };
@@ -281,6 +293,7 @@ class session_description {
     std::vector<media_description> media_descriptions_;
     std::optional<media_direction> media_direction_;
     std::optional<sdp::reference_clock> reference_clock_;
+    std::optional<sdp::media_clock> media_clock_;
 
     static parse_result<int> parse_version(std::string_view line);
     parse_result<void> parse_attribute(std::string_view line);

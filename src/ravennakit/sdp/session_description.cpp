@@ -329,7 +329,17 @@ rav::session_description::media_description::parse_attribute(const std::string_v
             }
             reference_clock_ = ref_clock.move_ok();
         }
-    } else {
+    } else if (key == sdp::media_clock::k_attribute_name) {
+        if (const auto value = parser.read_until_end()) {
+            auto clock = sdp::media_clock::parse_new(*value);
+            if (clock.is_err()) {
+                return parse_result<void>::err(clock.get_err());
+            }
+            media_clock_ = clock.move_ok();
+        }
+    }
+
+    else {
         RAV_WARNING("Ignoring unknown attribute on media: {}", *key);
     }
 
@@ -373,13 +383,17 @@ std::optional<double> rav::session_description::media_description::max_ptime() c
     return max_ptime_;
 }
 
-std::optional<rav::session_description::media_direction>
+const std::optional<rav::session_description::media_direction>&
 rav::session_description::media_description::direction() const {
     return media_direction_;
 }
 
-std::optional<rav::sdp::reference_clock> rav::session_description::media_description::reference_clock() const {
+const std::optional<rav::sdp::reference_clock>& rav::session_description::media_description::reference_clock() const {
     return reference_clock_;
+}
+
+const std::optional<rav::sdp::media_clock>& rav::session_description::media_description::media_clock() const {
+    return media_clock_;
 }
 
 rav::session_description::parse_result<rav::session_description::format>
@@ -540,6 +554,10 @@ std::optional<rav::sdp::reference_clock> rav::session_description::reference_clo
     return reference_clock_;
 }
 
+const std::optional<rav::sdp::media_clock>& rav::session_description::media_clock() const {
+    return media_clock_;
+}
+
 rav::session_description::parse_result<int> rav::session_description::parse_version(const std::string_view line) {
     if (!starts_with(line, "v=")) {
         return parse_result<int>::err("expecting line to start with 'v='");
@@ -584,7 +602,16 @@ rav::session_description::parse_result<void> rav::session_description::parse_att
             }
             reference_clock_ = ref_clock.move_ok();
         }
-    } else {
+    } else if (key == sdp::media_clock::k_attribute_name) {
+        if (const auto value = parser.read_until_end()) {
+            auto clock = sdp::media_clock::parse_new(*value);
+            if (clock.is_err()) {
+                return parse_result<void>::err(clock.get_err());
+            }
+            media_clock_ = clock.move_ok();
+        }
+    }
+    else {
         RAV_WARNING("Ignoring unknown attribute on session: {}", *key);
     }
 
