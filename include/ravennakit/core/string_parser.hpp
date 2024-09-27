@@ -68,6 +68,27 @@ class string_parser {
     }
 
     /**
+     * Reads a line from the string. A line is considered to be terminated by a newline character or by the end of the
+     * string.
+     * @returns The read line.
+     */
+    std::string_view read_line() {
+        const auto pos = str_.find('\n');
+        if (pos == std::string_view::npos) {
+            const auto str = str_;
+            str_ = {};
+            return str; // NOLINT: The address of the local variable 'substr' may escape the function
+        }
+
+        auto substr = str_.substr(0, pos);
+        str_.remove_prefix(pos + 1);
+        if (substr.back() == '\r') {
+            substr.remove_suffix(1);  // Remove CR from CRLF
+        }
+        return substr;  // NOLINT: The address of the local variable 'substr' may escape the function
+    }
+
+    /**
      * Reads a string until the given delimiter. If delimiter is not found, the whole string is returned.
      * @param delimiter The character sequence to read until.
      * @param include_delimiter Whether to include the delimiter in the returned string.

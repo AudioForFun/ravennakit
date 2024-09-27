@@ -76,6 +76,24 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE_FALSE(parser.read_float().has_value());
     }
 
+    SECTION("Parse some lines") {
+        const auto str = "line1\nline2\nline3";
+        rav::string_parser parser(str);
+        REQUIRE(parser.read_line() == "line1");
+        REQUIRE(parser.read_line() == "line2");
+        REQUIRE(parser.read_line() == "line3");
+        REQUIRE(parser.read_line().empty());
+    }
+
+    SECTION("Parse some lines") {
+        const auto str = "line1\r\nline2\r\nline3\r\n";
+        rav::string_parser parser(str);
+        REQUIRE(parser.read_line() == "line1");
+        REQUIRE(parser.read_line() == "line2");
+        REQUIRE(parser.read_line() == "line3");
+        REQUIRE(parser.read_line().empty());
+    }
+
     SECTION("Parse some refclk strings") {
         const auto str = "ptp=IEEE1588-2008:39-A7-94-FF-FE-07-CB-D0:5";
         rav::string_parser parser(str);
