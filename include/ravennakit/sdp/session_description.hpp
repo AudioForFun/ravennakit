@@ -64,7 +64,7 @@ class session_description {
          * @return A result indicating success or failure. When parsing fails, the error message will contain a
          * description of the error.
          */
-        static parse_result<origin_field> parse_new(const std::string& line);
+        static parse_result<origin_field> parse_new(std::string_view line);
     };
 
     /**
@@ -88,7 +88,7 @@ class session_description {
          * @return A pair containing the parse result and the connection info. When parsing fails, the connection info
          * will be a default-constructed object.
          */
-        static parse_result<connection_info_field> parse_new(const std::string& line);
+        static parse_result<connection_info_field> parse_new(std::string_view line);
     };
 
     /**
@@ -106,7 +106,7 @@ class session_description {
          * @param line The string to parse.
          * @return A pair containing the parse result and the time field.
          */
-        static parse_result<time_active_field> parse_new(const std::string& line);
+        static parse_result<time_active_field> parse_new(std::string_view line);
     };
 
     /**
@@ -116,13 +116,19 @@ class session_description {
         int8_t payload_type {-1};
         std::string encoding_name;
         int32_t clock_rate {};
-        int32_t channels {};
+        int32_t num_channels {};
 
-        static parse_result<format> parse_new(const std::string& line);
+        /**
+         * Parses a format from a string.
+         * @param line The string to parse.
+         * @return A result indicating success or failure. When parsing fails, the error message will contain a
+         * description of what went wrong.
+         */
+        static parse_result<format> parse_new(std::string_view line);
     };
 
     /**
-     * A type representing a media description (m=*) of an SDP session description.
+     * A type representing a media description (m=*) as part of an SDP session description.
      */
     struct media_description {
         /**
@@ -132,7 +138,7 @@ class session_description {
          * @returns A result indicating success or failure. When parsing fails, the error message will contain a
          * description of the error.
          */
-        static parse_result<media_description> parse_new(const std::string& line);
+        static parse_result<media_description> parse_new(std::string_view line);
 
         /**
          * Parse an attribute from a string.
@@ -140,7 +146,7 @@ class session_description {
          * @return A result indicating success or failure. When parsing fails, the error message will contain a
          * description of the error.
          */
-        parse_result<void> parse_attribute(const std::string& line);
+        parse_result<void> parse_attribute(std::string_view line);
 
         /**
          * @returns The media type of the media description (i.e. audio, video, text, application, message).
@@ -264,7 +270,7 @@ class session_description {
     std::optional<media_direction> media_direction_;
 
     static parse_result<int> parse_version(std::string_view line);
-    parse_result<void> parse_attribute(const std::string& line);
+    parse_result<void> parse_attribute(std::string_view line);
 };
 
 }  // namespace rav

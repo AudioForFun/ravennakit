@@ -13,234 +13,240 @@
 #include "ravennakit/core/assert.hpp"
 #include "ravennakit/core/exception.hpp"
 #include "ravennakit/core/log.hpp"
+#include "ravennakit/core/string_parser.hpp"
 #include "ravennakit/core/todo.hpp"
 
 namespace {
 constexpr auto k_sdp_ptime = "ptime";
 constexpr auto k_sdp_max_ptime = "maxptime";
 constexpr auto k_sdp_rtp_map = "rtpmap";
+constexpr auto k_sdp_sendrecv = "sendrecv";
+constexpr auto k_sdp_sendonly = "sendonly";
+constexpr auto k_sdp_recvonly = "recvonly";
+constexpr auto k_sdp_inactive = "recvonly";
+constexpr auto k_sdp_ts_refclk = "ts-refclk";
 constexpr auto k_sdp_inet = "IN";
 constexpr auto k_sdp_ipv4 = "IP4";
 constexpr auto k_sdp_ipv6 = "IP6";
 }  // namespace
 
-namespace {
-
-struct key_value {
-    std::string key;
-    std::string value;
-};
-
-rav::session_description::parse_result<key_value> get_attribute_key_value(const std::string& line) {
-    if (!rav::starts_with(line, "a=")) {
-        return rav::session_description::parse_result<key_value>::err("attribute: expecting 'a='");
-    }
-
-    const auto kv = std::string_view(line).substr(2);
-
-    auto key = std::string(rav::up_to_first_occurrence_of(kv, ":", false));
-    const auto value = std::string(rav::from_first_occurrence_of(kv, ":", false));
-
-    if (key.empty()) {
-        key = kv;
-    }
-
-    return rav::session_description::parse_result<key_value>::ok({key, value});
-}
-}  // namespace
-
 rav::session_description::parse_result<rav::session_description::origin_field>
-rav::session_description::origin_field::parse_new(const std::string& line) {
-    if (!starts_with(line, "o=")) {
-        return result<origin_field, const char*>::err("origin: expecting 'o='");
-    }
+rav::session_description::origin_field::parse_new(const std::string_view line) {
+    string_parser parser(line);
 
-    const auto parts = split_string(line.substr(2), ' ');
-    if (parts.size() != 6) {
-        return parse_result<origin_field>::err("origin: expecting 6 parts");
+    if (!parser.skip("o=")) {
+        return result<origin_field, const char*>::err("origin: expecting 'o='");
     }
 
     origin_field o;
 
-    o.username = parts[0];
-    o.session_id = parts[1];
-
-    if (const auto v = rav::ston<int>(parts[2]); v.has_value()) {
-        o.session_version = *v;
+    // Username
+    if (const auto username = parser.read_until(' ')) {
+        o.username = *username;
     } else {
-        return parse_result<origin_field>::err("origin: failed to parse version as integer");
+        return parse_result<origin_field>::err("origin: failed to parse username");
     }
 
-    if (parts[3] == k_sdp_inet) {
+    // Session id
+    if (const auto session_id = parser.read_until(' ')) {
+        o.session_id = *session_id;
+    } else {
+        return parse_result<origin_field>::err("origin: failed to parse session id");
+    }
+
+    // Session version
+    if (const auto version = parser.read_int<int>()) {
+        o.session_version = *version;
+        parser.skip(' ');
+    } else {
+        return parse_result<origin_field>::err("origin: failed to parse session version");
+    }
+
+    // Network type
+    if (const auto network_type = parser.read_until(' ')) {
+        if (*network_type != k_sdp_inet) {
+            return parse_result<origin_field>::err("origin: invalid network type");
+        }
         o.network_type = netw_type::internet;
     } else {
-        return parse_result<origin_field>::err("origin: invalid network type");
+        return parse_result<origin_field>::err("origin: failed to parse network type");
     }
 
-    if (parts[4] == k_sdp_ipv4) {
-        o.address_type = addr_type::ipv4;
-    } else if (parts[4] == k_sdp_ipv6) {
-        o.address_type = addr_type::ipv6;
+    // Address type
+    if (const auto address_type = parser.read_until(' ')) {
+        if (*address_type == k_sdp_ipv4) {
+            o.address_type = addr_type::ipv4;
+        } else if (*address_type == k_sdp_ipv6) {
+            o.address_type = addr_type::ipv6;
+        } else {
+            return parse_result<origin_field>::err("origin: invalid address type");
+        }
     } else {
-        return parse_result<origin_field>::err("origin: invalid address type");
+        return parse_result<origin_field>::err("origin: failed to parse address type");
     }
 
-    o.unicast_address = parts[5];
+    // Address
+    if (const auto address = parser.read_until(' ')) {
+        o.unicast_address = *address;
+    } else {
+        return parse_result<origin_field>::err("origin: failed to parse address");
+    }
 
     return parse_result<origin_field>::ok(std::move(o));
 }
 
 rav::result<rav::session_description::connection_info_field, const char*>
-rav::session_description::connection_info_field::parse_new(const std::string& line) {
-    if (!starts_with(line, "c=")) {
-        return result<connection_info_field, const char*>::err("connection: expecting 'c='");
-    }
+rav::session_description::connection_info_field::parse_new(const std::string_view line) {
+    string_parser parser(line);
 
-    const auto parts = split_string(line.substr(2), ' ');
-    if (parts.size() != 3) {
-        return parse_result<connection_info_field>::err("connection: expecting 3 parts");
+    if (!parser.skip("c=")) {
+        return result<connection_info_field, const char*>::err("connection: expecting 'c='");
     }
 
     connection_info_field info;
 
-    if (parts[0] == "IN") {
-        info.network_type = netw_type::internet;
+    // Network type
+    if (const auto network_type = parser.read_until(' ')) {
+        if (*network_type == k_sdp_inet) {
+            info.network_type = netw_type::internet;
+        } else {
+            return result<connection_info_field, const char*>::err("connection: invalid network type");
+        }
     } else {
-        return parse_result<connection_info_field>::err("connection: invalid network type");
+        return result<connection_info_field, const char*>::err("connection: failed to parse network type");
     }
 
-    if (parts[1] == "IP4") {
-        info.address_type = addr_type::ipv4;
-    } else if (parts[1] == "IP6") {
-        info.address_type = addr_type::ipv6;
+    // Address type
+    if (const auto address_type = parser.read_until(' ')) {
+        if (*address_type == k_sdp_ipv4) {
+            info.address_type = addr_type::ipv4;
+        } else if (*address_type == k_sdp_ipv6) {
+            info.address_type = addr_type::ipv6;
+        } else {
+            return result<connection_info_field, const char*>::err("connection: invalid address type");
+        }
     } else {
-        return parse_result<connection_info_field>::err("connection: invalid address type");
+        return result<connection_info_field, const char*>::err("connection: failed to parse address type");
     }
 
-    const auto address_parts = split_string(parts[2], '/');
-
-    RAV_ASSERT(!address_parts.empty());
-
-    if (!address_parts.empty()) {
-        info.address = address_parts[0];
+    // Address
+    if (const auto address = parser.read_until('/')) {
+        info.address = *address;
     }
 
-    if (address_parts.size() == 2) {
-        if (info.address_type == addr_type::ipv4) {
-            info.ttl = rav::ston<int>(address_parts[1]);
-            if (!info.ttl.has_value()) {
+    if (parser.exhausted()) {
+        return parse_result<connection_info_field>::ok(std::move(info));
+    }
+
+    // Parse optional ttl and number of addresses
+    if (info.address_type == addr_type::ipv4) {
+        if (auto ttl = parser.read_int<int32_t>()) {
+            info.ttl = *ttl;
+        } else {
+            return parse_result<connection_info_field>::err("connection: failed to parse ttl for ipv4 address");
+        }
+        if (parser.skip('/')) {
+            if (auto num_addresses = parser.read_int<int32_t>()) {
+                info.number_of_addresses = *num_addresses;
+            } else {
                 return parse_result<connection_info_field>::err(
-                    "connection: failed to parse number of addresses as integer"
+                    "connection: failed to parse number of addresses for ipv4 address"
                 );
             }
-        } else if (info.address_type == addr_type::ipv6) {
-            info.number_of_addresses = rav::ston<int>(address_parts[1]);
-            if (!info.number_of_addresses.has_value()) {
-                return parse_result<connection_info_field>::err(
-                    "connection: failed to parse number of addresses as integer"
-                );
-            }
         }
-    } else if (address_parts.size() == 3) {
-        if (info.address_type == addr_type::ipv6) {
-            return parse_result<connection_info_field>::err("connection: invalid address, ttl not allowed for ipv6");
-        }
-        info.ttl = rav::ston<int>(address_parts[1]);
-        info.number_of_addresses = rav::ston<int>(address_parts[2]);
-        if (!info.ttl.has_value()) {
-            return parse_result<connection_info_field>::err("connection: failed to parse ttl as integer");
-        }
-        if (!info.number_of_addresses.has_value()) {
-            return parse_result<connection_info_field>::err("connection: failed to parse number of addresses as integer"
+    } else if (info.address_type == addr_type::ipv6) {
+        if (auto num_addresses = parser.read_int<int32_t>()) {
+            info.number_of_addresses = *num_addresses;
+        } else {
+            return parse_result<connection_info_field>::err(
+                "connection: failed to parse number of addresses for ipv4 address"
             );
         }
-    } else if (address_parts.size() > 3) {
-        return parse_result<connection_info_field>::err("connection: invalid address, got too many forward slashes");
+    }
+
+    if (!parser.exhausted()) {
+        return parse_result<connection_info_field>::err("connection: unexpected characters at end of line");
     }
 
     return parse_result<connection_info_field>::ok(std::move(info));
 }
 
 rav::session_description::parse_result<rav::session_description::time_active_field>
-rav::session_description::time_active_field::parse_new(const std::string& line) {
-    if (!starts_with(line, "t=")) {
+rav::session_description::time_active_field::parse_new(const std::string_view line) {
+    string_parser parser(line);
+
+    if (!parser.skip("t=")) {
         return parse_result<time_active_field>::err("time: expecting 't='");
     }
 
     time_active_field time;
 
-    const auto parts = split_string(line.substr(2), ' ');
-
-    if (parts.size() != 2) {
-        return parse_result<time_active_field>::err("time: expecting 2 parts");
-    }
-
-    const auto start_time = rav::ston<int64_t>(parts[0]);
-    if (!start_time.has_value()) {
+    if (const auto start_time = parser.read_int<int64_t>()) {
+        time.start_time = *start_time;
+    } else {
         return parse_result<time_active_field>::err("time: failed to parse start time as integer");
     }
 
-    const auto stop_time = rav::ston<int64_t>(parts[1]);
-    if (!stop_time.has_value()) {
-        return parse_result<time_active_field>::err("time: failed to parse stop time as integer");
+    if (!parser.skip(' ')) {
+        return parse_result<time_active_field>::err("time: expecting space after start time");
     }
 
-    time.start_time = *start_time;
-    time.stop_time = *stop_time;
+    if (const auto stop_time = parser.read_int<int64_t>()) {
+        time.stop_time = *stop_time;
+    } else {
+        return parse_result<time_active_field>::err("time: failed to parse stop time as integer");
+    }
 
     return parse_result<time_active_field>::ok(time);
 }
 
 rav::session_description::parse_result<rav::session_description::media_description>
-rav::session_description::media_description::parse_new(const std::string& line) {
-    if (!starts_with(line, "m=")) {
+rav::session_description::media_description::parse_new(std::string_view line) {
+    string_parser parser(line);
+
+    if (!parser.skip("m=")) {
         return parse_result<media_description>::err("media: expecting 'm='");
     }
 
     media_description media;
 
-    const auto parts = split_string(line.substr(2), ' ');
-
-    if (parts.size() < 4) {
-        return parse_result<media_description>::err("media: expecting at least 4 parts");
-    }
-
-    media.media_type_ = parts[0];
-
-    const auto port_parts = split_string(parts[1], '/');
-
-    if (port_parts.size() > 2) {
-        return parse_result<media_description>::err("media: unexpected number of parts in port");
+    // Media type
+    if (const auto media_type = parser.read_until(' ')) {
+        media.media_type_ = *media_type;
+    } else {
+        return parse_result<media_description>::err("media: failed to parse media type");
     }
 
     // Port
-    if (!port_parts.empty()) {
-        if (const auto port = rav::ston<uint16_t>(port_parts[0]); port.has_value()) {
-            media.port_ = *port;
+    if (const auto port = parser.read_int<uint16_t>()) {
+        media.port_ = *port;
+        if (parser.skip('/')) {
+            if (const auto num_ports = parser.read_int<uint16_t>()) {
+                media.number_of_ports_ = *num_ports;
+            } else {
+                return parse_result<media_description>::err("media: failed to parse number of ports as integer");
+            }
         } else {
-            return parse_result<media_description>::err("media: failed to parse port as integer");
+            media.number_of_ports_ = 1;
         }
+        parser.skip(' ');
+    } else {
+        return parse_result<media_description>::err("media: failed to parse port as integer");
     }
 
-    // Number of ports
-    if (port_parts.size() == 1) {
-        media.number_of_ports_ = 1;
-    } else if (port_parts.size() == 2) {
-        if (const auto num_ports = rav::ston<uint16_t>(port_parts[1]); num_ports.has_value()) {
-            media.number_of_ports_ = *num_ports;
-        } else {
-            return parse_result<media_description>::err("media: failed to parse number of ports as integer");
-        }
+    // Protocol
+    if (const auto protocol = parser.read_until(' ')) {
+        media.protocol_ = *protocol;
+    } else {
+        return parse_result<media_description>::err("media: failed to parse protocol");
     }
-
-    media.protocol_ = parts[2];
 
     // Formats
-    for (size_t i = 3; i < parts.size(); ++i) {
-        if (auto value = rav::ston<int8_t>(parts[i])) {
+    while (const auto format_str = parser.read_until(' ')) {
+        if (const auto value = rav::ston<int8_t>(*format_str)) {
             media.formats_.push_back({*value, {}, {}, {}});
         } else {
-            return parse_result<media_description>::err("media: failed to parse format as integer");
+            return parse_result<media_description>::err("media: format integer parsing failed");
         }
     }
 
@@ -248,61 +254,74 @@ rav::session_description::media_description::parse_new(const std::string& line) 
 }
 
 rav::session_description::parse_result<void>
-rav::session_description::media_description::parse_attribute(const std::string& line) {
-    auto result = get_attribute_key_value(line);
-    if (result.is_err()) {
-        return parse_result<void>::err(result.get_err());
+rav::session_description::media_description::parse_attribute(const std::string_view line) {
+    string_parser parser(line);
+
+    if (!parser.skip("a=")) {
+        return parse_result<void>::err("attribute: expecting 'a='");
     }
 
-    auto [key, value] = result.move_ok();
+    auto key = parser.read_until(':');
+
+    if (!key) {
+        return parse_result<void>::err("attribute: expecting key");
+    }
 
     if (key == k_sdp_rtp_map) {
-        auto format_result = format::parse_new(value);
-        if (format_result.is_err()) {
-            return parse_result<void>::err(format_result.get_err());
-        }
-
-        auto format = format_result.move_ok();
-
-        bool found = false;
-        for (auto& fmt : formats_) {
-            if (fmt.payload_type == format.payload_type) {
-                fmt = format;
-                found = true;
-                break;
+        if (const auto value = parser.read_until_end()) {
+            auto format_result = format::parse_new(*value);
+            if (format_result.is_err()) {
+                return parse_result<void>::err(format_result.get_err());
             }
-        }
-        if (!found) {
-            return parse_result<void>::err("media: rtpmap attribute for unknown payload type");
+
+            auto format = format_result.move_ok();
+
+            bool found = false;
+            for (auto& fmt : formats_) {
+                if (fmt.payload_type == format.payload_type) {
+                    fmt = format;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                return parse_result<void>::err("media: rtpmap attribute for unknown payload type");
+            }
+        } else {
+            return parse_result<void>::err("media: failed to parse rtpmap value");
         }
     } else if (key == k_sdp_ptime) {
-        if (const auto ptime = rav::stod(value)) {
-            if (*ptime < 0) {
-                return parse_result<void>::err("media: ptime must be a positive number");
+        if (const auto value = parser.read_until_end()) {
+            if (const auto ptime = rav::stod(value->data())) {
+                if (*ptime < 0) {
+                    return parse_result<void>::err("media: ptime must be a positive number");
+                }
+                ptime_ = *ptime;
+            } else {
+                return parse_result<void>::err("media: failed to parse ptime as double");
             }
-            ptime_ = *ptime;
-        } else {
-            return parse_result<void>::err("media: failed to parse ptime as double");
         }
     } else if (key == k_sdp_max_ptime) {
-        if (const auto maxptime = rav::stod(value)) {
-            if (*maxptime < 0) {
-                return parse_result<void>::err("media: maxptime must be a positive number");
+        if (const auto value = parser.read_until_end()) {
+            if (const auto maxptime = rav::stod(value->data())) {
+                if (*maxptime < 0) {
+                    return parse_result<void>::err("media: maxptime must be a positive number");
+                }
+                max_ptime_ = *maxptime;
+            } else {
+                return parse_result<void>::err("media: failed to parse ptime as double");
             }
-            max_ptime_ = *maxptime;
-        } else {
-            return parse_result<void>::err("media: failed to parse ptime as double");
         }
-    } else if (key == "sendrecv") {
+    } else if (key == k_sdp_sendrecv) {
         media_direction_ = media_direction::sendrecv;
-    } else if (key == "sendonly") {
+    } else if (key == k_sdp_sendonly) {
         media_direction_ = media_direction::sendonly;
-    } else if (key == "recvonly") {
+    } else if (key == k_sdp_recvonly) {
         media_direction_ = media_direction::recvonly;
-    } else if (key == "inactive") {
+    } else if (key == k_sdp_inactive) {
         media_direction_ = media_direction::inactive;
     } else {
-        RAV_WARNING("Ignoring unknown attribute on media: {}", key);
+        RAV_WARNING("Ignoring unknown attribute on media: {}", *key);
     }
 
     return parse_result<void>::ok();
@@ -351,42 +370,41 @@ rav::session_description::media_description::direction() const {
 }
 
 rav::session_description::parse_result<rav::session_description::format>
-rav::session_description::format::parse_new(const std::string& line) {
-    const auto parts = split_string(line, ' ');
-    if (parts.size() != 2) {
-        return parse_result<format>::err("rtpmap: expecting exactly 2 parts");
-    }
+rav::session_description::format::parse_new(const std::string_view line) {
+    string_parser parser(line);
 
     format map;
 
-    if (const auto payload_type = rav::ston<int8_t>(parts[0])) {
+    if (const auto payload_type = parser.read_int<int8_t>()) {
         map.payload_type = *payload_type;
+        if (!parser.skip(' ')) {
+            return parse_result<format>::err("rtpmap: expecting space after payload type");
+        }
     } else {
         return parse_result<format>::err("rtpmap: invalid payload type");
     }
 
-    const auto encoding_parts = split_string(parts[1], '/');
-
-    if (encoding_parts.size() < 2) {
-        return parse_result<format>::err("rtpmap: expecting at least 2 parts in encoding");
+    if (const auto encoding_name = parser.read_until('/')) {
+        map.encoding_name = *encoding_name;
+    } else {
+        return parse_result<format>::err("rtpmap: failed to parse encoding name");
     }
 
-    map.encoding_name = encoding_parts[0];
-
-    if (const auto clock_rate = rav::ston<int>(encoding_parts[1])) {
+    if (const auto clock_rate = parser.read_int<int>()) {
         map.clock_rate = *clock_rate;
     } else {
         return parse_result<format>::err("rtpmap: invalid clock rate");
     }
 
-    if (encoding_parts.size() > 2) {
-        if (const auto channels = rav::ston<int>(encoding_parts[2])) {
-            map.channels = *channels;
+    if (parser.skip('/')) {
+        if (const auto num_channels = parser.read_int<int32_t>()) {
+            // Note: strictly speaking the encoding parameters can be anything, but as of now it's only used for channels.
+            map.num_channels = *num_channels;
         } else {
-            return parse_result<format>::err("rtpmap: invalid encoding parameters");
+            return parse_result<format>::err("rtpmap: failed to parse number of channels");
         }
     } else {
-        map.channels = 1;
+        map.num_channels = 1;
     }
 
     return parse_result<format>::ok(map);
@@ -395,30 +413,16 @@ rav::session_description::format::parse_new(const std::string& line) {
 rav::session_description::parse_result<rav::session_description>
 rav::session_description::parse_new(const std::string& sdp_text) {
     session_description sd;
-    std::istringstream stream(sdp_text);
-    std::string line;
+    string_parser parser(sdp_text);
 
-    while (std::getline(stream, line)) {
-        if (line.empty()) {
+    for (auto line = parser.read_line(); line.has_value(); line = parser.read_line()) {
+        if (line->empty()) {
             continue;
         }
 
-        if (line.back() == '\r') {  // Remove trailing '\r' if present (because of CRLF)
-            line.pop_back();
-        }
-
-        if (line.size() < 2) {
-            return parse_result<session_description>::err("session_description: line too short");
-        }
-
-        if (line[1] != '=') {
-            RAV_ERROR("Invalid line: {}", line);
-            return parse_result<session_description>::err("session_description: expecting equal(=) sign");
-        }
-
-        switch (line.front()) {
+        switch (line->front()) {
             case 'v': {
-                auto result = parse_version(line);
+                auto result = parse_version(*line);
                 if (result.is_err()) {
                     return parse_result<session_description>::err(result.get_err());
                 }
@@ -426,7 +430,7 @@ rav::session_description::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 'o': {
-                auto result = origin_field::parse_new(line);
+                auto result = origin_field::parse_new(*line);
                 if (result.is_err()) {
                     return parse_result<session_description>::err(result.get_err());
                 }
@@ -434,11 +438,11 @@ rav::session_description::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 's': {
-                sd.session_name_ = line.substr(2);
+                sd.session_name_ = line->substr(2);
                 break;
             }
             case 'c': {
-                auto result = connection_info_field::parse_new(line);
+                auto result = connection_info_field::parse_new(*line);
                 if (result.is_err()) {
                     return parse_result<session_description>::err(result.get_err());
                 }
@@ -450,7 +454,7 @@ rav::session_description::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 't': {
-                auto result = time_active_field::parse_new(line);
+                auto result = time_active_field::parse_new(*line);
                 if (result.is_err()) {
                     return parse_result<session_description>::err(result.get_err());
                 }
@@ -458,7 +462,7 @@ rav::session_description::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 'm': {
-                auto result = media_description::parse_new(line);
+                auto result = media_description::parse_new(*line);
                 if (result.is_err()) {
                     return parse_result<session_description>::err(result.get_err());
                 }
@@ -467,12 +471,12 @@ rav::session_description::parse_new(const std::string& sdp_text) {
             }
             case 'a': {
                 if (!sd.media_descriptions_.empty()) {
-                    auto result = sd.media_descriptions_.back().parse_attribute(line);
+                    auto result = sd.media_descriptions_.back().parse_attribute(*line);
                     if (result.is_err()) {
                         return parse_result<session_description>::err(result.get_err());
                     }
                 } else {
-                    auto result = sd.parse_attribute(line);
+                    auto result = sd.parse_attribute(*line);
                     if (result.is_err()) {
                         return parse_result<session_description>::err(result.get_err());
                     }
@@ -533,24 +537,31 @@ rav::session_description::parse_result<int> rav::session_description::parse_vers
     return parse_result<int>::err("failed to parse integer from string");
 }
 
-rav::session_description::parse_result<void> rav::session_description::parse_attribute(const std::string& line) {
-    auto result = get_attribute_key_value(line);
-    if (result.is_err()) {
-        return parse_result<void>::err(result.get_err());
+rav::session_description::parse_result<void> rav::session_description::parse_attribute(const std::string_view line) {
+    string_parser parser(line);
+
+    if (!parser.skip("a=")) {
+        return parse_result<void>::err("attribute: expecting 'a='");
     }
 
-    auto [key, value] = result.move_ok();
+    const auto key = parser.read_until(':');
 
-    if (key == "sendrecv") {
+    if (!key) {
+        return parse_result<void>::err("attribute: expecting key");
+    }
+
+    if (key == k_sdp_sendrecv) {
         media_direction_ = media_direction::sendrecv;
-    } else if (key == "sendonly") {
+    } else if (key == k_sdp_sendonly) {
         media_direction_ = media_direction::sendonly;
-    } else if (key == "recvonly") {
+    } else if (key == k_sdp_recvonly) {
         media_direction_ = media_direction::recvonly;
-    } else if (key == "inactive") {
+    } else if (key == k_sdp_inactive) {
         media_direction_ = media_direction::inactive;
+    } else if (key == k_sdp_ts_refclk) {
+        // TODO("Implement!");
     } else {
-        RAV_WARNING("Ignoring unknown attribute on session: {}", key);
+        RAV_WARNING("Ignoring unknown attribute on session: {}", *key);
     }
 
     return parse_result<void>::ok();

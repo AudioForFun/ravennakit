@@ -80,6 +80,19 @@ class string_parser {
     }
 
     /**
+     * Reads the rest of the string.
+     * @return The read string.
+     */
+    std::optional<std::string_view> read_until_end() {
+        if (str_.empty()) {
+            return std::nullopt;
+        }
+        auto str = str_;
+        str_ = {};
+        return str;
+    }
+
+    /**
      * Reads a string until the given delimiter. If delimiter is not found, the whole string is returned.
      * @param delimiter The character sequence to read until.
      * @param include_delimiter Whether to include the delimiter in the returned string.

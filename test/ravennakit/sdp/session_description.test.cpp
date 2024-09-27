@@ -118,7 +118,7 @@ TEST_CASE("session_description | description from anubis", "[session_description
         REQUIRE(format.payload_type == 98);
         REQUIRE(format.encoding_name == "L16");
         REQUIRE(format.clock_rate == 48000);
-        REQUIRE(format.channels == 2);
+        REQUIRE(format.num_channels == 2);
         REQUIRE(media.connection_infos().size() == 1);
 
         const auto& conn = media.connection_infos().back();
@@ -198,7 +198,7 @@ TEST_CASE("session_description | connection_info_field", "[session_description]"
         REQUIRE(*connection.number_of_addresses == 3);
     }
 
-    SECTION("Parse ipv6 connection line with ttl and number of addresses") {
+    SECTION("Parse ipv6 connection line with ttl and number of addresses (which should fail)") {
         auto result = rav::session_description::connection_info_field::parse_new("c=IN IP6 ff00::db8:0:101/127/3");
         REQUIRE(result.is_err());
     }
@@ -253,37 +253,42 @@ TEST_CASE("session_description | media_description", "[session_description]") {
         REQUIRE(format1.payload_type == 98);
         REQUIRE(format1.encoding_name.empty());
         REQUIRE(format1.clock_rate == 0);
-        REQUIRE(format1.channels == 0);
+        REQUIRE(format1.num_channels == 0);
 
         const auto& format2 = media.formats()[1];
         REQUIRE(format2.payload_type == 99);
         REQUIRE(format2.encoding_name.empty());
         REQUIRE(format2.clock_rate == 0);
-        REQUIRE(format2.channels == 0);
+        REQUIRE(format2.num_channels == 0);
 
         const auto& format3 = media.formats()[2];
         REQUIRE(format3.payload_type == 100);
         REQUIRE(format3.encoding_name.empty());
         REQUIRE(format3.clock_rate == 0);
-        REQUIRE(format3.channels == 0);
+        REQUIRE(format3.num_channels == 0);
 
         media.parse_attribute("a=rtpmap:98 L16/48000/2");
         REQUIRE(format1.payload_type == 98);
         REQUIRE(format1.encoding_name == "L16");
         REQUIRE(format1.clock_rate == 48000);
-        REQUIRE(format1.channels == 2);
+        REQUIRE(format1.num_channels == 2);
 
         media.parse_attribute("a=rtpmap:99 L16/96000/2");
         REQUIRE(format2.payload_type == 99);
         REQUIRE(format2.encoding_name == "L16");
         REQUIRE(format2.clock_rate == 96000);
-        REQUIRE(format2.channels == 2);
+        REQUIRE(format2.num_channels == 2);
 
         media.parse_attribute("a=rtpmap:100 L24/44100");
         REQUIRE(format3.payload_type == 100);
         REQUIRE(format3.encoding_name == "L24");
         REQUIRE(format3.clock_rate == 44100);
-        REQUIRE(format3.channels == 1);
+        REQUIRE(format3.num_channels == 1);
+    }
+
+    SECTION("Test media field with multiple formats and an invalid one") {
+        auto result = rav::session_description::media_description::parse_new("m=audio 5004/2 RTP/AVP 98 99 100 128");
+        REQUIRE(result.is_err());
     }
 
     SECTION("Test media field direction") {
@@ -291,7 +296,8 @@ TEST_CASE("session_description | media_description", "[session_description]") {
         REQUIRE(result.is_ok());
         auto media = result.move_ok();
         REQUIRE_FALSE(media.direction().has_value());
-        media.parse_attribute("a=recvonly");
+        auto result2 = media.parse_attribute("a=recvonly");
+        REQUIRE(result2.is_ok());
         REQUIRE(media.direction().has_value());
         REQUIRE(*media.direction() == rav::session_description::media_direction::recvonly);
     }
