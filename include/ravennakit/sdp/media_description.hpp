@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <string>
 
-#include "media_clock.hpp"
+#include "media_clock_source.hpp"
 #include "ravennakit/core/result.hpp"
 #include "ravennakit/core/string_parser.hpp"
 #include "reference_clock.hpp"
@@ -256,7 +256,7 @@ class media_description {
     /**
      * @return The media clock of the media description.
      */
-    [[nodiscard]] const std::optional<media_clock>& media_clock() const;
+    [[nodiscard]] const std::optional<media_clock_source>& media_clock() const;
 
     /**
      * @return The session information of the media description.
@@ -267,6 +267,11 @@ class media_description {
      * @return The sync-time of the stream. This is a RAVENNA-specific attribute extension.
      */
     [[nodiscard]] std::optional<uint32_t> sync_time() const;
+
+    /**
+     * @return The clock deviation of the stream. This is a RAVENNA-specific attribute extension.
+     */
+    [[nodiscard]] const std::optional<fraction<uint32_t>>& clock_deviation() const;
 
   private:
     std::string media_type_;
@@ -279,10 +284,11 @@ class media_description {
     std::optional<double> max_ptime_;
     std::optional<media_direction> media_direction_;
     std::optional<reference_clock> reference_clock_;
-    std::optional<sdp::media_clock> media_clock_;
+    std::optional<sdp::media_clock_source> media_clock_;
     std::optional<std::string> session_information_;
-    std::optional<ravenna_clock_domain> clock_domain_;  // RAVENNA-specific attribute
-    std::optional<uint32_t> sync_time_;                 // RAVENNA-specific attribute
+    std::optional<ravenna_clock_domain> clock_domain_;   // RAVENNA-specific attribute
+    std::optional<uint32_t> sync_time_;                  // RAVENNA-specific attribute
+    std::optional<fraction<uint32_t>> clock_deviation_;  // RAVENNA-specific attribute
 };
 
 }  // namespace rav::sdp

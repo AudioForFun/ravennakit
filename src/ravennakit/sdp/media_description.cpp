@@ -381,9 +381,9 @@ rav::sdp::media_description::parse_result<void> rav::sdp::media_description::par
         } else {
             return parse_result<void>::err("media: failed to parse ts-refclk value");
         }
-    } else if (key == sdp::media_clock::k_attribute_name) {
+    } else if (key == sdp::media_clock_source::k_attribute_name) {
         if (const auto value = parser.read_until_end()) {
-            auto clock = sdp::media_clock::parse_new(*value);
+            auto clock = sdp::media_clock_source::parse_new(*value);
             if (clock.is_err()) {
                 return parse_result<void>::err(clock.get_err());
             }
@@ -407,6 +407,19 @@ rav::sdp::media_description::parse_result<void> rav::sdp::media_description::par
         } else {
             return parse_result<void>::err("media: failed to parse sync-time value");
         }
+    } else if (key == "clock-deviation") {
+        const auto num = parser.read_int<uint32_t>();
+        if (!num) {
+            return parse_result<void>::err("media: failed to parse clock-deviation value");
+        }
+        if (!parser.skip('/')) {
+            return parse_result<void>::err("media: expecting '/' after clock-deviation numerator value");
+        }
+        const auto denom = parser.read_int<uint32_t>();
+        if (!denom) {
+            return parse_result<void>::err("media: failed to parse clock-deviation denominator value");
+        }
+        clock_deviation_ = fraction<uint32_t> {*num, *denom};
     }
 
     else {
@@ -464,7 +477,7 @@ const std::optional<rav::sdp::reference_clock>& rav::sdp::media_description::ref
     return reference_clock_;
 }
 
-const std::optional<rav::sdp::media_clock>& rav::sdp::media_description::media_clock() const {
+const std::optional<rav::sdp::media_clock_source>& rav::sdp::media_description::media_clock() const {
     return media_clock_;
 }
 
@@ -474,4 +487,8 @@ const std::optional<std::string>& rav::sdp::media_description::session_informati
 
 std::optional<uint32_t> rav::sdp::media_description::sync_time() const {
     return sync_time_;
+}
+
+const std::optional<rav::fraction<unsigned>>& rav::sdp::media_description::clock_deviation() const {
+    return clock_deviation_;
 }

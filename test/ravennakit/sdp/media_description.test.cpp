@@ -199,10 +199,21 @@ TEST_CASE("media_description | media_description", "[session_description]") {
         media.parse_attribute("a=mediaclk:direct=5 rate=48000/1");
         REQUIRE(media.media_clock().has_value());
         const auto& clock = media.media_clock().value();
-        REQUIRE(clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+        REQUIRE(clock.mode() == rav::sdp::media_clock_source::clock_mode::direct);
         REQUIRE(clock.offset().value() == 5);
         REQUIRE(clock.rate().has_value());
         REQUIRE(clock.rate().value().numerator == 48000);
         REQUIRE(clock.rate().value().denominator == 1);
+    }
+
+    SECTION("Test clock-deviation attribute") {
+        auto result = rav::sdp::media_description::parse_new("m=audio 5004/2 RTP/AVP 98 99 100");
+        REQUIRE(result.is_ok());
+        auto media = result.move_ok();
+        REQUIRE_FALSE(media.media_clock().has_value());
+        media.parse_attribute("a=clock-deviation:1001/1000");
+        REQUIRE(media.clock_deviation().has_value());
+        REQUIRE(media.clock_deviation().value().numerator == 1001);
+        REQUIRE(media.clock_deviation().value().denominator == 1000);
     }
 }

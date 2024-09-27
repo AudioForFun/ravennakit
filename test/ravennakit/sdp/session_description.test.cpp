@@ -144,7 +144,7 @@ TEST_CASE("session_description | description from anubis", "[session_description
 
         SECTION("Test mediaclk on media") {
             const auto& media_clock = media.media_clock().value();
-            REQUIRE(media_clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+            REQUIRE(media_clock.mode() == rav::sdp::media_clock_source::clock_mode::direct);
             REQUIRE(media_clock.offset().value() == 0);
             REQUIRE_FALSE(media_clock.rate().has_value());
         }
@@ -165,7 +165,7 @@ TEST_CASE("session_description | description from anubis", "[session_description
 
     SECTION("Test mediaclk attribute") {
         auto media_clock = result.move_ok().media_clock().value();
-        REQUIRE(media_clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+        REQUIRE(media_clock.mode() == rav::sdp::media_clock_source::clock_mode::direct);
         REQUIRE(media_clock.offset().value() == 0);
         REQUIRE_FALSE(media_clock.rate().has_value());
     }
@@ -233,7 +233,7 @@ TEST_CASE("session_description | description from AES67 spec", "[session_descrip
     REQUIRE(refclk.domain() == 0);
     REQUIRE(media.media_clock().has_value());
     const auto& media_clock = media.media_clock().value();
-    REQUIRE(media_clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+    REQUIRE(media_clock.mode() == rav::sdp::media_clock_source::clock_mode::direct);
     REQUIRE(media_clock.offset().value() == 963214424);
     REQUIRE_FALSE(media_clock.rate().has_value());
 }
@@ -296,7 +296,7 @@ TEST_CASE("session_description | description from AES67 spec 2", "[session_descr
     REQUIRE(refclk.domain() == 0);
     REQUIRE(media.media_clock().has_value());
     const auto& media_clock = media.media_clock().value();
-    REQUIRE(media_clock.mode() == rav::sdp::media_clock::clock_mode::direct);
+    REQUIRE(media_clock.mode() == rav::sdp::media_clock_source::clock_mode::direct);
     REQUIRE(media_clock.offset().value() == 2216659908);
     REQUIRE_FALSE(media_clock.rate().has_value());
 }

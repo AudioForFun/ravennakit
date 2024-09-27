@@ -81,7 +81,7 @@ class session_description {
     /**
      * @return The media clock of the session description.
      */
-    [[nodiscard]] const std::optional<media_clock>& media_clock() const;
+    [[nodiscard]] const std::optional<media_clock_source>& media_clock() const;
 
     /**
      * @return The clock domain of the session description. This is a RAVENNA-specific attribute extension.
@@ -101,7 +101,7 @@ class session_description {
     std::vector<media_description> media_descriptions_;
     std::optional<media_direction> media_direction_;
     std::optional<reference_clock> reference_clock_;
-    std::optional<sdp::media_clock> media_clock_;
+    std::optional<sdp::media_clock_source> media_clock_;
     std::optional<ravenna_clock_domain> clock_domain_;
 
     static parse_result<int> parse_version(std::string_view line);

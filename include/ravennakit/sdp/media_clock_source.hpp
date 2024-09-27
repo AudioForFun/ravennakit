@@ -22,7 +22,7 @@ namespace rav::sdp {
  * packets.
  * https://datatracker.ietf.org/doc/html/rfc7273#autoid-15
  */
-class media_clock {
+class media_clock_source {
   public:
     static constexpr auto k_attribute_name = "mediaclk";
 
@@ -32,7 +32,7 @@ class media_clock {
     template<class T>
     using parse_result = result<T, const char*>;
 
-    static parse_result<media_clock> parse_new(std::string_view line);
+    static parse_result<media_clock_source> parse_new(std::string_view line);
 
     /**
      * @returns The clock mode

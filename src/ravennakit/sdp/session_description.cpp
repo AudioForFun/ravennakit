@@ -142,7 +142,7 @@ std::optional<rav::sdp::reference_clock> rav::sdp::session_description::ref_cloc
     return reference_clock_;
 }
 
-const std::optional<rav::sdp::media_clock>& rav::sdp::session_description::media_clock() const {
+const std::optional<rav::sdp::media_clock_source>& rav::sdp::session_description::media_clock() const {
     return media_clock_;
 }
 
@@ -196,9 +196,9 @@ rav::sdp::session_description::parse_attribute(const std::string_view line) {
             }
             reference_clock_ = ref_clock.move_ok();
         }
-    } else if (key == sdp::media_clock::k_attribute_name) {
+    } else if (key == sdp::media_clock_source::k_attribute_name) {
         if (const auto value = parser.read_until_end()) {
-            auto clock = sdp::media_clock::parse_new(*value);
+            auto clock = sdp::media_clock_source::parse_new(*value);
             if (clock.is_err()) {
                 return parse_result<void>::err(clock.get_err());
             }
