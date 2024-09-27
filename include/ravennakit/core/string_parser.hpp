@@ -14,6 +14,7 @@
 #include <string>
 #include <string_view>
 #include <optional>
+#include <cstring>
 
 namespace rav {
 
@@ -42,7 +43,7 @@ class string_parser {
      * make sure for the original string to outlive this parser instance.
      * @param str The string to parse.
      */
-    explicit string_parser(const char* str) : str_ {str, strlen(str)} {}
+    explicit string_parser(const char* str) : str_ {str, std::strlen(str)} {}
 
     /**
      * Constructs a parser from given string. Doesn't take ownership of the string, so make sure for the original string
@@ -69,6 +70,23 @@ class string_parser {
     }
 
     /**
+     * Reads a string until the given delimiter. If delimiter is not found, the whole string is returned.
+     * @param delimiter The character sequence to read until.
+     * @param include_delimiter Whether to include the delimiter in the returned string.
+     * @return The read string.
+     */
+    std::string_view read_string(const char* delimiter, const bool include_delimiter = false) {
+        const auto pos = str_.find(delimiter);
+        if (pos == std::string_view::npos) {
+            return str_;
+        }
+
+        const auto substr = str_.substr(0, include_delimiter ? pos + strlen(delimiter) : pos);
+        str_.remove_prefix(pos + strlen(delimiter));
+        return substr;  // NOLINT: The address of the local variable 'substr' may escape the function
+    }
+
+    /**
      * Reads a line from the string. A line is considered to be terminated by a newline character or by the end of the
      * string.
      * @returns The read line.
@@ -86,23 +104,6 @@ class string_parser {
         if (substr.back() == '\r') {
             substr.remove_suffix(1);  // Remove CR from CRLF
         }
-        return substr;  // NOLINT: The address of the local variable 'substr' may escape the function
-    }
-
-    /**
-     * Reads a string until the given delimiter. If delimiter is not found, the whole string is returned.
-     * @param delimiter The character sequence to read until.
-     * @param include_delimiter Whether to include the delimiter in the returned string.
-     * @return The read string.
-     */
-    std::string_view read_string(const char* delimiter, const bool include_delimiter = false) {
-        const auto pos = str_.find(delimiter);
-        if (pos == std::string_view::npos) {
-            return str_;
-        }
-
-        const auto substr = str_.substr(0, include_delimiter ? pos + strlen(delimiter) : pos);
-        str_.remove_prefix(pos + strlen(delimiter));
         return substr;  // NOLINT: The address of the local variable 'substr' may escape the function
     }
 
