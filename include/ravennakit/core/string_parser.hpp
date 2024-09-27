@@ -13,6 +13,7 @@
 #include <charconv>
 #include <string>
 #include <string_view>
+#include <optional>
 
 namespace rav {
 
