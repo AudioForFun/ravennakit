@@ -187,35 +187,29 @@ class string_parser {
     /**
      * Skips the given sequence of characters from the beginning of the string.
      * @param chars The characters to skip.
-     * @return The number of characters skipped.
+     * @return True if the sequence was skipped, or false otherwise.
      */
-    size_t skip(const char* chars) {
-        const auto pos = str_.find_first_not_of(chars);
-        if (pos == std::string_view::npos) {
-            const auto size = str_.size();
-            str_ = {};
-            return size;
+    bool skip(const char* chars) {
+        if (str_.rfind(chars, 0) == 0) {
+            str_.remove_prefix(std::strlen(chars));
+            return true;
         }
 
-        str_.remove_prefix(pos);
-        return pos;
+        return false;
     }
 
     /**
      * Skips the given character from the beginning of the string.
      * @param chr The character to skip.
-     * @return The number of characters skipped.
+     * @return True if the sequence was skipped, or false otherwise.
      */
-    size_t skip(const char chr) {
-        const auto pos = str_.find_first_not_of(chr);
-        if (pos == std::string_view::npos) {
-            const auto size = str_.size();
-            str_ = {};
-            return size;
+    bool skip(const char chr) {
+        if (str_.rfind(chr, 0) == 0) {
+            str_.remove_prefix(1);
+            return true;
         }
 
-        str_.remove_prefix(pos);
-        return pos;
+        return false;
     }
 
   private:

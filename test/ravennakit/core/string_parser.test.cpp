@@ -48,6 +48,14 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE(parser.read_string_until('3', true) == "2.3");
     }
 
+    SECTION("Test delimited string with include_delimiter") {
+        const auto str = "0.1.2.3";
+        rav::string_parser parser(str);
+        REQUIRE(parser.read_string_until('1') == "0.");
+        REQUIRE(parser.read_string_until('.') == "");
+        REQUIRE(parser.read_string_until('3') == "2.");
+    }
+
     SECTION("Test delimited string where delimiter is not found") {
         SECTION("Single char") {
             const auto str = "0.1.2.3";
@@ -80,6 +88,20 @@ TEST_CASE("string_parser", "[string_parser]") {
             REQUIRE(parser.read_string_until(".") == "2");
             REQUIRE(parser.read_string_until(".") == "3");
             REQUIRE_FALSE(parser.read_string_until(".").has_value());
+        }
+    }
+
+    SECTION("Test string with only delimiter") {
+        SECTION("Include delimiter") {
+            const auto str = ".";
+            rav::string_parser parser(str);
+            REQUIRE(parser.read_string_until('.', true) == ".");
+        }
+
+        SECTION("Exclude delimiter") {
+            const auto str = ".";
+            rav::string_parser parser(str);
+            REQUIRE(parser.read_string_until('.') == "");
         }
     }
 
@@ -150,42 +172,42 @@ TEST_CASE("string_parser", "[string_parser]") {
     SECTION("Skip character") {
         const auto str = "line";
         rav::string_parser parser(str);
-        REQUIRE(parser.skip('l') == 1);
+        REQUIRE(parser.skip('l'));
         REQUIRE(parser.read_line() == "ine");
     }
 
     SECTION("Skip character") {
         const auto str = "line";
         rav::string_parser parser(str);
-        REQUIRE(parser.skip('a') == 0);
+        REQUIRE_FALSE(parser.skip('a'));
         REQUIRE(parser.read_line() == "line");
     }
 
     SECTION("Skip character") {
         const auto str = "";
         rav::string_parser parser(str);
-        REQUIRE(parser.skip('a') == 0);
+        REQUIRE_FALSE(parser.skip('a'));
         REQUIRE_FALSE(parser.read_line().has_value());
     }
 
     SECTION("Skip characters") {
         const auto str = "line";
         rav::string_parser parser(str);
-        REQUIRE(parser.skip("li") == 2);
+        REQUIRE(parser.skip("li"));
         REQUIRE(parser.read_line() == "ne");
     }
 
     SECTION("Skip characters") {
         const auto str = "line";
         rav::string_parser parser(str);
-        REQUIRE(parser.skip("aa") == 0);
+        REQUIRE_FALSE(parser.skip("aa"));
         REQUIRE(parser.read_line() == "line");
     }
 
     SECTION("Skip characters") {
         const auto str = "";
         rav::string_parser parser(str);
-        REQUIRE(parser.skip("aa") == 0);
+        REQUIRE_FALSE(parser.skip("aa"));
         REQUIRE_FALSE(parser.read_line().has_value());
     }
 
