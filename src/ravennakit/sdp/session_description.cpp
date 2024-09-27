@@ -138,7 +138,7 @@ rav::sdp::media_direction rav::session_description::direction() const {
     return sdp::media_direction::sendrecv;
 }
 
-std::optional<rav::sdp::reference_clock> rav::session_description::reference_clock() const {
+std::optional<rav::sdp::reference_clock> rav::session_description::ref_clock() const {
     return reference_clock_;
 }
 

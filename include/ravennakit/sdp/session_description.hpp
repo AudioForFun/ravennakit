@@ -76,7 +76,7 @@ class session_description {
     /**
      * @return The reference clock of the session description.
      */
-    [[nodiscard]] std::optional<sdp::reference_clock> reference_clock() const;
+    [[nodiscard]] std::optional<sdp::reference_clock> ref_clock() const;
 
     /**
      * @return The media clock of the session description.

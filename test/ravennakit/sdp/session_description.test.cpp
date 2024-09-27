@@ -151,7 +151,7 @@ TEST_CASE("session_description | description from anubis", "[session_description
     }
 
     SECTION("Test refclk on session") {
-        const auto& refclk = result.get_ok().reference_clock();
+        const auto& refclk = result.get_ok().ref_clock();
         REQUIRE(refclk.has_value());
         REQUIRE(refclk->source() == rav::sdp::reference_clock::clock_source::ptp);
         REQUIRE(refclk->ptp_version() == rav::sdp::reference_clock::ptp_ver::IEEE_1588_2008);
