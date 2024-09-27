@@ -76,7 +76,7 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE_FALSE(parser.read_float().has_value());
     }
 
-    SECTION("Parse some lines") {
+    SECTION("Parse some LF lines") {
         const auto str = "line1\nline2\nline3";
         rav::string_parser parser(str);
         REQUIRE(parser.read_line() == "line1");
@@ -85,8 +85,17 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE(parser.read_line().empty());
     }
 
-    SECTION("Parse some lines") {
+    SECTION("Parse some CRLF lines") {
         const auto str = "line1\r\nline2\r\nline3\r\n";
+        rav::string_parser parser(str);
+        REQUIRE(parser.read_line() == "line1");
+        REQUIRE(parser.read_line() == "line2");
+        REQUIRE(parser.read_line() == "line3");
+        REQUIRE(parser.read_line().empty());
+    }
+
+    SECTION("Parse some mixed lines") {
+        const auto str = "line1\r\nline2\nline3\r\n";
         rav::string_parser parser(str);
         REQUIRE(parser.read_line() == "line1");
         REQUIRE(parser.read_line() == "line2");

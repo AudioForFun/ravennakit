@@ -115,7 +115,7 @@ class string_parser {
     template<class T>
     std::optional<T> read_int() {
         T value;
-        const auto result = std::from_chars<T>(str_.data(), str_.data() + str_.size(), value);
+        const auto result = std::from_chars(str_.data(), str_.data() + str_.size(), value);
         if (result.ec == std::errc()) {
             str_.remove_prefix(static_cast<size_t>(result.ptr - str_.data()));
             return value;
