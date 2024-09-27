@@ -48,14 +48,49 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE(parser.read_string('3', true) == "2.3");
     }
 
+    SECTION("Test delimited string where delimiter is not found") {
+        SECTION("Single char") {
+            const auto str = "0.1.2.3";
+            rav::string_parser parser(str);
+            REQUIRE(parser.read_string('4') == "0.1.2.3");
+        }
+        SECTION("Multi char") {
+            const auto str = "0.1.2.3";
+            rav::string_parser parser(str);
+            REQUIRE(parser.read_string("4") == "0.1.2.3");
+        }
+    }
+
+    SECTION("Test string exhaustion") {
+        SECTION("Single char") {
+            const auto str = "0.1.2.3";
+            rav::string_parser parser(str);
+            REQUIRE(parser.read_string('.') == "0");
+            REQUIRE(parser.read_string('.') == "1");
+            REQUIRE(parser.read_string('.') == "2");
+            REQUIRE(parser.read_string('.') == "3");
+            REQUIRE_FALSE(parser.read_string('.').has_value());
+        }
+
+        SECTION("Multiple chars") {
+            const auto str = "0.1.2.3";
+            rav::string_parser parser(str);
+            REQUIRE(parser.read_string(".") == "0");
+            REQUIRE(parser.read_string(".") == "1");
+            REQUIRE(parser.read_string(".") == "2");
+            REQUIRE(parser.read_string(".") == "3");
+            REQUIRE_FALSE(parser.read_string(".").has_value());
+        }
+    }
+
     SECTION("Parse some ints") {
         const auto str = "0.1.23456";
         rav::string_parser parser(str);
         REQUIRE(parser.read_int<int32_t>().value() == 0);
         REQUIRE_FALSE(parser.read_int<int32_t>().has_value());
-        REQUIRE(parser.read_string('.').empty());
+        REQUIRE(parser.read_string('.')->empty());
         REQUIRE(parser.read_int<int32_t>().value() == 1);
-        REQUIRE(parser.read_string('.').empty());
+        REQUIRE(parser.read_string('.')->empty());
         REQUIRE(parser.read_int<int32_t>().value() == 23456);
         REQUIRE_FALSE(parser.read_int<int32_t>().has_value());
     }
@@ -82,7 +117,7 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE(parser.read_line() == "line1");
         REQUIRE(parser.read_line() == "line2");
         REQUIRE(parser.read_line() == "line3");
-        REQUIRE(parser.read_line().empty());
+        REQUIRE_FALSE(parser.read_line().has_value());
     }
 
     SECTION("Parse some CRLF lines") {
@@ -91,7 +126,7 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE(parser.read_line() == "line1");
         REQUIRE(parser.read_line() == "line2");
         REQUIRE(parser.read_line() == "line3");
-        REQUIRE(parser.read_line().empty());
+        REQUIRE_FALSE(parser.read_line().has_value());
     }
 
     SECTION("Parse some mixed lines") {
@@ -100,7 +135,16 @@ TEST_CASE("string_parser", "[string_parser]") {
         REQUIRE(parser.read_line() == "line1");
         REQUIRE(parser.read_line() == "line2");
         REQUIRE(parser.read_line() == "line3");
-        REQUIRE(parser.read_line().empty());
+        REQUIRE_FALSE(parser.read_line().has_value());
+    }
+
+    SECTION("Parse some empty lines") {
+        const auto str = "line1\n\nline3\n";
+        rav::string_parser parser(str);
+        REQUIRE(parser.read_line() == "line1");
+        REQUIRE(parser.read_line() == "");
+        REQUIRE(parser.read_line() == "line3");
+        REQUIRE_FALSE(parser.read_line().has_value());
     }
 
     SECTION("Parse some refclk strings") {

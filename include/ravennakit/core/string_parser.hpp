@@ -56,12 +56,18 @@ class string_parser {
      * Reads a string until the given delimiter. If delimiter is not found, the whole string is returned.
      * @param delimiter The character sequence to read until.
      * @param include_delimiter Whether to include the delimiter in the returned string.
-     * @return The read string.
+     * @return The read string, or an empty optional if the string is exhausted.
      */
-    std::string_view read_string(const char delimiter, const bool include_delimiter = false) {
+    std::optional<std::string_view> read_string(const char delimiter, const bool include_delimiter = false) {
+        if (str_.empty()) {
+            return std::nullopt;
+        }
+
         const auto pos = str_.find(delimiter);
         if (pos == std::string_view::npos) {
-            return str_;
+            auto str = str_;
+            str_ = {};
+            return str;
         }
 
         const auto substr = str_.substr(0, include_delimiter ? pos + 1 : pos);
@@ -75,10 +81,16 @@ class string_parser {
      * @param include_delimiter Whether to include the delimiter in the returned string.
      * @return The read string.
      */
-    std::string_view read_string(const char* delimiter, const bool include_delimiter = false) {
+    std::optional<std::string_view> read_string(const char* delimiter, const bool include_delimiter = false) {
+        if (str_.empty()) {
+            return std::nullopt;
+        }
+
         const auto pos = str_.find(delimiter);
         if (pos == std::string_view::npos) {
-            return str_;
+            auto str = str_;
+            str_ = {};
+            return str;
         }
 
         const auto substr = str_.substr(0, include_delimiter ? pos + strlen(delimiter) : pos);
@@ -91,7 +103,11 @@ class string_parser {
      * string.
      * @returns The read line.
      */
-    std::string_view read_line() {
+    std::optional<std::string_view> read_line() {
+        if (str_.empty()) {
+            return std::nullopt;
+        }
+
         const auto pos = str_.find('\n');
         if (pos == std::string_view::npos) {
             const auto str = str_;
@@ -101,7 +117,7 @@ class string_parser {
 
         auto substr = str_.substr(0, pos);
         str_.remove_prefix(pos + 1);
-        if (substr.back() == '\r') {
+        if (!substr.empty() && substr.back() == '\r') {
             substr.remove_suffix(1);  // Remove CR from CRLF
         }
         return substr;  // NOLINT: The address of the local variable 'substr' may escape the function
