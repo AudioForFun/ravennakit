@@ -78,13 +78,6 @@
 
 #endif
 
-/**
- * Define the function name macro if it is not already defined.
- */
-#ifndef RAV_FUNCTION
-    #define RAV_FUNCTION static_cast<const char*>(__FUNCTION__)
-#endif
-
 #define CATCH_LOG_UNCAUGHT_EXCEPTIONS                                                                          \
     catch (const rav::exception& e) {                                                                          \
         RAV_CRITICAL(                                                                                          \

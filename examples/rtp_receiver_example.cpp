@@ -8,7 +8,6 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/asio/io_context_runner.hpp"
 
 #include <fmt/core.h>
 #include <portaudio.h>
@@ -16,8 +15,10 @@
 #include <CLI/CLI.hpp>
 #include <optional>
 
+#include "ravennakit/asio/io_context_runner.hpp"
 #include "ravennakit/audio/circular_audio_buffer.hpp"
 #include "ravennakit/core/log.hpp"
+#include "ravennakit/core/system.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
 #include "ravennakit/util/tracy.hpp"
@@ -58,6 +59,8 @@ int main(int const argc, char* argv[]) {
 #ifdef RAV_ENABLE_SPDLOG
     spdlog::set_level(spdlog::level::trace);
 #endif
+
+    rav::system::do_system_checks();
 
     CLI::App app {"App description"};
     argv = app.ensure_utf8(argv);
