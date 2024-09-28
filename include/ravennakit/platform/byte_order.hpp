@@ -14,6 +14,8 @@
 #include <cstring>
 #include <memory>
 
+#include "ravennakit/core/exception.hpp"
+
 // This defines RAV_LITTLE_ENDIAN and RAV_BIG_ENDIAN macros indicating the byte order of the system.
 // TODO: Test on a big endian system
 #if (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)) || (defined(__BIG_ENDIAN__) && __BIG_ENDIAN__)
@@ -206,6 +208,30 @@ void write_le(uint8_t* dst, const Type value) {
     } else {
         write_ne(dst, swap_bytes(value));
     }
+}
+
+/**
+ * Checks if the system is little-endian at runtime.
+ * @return True if the system is little-endian, false otherwise.
+ */
+inline bool is_little_endian_at_runtime() noexcept {
+    static size_t native_one = 1;
+    return reinterpret_cast<uint8_t*>(&native_one)[0] == 1;
+}
+
+/**
+ * Validates whether the compiled byte order matches the runtime byte order. If not throws an exception.
+ */
+inline void validate_byte_order() {
+#if RAV_LITTLE_ENDIAN
+    if (!is_little_endian_at_runtime()) {
+        RAV_THROW_EXCEPTION("Compile-time and runtime byte order do not match");
+    }
+#else
+    if (is_little_endian_runtime()) {
+        RAV_THROW_EXCEPTION("Compile-time and runtime byte order do not match");
+    }
+#endif
 }
 
 }  // namespace rav::byte_order

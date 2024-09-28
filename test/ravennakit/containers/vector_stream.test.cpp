@@ -101,5 +101,6 @@ TEST_CASE("vector_stream", "[vector_stream]") {
         stream.push_back_be(0x12345678);
         stream.reset();
         REQUIRE(stream.size() == 0);
+        REQUIRE(stream.empty());
     }
 }

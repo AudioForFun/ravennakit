@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "ravennakit/platform/byte_order.hpp"
+#include "ravennakit/core/assert.hpp"
 
 namespace rav {
 
@@ -162,7 +163,17 @@ class vector_stream {
      * @return Returns the size of the data in the stream.
      */
     [[nodiscard]] size_t size() const {
-        return data_.size();
+        RAV_ASSERT(
+            read_position_ <= data_.size(), "Read position ought to be less than or equal to the size of the data"
+        );
+        return data_.size() - read_position_;
+    }
+
+    /**
+     * @returns True if the stream is empty, false otherwise.
+     */
+    [[nodiscard]] bool empty() const {
+        return read_position_ >= data_.size();
     }
 
     /**

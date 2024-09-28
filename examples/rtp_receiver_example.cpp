@@ -8,15 +8,17 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
+
 #include <fmt/core.h>
 #include <portaudio.h>
 
 #include <CLI/CLI.hpp>
 #include <optional>
-#include <uvw.hpp>
 
+#include "ravennakit/asio/io_context_runner.hpp"
 #include "ravennakit/audio/circular_audio_buffer.hpp"
 #include "ravennakit/core/log.hpp"
+#include "ravennakit/core/system.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
 #include "ravennakit/util/tracy.hpp"
@@ -58,6 +60,8 @@ int main(int const argc, char* argv[]) {
     spdlog::set_level(spdlog::level::trace);
 #endif
 
+    rav::system::do_system_checks();
+
     CLI::App app {"App description"};
     argv = app.ensure_utf8(argv);
 
@@ -98,12 +102,9 @@ int main(int const argc, char* argv[]) {
         exit(0);
     }
 
-    const auto loop = uvw::loop::create();
-    if (loop == nullptr) {
-        return 1;
-    }
+    io_context_runner io_context_runner;
 
-    rav::rtp_receiver receiver(loop);
+    rav::rtp_receiver receiver(io_context_runner.io_context());
     receiver.on<rav::rtp_packet_event>([&audio_context](
                                            const rav::rtp_packet_event& event, [[maybe_unused]] rav::rtp_receiver& recv
                                        ) {
@@ -130,11 +131,9 @@ int main(int const argc, char* argv[]) {
 
     if (multicast_addr.has_value()) {
         if (multicast_interface.has_value()) {
-            receiver.set_multicast_membership(
-                *multicast_addr, *multicast_interface, uvw::udp_handle::membership::JOIN_GROUP
-            );
+            receiver.join_multicast_group(*multicast_addr, *multicast_interface);
         } else {
-            receiver.set_multicast_membership(*multicast_addr, {}, uvw::udp_handle::membership::JOIN_GROUP);
+            receiver.join_multicast_group(*multicast_addr, {});
         }
     }
 
@@ -181,14 +180,12 @@ int main(int const argc, char* argv[]) {
         exit(1);
     }
 
-    const auto signal = loop->resource<uvw::signal_handle>();
-    signal->on<uvw::signal_event>([&receiver, &signal](const uvw::signal_event&, uvw::signal_handle&) {
-        receiver.close();
-        signal->close();  // Need to close ourselves, otherwise the loop will not stop.
+    asio::signal_set signals(io_context_runner.io_context(), SIGINT, SIGTERM);
+    signals.async_wait([&io_context_runner](const std::error_code&, int) {
+        io_context_runner.io_context().stop();
     });
-    signal->start(SIGTERM);
 
-    auto result = loop->run();
+    io_context_runner.run();
 
     if (auto error = Pa_StopStream(stream); error != paNoError) {
         RAV_ERROR("PortAudio failed to stop stream! Error: {}", Pa_GetErrorText(error));
@@ -200,5 +197,5 @@ int main(int const argc, char* argv[]) {
         exit(1);
     }
 
-    return result;
+    return 0;
 }
