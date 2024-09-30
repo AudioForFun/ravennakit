@@ -145,6 +145,50 @@ if (TRACY_ENABLE)
     target_link_libraries(rtp_receiver_example PUBLIC tracy)
 endif ()
 
+#################
+# DNSSD Browser #
+#################
+
+add_executable(dnssd_browser
+        examples/dnssd_browser.cpp
+)
+
+target_link_libraries(dnssd_browser
+        PUBLIC
+        rav_recommended_warning_flags
+        rav_recommended_lto_flags
+        PRIVATE
+        ravennakit
+        portaudio_static
+        CLI11::CLI11
+)
+
+if (TRACY_ENABLE)
+    target_link_libraries(dnssd_browser PUBLIC tracy)
+endif ()
+
+####################
+# DNSSD Advertiser #
+####################
+
+add_executable(dnssd_advertiser
+        examples/dnssd_advertiser.cpp
+)
+
+target_link_libraries(dnssd_advertiser
+        PUBLIC
+        rav_recommended_warning_flags
+        rav_recommended_lto_flags
+        PRIVATE
+        ravennakit
+        portaudio_static
+        CLI11::CLI11
+)
+
+if (TRACY_ENABLE)
+    target_link_libraries(dnssd_advertiser PUBLIC tracy)
+endif ()
+
 ##############
 # Unit Tests #
 ##############

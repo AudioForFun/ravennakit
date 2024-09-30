@@ -1,0 +1,87 @@
+#include "ravennakit/dnssd/service_description.hpp"
+#include "ravennakit/dnssd/bonjour/bonjour_advertiser.hpp"
+
+#include <iostream>
+#include <string>
+#include <vector>
+
+static bool parseTxtRecord(dnssd::txt_record& txtRecord, const std::string& stringValue) {
+    if (stringValue.empty())
+        return false;
+
+    size_t pos = stringValue.find('=');
+
+    if (pos != std::string::npos)
+        txtRecord[stringValue.substr(0, pos)] = stringValue.substr(pos + 1);
+    else
+        txtRecord[stringValue.substr(0, pos)] = "";
+
+    return true;
+}
+
+int main(int const argc, char* argv[]) {
+    std::vector<std::string> args;
+    for (int i = 1; i < argc; i++) {
+        args.emplace_back(argv[i]);
+    }
+
+    // Do we have at least the service type and port number?
+    if (args.size() < 2) {
+        std::cout << "Error: expected at least an argument which specifies the service type and an argument which "
+                     "specifies the port number (example: _test._tcp 1234 key1=value1 key2=value2)"
+                  << std::endl;
+        return -1;
+    }
+
+    // Parse port number
+    int portNumber = 0;
+    try {
+        portNumber = std::stoi(args[1]);
+    } catch (const std::exception& e) {
+        std::cout << "Invalid port number: " << e.what() << std::endl;
+        return -1;
+    }
+
+    // Parse remaining arguments as TxtRecord
+    dnssd::txt_record txtRecord;
+    for (auto it = args.begin() + 2; it != args.end(); ++it) {
+        parseTxtRecord(txtRecord, *it);
+    }
+
+    dnssd::bonjour_advertiser advertiser;
+
+    advertiser.on_advertiser_error_async([](const dnssd::result& error) {
+        std::cout << "Error: " << error.description() << std::endl;
+    });
+
+    auto result = advertiser.register_service(
+        args[0], "001122334455@SomeName", nullptr, static_cast<uint16_t>(portNumber), txtRecord
+    );
+    if (result.has_error()) {
+        std::cout << "Error: " << result.description() << std::endl;
+        return -1;
+    }
+
+    std::cout << "Enter key=value to update the TXT record, or q to exit..." << std::endl;
+
+    std::string cmd;
+    while (true) {
+        std::getline(std::cin, cmd);
+        if (cmd == "q" || cmd == "Q") {
+            break;
+        }
+
+        if (parseTxtRecord(txtRecord, cmd)) {
+            std::cout << "Updated txt record: " << std::endl;
+            for (auto& pair : txtRecord) {
+                std::cout << pair.first << "=" << pair.second << std::endl;
+            }
+
+            advertiser.update_txt_record(txtRecord);
+        }
+    }
+
+    std::cout << "Exit" << std::endl;
+
+    return 0;
+}
