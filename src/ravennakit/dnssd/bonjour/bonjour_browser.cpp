@@ -1,5 +1,6 @@
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
 
+#include "ravennakit/core/log.hpp"
 #include "ravennakit/dnssd/log.hpp"
 #include "ravennakit/dnssd/bonjour/scoped_dns_service_ref.hpp"
 
@@ -19,16 +20,13 @@ void dnssd::bonjour_browser::browse_reply(
     [[maybe_unused]] DNSServiceRef browse_service_ref, DNSServiceFlags flags, uint32_t interface_index,
     DNSServiceErrorType error_code, const char* name, const char* type, const char* domain
 ) {
-    DNSSD_LOG_DEBUG("> browseReply enter (context=" << this << ")" << std::endl)
-
     if (report_if_error(result(error_code)))
         return;
 
-    DNSSD_LOG_DEBUG(
-        "> browseReply"
-        << " name=" << name << " type=" << type << " domain=" << domain << " browseServiceRef=" << browseServiceRef
-        << " interfaceIndex=" << interfaceIndex << std::endl
-    )
+    RAV_DEBUG(
+        "browse_reply name={} type={} domain={} browse_service_ref={} interfaceIndex={}", name, type, domain,
+        static_cast<void*>(browse_service_ref), interface_index
+    );
 
     char fullname[kDNSServiceMaxDomainName] = {};
     if (report_if_error(result(DNSServiceConstructFullName(fullname, name, type, domain))))
@@ -59,8 +57,6 @@ void dnssd::bonjour_browser::browse_reply(
             services_.erase(foundService);
         }
     }
-
-    DNSSD_LOG_DEBUG("< browseReply exit (" << std::this_thread::get_id() << ")" << std::endl)
 }
 
 bool dnssd::bonjour_browser::report_if_error(const dnssd::result& result) const noexcept {
@@ -101,20 +97,17 @@ dnssd::result dnssd::bonjour_browser::browse_for(const std::string& service) {
 }
 
 void dnssd::bonjour_browser::thread() {
-    DNSSD_LOG_DEBUG("> Start browse thread" << std::endl)
+    RAV_DEBUG("Start bonjour browser thread");
 
     struct timeval tv = {};
     tv.tv_sec = 0;
     tv.tv_usec = 500000;
 
-    int fd = -1;
-    int nfds = -1;
-
-    fd = DNSServiceRefSockFD(shared_connection_.service_ref());
+    const int fd = DNSServiceRefSockFD(shared_connection_.service_ref());
 
     if (fd < 0) {
         if (report_if_error(result("Invalid file descriptor"))) {
-            DNSSD_LOG_DEBUG("< Invalid file descriptor" << std::endl)
+            RAV_ERROR("Invalid file descriptor");
             return;
         }
     }
@@ -123,15 +116,15 @@ void dnssd::bonjour_browser::thread() {
         fd_set readfds;
         FD_ZERO(&readfds);
         FD_SET(fd, &readfds);
-        nfds = fd + 1;
+        int nfds = fd + 1;
 
-        const int r = select(nfds, &readfds, (fd_set*)nullptr, (fd_set*)nullptr, &tv);
+        const int r = select(nfds, &readfds, nullptr, nullptr, &tv);
 
         {
             if (r < 0)  // Result
             {
                 if (report_if_error(result("Select error: " + std::to_string(r)))) {
-                    DNSSD_LOG_DEBUG("! Result (code=" << result << ")" << std::endl)
+                    RAV_DEBUG("! Result (code={})", r);
                     break;
                 }
             } else if (r == 0)  // Timeout
@@ -145,22 +138,22 @@ void dnssd::bonjour_browser::thread() {
                     // response to DNSServiceProcessResult.
                     std::lock_guard<std::recursive_mutex> lg(lock_);
 
-                    DNSSD_LOG_DEBUG("> Main loop (FD_ISSET == true)" << std::endl)
+                    RAV_DEBUG("Main loop (FD_ISSET == true)");
                     (void)report_if_error(result(DNSServiceProcessResult(shared_connection_.service_ref())));
                 } else {
-                    DNSSD_LOG_DEBUG("> Main loop (FD_ISSET == false)" << std::endl)
+                    RAV_DEBUG("Main loop (FD_ISSET == false)");
                 }
             }
         }
     }
 
-    DNSSD_LOG_DEBUG("< Stop browse thread" << std::endl)
+    RAV_DEBUG("Stop bonjour browser thread");
 }
 
 dnssd::bonjour_browser::~bonjour_browser() {
     keep_going_ = false;
 
-    std::lock_guard<std::recursive_mutex> lg(lock_);
+    std::lock_guard guard(lock_);
     if (thread_.joinable())
         thread_.join();
 }

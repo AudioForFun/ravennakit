@@ -63,9 +63,6 @@ void dnssd::service::resolve_callback(
     DNSServiceRef serviceRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code,
     const char* fullname, const char* host_target, uint16_t port, uint16_t txt_len, const unsigned char* txt_record
 ) {
-    DNSSD_LOG_DEBUG("> resolveCallBack enter (" << std::this_thread::get_id() << ") context=" << this << std::endl)
-    DNSSD_LOG_DEBUG("- fullname=" << fullname << std::endl);
-
     if (owner_.report_if_error(result(error_code))) {
         return;
     }
@@ -73,8 +70,6 @@ void dnssd::service::resolve_callback(
     description_.host = host_target;
     description_.port = port;
     description_.txt = bonjour_txt_record::get_txt_record_from_raw_bytes(txt_record, txt_len);
-
-    DNSSD_LOG_DEBUG("- resolveCallBack: " << mDescription.description() << std::endl)
 
     if (owner_.onServiceResolvedCallback)
         owner_.onServiceResolvedCallback(description_, interface_index);
@@ -89,17 +84,12 @@ void dnssd::service::resolve_callback(
     }
 
     get_addrs_.insert({interface_index, scoped_dns_service_ref(getAddrInfoServiceRef)});
-
-    DNSSD_LOG_DEBUG("< resolveCallBack exit (" << std::this_thread::get_id() << ")" << std::endl)
 }
 
 void dnssd::service::get_addr_info_callback(
     DNSServiceRef sd_ref, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code,
     const char* hostname, const struct sockaddr* address, uint32_t ttl
 ) {
-    DNSSD_LOG_DEBUG("> getAddrInfoCallBack enter (" << std::this_thread::get_id() << ") context=" << this << std::endl)
-    DNSSD_LOG_DEBUG("- getAddrInfoCallBack hostname: " << hostname << std::endl)
-
     if (error_code == kDNSServiceErr_Timeout) {
         get_addrs_.erase(interface_index);
         return;
@@ -135,9 +125,6 @@ void dnssd::service::get_addr_info_callback(
             result(std::string("Interface with id \"") + std::to_string(interface_index) + "\" not found")
         );
     }
-
-    DNSSD_LOG_DEBUG("- Address: " << ip_addr << std::endl)
-    DNSSD_LOG_DEBUG("< getAddrInfoCallBack exit (" << std::this_thread::get_id() << ")" << std::endl)
 }
 
 size_t dnssd::service::remove_interface(uint32_t index) {
