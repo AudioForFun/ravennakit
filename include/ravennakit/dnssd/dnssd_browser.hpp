@@ -16,7 +16,7 @@ namespace events {
      */
     struct service_discovered {
         /// The service description of the discovered service.
-        const service_description& service_description;
+        const service_description& description;
     };
 
     /**
@@ -25,7 +25,7 @@ namespace events {
      */
     struct service_removed {
         /// The service description of the removed service.
-        const service_description& service_description;
+        const service_description& description;
     };
 
     /**
@@ -34,7 +34,7 @@ namespace events {
      */
     struct service_resolved {
         /// The service description of the resolved service.
-        const service_description& service_description;
+        const service_description& description;
         /// The index of the interface on which the service was resolved on.
         uint32_t interfaceIndex;
     };
@@ -45,7 +45,7 @@ namespace events {
      */
     struct address_added {
         /// The service description of the service for which the address was added.
-        const service_description& service_description;
+        const service_description& description;
         /// The address which was added.
         const std::string& address;
         /// The index of the interface on which the address was added.
@@ -58,7 +58,7 @@ namespace events {
      */
     struct address_removed {
         /// The service description of the service for which the address was removed.
-        const service_description& service_description;
+        const service_description& description;
         /// The address which was removed.
         const std::string& address;
         /// The index of the interface on which the address was removed.

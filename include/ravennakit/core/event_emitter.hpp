@@ -74,8 +74,8 @@ protected:
      */
     template<class Type>
     void emit(Type event) {
-        if (auto& listener = handler<Type>(); listener) {
-            listener(event, *static_cast<Subclass*>(this));
+        if (auto& l = handler<Type>(); l) {
+            l(event, *static_cast<Subclass*>(this));
         }
     }
 

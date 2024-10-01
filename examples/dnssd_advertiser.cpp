@@ -1,6 +1,6 @@
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/dnssd/service_description.hpp"
-#include "ravennakit/dnssd/bonjour/bonjour_advertiser.hpp"
+#include "ravennakit/dnssd/dnssd_advertiser.hpp"
 
 #include <iostream>
 #include <string>

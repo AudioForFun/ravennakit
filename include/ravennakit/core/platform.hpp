@@ -21,7 +21,7 @@
     #else
         #define RAV_WINDOWS_32BIT 1
     #endif
-#elif __APPLE__
+#elif defined(__APPLE__)
     #define RAV_APPLE 1
     #include <TargetConditionals.h>
     #if TARGET_IPHONE_SIMULATOR // iOS, tvOS, or watchOS Simulator
@@ -35,13 +35,13 @@
     #else
         #error "Unknown Apple platform"
     #endif
-#elif __ANDROID__
+#elif defined(__ANDROID__)
     #define RAV_ANDROID 1
-#elif __linux__
+#elif defined(__linux__)
     #define RAV_LINUX 1
 #elif defined(__FreeBSD__) || defined(__OpenBSD__)
     #define RAV_BSD 1
-#elif __unix__
+#elif defined(__unix__)
     #define RAV_UNIX 1
 #elif defined(_POSIX_VERSION)
     #define RAV_POSIX 1
