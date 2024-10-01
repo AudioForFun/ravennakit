@@ -1,7 +1,10 @@
 #pragma once
 
-#include "bonjour_scoped_dns_service_ref.hpp"
 #include "bonjour.hpp"
+
+#if RAV_HAS_APPLE_DNSSD
+
+#include "bonjour_scoped_dns_service_ref.hpp"
 
 namespace rav::dnssd
 {
@@ -27,3 +30,5 @@ private:
 };
 
 } // namespace dnssd
+
+#endif

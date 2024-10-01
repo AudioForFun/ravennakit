@@ -1,3 +1,7 @@
+#include "ravennakit/dnssd/bonjour/bonjour.hpp"
+
+#if RAV_HAS_APPLE_DNSSD
+
 #include "ravennakit/dnssd/bonjour/bonjour_advertiser.hpp"
 #include "ravennakit/dnssd/result.hpp"
 #include "ravennakit/dnssd/service_description.hpp"
@@ -56,3 +60,5 @@ rav::dnssd::result rav::dnssd::bonjour_advertiser::update_txt_record(const txt_r
     return result(DNSServiceUpdateRecord(service_ref_.service_ref(), nullptr, 0, record.length(), record.bytesPtr(), 0)
     );
 }
+
+#endif

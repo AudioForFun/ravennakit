@@ -1,5 +1,8 @@
-#include "ravennakit/dnssd/bonjour/bonjour_txt_record.hpp"
+#include "ravennakit/dnssd/bonjour/bonjour.hpp"
 
+#if RAV_HAS_APPLE_DNSSD
+
+#include "ravennakit/dnssd/bonjour/bonjour_txt_record.hpp"
 #include "ravennakit/dnssd/result.hpp"
 
 #include <dns_sd.h>
@@ -51,3 +54,5 @@ std::map<std::string, std::string> rav::dnssd::bonjour_txt_record::get_txt_recor
 
     return txtRecord;
 }
+
+#endif

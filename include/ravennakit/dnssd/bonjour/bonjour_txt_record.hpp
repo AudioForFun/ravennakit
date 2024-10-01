@@ -1,5 +1,9 @@
 #pragma once
 
+#include "bonjour.hpp"
+
+#if RAV_HAS_APPLE_DNSSD
+
 #include "ravennakit/dnssd/result.hpp"
 #include "ravennakit/dnssd/service_description.hpp"
 
@@ -56,3 +60,5 @@ private:
 };
 
 } // namespace dnssd
+
+#endif

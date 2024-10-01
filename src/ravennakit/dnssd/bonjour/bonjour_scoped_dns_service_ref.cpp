@@ -1,5 +1,8 @@
-#include "ravennakit/dnssd/bonjour/bonjour_scoped_dns_service_ref.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour.hpp"
+
+#if RAV_HAS_APPLE_DNSSD
+
+#include "ravennakit/dnssd/bonjour/bonjour_scoped_dns_service_ref.hpp"
 
 #include <utility>
 
@@ -32,3 +35,5 @@ rav::dnssd::bonjour_scoped_dns_service_ref& rav::dnssd::bonjour_scoped_dns_servi
     service_ref_ = service_ref;
     return *this;
 }
+
+#endif

@@ -1,5 +1,8 @@
-#include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
+#include "ravennakit/dnssd/bonjour/bonjour.hpp"
 
+#if RAV_HAS_APPLE_DNSSD
+
+#include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_scoped_dns_service_ref.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_txt_record.hpp"
@@ -302,3 +305,5 @@ rav::dnssd::bonjour_browser::~bonjour_browser() {
     if (thread_.joinable())
         thread_.join();
 }
+
+#endif

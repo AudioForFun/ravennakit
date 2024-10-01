@@ -1,6 +1,8 @@
 #pragma once
 
-#include "ravennakit/dnssd/bonjour/bonjour.hpp"
+#include "bonjour.hpp"
+
+#if RAV_HAS_APPLE_DNSSD
 
 namespace rav::dnssd
 {
@@ -40,3 +42,5 @@ private:
 };
 
 } // namespace dnssd
+
+#endif

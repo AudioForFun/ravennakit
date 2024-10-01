@@ -1,5 +1,9 @@
 #pragma once
 
+#include "bonjour.hpp"
+
+#if RAV_HAS_APPLE_DNSSD
+
 #include "bonjour_scoped_dns_service_ref.hpp"
 #include "bonjour_service.hpp"
 #include "bonjour_shared_connection.hpp"
@@ -144,3 +148,5 @@ class bonjour_browser: public dnssd_browser {
 };
 
 }  // namespace rav::dnssd
+
+#endif

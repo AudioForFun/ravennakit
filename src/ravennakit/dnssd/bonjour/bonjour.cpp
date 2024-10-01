@@ -10,6 +10,8 @@
 
 #include "ravennakit/dnssd/bonjour/bonjour.hpp"
 
+#if RAV_HAS_APPLE_DNSSD
+
 bool rav::dnssd::is_bonjour_service_running() {
     uint32_t version;
     uint32_t size = sizeof(version);
@@ -17,3 +19,5 @@ bool rav::dnssd::is_bonjour_service_running() {
 
     return error == kDNSServiceErr_NoError;
 }
+
+#endif

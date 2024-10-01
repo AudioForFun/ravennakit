@@ -10,18 +10,32 @@
 
 #pragma once
 
-#ifdef _WIN32
-    #define _WINSOCKAPI_  // Prevents inclusion of winsock.h in windows.h
-    #include <Ws2tcpip.h>
-    #include <winsock2.h>
+#include "ravennakit/core/platform.hpp"
+
+#if RAV_APPLE
+    #define RAV_HAS_APPLE_DNSSD 1
+#elif RAV_WINDOWS
+    #define RAV_HAS_APPLE_DNSSD 1
 #else
-    #include <arpa/inet.h>
+    #define RAV_HAS_APPLE_DNSSD 0
 #endif
 
-#include <dns_sd.h>
+#if RAV_HAS_APPLE_DNSSD
+
+    #ifdef _WIN32
+        #define _WINSOCKAPI_  // Prevents inclusion of winsock.h in windows.h
+        #include <Ws2tcpip.h>
+        #include <winsock2.h>
+    #else
+        #include <arpa/inet.h>
+    #endif
+
+    #include <dns_sd.h>
 
 namespace rav::dnssd {
 
 bool is_bonjour_service_running();
 
-}  // namespace dnssd
+}  // namespace rav::dnssd
+
+#endif
