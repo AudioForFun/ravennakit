@@ -5,7 +5,7 @@
 #include <exception>
 #include <string>
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /**

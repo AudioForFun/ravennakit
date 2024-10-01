@@ -8,7 +8,7 @@
 
 #include <functional>
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /**

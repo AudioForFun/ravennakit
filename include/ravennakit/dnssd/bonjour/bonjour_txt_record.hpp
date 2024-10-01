@@ -6,7 +6,7 @@
 #include <map>
 #include <string>
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /**

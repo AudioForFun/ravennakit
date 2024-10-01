@@ -20,7 +20,7 @@
 
 #include <dns_sd.h>
 
-namespace dnssd {
+namespace rav::dnssd {
 
 bool is_bonjour_service_running();
 

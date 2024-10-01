@@ -7,7 +7,7 @@
 #include <map>
 #include <mutex>
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /**

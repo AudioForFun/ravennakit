@@ -3,19 +3,19 @@
 
 #include <utility>
 
-dnssd::scoped_dns_service_ref::~scoped_dns_service_ref() {
+rav::dnssd::scoped_dns_service_ref::~scoped_dns_service_ref() {
     if (service_ref_ != nullptr)
         DNSServiceRefDeallocate(service_ref_);
 }
 
-dnssd::scoped_dns_service_ref::scoped_dns_service_ref(scoped_dns_service_ref&& other) noexcept {
+rav::dnssd::scoped_dns_service_ref::scoped_dns_service_ref(scoped_dns_service_ref&& other) noexcept {
     *this = std::move(other);
 }
 
-dnssd::scoped_dns_service_ref::scoped_dns_service_ref(const DNSServiceRef& serviceRef) noexcept :
+rav::dnssd::scoped_dns_service_ref::scoped_dns_service_ref(const DNSServiceRef& serviceRef) noexcept :
     service_ref_(serviceRef) {}
 
-dnssd::scoped_dns_service_ref& dnssd::scoped_dns_service_ref::operator=(dnssd::scoped_dns_service_ref&& other
+rav::dnssd::scoped_dns_service_ref& rav::dnssd::scoped_dns_service_ref::operator=(rav::dnssd::scoped_dns_service_ref&& other
 ) noexcept {
     if (service_ref_ != nullptr)
         DNSServiceRefDeallocate(service_ref_);
@@ -25,7 +25,7 @@ dnssd::scoped_dns_service_ref& dnssd::scoped_dns_service_ref::operator=(dnssd::s
     return *this;
 }
 
-dnssd::scoped_dns_service_ref& dnssd::scoped_dns_service_ref::operator=(DNSServiceRef serviceRef) {
+rav::dnssd::scoped_dns_service_ref& rav::dnssd::scoped_dns_service_ref::operator=(DNSServiceRef serviceRef) {
     if (service_ref_ != nullptr)
         DNSServiceRefDeallocate(service_ref_);
 

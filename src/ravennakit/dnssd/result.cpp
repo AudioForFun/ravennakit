@@ -12,24 +12,22 @@
 
 #include <sstream>
 
-dnssd::result::result (DNSServiceErrorType error) noexcept
-{
-    if (error != kDNSServiceErr_NoError)
-    {
+rav::dnssd::result::result(DNSServiceErrorType error) noexcept {
+    if (error != kDNSServiceErr_NoError) {
         std::stringstream errorMessage;
-        errorMessage << "DNSServiceError: (" << result::DNSServiceErrorDescription (error) << ")";
+        errorMessage << "DNSServiceError: (" << result::DNSServiceErrorDescription(error) << ")";
         error_msg_ = errorMessage.str();
     }
 
     error_ = error;
 }
 
-dnssd::result::result (const std::string& errorMsg) noexcept
+rav::dnssd::result::result (const std::string& errorMsg) noexcept
 {
     error_msg_ = errorMsg;
 }
 
-std::string dnssd::result::description() const noexcept
+std::string rav::dnssd::result::description() const noexcept
 {
     if (error_msg_.empty())
     {
@@ -38,7 +36,7 @@ std::string dnssd::result::description() const noexcept
     return error_msg_;
 }
 
-const char* dnssd::result::DNSServiceErrorDescription (const DNSServiceErrorType error) noexcept
+const char* rav::dnssd::result::DNSServiceErrorDescription (const DNSServiceErrorType error) noexcept
 {
     switch (error)
     {
@@ -116,12 +114,12 @@ const char* dnssd::result::DNSServiceErrorDescription (const DNSServiceErrorType
     }
 }
 
-bool dnssd::result::has_error() const
+bool rav::dnssd::result::has_error() const
 {
     return error_ != kDNSServiceErr_NoError || !error_msg_.empty();
 }
 
-bool dnssd::result::is_ok() const
+bool rav::dnssd::result::is_ok() const
 {
     return !has_error();
 }

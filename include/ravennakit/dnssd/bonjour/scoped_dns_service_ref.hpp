@@ -2,7 +2,7 @@
 
 #include "ravennakit/dnssd/bonjour/bonjour.hpp"
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /**

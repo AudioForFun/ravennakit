@@ -1,7 +1,6 @@
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
 
 #include "ravennakit/core/log.hpp"
-#include "ravennakit/dnssd/log.hpp"
 #include "ravennakit/dnssd/bonjour/scoped_dns_service_ref.hpp"
 
 #include <mutex>
@@ -10,13 +9,13 @@ static void DNSSD_API browseReply2(
     DNSServiceRef browseServiceRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType errorCode,
     const char* name, const char* type, const char* domain, void* context
 ) {
-    auto* browser = static_cast<dnssd::bonjour_browser*>(context);
+    auto* browser = static_cast<rav::dnssd::bonjour_browser*>(context);
     browser->browse_reply(browseServiceRef, flags, interfaceIndex, errorCode, name, type, domain);
 }
 
-dnssd::bonjour_browser::bonjour_browser() : thread_(std::thread(&bonjour_browser::thread, this)) {}
+rav::dnssd::bonjour_browser::bonjour_browser() : thread_(std::thread(&bonjour_browser::thread, this)) {}
 
-void dnssd::bonjour_browser::browse_reply(
+void rav::dnssd::bonjour_browser::browse_reply(
     [[maybe_unused]] DNSServiceRef browse_service_ref, DNSServiceFlags flags, uint32_t interface_index,
     DNSServiceErrorType error_code, const char* name, const char* type, const char* domain
 ) {
@@ -59,7 +58,7 @@ void dnssd::bonjour_browser::browse_reply(
     }
 }
 
-bool dnssd::bonjour_browser::report_if_error(const dnssd::result& result) const noexcept {
+bool rav::dnssd::bonjour_browser::report_if_error(const rav::dnssd::result& result) const noexcept {
     if (result.has_error()) {
         if (onBrowseErrorCallback)
             onBrowseErrorCallback(result);
@@ -68,7 +67,7 @@ bool dnssd::bonjour_browser::report_if_error(const dnssd::result& result) const 
     return false;
 }
 
-dnssd::result dnssd::bonjour_browser::browse_for(const std::string& service) {
+rav::dnssd::result rav::dnssd::bonjour_browser::browse_for(const std::string& service) {
     std::lock_guard<std::recursive_mutex> lg(lock_);
 
     // Initialize with the shared connection to pass it to DNSServiceBrowse
@@ -82,7 +81,7 @@ dnssd::result dnssd::bonjour_browser::browse_for(const std::string& service) {
         return result("already browsing for service \"" + service + "\"");
     }
 
-    auto result = dnssd::result(DNSServiceBrowse(
+    auto result = rav::dnssd::result(DNSServiceBrowse(
         &browsingServiceRef, kDNSServiceFlagsShareConnection, kDNSServiceInterfaceIndexAny, service.c_str(), nullptr,
         ::browseReply2, this
     ));
@@ -96,7 +95,7 @@ dnssd::result dnssd::bonjour_browser::browse_for(const std::string& service) {
     return {};
 }
 
-void dnssd::bonjour_browser::thread() {
+void rav::dnssd::bonjour_browser::thread() {
     RAV_DEBUG("Start bonjour browser thread");
 
     struct timeval tv = {};
@@ -150,7 +149,7 @@ void dnssd::bonjour_browser::thread() {
     RAV_DEBUG("Stop bonjour browser thread");
 }
 
-dnssd::bonjour_browser::~bonjour_browser() {
+rav::dnssd::bonjour_browser::~bonjour_browser() {
     keep_going_ = false;
 
     std::lock_guard guard(lock_);

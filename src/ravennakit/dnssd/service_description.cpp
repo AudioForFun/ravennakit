@@ -12,7 +12,7 @@
 
 #include <sstream>
 
-std::string dnssd::service_description::description() const noexcept {
+std::string rav::dnssd::service_description::description() const noexcept {
     std::string txtRecordDescription;
 
     for (auto& kv : txt)

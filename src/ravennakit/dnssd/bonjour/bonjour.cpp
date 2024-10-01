@@ -10,7 +10,7 @@
 
 #include "ravennakit/dnssd/bonjour/bonjour.hpp"
 
-bool dnssd::is_bonjour_service_running() {
+bool rav::dnssd::is_bonjour_service_running() {
     uint32_t version;
     uint32_t size = sizeof(version);
     const DNSServiceErrorType error = DNSServiceGetProperty(kDNSServiceProperty_DaemonVersion, &version, &size);

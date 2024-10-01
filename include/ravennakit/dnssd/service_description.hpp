@@ -4,7 +4,7 @@
 #include <set>
 #include <string>
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /// Simple typedef for representing a TXT record.

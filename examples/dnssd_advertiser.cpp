@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-static bool parseTxtRecord(dnssd::txt_record& txtRecord, const std::string& stringValue) {
+static bool parseTxtRecord(rav::dnssd::txt_record& txtRecord, const std::string& stringValue) {
     if (stringValue.empty())
         return false;
 
@@ -43,14 +43,14 @@ int main(int const argc, char* argv[]) {
     }
 
     // Parse remaining arguments as TxtRecord
-    dnssd::txt_record txtRecord;
+    rav::dnssd::txt_record txtRecord;
     for (auto it = args.begin() + 2; it != args.end(); ++it) {
         parseTxtRecord(txtRecord, *it);
     }
 
-    dnssd::bonjour_advertiser advertiser;
+    rav::dnssd::bonjour_advertiser advertiser;
 
-    advertiser.on_advertiser_error_async([](const dnssd::result& error) {
+    advertiser.on_advertiser_error_async([](const rav::dnssd::result& error) {
         std::cout << "Error: " << error.description() << std::endl;
     });
 

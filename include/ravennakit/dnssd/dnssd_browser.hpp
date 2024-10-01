@@ -6,7 +6,7 @@
 
 #include <functional>
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /**
@@ -30,8 +30,8 @@ public:
 
     /**
      * Starts browsing for a service
-     * @param service_type The service type (ie. _http._tcp.).
-     * @return Returns an Result indicating success or failure.
+     * @param service_type The service type (i.e. _http._tcp.).
+     * @return Returns a result indicating success or failure.
      */
     virtual result browse_for (const std::string& service_type) = 0;
 
@@ -57,7 +57,7 @@ public:
     }
 
     /**
-     * Sets a callback which gets called when a service was resolved (ie. address information was resolved).
+     * Sets a callback which gets called when a service was resolved (i.e. address information was resolved).
      * Note: this call will be made from a background thread and wil not be synchronised.
      * @param callback Callback with the service description and the index of the interface on which the service was
      * resolved on.
@@ -68,7 +68,7 @@ public:
     }
 
     /**
-     * Sets a callback which gets called when an address became available (ie. service became reachable on this
+     * Sets a callback which gets called when an address became available (i.e. service became reachable on this
      * address). Note: this call will be made from a background thread and wil not be synchronised.
      * @param callback Callback with the service description, the added address and the interface index.
      */
@@ -78,7 +78,7 @@ public:
     }
 
     /**
-     * Sets a callback which gets called when an address became unavailable (ie. service no longer reachable on this
+     * Sets a callback which gets called when an address became unavailable (i.e. service no longer reachable on this
      * address). Note: this call will be made from a background thread and wil not be synchronised.
      * @param callback Callback with the service description, the added address and the interface index.
      */

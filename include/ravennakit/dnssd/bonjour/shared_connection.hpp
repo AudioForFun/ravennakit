@@ -3,7 +3,7 @@
 #include "scoped_dns_service_ref.hpp"
 #include "bonjour.hpp"
 
-namespace dnssd
+namespace rav::dnssd
 {
 
 /**

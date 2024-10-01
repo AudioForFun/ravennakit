@@ -10,7 +10,7 @@
 #include <mutex>
 #include <thread>
 
-namespace dnssd {
+namespace rav::dnssd {
 
 class service;
 
