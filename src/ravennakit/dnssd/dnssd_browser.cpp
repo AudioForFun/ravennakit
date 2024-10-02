@@ -13,9 +13,9 @@
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
 
 std::unique_ptr<rav::dnssd::dnssd_browser> rav::dnssd::dnssd_browser::create() {
-#if defined(RAV_APPLE)
+#if RAV_APPLE
     return std::make_unique<bonjour_browser>();
-#elif defined(RAV_WINDOWS)
+#elif RAV_WINDOWS
     if (dnssd::is_bonjour_service_running()) {
         return std::make_unique<bonjour_browser>();
     } else {
