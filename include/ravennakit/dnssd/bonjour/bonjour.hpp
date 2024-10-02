@@ -13,9 +13,9 @@
 #include "ravennakit/core/platform.hpp"
 #include "ravennakit/core/exception.hpp"
 
-#if defined(RAV_APPLE)
+#if RAV_APPLE
     #define RAV_HAS_APPLE_DNSSD 1
-#elif defined(RAV_WINDOWS)
+#elif RAV_WINDOWS
     #define RAV_HAS_APPLE_DNSSD 1
 #else
     #define RAV_HAS_APPLE_DNSSD 0
