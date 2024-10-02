@@ -70,8 +70,7 @@ namespace events {
      * Note: this event might be emitted asynchronously from a background thread.
      */
     struct browse_error {
-        /// The error that occurred.
-        const std::exception& exception;
+        const std::string& error_message;
     };
 }  // namespace events
 

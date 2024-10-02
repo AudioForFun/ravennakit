@@ -112,8 +112,8 @@ class bonjour_browser: public dnssd_browser {
   private:
     bonjour_shared_connection shared_connection_;
     process_results_thread process_results_thread_;
-    std::map<std::string, bonjour_scoped_dns_service_ref> browsers_;
     std::map<std::string, service> services_;
+    std::map<std::string, bonjour_scoped_dns_service_ref> browsers_;
 
     /**
      * Called by dns_sd logic in response to a browse reply.

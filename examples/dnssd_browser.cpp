@@ -48,7 +48,7 @@ int main(const int argc, char* argv[]) {
 
     browser->on<rav::dnssd::events::browse_error>([](const rav::dnssd::events::browse_error& event,
                                                      rav::dnssd::dnssd_browser&) {
-        RAV_CRITICAL("Exception caught on background thread: {}", event.exception.what());
+        RAV_ERROR("{}", event.error_message);
     });
 
     browser->browse_for(argv[1]);

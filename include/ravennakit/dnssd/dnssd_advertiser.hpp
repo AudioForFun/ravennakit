@@ -15,7 +15,7 @@ namespace events {
      * Event for when a service was discovered.
      */
     struct advertiser_error {
-        const char* error_message;
+        const std::string& error_message;
     };
 
     /**
