@@ -14,12 +14,13 @@ Each block separated by a space (to not have the include order changed by clang-
 
 ### Exception policy
 
-This library uses return values to indicate errors, reserving exceptions only for unrecoverable conditions. The only exceptions that may be thrown originate from underlying libraries.
+This library uses return values for error handling, and exceptions are only thrown for critical failures that are equivalent to program termination. Exceptions should never be used for control flow and are reserved for situations where recovery is either impossible or highly unlikely.
 
-All code must be exception-safe, meaning that all resources must be managed using RAII (Resource Acquisition Is Initialization) to ensure proper cleanup in the event of an exception. While exceptions are considered exceptional cases and often indicative of bugs—where terminating the program might be acceptable—they are propagated to the user to provide an opportunity for handling them.
+All code must be exception-safe, meaning that resources must be managed using RAII (Resource Acquisition Is Initialization) to ensure proper cleanup in the event of an exception. While exceptions are considered severe and may justify terminating the program, there is flexibility to handle them in specific cases where recovery might be feasible.
 
 To summarize:
 
-- An exception should never occur under normal operation.
-- If an exception is thrown, it is considered a bug, and terminating the program is acceptable.
-- Use return values for error handling.
+- Exceptions are accepted, but only for critical, unrecoverable errors.
+- Throwing an exception is considered equivalent to aborting the program, but there is some room for handling in exceptional cases.
+- Never use exceptions to control the program's flow.
+- The aim is to never have any exceptions raised in the codebase.
