@@ -60,7 +60,7 @@ int main(int const argc, char* argv[]) {
 
     advertiser->on<rav::dnssd::events::advertiser_error>([](const rav::dnssd::events::advertiser_error& event,
                                                             rav::dnssd::dnssd_advertiser&) {
-        RAV_ERROR("Advertiser error: {}", event.exception.what());
+        RAV_ERROR("Advertiser error: {}", event.error_message);
     });
 
     advertiser->on<rav::dnssd::events::name_conflict>([](const rav::dnssd::events::name_conflict& event,

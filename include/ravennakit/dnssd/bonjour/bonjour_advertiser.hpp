@@ -30,7 +30,7 @@ class bonjour_advertiser: public dnssd_advertiser {
     ) override;
 
     void update_txt_record(util::id id, const txt_record& txt_record) override;
-    void unregister_service(util::id id) noexcept override;
+    void unregister_service(util::id id) override;
 
   private:
     struct registered_service {

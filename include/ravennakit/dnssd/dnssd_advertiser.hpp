@@ -15,8 +15,7 @@ namespace events {
      * Event for when a service was discovered.
      */
     struct advertiser_error {
-        /// The exception
-        const std::exception& exception;
+        const char* error_message;
     };
 
     /**
@@ -69,7 +68,7 @@ class dnssd_advertiser: public event_emitter<dnssd_advertiser, events::advertise
     /**
      * Unregisters this service from the mDnsResponder, after which the service will no longer be found on the network.
      */
-    virtual void unregister_service(util::id id) noexcept = 0;
+    virtual void unregister_service(util::id id) = 0;
 
     /**
      * Creates the most appropriate dnssd_advertiser implementation for the platform.

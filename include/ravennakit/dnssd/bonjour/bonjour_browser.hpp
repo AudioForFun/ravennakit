@@ -55,6 +55,12 @@ class bonjour_browser: public dnssd_browser {
          */
         [[nodiscard]] const service_description& description() const noexcept;
 
+      private:
+        bonjour_browser& owner_;
+        std::map<uint32_t, bonjour_scoped_dns_service_ref> resolvers_;
+        std::map<uint32_t, bonjour_scoped_dns_service_ref> get_addrs_;
+        service_description description_;
+
         /**
          * Called by dns_sd callbacks when a service was resolved.
          * @param service_ref The DNSServiceRef.
@@ -71,12 +77,13 @@ class bonjour_browser: public dnssd_browser {
          * @param port The port, in network byte order, on which connections are accepted for this service.
          * @param txt_len The length of the txt record, in bytes.
          * @param txt_record The service's primary txt record, in standard txt record format.
+         * @param context
          */
-        void resolve_callback(
+        static void resolve_callback(
             DNSServiceRef service_ref, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code,
-            const char* fullname, const char* host_target,
-            uint16_t port,  // In network byte order.
-            uint16_t txt_len, const unsigned char* txt_record
+            const char* fullname, const char* host_target, uint16_t port,
+            // In network byte order.
+            uint16_t txt_len, const unsigned char* txt_record, void* context
         );
 
         /**
@@ -89,17 +96,12 @@ class bonjour_browser: public dnssd_browser {
          * @param hostname The fully qualified domain name of the host to be queried for.
          * @param address IPv4 or IPv6 address.
          * @param ttl Time to live.
+         * @param context
          */
-        void get_addr_info_callback(
+        static void get_addr_info_callback(
             DNSServiceRef sd_ref, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code,
-            const char* hostname, const struct sockaddr* address, uint32_t ttl
+            const char* hostname, const struct sockaddr* address, uint32_t ttl, void* context
         );
-
-      private:
-        bonjour_browser& owner_;
-        std::map<uint32_t, bonjour_scoped_dns_service_ref> resolvers_;
-        std::map<uint32_t, bonjour_scoped_dns_service_ref> get_addrs_;
-        service_description description_;
     };
 
     explicit bonjour_browser();

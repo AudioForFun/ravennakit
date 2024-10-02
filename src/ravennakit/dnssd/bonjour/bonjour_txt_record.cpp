@@ -20,12 +20,13 @@ rav::dnssd::bonjour_txt_record::~bonjour_txt_record() {
 
 void rav::dnssd::bonjour_txt_record::setValue(const std::string& key, const std::string& value) {
     DNSSD_THROW_IF_ERROR(
+        "Failed to set txt record value",
         TXTRecordSetValue(&txt_record_ref_, key.c_str(), static_cast<uint8_t>(value.length()), value.c_str())
     );
 }
 
 void rav::dnssd::bonjour_txt_record::setValue(const std::string& key) {
-    DNSSD_THROW_IF_ERROR(TXTRecordSetValue(&txt_record_ref_, key.c_str(), 0, nullptr));
+    DNSSD_THROW_IF_ERROR("Failed to set txt record key", TXTRecordSetValue(&txt_record_ref_, key.c_str(), 0, nullptr));
 }
 
 uint16_t rav::dnssd::bonjour_txt_record::length() const noexcept {

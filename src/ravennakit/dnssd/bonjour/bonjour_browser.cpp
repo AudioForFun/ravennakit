@@ -9,26 +9,6 @@
 
     #include <mutex>
 
-static void DNSSD_API resolveCallBack(
-    DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType errorCode,
-    const char* fullname, const char* hosttarget,
-    uint16_t port,  // In network byte order
-    uint16_t txtLen, const unsigned char* txtRecord, void* context
-) {
-    auto* service = static_cast<rav::dnssd::bonjour_browser::service*>(context);
-    service->resolve_callback(
-        sdRef, flags, interfaceIndex, errorCode, fullname, hosttarget, ntohs(port), txtLen, txtRecord
-    );
-}
-
-static void DNSSD_API getAddrInfoCallBack(
-    DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType errorCode,
-    const char* fullname, const struct sockaddr* address, uint32_t ttl, void* context
-) {
-    auto* service = static_cast<rav::dnssd::bonjour_browser::service*>(context);
-    service->get_addr_info_callback(sdRef, flags, interfaceIndex, errorCode, fullname, address, ttl);
-}
-
 rav::dnssd::bonjour_browser::service::service(
     const char* fullname, const char* name, const char* type, const char* domain, rav::dnssd::bonjour_browser& owner
 ) :
@@ -49,10 +29,13 @@ void rav::dnssd::bonjour_browser::service::resolve_on_interface(uint32_t index) 
 
     DNSServiceRef resolveServiceRef = owner_.shared_connection_.service_ref();
 
-    DNSSD_THROW_IF_ERROR(DNSServiceResolve(
-        &resolveServiceRef, kDNSServiceFlagsShareConnection, index, description_.name.c_str(),
-        description_.type.c_str(), description_.domain.c_str(), ::resolveCallBack, this
-    ));
+    DNSSD_THROW_IF_ERROR(
+        "Failed to resolve service",
+        DNSServiceResolve(
+            &resolveServiceRef, kDNSServiceFlagsShareConnection, index, description_.name.c_str(),
+            description_.type.c_str(), description_.domain.c_str(), resolve_callback, this
+        )
+    );
 
     resolvers_.insert({index, bonjour_scoped_dns_service_ref(resolveServiceRef)});
 }
@@ -60,37 +43,44 @@ void rav::dnssd::bonjour_browser::service::resolve_on_interface(uint32_t index) 
 void rav::dnssd::bonjour_browser::service::resolve_callback(
     [[maybe_unused]] DNSServiceRef serviceRef, [[maybe_unused]] DNSServiceFlags flags, uint32_t interface_index,
     DNSServiceErrorType error_code, [[maybe_unused]] const char* fullname, const char* host_target, uint16_t port,
-    uint16_t txt_len, const unsigned char* txt_record
+    uint16_t txt_len, const unsigned char* txt_record, void* context
 ) {
-    DNSSD_THROW_IF_ERROR(error_code);
+    DNSSD_THROW_IF_ERROR("Resolve failed", error_code);
 
-    description_.host = host_target;
-    description_.port = port;
-    description_.txt = bonjour_txt_record::get_txt_record_from_raw_bytes(txt_record, txt_len);
+    auto* browser_service = static_cast<service*>(context);
 
-    owner_.emit(events::service_resolved {description_, interface_index});
+    browser_service->description_.host = host_target;
+    browser_service->description_.port = port;
+    browser_service->description_.txt = bonjour_txt_record::get_txt_record_from_raw_bytes(txt_record, txt_len);
 
-    DNSServiceRef getAddrInfoServiceRef = owner_.shared_connection_.service_ref();
+    browser_service->owner_.emit(events::service_resolved {browser_service->description_, interface_index});
 
-    DNSSD_THROW_IF_ERROR(DNSServiceGetAddrInfo(
-        &getAddrInfoServiceRef, kDNSServiceFlagsShareConnection | kDNSServiceFlagsTimeout, interface_index,
-        kDNSServiceProtocol_IPv4 | kDNSServiceProtocol_IPv6, host_target, ::getAddrInfoCallBack, this
-    ));
+    DNSServiceRef getAddrInfoServiceRef = browser_service->owner_.shared_connection_.service_ref();
 
-    get_addrs_.insert({interface_index, bonjour_scoped_dns_service_ref(getAddrInfoServiceRef)});
+    DNSSD_THROW_IF_ERROR(
+        "Failed to get addr info",
+        DNSServiceGetAddrInfo(
+            &getAddrInfoServiceRef, kDNSServiceFlagsShareConnection | kDNSServiceFlagsTimeout, interface_index,
+            kDNSServiceProtocol_IPv4 | kDNSServiceProtocol_IPv6, host_target, get_addr_info_callback, browser_service
+        )
+    );
+
+    browser_service->get_addrs_.insert({interface_index, bonjour_scoped_dns_service_ref(getAddrInfoServiceRef)});
 }
 
 void rav::dnssd::bonjour_browser::service::get_addr_info_callback(
     [[maybe_unused]] DNSServiceRef sd_ref, [[maybe_unused]] DNSServiceFlags flags, const uint32_t interface_index,
     const DNSServiceErrorType error_code, [[maybe_unused]] const char* hostname, const struct sockaddr* address,
-    [[maybe_unused]] uint32_t ttl
+    [[maybe_unused]] uint32_t ttl, void* context
 ) {
+    auto* browser_service = static_cast<service*>(context);
+
     if (error_code == kDNSServiceErr_Timeout) {
-        get_addrs_.erase(interface_index);
+        browser_service->get_addrs_.erase(interface_index);
         return;
     }
 
-    DNSSD_THROW_IF_ERROR(error_code);
+    DNSSD_THROW_IF_ERROR("Get addr info callback error", error_code);
 
     char ip_addr[INET6_ADDRSTRLEN] = {};
 
@@ -107,10 +97,12 @@ void rav::dnssd::bonjour_browser::service::get_addr_info_callback(
     // Winsock version requires the const cast because Microsoft.
     inet_ntop(address->sa_family, const_cast<void*>(ip_addr_data), ip_addr, INET6_ADDRSTRLEN);
 
-    const auto found_interface = description_.interfaces.find(interface_index);
-    if (found_interface != description_.interfaces.end()) {
+    const auto found_interface = browser_service->description_.interfaces.find(interface_index);
+    if (found_interface != browser_service->description_.interfaces.end()) {
         const auto result = found_interface->second.insert(ip_addr);
-        owner_.emit(events::address_added {description_, *result.first, interface_index});
+        browser_service->owner_.emit(
+            events::address_added {browser_service->description_, *result.first, interface_index}
+        );
     } else {
         RAV_THROW_EXCEPTION(std::string("Interface with id \"") + std::to_string(interface_index) + "\" not found");
     }
@@ -154,7 +146,7 @@ void rav::dnssd::bonjour_browser::browse_reply(
 ) {
     auto* browser = static_cast<bonjour_browser*>(context);
 
-    DNSSD_THROW_IF_ERROR(error_code);
+    DNSSD_THROW_IF_ERROR("Browse reply error", error_code);
 
     RAV_DEBUG(
         "browse_reply name={} type={} domain={} browse_service_ref={} interfaceIndex={}", name, type, domain,
@@ -162,7 +154,7 @@ void rav::dnssd::bonjour_browser::browse_reply(
     );
 
     char fullname[kDNSServiceMaxDomainName] = {};
-    DNSSD_THROW_IF_ERROR(DNSServiceConstructFullName(fullname, name, type, domain));
+    DNSSD_THROW_IF_ERROR("Failed to construct full name", DNSServiceConstructFullName(fullname, name, type, domain));
 
     if (flags & kDNSServiceFlagsAdd) {
         // Insert a new service if not already present
@@ -205,10 +197,13 @@ void rav::dnssd::bonjour_browser::browse_for(const std::string& service) {
         RAV_THROW_EXCEPTION("Already browsing for service \"" + service + "\"");
     }
 
-    DNSSD_THROW_IF_ERROR(DNSServiceBrowse(
-        &browsingServiceRef, kDNSServiceFlagsShareConnection, kDNSServiceInterfaceIndexAny, service.c_str(), nullptr,
-        browse_reply, this
-    ));
+    DNSSD_THROW_IF_ERROR(
+        "Browse error: ",
+        DNSServiceBrowse(
+            &browsingServiceRef, kDNSServiceFlagsShareConnection, kDNSServiceInterfaceIndexAny, service.c_str(),
+            nullptr, browse_reply, this
+        )
+    );
 
     browsers_.insert({service, bonjour_scoped_dns_service_ref(browsingServiceRef)});
     // From here the serviceRef is under RAII inside the ScopedDnsServiceRef class

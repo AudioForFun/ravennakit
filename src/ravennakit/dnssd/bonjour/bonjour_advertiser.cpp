@@ -10,9 +10,6 @@
     #include <iostream>
     #include <thread>
 
-// Check if we can use DNSServiceRef as identifier.
-static_assert(sizeof(uint64_t) == sizeof(DNSServiceRef));
-
 rav::dnssd::bonjour_advertiser::bonjour_advertiser() {
     process_results_thread_.start(shared_connection_.service_ref());
 }
@@ -23,7 +20,7 @@ rav::dnssd::bonjour_advertiser::~bonjour_advertiser() {
 
 rav::util::id rav::dnssd::bonjour_advertiser::register_service(
     const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
-    bool auto_rename
+    const bool auto_rename
 ) {
     auto guard = process_results_thread_.lock();
     DNSServiceRef service_ref = shared_connection_.service_ref();
@@ -35,10 +32,13 @@ rav::util::id rav::dnssd::bonjour_advertiser::register_service(
         flags |= kDNSServiceFlagsNoAutoRename;
     }
 
-    DNSSD_THROW_IF_ERROR(DNSServiceRegister(
-        &service_ref, flags, 0, name, reg_type.c_str(), domain,
-        nullptr, htons(port), record.length(), record.bytesPtr(), register_service_callback, this
-    ));
+    DNSSD_THROW_IF_ERROR(
+        "Failed to register service",
+        DNSServiceRegister(
+            &service_ref, flags, 0, name, reg_type.c_str(), domain, nullptr, htons(port), record.length(),
+            record.bytesPtr(), register_service_callback, this
+        )
+    );
 
     auto scoped_service_ref = bonjour_scoped_dns_service_ref(service_ref);
     const auto id = id_generator_.next();
@@ -46,7 +46,7 @@ rav::util::id rav::dnssd::bonjour_advertiser::register_service(
     return id;
 }
 
-void rav::dnssd::bonjour_advertiser::unregister_service(util::id id) noexcept {
+void rav::dnssd::bonjour_advertiser::unregister_service(util::id id) {
     registered_services_.erase(
         std::remove_if(
             registered_services_.begin(), registered_services_.end(),
@@ -69,7 +69,10 @@ void rav::dnssd::bonjour_advertiser::register_service_callback(
         return;
     }
 
-    DNSSD_THROW_IF_ERROR(error_code);
+    if (error_code != kDNSServiceErr_NoError) {
+        advertiser->emit(events::advertiser_error {dns_service_error_to_string(error_code)});
+        return;
+    }
 }
 
 rav::dnssd::bonjour_advertiser::registered_service*
@@ -93,6 +96,7 @@ void rav::dnssd::bonjour_advertiser::update_txt_record(const util::id id, const 
 
     // Second argument's nullptr tells us that we are updating the primary record.
     DNSSD_THROW_IF_ERROR(
+        "Failed to update TXT record",
         DNSServiceUpdateRecord(service->service_ref.service_ref(), nullptr, 0, record.length(), record.bytesPtr(), 0)
     );
 }

@@ -128,9 +128,9 @@ void rav::dnssd::process_results_thread::run(DNSServiceRef service_ref, const in
             // response to DNSServiceProcessResult.
             std::lock_guard guard(lock_);
             try {
-                DNSSD_THROW_IF_ERROR(DNSServiceProcessResult(service_ref));
+                DNSSD_THROW_IF_ERROR("Failed to process dns service results", DNSServiceProcessResult(service_ref));
             } catch (const std::exception& e) {
-                RAV_ERROR("Failed to process dns service result(s): {}", e.what());
+                RAV_ERROR("Exception on process_results_thread: {}", e.what());
             }
         }
     }
