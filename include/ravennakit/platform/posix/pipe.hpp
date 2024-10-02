@@ -11,9 +11,10 @@
 #pragma once
 
 #include "ravennakit/core/exception.hpp"
-
+#include "ravennakit/core/platform.hpp"
 #include <unistd.h>
-#include <fcntl.h>
+
+#if RAV_POSIX
 
 namespace rav::posix {
 
@@ -82,3 +83,5 @@ class pipe {
 };
 
 }  // namespace rav::posix
+
+#endif

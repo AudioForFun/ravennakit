@@ -11,6 +11,8 @@
 #include "ravennakit/platform/posix/pipe.hpp"
 #include "catch2/catch_all.hpp"
 
+#if RAV_POSIX
+
 TEST_CASE("pipe", "[pipe]") {
     SECTION("Test default state") {
         rav::posix::pipe pipe;
@@ -45,3 +47,5 @@ TEST_CASE("pipe", "[pipe]") {
         }
     }
 }
+
+#endif
