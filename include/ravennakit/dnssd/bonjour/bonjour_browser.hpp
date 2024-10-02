@@ -109,7 +109,6 @@ class bonjour_browser: public dnssd_browser {
 
   private:
     bonjour_shared_connection shared_connection_;
-    posix::pipe pipe_;
     std::map<std::string, bonjour_scoped_dns_service_ref> browsers_;
     std::map<std::string, service> services_;
     process_results_thread process_results_thread_;

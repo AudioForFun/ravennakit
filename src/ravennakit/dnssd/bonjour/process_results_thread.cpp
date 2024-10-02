@@ -33,6 +33,7 @@ void rav::dnssd::process_results_thread::start(DNSServiceRef service_ref) {
 }
 
 void rav::dnssd::process_results_thread::stop() {
+#if RAV_POSIX
     using namespace std::chrono_literals;
 
     if (future_.valid()) {
@@ -53,6 +54,7 @@ void rav::dnssd::process_results_thread::stop() {
 
         future_ = {};
     }
+#endif
 }
 
 bool rav::dnssd::process_results_thread::is_running() {
@@ -69,6 +71,7 @@ std::lock_guard<std::mutex> rav::dnssd::process_results_thread::lock() {
 }
 
 void rav::dnssd::process_results_thread::run(DNSServiceRef service_ref, const int service_fd) {
+#if RAV_POSIX
     const auto signal_fd = pipe_.read_fd();
     const auto max_fd = std::max(service_fd_, signal_fd);
 
@@ -121,6 +124,7 @@ void rav::dnssd::process_results_thread::run(DNSServiceRef service_ref, const in
     }
 
     RAV_TRACE("Stop DNS-SD processing thread");
+#endif
 }
 
 #endif

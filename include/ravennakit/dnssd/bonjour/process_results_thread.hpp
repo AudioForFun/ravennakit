@@ -49,7 +49,9 @@ class process_results_thread {
 
   private:
     int service_fd_ {};
+#if RAV_POSIX
     posix::pipe pipe_;
+#endif
     std::mutex lock_;
     std::future<void> future_;
 

@@ -12,9 +12,10 @@
 
 #include "ravennakit/core/exception.hpp"
 #include "ravennakit/core/platform.hpp"
-#include <unistd.h>
 
 #if RAV_POSIX
+
+#include <unistd.h>
 
 namespace rav::posix {
 
