@@ -41,6 +41,10 @@ class id {
         return id_ != 0;
     }
 
+    bool operator==(const uint64_t value) const {
+        return id_ == value;
+    }
+
     friend bool operator==(const id& lhs, const id& rhs) {
         return lhs.id_ == rhs.id_;
     }
