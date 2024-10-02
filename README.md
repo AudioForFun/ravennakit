@@ -19,8 +19,11 @@ https://datatracker.ietf.org/doc/html/rfc3190
 RFC 8866: SDP: Session Description Protocol
 https://datatracker.ietf.org/doc/html/rfc8866
 
-RCC 4570: Session Description Protocol (SDP) Source Filters
+RFC 4570: Session Description Protocol (SDP) Source Filters
 https://datatracker.ietf.org/doc/html/rfc4570
+
+RFC 2326: Real Time Streaming Protocol (RTSP)
+https://datatracker.ietf.org/doc/html/rfc2326
 
 ## CMake options
 
