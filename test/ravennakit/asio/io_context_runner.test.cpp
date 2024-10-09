@@ -20,7 +20,7 @@ namespace {
 constexpr auto k_default_timeout_seconds_seconds = std::chrono::seconds(5);
 }
 
-TEST_CASE("io_context_runner | run_to_completion_async()", "[io_context_runner]") {
+TEST_CASE("io_context_runner", "[io_context_runner]") {
     SECTION("Run tasks to completion asynchronously") {
         rav::io_context_runner runner;
         size_t expected_total = 0;
@@ -33,74 +33,37 @@ TEST_CASE("io_context_runner | run_to_completion_async()", "[io_context_runner]"
             });
         }
 
-        runner.start();
-
         const rav::util::chrono::timeout timeout(k_default_timeout_seconds_seconds);
-        while (total != expected_total) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            if (timeout.expired()) {
-                FAIL("Timeout expired");
-                break;
-            }
+        const auto result = timeout.wait_until([&total, &expected_total] {
+            return total == expected_total && total != 0;
+        });
+
+        if (!result) {
+            FAIL("Timeout expired");
         }
 
-        runner.stop();
+        runner.wait_for_completion();
 
         REQUIRE(expected_total == total);
     }
 
-    SECTION("A runner cannot run a 2nd time") {
-        rav::io_context_runner runner;
-        size_t expected_total = 0;
-        std::atomic<size_t> total = 0;
-
-        for (size_t i = 0; i < 10000; i++) {
-            expected_total += i;
-            asio::post(runner.io_context(), [&total, i] {
-                total.fetch_add(i);
-            });
-        }
-
-        runner.start();
-
-        const rav::util::chrono::timeout timeout(k_default_timeout_seconds_seconds);
-        while (total != expected_total) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            if (timeout.expired()) {
-                FAIL("Timeout expired");
-                break;
-            }
-        }
-
-        runner.stop();
-
-        REQUIRE_THROWS(runner.start());
-    }
-}
-
-TEST_CASE("io_context_runner | run_async()", "[io_context_runner]") {
     SECTION("When calling run_async, the io_context should not stop when no work is posted") {
         rav::io_context_runner runner;
-        std::atomic post_run_called = false;
 
-        runner.start();
-
-        // Give io_context some time to idle
+        // Give runner some time to idle
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-        asio::post(runner.io_context(), [&post_run_called] {
-            post_run_called = true;
+        std::promise<void> promise;
+        std::future<void> future = promise.get_future();
+
+        asio::post(runner.io_context(), [p = std::move(promise)]() mutable {
+            p.set_value();
         });
 
-        const rav::util::chrono::timeout timeout(k_default_timeout_seconds_seconds);
-        while (!post_run_called) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            if (timeout.expired()) {
-                FAIL("Timeout expired");
-                break;
-            }
+        if (future.wait_for(std::chrono::seconds(1)) == std::future_status::timeout) {
+            FAIL("Timeout expired");
         }
 
-        runner.stop();
+        runner.wait_for_completion();
     }
 }

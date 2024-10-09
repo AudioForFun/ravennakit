@@ -23,58 +23,21 @@ namespace rav {
  */
 class io_context_runner {
   public:
-    io_context_runner() = default;
+    io_context_runner() {
+        start();
+    }
 
     /**
      * Constructs a runner with a specific number of threads.
      * @param num_threads Number of threads to run the io_context on.
      */
     explicit io_context_runner(const size_t num_threads) :
-        num_threads_(num_threads), io_context_(static_cast<int>(num_threads)) {}
+        num_threads_(num_threads), io_context_(static_cast<int>(num_threads)) {
+        start();
+    }
 
     ~io_context_runner() {
         stop();
-    }
-
-    /**
-     * Starts the runner asynchronously, returning immediately. If the runner is already running, it will be stopped
-     * first.
-     */
-    void start() {
-        if (io_context_.stopped()) {
-            RAV_THROW_EXCEPTION("io_context is stopped");
-        }
-
-        if (is_running()) {
-            RAV_THROW_EXCEPTION("io_context_runner is already running");
-        }
-
-        threads_.clear();
-        threads_.reserve(num_threads_);
-
-        for (size_t i = 0; i < num_threads_; i++) {
-            threads_.emplace_back([this, i] {
-#if RAV_MACOS
-                {
-                    const std::string thread_name = "io_context_runner " + std::to_string(i);
-                    pthread_setname_np(thread_name.c_str());
-                }
-#endif
-
-                while (true) {
-                    try {
-                        io_context_.run();
-                        if (io_context_.stopped()) {
-                            break;
-                        }
-                    } catch (const std::exception& e) {
-                        RAV_ERROR("Exception thrown on io_context runner thread: {}", e.what());
-                    } catch (...) {
-                        RAV_ERROR("Unknown exception thrown on io_context runner thread");
-                    }
-                }
-            });
-        }
     }
 
     /**
@@ -118,6 +81,39 @@ class io_context_runner {
     asio::io_context io_context_ {};
     asio::executor_work_guard<asio::io_context::executor_type> work_guard_ {asio::make_work_guard(io_context_)};
     std::vector<std::thread> threads_ {};
+
+    /**
+     * Starts the runner asynchronously, returning immediately. If the runner is already running, it will be stopped
+     * first.
+     */
+    void start() {
+        threads_.clear();
+        threads_.reserve(num_threads_);
+
+        for (size_t i = 0; i < num_threads_; i++) {
+            threads_.emplace_back([this, i] {
+#if RAV_MACOS
+                {
+                    const std::string thread_name = "io_context_runner " + std::to_string(i);
+                    pthread_setname_np(thread_name.c_str());
+                }
+#endif
+
+                while (true) {
+                    try {
+                        io_context_.run();
+                        if (io_context_.stopped()) {
+                            break;
+                        }
+                    } catch (const std::exception& e) {
+                        RAV_ERROR("Exception thrown on io_context runner thread: {}", e.what());
+                    } catch (...) {
+                        RAV_ERROR("Unknown exception thrown on io_context runner thread");
+                    }
+                }
+            });
+        }
+    }
 };
 
 }  // namespace rav
