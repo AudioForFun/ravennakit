@@ -29,7 +29,9 @@ class result {
      * @return The result.
      */
     static result ok(T value) {
-        return result(std::variant<T, E> {std::in_place_index<0>, std::move(value)});
+        result r;
+        r.value_ = std::variant<T, E> {std::in_place_index<0>, std::move(value)};
+        return r;
     }
 
     /**
@@ -38,7 +40,9 @@ class result {
      * @return The result.
      */
     static result err(E error) {
-        return result(std::variant<T, E> {std::in_place_index<1>, std::move(error)});
+        result r;
+        r.value_ = std::variant<T, E> {std::in_place_index<1>, std::move(error)};
+        return r;
     }
 
     /**
@@ -80,7 +84,10 @@ class result {
   private:
     std::variant<T, E> value_;
 
-    explicit result(std::variant<T, E> value) : value_(std::move(value)) {}
+    explicit result() = default;
+
+    // Warning: this constructor triggers undefined behavior sanitizer when running as x86_64 on Apple Silicon
+    // explicit result(std::variant<T, E> value) : value_(std::move(value)) {}
 };
 
 /**
