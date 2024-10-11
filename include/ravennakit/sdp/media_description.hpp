@@ -46,7 +46,7 @@ struct format {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     /**
      * Parses a format from a string.
@@ -74,7 +74,7 @@ struct connection_info_field {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     /**
      * Parses a connection info field from a string.
@@ -113,7 +113,7 @@ struct origin_field {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     /**
      * Parses an origin field from a string.
@@ -136,7 +136,7 @@ struct time_active_field {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     /**
      * Parses a time field from a string.
@@ -155,7 +155,7 @@ struct ravenna_clock_domain {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     sync_source source {sync_source::undefined};
     int32_t domain {};
@@ -170,7 +170,7 @@ class media_description {
   public:
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     /**
      * Parses a media description from a string (i.e. the line starting with m=*). Does not parse the connection

@@ -15,11 +15,11 @@ ravennakit_tests_target = 'ravennakit_tests'
 # Script location matters, cwd does not
 script_path = Path(__file__)
 script_dir = script_path.parent
-root_dir = script_dir.parent
 
 
-def build_macos(args, build_config: Config):
-    path_to_build = Path(args.path_to_build) / 'macos-universal'
+def build_macos(args, build_config: Config, subfolder: str, spdlog: bool = False, asan: bool = False,
+                tsan: bool = False):
+    path_to_build = Path(args.path_to_build) / subfolder
 
     if args.skip_build:
         return path_to_build
@@ -28,7 +28,7 @@ def build_macos(args, build_config: Config):
 
     cmake = CMake()
     cmake.path_to_build(path_to_build)
-    cmake.path_to_source(root_dir)
+    cmake.path_to_source(script_dir)
     cmake.build_config(build_config)
     cmake.generator('Xcode')
     cmake.parallel(multiprocessing.cpu_count())
@@ -41,7 +41,16 @@ def build_macos(args, build_config: Config):
     cmake.option('CMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY', 'Apple Development')
     cmake.option('CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM', args.macos_development_team)
     cmake.option('BUILD_NUMBER', args.build_number)
-    cmake.option('RAV_ENABLE_SPDLOG', 'ON')
+
+    # Crash the program when an assertion gets hit
+    cmake.option('RAV_ABORT_ON_ASSERT', 'ON')
+
+    if spdlog:
+        cmake.option('RAV_ENABLE_SPDLOG', 'ON')
+    if asan:
+        cmake.option('WITH_ADDRESS_SANITIZER', 'ON')
+    if tsan:
+        cmake.option('WITH_THREAD_SANITIZER', 'ON')
 
     cmake.configure()
     cmake.build()
@@ -59,7 +68,7 @@ def build_windows(args, arch, build_config: Config):
 
     cmake = CMake()
     cmake.path_to_build(path_to_build)
-    cmake.path_to_source(root_dir)
+    cmake.path_to_source(script_dir)
     cmake.build_config(build_config)
     cmake.architecture(arch)
     cmake.parallel(multiprocessing.cpu_count())
@@ -86,7 +95,7 @@ def build_linux(args, arch, build_config: Config):
 
     cmake = CMake()
     cmake.path_to_build(path_to_build)
-    cmake.path_to_source(root_dir)
+    cmake.path_to_source(script_dir)
     cmake.build_config(build_config)
     cmake.parallel(multiprocessing.cpu_count())
 
@@ -106,33 +115,39 @@ def build(args):
 
     test_report_folder.mkdir(parents=True, exist_ok=True)
 
-    if platform.system() == 'Darwin':
-        path_to_build = build_macos(args, build_config)
+    def run_test(test_target, report_name):
+        print(f'Running test {report_name} ({test_target})')
 
-        # Run tests
-        subprocess.run([path_to_build / build_config.value / ravennakit_tests_target, '--reporter',
-                        f'JUnit::out={test_report_folder}/{test_report_file}', '--reporter',
-                        'console::out=-::colour-mode=ansi'],
-                       check=True)
+        cmd = [test_target, '--reporter',
+               f'JUnit::out={test_report_folder}/{report_name}.xml', '--reporter',
+               'console::out=-::colour-mode=ansi']
+        subprocess.run(cmd, check=True)
+
+        if platform.system() == 'Darwin' and platform.processor() == 'arm':
+            print(f'Running x86_64 test {report_name} ({test_target})')
+            subprocess.run(['arch', '--x86_64'] + cmd, check=True)
+
+    if platform.system() == 'Darwin':
+        path_to_build = build_macos(args, build_config, 'macos_universal')
+        run_test(path_to_build / build_config.value / ravennakit_tests_target, 'macos_universal')
+
+        if args.asan:
+            path_to_build = build_macos(args, build_config, 'macos_universal_spdlog_asan', spdlog=True, asan=True)
+            run_test(path_to_build / build_config.value / ravennakit_tests_target, 'macos_universal_spdlog_asan')
+
+        if args.tsan:
+            path_to_build = build_macos(args, build_config, 'macos_universal_spdlog_tsan', spdlog=True, tsan=True)
+            run_test(path_to_build / build_config.value / ravennakit_tests_target, 'macos_universal_spdlog_tsan')
 
     elif platform.system() == 'Windows':
         path_to_build_x64 = build_windows(args, 'x64', build_config)
-
-        # Run tests
-        subprocess.run([path_to_build_x64 / build_config.value / f'{ravennakit_tests_target}.exe', '--reporter',
-                        f'JUnit::out={test_report_folder}/{test_report_file}', '--reporter',
-                        'console::out=-::colour-mode=ansi'],
-                       check=True)
+        run_test(path_to_build_x64 / build_config.value / f'{ravennakit_tests_target}.exe', 'windows_x64')
 
     elif platform.system() == 'Linux':
         path_to_build_x64 = build_linux(args, 'x64', build_config)
-        # path_to_build_arm64 = build_linux(args, 'arm64', build_config)
+        run_test(path_to_build_x64 / f'{ravennakit_tests_target}', 'linux_x64')
 
-        # Run tests
-        subprocess.run([path_to_build_x64 / f'{ravennakit_tests_target}', '--reporter',
-                        f'JUnit::out={test_report_folder}/{test_report_file}', '--reporter',
-                        'console::out=-::colour-mode=ansi'],
-                       check=True)
+        # TODO: path_to_build_arm64 = build_linux(args, 'arm64', build_config)
 
 
 def main():
@@ -165,6 +180,14 @@ def main():
                         help="Specify the secret for uploading to spaces")
 
     if platform.system() == 'Darwin':
+        parser.add_argument("--asan",
+                            help="Build and run with address sanitizer (separately)",
+                            action="store_true")
+
+        parser.add_argument("--tsan",
+                            help="Build and run with thread sanitizer (separately)",
+                            action="store_true")
+
         parser.add_argument("--notarize",
                             help="Notarize packages",
                             action="store_true")

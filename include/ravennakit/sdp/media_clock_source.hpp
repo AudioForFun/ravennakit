@@ -30,7 +30,7 @@ class media_clock_source {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     static parse_result<media_clock_source> parse_new(std::string_view line);
 

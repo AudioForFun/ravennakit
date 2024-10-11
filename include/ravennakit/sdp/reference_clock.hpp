@@ -27,7 +27,7 @@ public:
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     /**
      * @returns The source of the reference clock.

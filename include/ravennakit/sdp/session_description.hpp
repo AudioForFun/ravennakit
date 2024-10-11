@@ -27,7 +27,7 @@ class session_description {
   public:
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, const char*>;
+    using parse_result = result<T, std::string>;
 
     /**
      * Parses an SDP session description from a string.

@@ -55,12 +55,12 @@ rav::sdp::format::parse_result<rav::sdp::format> rav::sdp::format::parse_new(con
     return parse_result<format>::ok(map);
 }
 
-rav::result<rav::sdp::connection_info_field, const char*>
+rav::sdp::connection_info_field::parse_result<rav::sdp::connection_info_field>
 rav::sdp::connection_info_field::parse_new(const std::string_view line) {
     string_parser parser(line);
 
     if (!parser.skip("c=")) {
-        return result<connection_info_field, const char*>::err("connection: expecting 'c='");
+        return parse_result<connection_info_field>::err("connection: expecting 'c='");
     }
 
     connection_info_field info;
@@ -70,10 +70,10 @@ rav::sdp::connection_info_field::parse_new(const std::string_view line) {
         if (*network_type == sdp::k_sdp_inet) {
             info.network_type = sdp::netw_type::internet;
         } else {
-            return result<connection_info_field, const char*>::err("connection: invalid network type");
+            return parse_result<connection_info_field>::err("connection: invalid network type");
         }
     } else {
-        return result<connection_info_field, const char*>::err("connection: failed to parse network type");
+        return parse_result<connection_info_field>::err("connection: failed to parse network type");
     }
 
     // Address type
@@ -83,10 +83,10 @@ rav::sdp::connection_info_field::parse_new(const std::string_view line) {
         } else if (*address_type == sdp::k_sdp_ipv6) {
             info.address_type = sdp::addr_type::ipv6;
         } else {
-            return result<connection_info_field, const char*>::err("connection: invalid address type");
+            return parse_result<connection_info_field>::err("connection: invalid address type");
         }
     } else {
-        return result<connection_info_field, const char*>::err("connection: failed to parse address type");
+        return parse_result<connection_info_field>::err("connection: failed to parse address type");
     }
 
     // Address
@@ -135,7 +135,7 @@ rav::sdp::origin_field::parse_result<rav::sdp::origin_field> rav::sdp::origin_fi
     string_parser parser(line);
 
     if (!parser.skip("o=")) {
-        return result<origin_field, const char*>::err("origin: expecting 'o='");
+        return parse_result<origin_field>::err("origin: expecting 'o='");
     }
 
     origin_field o;
