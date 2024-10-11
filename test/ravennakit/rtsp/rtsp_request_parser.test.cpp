@@ -68,6 +68,34 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
         }
     }
 
+    SECTION("Parse folded headers") {
+        auto texts = replace_newlines(
+            "DESCRIBE rtsp://server.example.com/fizzle/foo RTSP/1.0\r\nCSeq: 312\r\nAccept: application/sdp, \r\n application/rtsl, application/mheg\r\n\r\n"
+        );
+
+        auto tab_folder = replace_newlines(
+            "DESCRIBE rtsp://server.example.com/fizzle/foo RTSP/1.0\r\nCSeq: 312\r\nAccept: application/sdp, \r\n\tapplication/rtsl, application/mheg\r\n\r\n"
+        );
+
+        texts.insert(texts.end(), tab_folder.begin(), tab_folder.end());
+
+        for (auto& txt : texts) {
+            rav::rtsp_request request;
+            rav::rtsp_request_parser parser(request);
+            auto [result, begin] = parser.parse(txt.begin(), txt.end());
+            REQUIRE(result == rav::rtsp_request_parser::result::good);
+            REQUIRE(request.method == "DESCRIBE");
+            REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
+            REQUIRE(request.rtsp_version_major == 1);
+            REQUIRE(request.rtsp_version_minor == 0);
+            REQUIRE_FALSE(request.headers.empty());
+            REQUIRE(request.headers.size() == 2);
+            REQUIRE(request.headers[0].name == "CSeq");
+            REQUIRE(request.headers[0].value == "312");
+            REQUIRE(request.headers[1].name == "Accept");
+            REQUIRE(request.headers[1].value == "application/sdp, application/rtsl, application/mheg");
+        }
+    }
 
     SECTION("Parse chunked") {
         auto texts = replace_newlines(

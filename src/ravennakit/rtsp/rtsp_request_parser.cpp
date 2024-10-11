@@ -102,6 +102,11 @@ rav::rtsp_request_parser::result rav::rtsp_request_parser::consume(const char c)
             }
             return result::bad_header;
         case state::header_start:
+            if (c == ' ' || c == '\t') {
+                // Folded header
+                state_ = state::header_value;
+                return result::indeterminate;
+            }
             if (c == '\r') {
                 state_ = state::header_start;
                 return result::indeterminate;
