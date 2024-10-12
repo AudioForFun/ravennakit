@@ -43,11 +43,11 @@ std::tuple<rav::rtsp_request_parser::result, size_t> rav::rtsp_request_parser::p
 
             RAV_ASSERT(i == input.size() - 1, "Expecting no more data left at this point");
 
-            return std::make_tuple(result, i);
+            return std::make_tuple(result, i + 1);
         }
 
         if (result != result::indeterminate) {
-            return std::make_tuple(result, i);  // Error
+            return std::make_tuple(result, i + 1);  // Error
         }
     }
 
