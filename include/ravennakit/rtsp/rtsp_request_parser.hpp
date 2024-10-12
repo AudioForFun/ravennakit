@@ -42,7 +42,7 @@ class rtsp_request_parser {
 
         while (begin < end) {
             if (remaining_expected_data_ > 0) {
-                const auto max_data = std::min(remaining_expected_data_, end - begin);
+                const auto max_data = std::min(remaining_expected_data_, static_cast<long>(end - begin));
                 request_.data.insert(request_.data.end(), begin, begin + max_data);
                 remaining_expected_data_ -= max_data;
                 begin += max_data;
