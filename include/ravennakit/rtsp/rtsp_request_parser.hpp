@@ -42,16 +42,18 @@ class rtsp_request_parser {
 
         while (begin < end) {
             if (remaining_expected_data_ > 0) {
-                const auto max_data = std::min(static_cast<long>(remaining_expected_data_), end - begin);
-                request_.data.insert(request_.data.end(), begin, end);
+                const auto max_data = std::min(remaining_expected_data_, end - begin);
+                request_.data.insert(request_.data.end(), begin, begin + max_data);
                 remaining_expected_data_ -= max_data;
                 begin += max_data;
+                if (remaining_expected_data_ == 0) {
+                    return std::make_tuple(result::good, begin);  // Reached the end of data, which means we are done
+                }
                 if (remaining_expected_data_ > 0) {
-                    return std::make_tuple(result::indeterminate, begin);
+                    return std::make_tuple(result::indeterminate, begin); // Need more data
                 }
-                if (begin >= end) {
-                    return std::make_tuple(result::good, begin);  // Exhausted
-                }
+                RAV_ASSERT_FALSE("remaining_expected_data_ is negative, which should never happen");
+                return std::make_tuple(result::bad_header, begin);
             }
 
             RAV_ASSERT(begin < end, "Expecting to have data available at this point");
@@ -84,6 +86,15 @@ class rtsp_request_parser {
         }
 
         return std::make_tuple(result::indeterminate, begin);
+    }
+
+    /**
+     * Resets the parser to its initial state. Also resets the pointed at request.
+     */
+    void reset() {
+        state_ = state::method_start;
+        remaining_expected_data_ = 0;
+        request_.reset();
     }
 
   private:

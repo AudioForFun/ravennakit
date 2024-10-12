@@ -154,8 +154,67 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
             REQUIRE(request.data == "this_is_the_part_called_data");
         }
     }
+}
 
-    SECTION("Parse with headers and with data in different chunks") {
-        // TODO
+TEST_CASE("rtsp_request_parser | Parse in different chunks", "[rtsp_request_parser]") {
+    constexpr std::string_view rtsp(
+        "DESCRIBE rtsp://server.example.com/fizzle/foo RTSP/1.0\r\nContent-Length: 28\r\n\r\nthis_is_the_part_called_dataOPTIONS rtsp://server2.example.com/fizzle/foo RTSP/1.0\r\nContent-Length: 5\r\n\r\ndata2"
+    );
+
+    rav::rtsp_request request;
+    rav::rtsp_request_parser parser(request);
+
+    // In the middle of Content-Length header
+    auto [result, begin] = parser.parse(rtsp.begin(), rtsp.begin() + 64);
+    REQUIRE(result == rav::rtsp_request_parser::result::indeterminate);
+    REQUIRE(begin == rtsp.begin() + 64);
+
+    // Exactly at the end of the first request, after \r\n\r\n
+    auto [result2, begin2] = parser.parse(begin, rtsp.begin() + 78);
+    REQUIRE(result2 == rav::rtsp_request_parser::result::indeterminate);
+    REQUIRE(begin2 == rtsp.begin() + 78);
+
+    // In the middle of the data
+    auto [result3, begin3] = parser.parse(begin2, rtsp.begin() + 94);
+    REQUIRE(result3 == rav::rtsp_request_parser::result::indeterminate);
+    REQUIRE(begin3 == rtsp.begin() + 94);
+
+    // In the 2nd uri
+    auto [result4, begin4] = parser.parse(begin3, rtsp.begin() + 134);
+    REQUIRE(result4 == rav::rtsp_request_parser::result::good);
+    REQUIRE(begin4 == rtsp.begin() + 106);
+
+    REQUIRE(request.method == "DESCRIBE");
+    REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
+    REQUIRE(request.rtsp_version_major == 1);
+    REQUIRE(request.rtsp_version_minor == 0);
+    if (auto length = request.get_content_length(); length.has_value()) {
+        REQUIRE(length.value() == 28);
+    } else {
+        FAIL("Content-Length header not found");
     }
+    REQUIRE(request.data == "this_is_the_part_called_data");
+
+    // At this point a full request has been parsed, and we can reset the parser.
+    parser.reset();
+
+    // In the 2nd uri
+    auto [result5, begin5] = parser.parse(begin4, rtsp.begin() + 134);
+    REQUIRE(result5 == rav::rtsp_request_parser::result::indeterminate);
+    REQUIRE(begin5 == rtsp.begin() + 134);
+
+    auto [result6, begin6] = parser.parse(begin5, rtsp.end());
+    REQUIRE(result6 == rav::rtsp_request_parser::result::good);
+    REQUIRE(begin6 == rtsp.end());
+
+    REQUIRE(request.method == "OPTIONS");
+    REQUIRE(request.uri == "rtsp://server2.example.com/fizzle/foo");
+    REQUIRE(request.rtsp_version_major == 1);
+    REQUIRE(request.rtsp_version_minor == 0);
+    if (auto length = request.get_content_length(); length.has_value()) {
+        REQUIRE(length.value() == 5);
+    } else {
+        FAIL("Content-Length header not found");
+    }
+    REQUIRE(request.data == "data2");
 }

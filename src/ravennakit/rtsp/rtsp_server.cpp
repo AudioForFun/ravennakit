@@ -51,7 +51,7 @@ class rav::rtsp_server::connection: public std::enable_shared_from_this<connecti
 
                     if (result == rtsp_request_parser::result::good) {
                         // TODO: We got a full request. Call some subscriber or something.
-                        // TODO: Reset the request and other state to go read the next request.
+                        request_parser_.reset();
                     } else if (result != rtsp_request_parser::result::indeterminate) {
                         // TODO: Send back 400 Bad Request and terminate the connection
                         RAV_ERROR("Error: invalid header");

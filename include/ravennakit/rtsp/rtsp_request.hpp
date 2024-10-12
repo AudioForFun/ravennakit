@@ -31,6 +31,11 @@ public:
     std::vector<header> headers;
     std::string data;
 
+    /**
+     * Finds a header by name and returns its value.
+     * @param name The name of the header.
+     * @returns The value of the header if found, otherwise nullptr.
+     */
     [[nodiscard]] const std::string* get_header(const std::string& name) const {
         for (const auto& header : headers) {
             if (header.name == name) {
@@ -40,11 +45,26 @@ public:
         return nullptr;
     }
 
+    /**
+     * @returns Tries to find the Content-Length header and returns its value as integer.
+     */
     [[nodiscard]] std::optional<long> get_content_length() const {
         if (const std::string* content_length = get_header("Content-Length"); content_length) {
             return rav::ston<long>(*content_length);
         }
         return std::nullopt;
+    }
+
+    /**
+     * Resets the request to its initial state.
+     */
+    void reset() {
+        method.clear();
+        uri.clear();
+        rtsp_version_major = {};
+        rtsp_version_minor = {};
+        headers.clear();
+        data.clear();
     }
 };
 
