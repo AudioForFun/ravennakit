@@ -29,52 +29,12 @@ class rtsp_request_parser {
 
     explicit rtsp_request_parser(rtsp_request& request) : request_(request) {}
 
-    template<typename InputIterator>
-    std::tuple<result, InputIterator> parse(InputIterator begin, InputIterator end) {
-        RAV_ASSERT(begin < end, "Invalid input iterators");
-
-        while (begin < end) {
-            if (remaining_expected_data_ > 0) {
-                auto data_size = std::min(remaining_expected_data_, static_cast<long>(end - begin));
-                request_.data.insert(request_.data.end(), begin, begin + data_size);
-                remaining_expected_data_ -= data_size;
-                begin += data_size;
-                if (remaining_expected_data_ > 0) {
-                    return std::make_tuple(result::indeterminate, begin);
-                }
-                if (begin >= end) {
-                    return std::make_tuple(result::good, begin); // Exhausted
-                }
-            }
-
-            RAV_ASSERT(begin < end, "Expecting data available");
-            RAV_ASSERT(remaining_expected_data_ == 0, "No remaining data should be expected at this point");
-
-            result result = consume(*begin++);
-
-            if (result == result::good) {
-                if (const auto data_length = request_.get_content_length(); data_length.has_value()) {
-                    remaining_expected_data_ = *data_length;
-                } else {
-                    remaining_expected_data_ = 0;
-                }
-
-                if (remaining_expected_data_ > 0) {
-                    continue; // Next iteration to handle data.
-                }
-
-                RAV_ASSERT(begin == end, "Expecting no more data left at this point");
-
-                return std::make_tuple(result, begin);
-            }
-
-            if (result != result::indeterminate) {
-                return std::make_tuple(result, begin); // Error
-            }
-        }
-
-        return std::make_tuple(result::indeterminate, begin);
-    }
+    /**
+     * Parses input and feeds it into give request.
+     * @param input The input to read from.
+     * @return A tuple with a result indicating the status, and an integer indicating how much data was consumed.
+     */
+    std::tuple<result, size_t> parse(std::string_view input);
 
   private:
     enum class state {
@@ -98,7 +58,7 @@ class rtsp_request_parser {
 
     rtsp_request& request_;
     state state_ {state::method_start};
-    long remaining_expected_data_ {0};
+    size_t remaining_expected_data_ {0};
 
     result consume(char c);
 

@@ -10,6 +10,50 @@
 
 #include "ravennakit/rtsp/rtsp_request_parser.hpp"
 
+std::tuple<rav::rtsp_request_parser::result, size_t> rav::rtsp_request_parser::parse(const std::string_view input) {
+    for (size_t i = 0; i < input.size(); ++i) {
+        if (remaining_expected_data_ > 0) {
+            const auto max_data = std::min(remaining_expected_data_, input.size() - i);
+            request_.data.insert(request_.data.end(), input.begin() + i, input.end());
+            remaining_expected_data_ -= max_data;
+            i += max_data;
+            if (remaining_expected_data_ > 0) {
+                return std::make_tuple(result::indeterminate, i);
+            }
+            if (i >= input.size()) {
+                return std::make_tuple(result::good, i);  // Exhausted
+            }
+        }
+
+        RAV_ASSERT(i < input.size(), "Expecting data available");
+        RAV_ASSERT(remaining_expected_data_ == 0, "No remaining data should be expected at this point");
+
+        result result = consume(input[i]);
+
+        if (result == result::good) {
+            if (const auto data_length = request_.get_content_length(); data_length.has_value()) {
+                remaining_expected_data_ = *data_length;
+            } else {
+                remaining_expected_data_ = 0;
+            }
+
+            if (remaining_expected_data_ > 0) {
+                continue;  // Next iteration to handle data.
+            }
+
+            RAV_ASSERT(i == input.size() - 1, "Expecting no more data left at this point");
+
+            return std::make_tuple(result, i);
+        }
+
+        if (result != result::indeterminate) {
+            return std::make_tuple(result, i);  // Error
+        }
+    }
+
+    return std::make_tuple(result::indeterminate, input.size());
+}
+
 rav::rtsp_request_parser::result rav::rtsp_request_parser::consume(const char c) {
     switch (state_) {
         case state::method_start:

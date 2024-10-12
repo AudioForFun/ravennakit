@@ -38,9 +38,7 @@ class rav::rtsp_server::connection: public std::enable_shared_from_this<connecti
 
                 RAV_ASSERT(bytes_transferred <= input_data_.size(), "Invalid number of bytes transferred");
 
-                auto [result, begin] = request_parser_.parse(
-                    input_data_.begin(), input_data_.begin() + static_cast<long>(bytes_transferred)
-                );
+                auto [result, consumed] = request_parser_.parse({input_data_.data(), bytes_transferred});
 
                 if (result == rtsp_request_parser::result::good) {
                     // TODO: We got a full request. Call some subscriber or something.
