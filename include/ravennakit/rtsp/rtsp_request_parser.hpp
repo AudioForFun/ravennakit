@@ -30,11 +30,61 @@ class rtsp_request_parser {
     explicit rtsp_request_parser(rtsp_request& request) : request_(request) {}
 
     /**
-     * Parses input and feeds it into give request.
-     * @param input The input to read from.
-     * @return A tuple with a result indicating the status, and an integer indicating how much data was consumed.
+     * Parses input and feeds the output to given request.
+     * @tparam Iterator The interator type.
+     * @param begin The beginning of the input.
+     * @param end The end of the input.
+     * @return A tuple with a result indicating the status, and an iterator indicating where the parsing stopped.
      */
-    std::tuple<result, size_t> parse(std::string_view input);
+    template<class Iterator>
+    std::tuple<result, Iterator> parse(Iterator begin, Iterator end) {
+        RAV_ASSERT(begin <= end, "Invalid input iterators");
+
+        while (begin < end) {
+            if (remaining_expected_data_ > 0) {
+                const auto max_data = std::min(static_cast<long>(remaining_expected_data_), end - begin);
+                request_.data.insert(request_.data.end(), begin, end);
+                remaining_expected_data_ -= max_data;
+                begin += max_data;
+                if (remaining_expected_data_ > 0) {
+                    return std::make_tuple(result::indeterminate, begin);
+                }
+                if (begin >= end) {
+                    return std::make_tuple(result::good, begin);  // Exhausted
+                }
+            }
+
+            RAV_ASSERT(begin < end, "Expecting to have data available at this point");
+            RAV_ASSERT(remaining_expected_data_ == 0, "No remaining data should be expected at this point");
+
+            while (begin < end) {
+                result result = consume(*begin++);
+
+                if (result == result::good) {
+                    // Find out how much data we should get
+                    if (const auto data_length = request_.get_content_length(); data_length.has_value()) {
+                        remaining_expected_data_ = *data_length;
+                    } else {
+                        remaining_expected_data_ = 0;
+                    }
+
+                    if (remaining_expected_data_ > 0) {
+                        break;  // Break out of this loop into outer loop to consume data
+                    }
+
+                    RAV_ASSERT(begin == end, "Expecting no more data left at this point");
+
+                    return std::make_tuple(result, begin);
+                }
+
+                if (result != result::indeterminate) {
+                    return std::make_tuple(result, begin);  // Error
+                }
+            }
+        }
+
+        return std::make_tuple(result::indeterminate, begin);
+    }
 
   private:
     enum class state {
@@ -58,7 +108,7 @@ class rtsp_request_parser {
 
     rtsp_request& request_;
     state state_ {state::method_start};
-    size_t remaining_expected_data_ {0};
+    long remaining_expected_data_ {0};
 
     result consume(char c);
 

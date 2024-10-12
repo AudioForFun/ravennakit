@@ -35,9 +35,9 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
         for (auto& txt : texts) {
             rav::rtsp_request request;
             rav::rtsp_request_parser parser(request);
-            auto [result, consumed] = parser.parse(txt);
+            auto [result, begin] = parser.parse(txt.begin(), txt.end());
             REQUIRE(result == rav::rtsp_request_parser::result::good);
-            REQUIRE(consumed == txt.size());
+            REQUIRE(begin == txt.end());
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
             REQUIRE(request.rtsp_version_major == 1);
@@ -54,9 +54,9 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
         for (auto& txt : texts) {
             rav::rtsp_request request;
             rav::rtsp_request_parser parser(request);
-            auto [result, consumed] = parser.parse(txt);
+            auto [result, begin] = parser.parse(txt.begin(), txt.end());
             REQUIRE(result == rav::rtsp_request_parser::result::good);
-            REQUIRE(consumed == txt.size());
+            REQUIRE(begin == txt.end());
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
             REQUIRE(request.rtsp_version_major == 1);
@@ -84,9 +84,9 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
         for (auto& txt : texts) {
             rav::rtsp_request request;
             rav::rtsp_request_parser parser(request);
-            auto [result, consumed] = parser.parse(txt);
+            auto [result, begin] = parser.parse(txt.begin(), txt.end());
             REQUIRE(result == rav::rtsp_request_parser::result::good);
-            REQUIRE(consumed == txt.size());
+            REQUIRE(begin == txt.end());
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
             REQUIRE(request.rtsp_version_major == 1);
@@ -108,18 +108,14 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
         for (auto& txt : texts) {
             rav::rtsp_request request;
             rav::rtsp_request_parser parser(request);
-            constexpr size_t chunk_size = 3;
-            size_t total_consumed = 0;
+            constexpr size_t chunk_size = 4;
             for (size_t i = 0; i < txt.size(); i += chunk_size) {
                 auto subview = txt.substr(i, chunk_size);
-                auto [result, consumed] = parser.parse(subview);
-                total_consumed += consumed;
-                RAV_INFO("Consumed: {}, total consumed: {}", consumed, total_consumed);
+                auto [result, begin] = parser.parse(subview.begin(), subview.end());
+                REQUIRE(begin == subview.end());
                 if (result == rav::rtsp_request_parser::result::good) {
-                    REQUIRE(total_consumed == txt.size());
                     break;
                 }
-
                 REQUIRE(result == rav::rtsp_request_parser::result::indeterminate);
             }
             REQUIRE(request.method == "DESCRIBE");
@@ -143,8 +139,9 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
         for (auto& txt : texts) {
             rav::rtsp_request request;
             rav::rtsp_request_parser parser(request);
-            auto [result, consumed] = parser.parse(txt);
+            auto [result, begin] = parser.parse(txt.begin(), txt.end());
             REQUIRE(result == rav::rtsp_request_parser::result::good);
+            REQUIRE(begin == txt.end());
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
             REQUIRE(request.rtsp_version_major == 1);
@@ -154,7 +151,6 @@ TEST_CASE("rtsp_request_parser", "[rtsp_request_parser]") {
             } else {
                 FAIL("Content-Length header not found");
             }
-            REQUIRE(consumed == txt.size());
             REQUIRE(request.data == "this_is_the_part_called_data");
         }
     }

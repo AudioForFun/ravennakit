@@ -38,15 +38,32 @@ class rav::rtsp_server::connection: public std::enable_shared_from_this<connecti
 
                 RAV_ASSERT(bytes_transferred <= input_data_.size(), "Invalid number of bytes transferred");
 
-                auto [result, consumed] = request_parser_.parse({input_data_.data(), bytes_transferred});
+                RAV_ASSERT(
+                    bytes_transferred == input_data_.size(),
+                    "Assuming bytes_transferred == input_data_.size(). If not true, passing the end iterator on the next line is incorrect."
+                );
 
-                if (result == rtsp_request_parser::result::good) {
-                    // TODO: We got a full request. Call some subscriber or something.
-                    // TODO: Reset the request and other state to go read the next request.
-                } else if (result != rtsp_request_parser::result::indeterminate) {
-                    // TODO: Send back 400 Bad Request and terminate the connection
-                    RAV_ERROR("Error: invalid header");
-                    return;
+                auto input_begin = input_data_.begin();
+                const auto input_end = input_data_.end();
+
+                while (true) {
+                    auto [result, begin] = request_parser_.parse(input_begin, input_end);
+
+                    if (result == rtsp_request_parser::result::good) {
+                        // TODO: We got a full request. Call some subscriber or something.
+                        // TODO: Reset the request and other state to go read the next request.
+                    } else if (result != rtsp_request_parser::result::indeterminate) {
+                        // TODO: Send back 400 Bad Request and terminate the connection
+                        RAV_ERROR("Error: invalid header");
+                        return;
+                    }
+
+                    if (begin < input_end) {
+                        input_begin = begin;
+                        continue;  // There is still data available to read, do another round.
+                    }
+
+                    break;  // Done reading
                 }
 
                 do_read();
