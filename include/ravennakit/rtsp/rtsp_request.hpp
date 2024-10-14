@@ -36,7 +36,7 @@ public:
      * @param name The name of the header.
      * @returns The value of the header if found, otherwise nullptr.
      */
-    [[nodiscard]] const std::string* get_header(const std::string& name) const {
+    [[nodiscard]] const std::string* get_header_value(const std::string& name) const {
         for (const auto& header : headers) {
             if (header.name == name) {
                 return &header.value;
@@ -49,7 +49,7 @@ public:
      * @returns Tries to find the Content-Length header and returns its value as integer.
      */
     [[nodiscard]] std::optional<long> get_content_length() const {
-        if (const std::string* content_length = get_header("Content-Length"); content_length) {
+        if (const std::string* content_length = get_header_value("Content-Length"); content_length) {
             return rav::ston<long>(*content_length);
         }
         return std::nullopt;
