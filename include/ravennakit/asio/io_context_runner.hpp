@@ -54,7 +54,7 @@ class io_context_runner {
     /**
      * Resets the work_guard and waits until the runner has no more work to do.
      */
-    void wait_for_completion() {
+    void join() {
         work_guard_.reset();
         for (auto& thread : threads_) {
             thread.join();

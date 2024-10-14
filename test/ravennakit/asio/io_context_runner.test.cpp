@@ -42,7 +42,7 @@ TEST_CASE("io_context_runner", "[io_context_runner]") {
             FAIL("Timeout expired");
         }
 
-        runner.wait_for_completion();
+        runner.join();
 
         REQUIRE(expected_total == total);
     }
@@ -64,6 +64,6 @@ TEST_CASE("io_context_runner", "[io_context_runner]") {
             FAIL("Timeout expired");
         }
 
-        runner.wait_for_completion();
+        runner.join();
     }
 }

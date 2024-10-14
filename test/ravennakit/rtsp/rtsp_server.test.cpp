@@ -31,7 +31,7 @@ TEST_CASE("rtsp_server", "[rtsp_server]") {
             REQUIRE(server.port() == 555);
         }
 
-        runner.wait_for_completion();
+        runner.join();
     }
 
     SECTION("Create and destroy") {
@@ -41,6 +41,6 @@ TEST_CASE("rtsp_server", "[rtsp_server]") {
             rav::rtsp_server server(runner.io_context(), asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 0));
         }
 
-        runner.wait_for_completion();
+        runner.join();
     }
 }
