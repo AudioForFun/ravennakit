@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "rtsp_parser_base.hpp"
+#include "detail/rtsp_parser_base.hpp"
 #include "rtsp_response.hpp"
 
 namespace rav {
