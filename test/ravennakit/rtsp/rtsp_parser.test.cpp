@@ -338,3 +338,48 @@ TEST_CASE("rtsp_parser | Parse Anubis ANNOUNCE request", "[rtsp_parser]") {
     REQUIRE(request_count == 1);
 }
 
+TEST_CASE("rtsp_parser | Parse Anubis DESCRIBE response and ANNOUNCE request", "[rtsp_parser]") {
+    constexpr std::string_view sdp(
+        "v=0\r\no=- 13 0 IN IP4 192.168.16.51\r\ns=Anubis Combo LR\r\nc=IN IP4 239.1.15.52/15\r\nt=0 0\r\na=clock-domain:PTPv2 0\r\na=ts-refclk:ptp=IEEE1588-2008:30-D6-59-FF-FE-01-DB-72:0\r\na=mediaclk:direct=0\r\nm=audio 5004 RTP/AVP 98\r\nc=IN IP4 239.1.15.52/15\r\na=rtpmap:98 L16/48000/2\r\na=source-filter: incl IN IP4 239.1.15.52 192.168.16.51\r\na=clock-domain:PTPv2 0\r\na=sync-time:0\r\na=framecount:48\r\na=palign:0\r\na=ptime:1\r\na=ts-refclk:ptp=IEEE1588-2008:30-D6-59-FF-FE-01-DB-72:0\r\na=mediaclk:direct=0\r\na=recvonly\r\na=midi-pre2:50040 0,0;0,1\r\n"
+    );
+
+    rav::string_stream input;
+    input.write("RTSP/1.0 200 OK\r\ncontent-type: application/sdp; charset=utf-8\r\ncontent-length: 516\r\n\r\n");
+    input.write(sdp);
+    input.write("ANNOUNCE  RTSP/1.0\r\nconnection: Keep-Alive\r\ncontent-length: 516\r\n\r\n");
+    input.write(sdp);
+
+    int request_count = 0;
+    int response_count = 0;
+
+    rav::rtsp_parser parser;
+
+    parser.on<rav::rtsp_response>([&](const rav::rtsp_response& response, rav::rtsp_parser&) {
+        REQUIRE(response.rtsp_version_major == 1);
+        REQUIRE(response.rtsp_version_minor == 0);
+        REQUIRE(response.status_code == 200);
+        REQUIRE(response.reason_phrase == "OK");
+        REQUIRE(response.headers.size() == 2);
+        REQUIRE(response.headers["content-length"] == "516");
+        REQUIRE(response.headers["content-type"] == "application/sdp; charset=utf-8");
+        REQUIRE(response.data.size() == sdp.size());
+        REQUIRE(response.data == sdp);
+        response_count++;
+    });
+
+    parser.on<rav::rtsp_request>([&](const rav::rtsp_request& request, rav::rtsp_parser&) {
+        REQUIRE(request.method == "ANNOUNCE");
+        REQUIRE(request.uri.empty());
+        REQUIRE(request.rtsp_version_major == 1);
+        REQUIRE(request.rtsp_version_minor == 0);
+        REQUIRE(request.headers.size() == 2);
+        REQUIRE(request.headers["content-length"] == "516");
+        REQUIRE(request.headers["connection"] == "Keep-Alive");
+        REQUIRE(request.data == sdp);
+        request_count++;
+    });
+
+    REQUIRE(parser.parse(input) == rav::rtsp_parser::result::good);
+    REQUIRE(request_count == 1);
+    REQUIRE(response_count == 1);
+}
