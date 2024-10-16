@@ -11,6 +11,7 @@
 #pragma once
 
 #include "rtsp_response_parser.hpp"
+#include "ravennakit/containers/string_stream.hpp"
 
 #include <asio.hpp>
 
@@ -25,6 +26,7 @@ class rtsp_client {
   private:
     asio::ip::tcp::socket socket_;
     std::string input_data_;
+    string_stream input_stream_;
     rtsp_response response_;
     rtsp_response_parser response_parser_ {response_};
 

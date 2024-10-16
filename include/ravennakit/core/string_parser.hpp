@@ -133,7 +133,7 @@ class string_parser {
      * @returns The read line.
      */
     std::optional<std::string_view> read_line() {
-        auto line = read_until_newline();
+        const auto line = read_until_newline();
         if (line.has_value()) {
             return line;
         }

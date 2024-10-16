@@ -56,6 +56,13 @@ class buffer_view {
     }
 
     /**
+     * @returns A pointer to the data, or nullptr if this view is not pointing at any data.
+     */
+    [[nodiscard]] Type* data() {
+        return data_;
+    }
+
+    /**
      * @returns The number of elements in the buffer.
      */
     [[nodiscard]] size_t size() const {
