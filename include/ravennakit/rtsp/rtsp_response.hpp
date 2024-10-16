@@ -39,8 +39,25 @@ struct rtsp_response {
         data.clear();
     }
 
+    /**
+     * Encode the response into a string, meant for sending over the wire.
+     * @param newline The newline character to use.
+     * @return The encoded response as a string.
+     */
     std::string encode(const char* newline = "\r\n") const;
+
+    /**
+     * Encoded the response into a string.
+     * @param out The output string to append to.
+     * @param newline The newline character to use.
+     */
     void encode_append(std::string& out, const char* newline = "\r\n") const;
+
+    /**
+     * Convert the response to a debug string.
+     * @return The response as a debug string.
+     */
+    [[nodiscard]] std::string to_debug_string() const;
 };
 
 }

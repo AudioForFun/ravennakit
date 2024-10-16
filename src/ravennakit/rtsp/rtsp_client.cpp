@@ -15,10 +15,10 @@
 
 rav::rtsp_client::rtsp_client(asio::io_context& io_context) : socket_(asio::make_strand(io_context)) {
     parser_.on<rtsp_response>([](const rtsp_response& response, rtsp_parser&) {
-        RAV_INFO("Received response:\n{}", rav::string_replace(response.encode(), "\r\n", "\n"));
+        RAV_INFO("{}", response.to_debug_string());
     });
     parser_.on<rtsp_request>([](const rtsp_request& request, rtsp_parser&) {
-        RAV_INFO("Received request:\n{}", rav::string_replace(request.encode(), "\r\n", "\n"));
+        RAV_INFO("{}", request.to_debug_string());
     });
 }
 
@@ -42,7 +42,7 @@ void rav::rtsp_client::send_describe_request(const std::string& uri) {
         request.headers["CSeq"] = "15";
         request.headers["Accept"] = "application/sdp";
         const auto encoded = request.encode();
-        RAV_TRACE("Sending request:\n{}", rav::string_replace(encoded, "\r\n", "\n"));
+        RAV_TRACE("Sending request: {}", request.to_debug_string());
         const bool should_write = output_stream_.empty();
         output_stream_.write(encoded);
         if (should_write) {

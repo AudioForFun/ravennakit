@@ -28,3 +28,10 @@ void rav::rtsp_response::encode_append(std::string& out, const char* newline) co
     out += newline;
     out += data;
 }
+
+std::string rav::rtsp_response::to_debug_string() const {
+    std::string out;
+    fmt::format_to(std::back_inserter(out), "RTSP/{}.{} {} {}", rtsp_version_major, rtsp_version_minor, status_code, reason_phrase);
+    out += headers.to_debug_string();
+    return out;
+}

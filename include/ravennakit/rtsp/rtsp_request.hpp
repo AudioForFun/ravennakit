@@ -44,6 +44,12 @@ struct rtsp_request {
      * @param newline
      */
     void encode_append(std::string& out, const char* newline = "\r\n") const;
+
+    /**
+     * Convert the request to a debug string.
+     * @return The request as a debug string.
+     */
+    [[nodiscard]] std::string to_debug_string() const;
 };
 
 }  // namespace rav

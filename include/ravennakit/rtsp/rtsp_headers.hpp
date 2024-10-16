@@ -192,10 +192,10 @@ class rtsp_headers {
      * encode_append.
      * @return The headers as a string.
      */
-    [[nodiscard]] std::string to_string() const {
+    [[nodiscard]] std::string to_debug_string() const {
         std::string out;
         for (const auto& h : headers_) {
-            fmt::format_to(std::back_inserter(out), "{}: {}\n", h.name, h.value);
+            fmt::format_to(std::back_inserter(out), ", {}: {}", h.name, h.value);
         }
         return out;
     }
