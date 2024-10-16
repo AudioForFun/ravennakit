@@ -59,3 +59,11 @@ RTSP Test tool (also has a very good explanation of RTSP):
 
 sdpoker test tool:  
 [sdpoker](https://github.com/AMWA-TV/sdpoker)
+
+### C++ web servers
+
+https://github.com/civetweb/civetweb  
+https://github.com/drogonframework/drogon  
+https://github.com/uNetworking/uWebSockets  
+https://github.com/Stiffstream/restinio  
+
