@@ -29,7 +29,7 @@ int main(int const argc, char* argv[]) {
     app.add_option("address", addr, "The address to connect to")->required();
 
     std::string path;
-    app.add_option("path", path, "The path of the stream (by-id/13 or by-name/stream%20name)")->required();
+    app.add_option("path", path, "The path of the stream (/by-id/13 or /by-name/stream%20name)")->required();
 
     CLI11_PARSE(app, argc, argv);
 
@@ -50,7 +50,7 @@ int main(int const argc, char* argv[]) {
         RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
     });
 
-    client.connect({asio::ip::make_address(addr), 80});
+    client.connect(addr, 80);
 
     io_context.run();
 }

@@ -13,6 +13,7 @@
 #include "ravennakit/core/exception.hpp"
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/platform.hpp"
+#include "ravennakit/util/tracy.hpp"
 
 #include <asio.hpp>
 
@@ -92,6 +93,8 @@ class io_context_runner {
 
         for (size_t i = 0; i < num_threads_; i++) {
             threads_.emplace_back([this, i] {
+                ZoneScoped;
+
 #if RAV_MACOS
                 {
                     const std::string thread_name = "io_context_runner " + std::to_string(i);

@@ -28,15 +28,19 @@ void rav::rtsp_client::connect(const asio::ip::tcp::endpoint& endpoint) {
     });
 }
 
+void rav::rtsp_client::connect(const std::string& addr, uint16_t port) {
+    connect({asio::ip::make_address(addr), port});
+}
+
 void rav::rtsp_client::describe(const std::string& path) {
-    if (starts_with(path, "/")) {
-        RAV_THROW_EXCEPTION("URI must not start with a slash");
+    if (!starts_with(path, "/")) {
+        RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
     asio::post(socket_.get_executor(), [this, path] {
         rtsp_request request;
         request.method = "DESCRIBE";
-        request.uri = fmt::format("rtsp://{}/{}", socket_.remote_endpoint().address().to_string(), path);
+        request.uri = fmt::format("rtsp://{}{}", socket_.remote_endpoint().address().to_string(), path);
         request.headers["CSeq"] = "15";
         request.headers["Accept"] = "application/sdp";
         const auto encoded = request.encode();

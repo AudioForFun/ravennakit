@@ -32,6 +32,13 @@ class rtsp_client final: public event_emitter<rtsp_client, rtsp::connect_event, 
     void connect(const asio::ip::tcp::endpoint& endpoint);
 
     /**
+     * Connect to the given address and port. Function is async and will return immediately.
+     * @param addr The address to connect to.
+     * @param port The port to connect to.
+     */
+    void connect(const std::string& addr, uint16_t port);
+
+    /**
      * Send a DESCRIBE request to the server. Function is async and will return immediately.
      * @param path The path to describe
      */
