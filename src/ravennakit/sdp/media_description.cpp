@@ -438,7 +438,12 @@ rav::sdp::media_description::parse_result<void> rav::sdp::media_description::par
             return parse_result<void>::err("media: failed to parse framecount value");
         }
     } else {
-        RAV_WARNING("Ignoring unknown attribute on media: {}", *key);
+        // Store the attribute in the map of unknown attributes
+        if (auto value = parser.read_until_end()) {
+            attributes_.emplace(*key, *value);
+        } else {
+            return parse_result<void>::err("media: failed to parse attribute value");
+        }
     }
 
     return parse_result<void>::ok();
@@ -510,4 +515,12 @@ const std::optional<rav::fraction<unsigned>>& rav::sdp::media_description::clock
 
 const std::vector<rav::sdp::source_filter>& rav::sdp::media_description::source_filters() const {
     return source_filters_;
+}
+
+std::optional<int> rav::sdp::media_description::framecount() const {
+    return framecount_;
+}
+
+const std::map<std::string, std::string>& rav::sdp::media_description::attributes() const {
+    return attributes_;
 }

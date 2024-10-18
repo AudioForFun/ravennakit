@@ -164,6 +164,13 @@ TEST_CASE("session_description | description from anubis", "[session_description
         SECTION("Framecount") {
             REQUIRE(media.framecount() == 48);
         }
+
+        SECTION("Unknown attributes") {
+            const auto& attributes = media.attributes();
+            REQUIRE(attributes.size() == 2);
+            REQUIRE(attributes.at("palign") == "0");
+            REQUIRE(attributes.at("midi-pre2") == "50040 0,0;0,1");
+        }
     }
 
     SECTION("Media direction") {
@@ -374,6 +381,58 @@ TEST_CASE("session_description | source filters", "[session_description]") {
             REQUIRE(filter.dest_address() == "239.1.15.52");
             REQUIRE(filter.src_list().size() == 1);
             REQUIRE(filter.src_list()[0] == "192.168.15.52");
+        }
+    }
+}
+
+TEST_CASE("session_description | Unknown attributes", "[session_description]") {
+    constexpr auto k_anubis_sdp =
+        "v=0\r\n"
+        "o=- 13 0 IN IP4 192.168.15.52\r\n"
+        "s=Anubis_610120_13\r\n"
+        "c=IN IP4 239.1.15.52/15\r\n"
+        "t=0 0\r\n"
+        "a=clock-domain:PTPv2 0\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0\r\n"
+        "a=mediaclk:direct=0\r\n"
+        "a=source-filter: incl IN IP4 239.1.15.52 192.168.15.52\r\n"
+        "a=unknown-attribute-session:unknown-attribute-session-value\r\n"
+        "m=audio 5004 RTP/AVP 98\r\n"
+        "c=IN IP4 239.1.15.52/15\r\n"
+        "a=rtpmap:98 L16/48000/2\r\n"
+        "a=clock-domain:PTPv2 0\r\n"
+        "a=sync-time:0\r\n"
+        "a=framecount:48\r\n"
+        "a=source-filter: incl IN IP4 239.1.15.52 192.168.15.52\r\n"
+        "a=unknown-attribute-media:unknown-attribute-media-value\r\n"
+        "a=palign:0\r\n"
+        "a=ptime:1\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0\r\n"
+        "a=mediaclk:direct=0\r\n"
+        "a=recvonly\r\n"
+        "a=midi-pre2:50040 0,0;0,1\r\n";
+
+    auto result = rav::sdp::session_description::parse_new(k_anubis_sdp);
+    REQUIRE(result.is_ok());
+
+    SECTION("Unknown attributes on session") {
+        const auto& attributes = result.get_ok().attributes();
+        REQUIRE(attributes.size() == 1);
+        REQUIRE(attributes.at("unknown-attribute-session") == "unknown-attribute-session-value");
+    }
+
+    SECTION("Test media") {
+        const auto& descriptions = result.get_ok().media_descriptions();
+        REQUIRE(descriptions.size() == 1);
+
+        const auto& media = descriptions[0];
+
+        SECTION("Unknown attributes on media") {
+            const auto& attributes = media.attributes();
+            REQUIRE(attributes.size() == 3);
+            REQUIRE(attributes.at("unknown-attribute-media") == "unknown-attribute-media-value");
+            REQUIRE(attributes.at("palign") == "0");
+            REQUIRE(attributes.at("midi-pre2") == "50040 0,0;0,1");
         }
     }
 }

@@ -93,6 +93,11 @@ class session_description {
      */
     [[nodiscard]] const std::vector<source_filter>& source_filters() const;
 
+    /**
+     * @returns Attributes which have not been parsed into a specific field.
+     */
+    [[nodiscard]] const std::map<std::string, std::string>& attributes() const;
+
   private:
     /// Type to specify which section of the SDP we are parsing
     enum class section { session_description, media_description };
@@ -109,6 +114,7 @@ class session_description {
     std::optional<sdp::media_clock_source> media_clock_;
     std::optional<ravenna_clock_domain> clock_domain_;
     std::vector<source_filter> source_filters_;
+    std::map<std::string, std::string> attributes_;  // Remaining, unknown attributes
 
     static parse_result<int> parse_version(std::string_view line);
     parse_result<void> parse_attribute(std::string_view line);

@@ -154,6 +154,10 @@ const std::vector<rav::sdp::source_filter>& rav::sdp::session_description::sourc
     return source_filters_;
 }
 
+const std::map<std::string, std::string>& rav::sdp::session_description::attributes() const {
+    return attributes_;
+}
+
 rav::sdp::session_description::parse_result<int>
 rav::sdp::session_description::parse_version(const std::string_view line) {
     if (!starts_with(line, "v=")) {
@@ -227,7 +231,12 @@ rav::sdp::session_description::parse_attribute(const std::string_view line) {
             return parse_result<void>::err("media: failed to parse source-filter value");
         }
     } else {
-        RAV_WARNING("Ignoring unknown attribute on session: {}", *key);
+        // Store the attribute in the map of unknown attributes
+        if (auto value = parser.read_until_end()) {
+            attributes_.emplace(*key, *value);
+        } else {
+            return parse_result<void>::err("media: failed to parse attribute value");
+        }
     }
 
     return parse_result<void>::ok();

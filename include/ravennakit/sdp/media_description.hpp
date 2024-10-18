@@ -21,6 +21,8 @@
 #include "reference_clock.hpp"
 #include "source_filter.hpp"
 
+#include <map>
+
 namespace rav::sdp {
 
 /**
@@ -271,9 +273,12 @@ class media_description {
      * available.
      * @return The frame count of the media description.
      */
-    [[nodiscard]] std::optional<int> framecount() const {
-        return framecount_;
-    }
+    [[nodiscard]] std::optional<int> framecount() const;
+
+    /**
+     * @returns Attributes which have not been parsed into a specific field.
+     */
+    [[nodiscard]] const std::map<std::string, std::string>& attributes() const;
 
   private:
     std::string media_type_;
@@ -292,7 +297,8 @@ class media_description {
     std::optional<uint32_t> sync_time_;                  // RAVENNA-specific attribute
     std::optional<fraction<uint32_t>> clock_deviation_;  // RAVENNA-specific attribute
     std::vector<source_filter> source_filters_;
-    std::optional<int> framecount_;  // Legacy RAVENNA attribute, replaced by ptime
+    std::optional<int> framecount_;                  // Legacy RAVENNA attribute, replaced by ptime
+    std::map<std::string, std::string> attributes_;  // Remaining, unknown attributes
 };
 
 }  // namespace rav::sdp
