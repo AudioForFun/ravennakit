@@ -53,6 +53,55 @@ void rav::rtsp_client::describe(const std::string& path) {
     });
 }
 
+void rav::rtsp_client::setup(const std::string& path) {
+    if (!starts_with(path, "/")) {
+        RAV_THROW_EXCEPTION("Path must start with a /");
+    }
+
+    asio::post(socket_.get_executor(), [this, path] {
+        rtsp_request request;
+        request.method = "SETUP";
+        request.uri = fmt::format("rtsp://{}{}", socket_.remote_endpoint().address().to_string(), path);
+        request.headers["CSeq"] = "15";
+        // request.headers["Session"] = "47112344";
+        request.headers["Transport"] = "RTP/AVP;unicast;client_port=5004-5005";
+
+        const auto encoded = request.encode();
+        RAV_TRACE("Sending request: {}", request.to_debug_string());
+        const bool should_trigger_async_write = output_stream_.empty();
+        output_stream_.write(encoded);
+        if (should_trigger_async_write) {
+            async_write();
+        }
+    });
+}
+
+void rav::rtsp_client::play(const std::string& path) {
+    if (!starts_with(path, "/")) {
+        RAV_THROW_EXCEPTION("Path must start with a /");
+    }
+
+    asio::post(socket_.get_executor(), [this, path] {
+        rtsp_request request;
+        request.method = "PLAY";
+        request.uri = fmt::format("rtsp://{}{}", socket_.remote_endpoint().address().to_string(), path);
+        request.headers["CSeq"] = "15";
+        request.headers["Transport"] = "RTP/AVP;unicast;client_port=5004-5005";
+
+        const auto encoded = request.encode();
+        RAV_TRACE("Sending request: {}", request.to_debug_string());
+        const bool should_trigger_async_write = output_stream_.empty();
+        output_stream_.write(encoded);
+        if (should_trigger_async_write) {
+            async_write();
+        }
+    });
+}
+
+void rav::rtsp_client::post(std::function<void()> work) {
+    asio::post(socket_.get_executor(), std::move(work));
+}
+
 void rav::rtsp_client::async_connect(const asio::ip::tcp::endpoint& endpoint) {
     socket_.async_connect(endpoint, [this](const asio::error_code ec) {
         if (ec) {

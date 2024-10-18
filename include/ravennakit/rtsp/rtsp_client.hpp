@@ -44,6 +44,24 @@ class rtsp_client final: public event_emitter<rtsp_client, rtsp::connect_event, 
      */
     void describe(const std::string& path);
 
+    /**
+     * Sends a SETUP request to the server. Function is async and will return immediately.
+     * @param path The path to setup.
+     */
+    void setup(const std::string& path);
+
+    /**
+     * Sends a PLAY request to the server. Function is async and will return immediately.
+     * @param path The path for the PLAY command.
+     */
+    void play(const std::string& path);
+
+    /**
+     * Post some work through the executor of the socket.
+     * @param work The work to execute.
+     */
+    void post(std::function<void()> work);
+
   private:
     asio::ip::tcp::socket socket_;
     string_stream input_stream_;
