@@ -10,8 +10,10 @@
 
 #pragma once
 
-#include <cstdint>
 #include "ravennakit/core/byte_order.hpp"
+
+#include <cstdint>
+#include <limits>
 
 namespace rav {
 
