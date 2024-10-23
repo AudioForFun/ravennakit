@@ -5,3 +5,5 @@ cmake-build-*
 !.idea/codeStyles
 build/
 test-reports/
+xcode-build/
+win-build/
