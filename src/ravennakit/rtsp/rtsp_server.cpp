@@ -19,11 +19,11 @@
 class rav::rtsp_server::connection: public std::enable_shared_from_this<connection> {
   public:
     explicit connection(asio::ip::tcp::socket socket) : socket_(std::move(socket)) {
-        parser_.on<rtsp_response>([this](const rtsp_response& response, rtsp_parser&) {
+        parser_.on<rtsp_response>([](const rtsp_response& response, rtsp_parser&) {
             TRACY_ZONE_SCOPED;
             RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
         });
-        parser_.on<rtsp_request>([this](const rtsp_request& request, rtsp_parser&) {
+        parser_.on<rtsp_request>([](const rtsp_request& request, rtsp_parser&) {
             TRACY_ZONE_SCOPED;
             RAV_INFO("{}\n{}", request.to_debug_string(), rav::string_replace(request.data, "\r\n", "\n"));
         });

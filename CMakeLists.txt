@@ -40,6 +40,11 @@ endif ()
 option(RAV_ENABLE_SPDLOG "Enable spdlog for logging" OFF)
 option(RAV_ABORT_ON_ASSERT "Abort the program when an assertion is hit" OFF)
 option(TRACY_ENABLE "Enable Tracy as profiler" OFF)
+option(BUILD_EXAMPLES "Build the examples" ON)
+
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Android")
+    set(BUILD_EXAMPLES OFF)
+endif ()
 
 ################
 # _WIN32_WINNT #
@@ -152,91 +157,95 @@ if (WIN32)
     target_link_libraries(ravennakit PUBLIC ws2_32)
 endif ()
 
-########################
-# RTP Receiver example #
-########################
+if (${BUILD_EXAMPLES})
 
-add_executable(rtp_receiver_example
-        examples/rtp_receiver_example.cpp
-)
+    ########################
+    # RTP Receiver example #
+    ########################
 
-target_link_libraries(rtp_receiver_example
-        PUBLIC
-        rav_recommended_warning_flags
-        rav_recommended_lto_flags
-        PRIVATE
-        ravennakit
-        portaudio_static
-        CLI11::CLI11
-)
+    add_executable(rtp_receiver_example
+            examples/rtp_receiver_example.cpp
+    )
 
-if (TRACY_ENABLE)
-    target_link_libraries(rtp_receiver_example PUBLIC tracy)
-endif ()
+    target_link_libraries(rtp_receiver_example
+            PUBLIC
+            rav_recommended_warning_flags
+            rav_recommended_lto_flags
+            PRIVATE
+            ravennakit
+            portaudio_static
+            CLI11::CLI11
+    )
 
-#########################
-# DNSSD Browser example #
-#########################
+    if (TRACY_ENABLE)
+        target_link_libraries(rtp_receiver_example PUBLIC tracy)
+    endif ()
 
-add_executable(dnssd_browser
-        examples/dnssd_browser.cpp
-)
+    #########################
+    # DNSSD Browser example #
+    #########################
 
-target_link_libraries(dnssd_browser
-        PUBLIC
-        rav_recommended_warning_flags
-        rav_recommended_lto_flags
-        PRIVATE
-        ravennakit
-        portaudio_static
-        CLI11::CLI11
-)
+    add_executable(dnssd_browser
+            examples/dnssd_browser.cpp
+    )
 
-if (TRACY_ENABLE)
-    target_link_libraries(dnssd_browser PUBLIC tracy)
-endif ()
+    target_link_libraries(dnssd_browser
+            PUBLIC
+            rav_recommended_warning_flags
+            rav_recommended_lto_flags
+            PRIVATE
+            ravennakit
+            portaudio_static
+            CLI11::CLI11
+    )
 
-############################
-# DNSSD Advertiser example #
-############################
+    if (TRACY_ENABLE)
+        target_link_libraries(dnssd_browser PUBLIC tracy)
+    endif ()
 
-add_executable(dnssd_advertiser
-        examples/dnssd_advertiser.cpp
-)
+    ############################
+    # DNSSD Advertiser example #
+    ############################
 
-target_link_libraries(dnssd_advertiser
-        PUBLIC
-        rav_recommended_warning_flags
-        rav_recommended_lto_flags
-        PRIVATE
-        ravennakit
-        portaudio_static
-        CLI11::CLI11
-)
+    add_executable(dnssd_advertiser
+            examples/dnssd_advertiser.cpp
+    )
 
-if (TRACY_ENABLE)
-    target_link_libraries(dnssd_advertiser PUBLIC tracy)
-endif ()
+    target_link_libraries(dnssd_advertiser
+            PUBLIC
+            rav_recommended_warning_flags
+            rav_recommended_lto_flags
+            PRIVATE
+            ravennakit
+            portaudio_static
+            CLI11::CLI11
+    )
 
-#######################
-# RTSP Client example #
-#######################
+    if (TRACY_ENABLE)
+        target_link_libraries(dnssd_advertiser PUBLIC tracy)
+    endif ()
 
-add_executable(rtsp_client_example
-        examples/rtsp_client_example.cpp
-)
+    #######################
+    # RTSP Client example #
+    #######################
 
-target_link_libraries(rtsp_client_example
-        PUBLIC
-        rav_recommended_warning_flags
-        rav_recommended_lto_flags
-        PRIVATE
-        ravennakit
-        CLI11::CLI11
-)
+    add_executable(rtsp_client_example
+            examples/rtsp_client_example.cpp
+    )
 
-if (TRACY_ENABLE)
-    target_link_libraries(rtsp_client_example PUBLIC tracy)
+    target_link_libraries(rtsp_client_example
+            PUBLIC
+            rav_recommended_warning_flags
+            rav_recommended_lto_flags
+            PRIVATE
+            ravennakit
+            CLI11::CLI11
+    )
+
+    if (TRACY_ENABLE)
+        target_link_libraries(rtsp_client_example PUBLIC tracy)
+    endif ()
+
 endif ()
 
 ##############

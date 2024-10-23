@@ -27,8 +27,11 @@ void check_sample_values(const rav::audio_buffer<T>& buffer, const T& fill_value
 
     for (size_t ch = 0; ch < buffer.num_channels(); ch++) {
         for (size_t sample = 0; sample < buffer.num_frames(); sample++) {
-            // The casting is a really quick and dirty way to avoid floating point comparison issues.
-            rav::util::is_within(audio_data[ch][sample], fill_value, {});
+            if constexpr (std::is_floating_point_v<T>) {
+                REQUIRE(rav::util::is_within(audio_data[ch][sample], fill_value, T{}));
+            } else {
+                REQUIRE(audio_data[ch][sample] == fill_value);
+            }
         }
     }
 }

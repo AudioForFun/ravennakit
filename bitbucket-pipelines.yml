@@ -25,6 +25,15 @@ definitions:
           - apt-get -y install build-essential cmake ninja-build pkg-config python3-pip
           - python3 -m pip install pygit2 boto3
           - python3 -u build.py --path-to-build build-linux --build-number $BITBUCKET_BUILD_NUMBER
+    - step: &build-android
+        runs-on:
+          - 'self.hosted'
+          - 'macos'
+        name: 'Build for Android'
+        script:
+          - git submodule update --recursive --init
+          - python -m pip install pygit2 boto3
+          - python -u build.py --android --path-to-build build-android --build-number "$env:BITBUCKET_BUILD_NUMBER"
     - step: &build-windows
         runs-on:
           - 'self.hosted'
@@ -51,12 +60,14 @@ pipelines:
           - step: *build-macos
           - step: *build-windows
           - step: *build-linux
+          - step: *build-android
   tags:
     'v*':
       - parallel:
           - step: *build-macos
           - step: *build-windows
           - step: *build-linux
+          - step: *build-android
       - step: *deploy-to-production
   branches:
     main:
@@ -64,16 +75,19 @@ pipelines:
           - step: *build-macos
           - step: *build-windows
           - step: *build-linux
+          - step: *build-android
   custom:
     all:
       - parallel:
           - step: *build-macos
           - step: *build-windows
           - step: *build-linux
+          - step: *build-android
     macos:
       - step: *build-macos
     windows:
       - step: *build-windows
     linux:
       - step: *build-linux
-
+    android:
+      - step: *build-android
