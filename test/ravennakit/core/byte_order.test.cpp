@@ -92,6 +92,38 @@ TEST_CASE("byte_order | swap_bytes()", "[byte_order]") {
     }
 }
 
+TEST_CASE("byte_order | swap_bytes array", "[byte_order]") {
+    SECTION("uint8_t") {
+        std::array<uint8_t, 4> data = {0x12, 0x34, 0x56, 0x78};
+        rav::byte_order::swap_bytes(data.data(), data.size(), sizeof(uint8_t));
+        REQUIRE(data == std::array<uint8_t, 4> {0x12, 0x34, 0x56, 0x78});
+    }
+
+    SECTION("uint16_t") {
+        std::array<uint16_t, 4> data = {0x1, 0x2, 0x3, 0x4};
+        rav::byte_order::swap_bytes(
+            reinterpret_cast<uint8_t*>(data.data()), data.size() * sizeof(int16_t), sizeof(int16_t)
+        );
+        REQUIRE(data == std::array<uint16_t, 4> {0x0100, 0x0200, 0x0300, 0x0400});
+    }
+
+    SECTION("uint32_t") {
+        std::array<uint32_t, 4> data = {0x1, 0x2, 0x3, 0x4};
+        rav::byte_order::swap_bytes(
+            reinterpret_cast<uint8_t*>(data.data()), data.size() * sizeof(uint32_t), sizeof(uint32_t)
+        );
+        REQUIRE(data == std::array<uint32_t, 4> {0x01000000, 0x02000000, 0x03000000, 0x04000000});
+    }
+
+    SECTION("uint64_t") {
+        std::array<uint64_t, 3> data = {0x1, 0x2};
+        rav::byte_order::swap_bytes(
+            reinterpret_cast<uint8_t*>(data.data()), data.size() * sizeof(uint64_t), sizeof(uint64_t)
+        );
+        REQUIRE(data == std::array<uint64_t, 3> {0x0100000000000000, 0x0200000000000000});
+    }
+}
+
 TEST_CASE("byte_order | read()", "[byte_order]") {
     constexpr uint8_t u16be[] = {0x12, 0x34};
     constexpr uint8_t u16le[] = {0x34, 0x12};

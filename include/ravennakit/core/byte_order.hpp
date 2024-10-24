@@ -71,6 +71,25 @@ inline void swap_bytes(uint8_t* data, const size_t size) {
 }
 
 /**
+ * Swaps given amount of bytes in the given data, in place, with the given stride.
+ * @param data The data to swap.
+ * @param size The size of the data (in bytes).
+ * @param stride The stride of the data (in bytes).
+ */
+inline void swap_bytes(uint8_t* data, const size_t size, const size_t stride) {
+    // Check for null data pointer or zero size
+    if (data == nullptr || size == 0) {
+        return;
+    }
+
+    for (size_t i = 0; i < size; i += stride) {
+        for (size_t j = 0; j < stride / 2; ++j) {
+            std::swap(data[i + j], data[i + stride - j - 1]);
+        }
+    }
+}
+
+/**
  * @tparam Type The type of the value to swap.
  * @param value The value to swap.
  * @return The value with the bytes swapped.

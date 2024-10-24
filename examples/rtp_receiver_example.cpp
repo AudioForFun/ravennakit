@@ -16,6 +16,9 @@
 
 #include "ravennakit/asio/io_context_runner.hpp"
 #include "ravennakit/audio/circular_audio_buffer.hpp"
+#include "ravennakit/audio/formats/wav_audio_format.hpp"
+#include "ravennakit/containers/file_output_stream.hpp"
+#include "ravennakit/core/file.hpp"
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
@@ -58,6 +61,10 @@ int main(int const argc, char* argv[]) {
 #if RAV_ENABLE_SPDLOG
     spdlog::set_level(spdlog::level::trace);
 #endif
+
+    auto example_dir = rav::file(argv[0]).parent();
+    auto audio_file = example_dir / "audio.wav";
+    fmt::println("Audio file: {}", audio_file.c_str());
 
     rav::system::do_system_checks();
 
@@ -103,22 +110,35 @@ int main(int const argc, char* argv[]) {
 
     asio::io_context io_context;
 
+    rav::file_output_stream audio_file_stream(audio_file);
+    rav::wav_audio_format::writer audio_writer(
+        audio_file_stream, rav::wav_audio_format::format_code::pcm, sample_rate, num_channels, 16
+    );
+
     rav::rtp_receiver receiver(io_context);
 
     asio::signal_set signals(io_context, SIGINT, SIGTERM);
 
-    receiver.on<rav::rtp_packet_event>([&audio_context](
+    std::vector<uint8_t> audio_data_buffer;
+
+    receiver.on<rav::rtp_packet_event>([&audio_context, &audio_writer, &audio_data_buffer](
                                            const rav::rtp_packet_event& event, [[maybe_unused]] rav::rtp_receiver& recv
                                        ) {
         RAV_INFO("{}", event.packet.to_string());
 
-        const auto payload = event.packet.payload_data().reinterpret<const int16_t>();
-        const auto num_frames = payload.size() / audio_context.num_channels;
+        auto payload = event.packet.payload_data();
+        audio_data_buffer.resize(payload.size());
+        std::memcpy(audio_data_buffer.data(), payload.data(), payload.size());
+        rav::byte_order::swap_bytes(audio_data_buffer.data(), audio_data_buffer.size(), sizeof(int16_t));
+        audio_writer.write_audio_data(audio_data_buffer.data(), audio_data_buffer.size());
+
+        const auto audio_payload = payload.reinterpret<const int16_t>();
+        const auto num_frames = audio_payload.size() / audio_context.num_channels;
 
         const auto result =
             audio_context.buffer
                 .write_from_data<int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
-                    payload.data(), num_frames
+                    audio_payload.data(), num_frames
                 );
         if (!result) {
             RAV_ERROR("Failed to write {} frames to buffer!", num_frames);
@@ -186,7 +206,18 @@ int main(int const argc, char* argv[]) {
         receiver.stop();
     });
 
-    io_context.run();
+    std::thread io_thread([&io_context] {
+        io_context.run();
+    });
+
+    fmt::println("Press return key to stop...");
+    std::cin.get();
+
+    receiver.stop();
+    signals.cancel();
+    io_thread.join();
+
+    audio_writer.finalize(); // Not necessary, but good practice. This will write the header to the file.
 
     if (auto error = Pa_StopStream(stream); error != paNoError) {
         RAV_ERROR("PortAudio failed to stop stream! Error: {}", Pa_GetErrorText(error));

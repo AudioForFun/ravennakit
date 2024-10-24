@@ -29,6 +29,31 @@ class file {
     explicit file(std::filesystem::path path) : path_(std::move(path)) {}
 
     /**
+     * Constructs a file object with the given path.
+     * @param path The path to the file or directory.
+     */
+    explicit file(const char* path) : path_(path) {}
+
+    /**
+     * Appends given path to the file path.
+     * @param p The path to append.
+     * @return A new file object with the appended path.
+     */
+    file& operator/(const std::filesystem::path& p) {
+        return *this /= p;
+    }
+
+    /**
+     * Appends given path to the file path.
+     * @param p The path to append.
+     * @return A new file object with the appended path.
+     */
+    file& operator/=(const std::filesystem::path& p) {
+        path_ /= p;
+        return *this;
+    }
+
+    /**
      * @returns True if the file of directory exists, or false if the file or directory does not exist.
      */
     [[nodiscard]] bool exists() const {
@@ -37,13 +62,13 @@ class file {
 
     /**
      * Creates the file if it does not already exist.
-     * @return True if the file was created or already exists, or false if the file could not be created.
+     * @return True if the file was created or already existed, or false if the file could not be created.
      */
     [[nodiscard]] bool create_if_not_exists() const {
         if (!exists()) {
             std::ofstream f(path_);
             if (!f.good()) {
-                return false; // Failed to create the file
+                return false;  // Failed to create the file
             }
             f.close();
             if (!exists()) {
@@ -61,11 +86,25 @@ class file {
     }
 
     /**
+     * @return The parent directory of the file.
+     */
+    [[nodiscard]] file parent() const {
+        return file(path_.parent_path());
+    }
+
+    /**
      * @throws std::filesystem::filesystem_error if the file does not exist.
      * @return The size of the file in bytes.
      */
     [[nodiscard]] std::uintmax_t size() const {
         return std::filesystem::file_size(path_);
+    }
+
+    /**
+     * @returns the full path to the file as a C-style string, following native file system encoding.
+     */
+    [[nodiscard]] const char* c_str() const {
+        return path_.c_str();
     }
 
   private:

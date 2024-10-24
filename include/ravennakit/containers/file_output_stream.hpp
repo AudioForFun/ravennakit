@@ -42,7 +42,7 @@ class file_output_stream final: public output_stream {
     }
 
     [[nodiscard]] size_t get_write_position() override {
-        return ofstream_.tellp();
+        return static_cast<size_t>(ofstream_.tellp());
     }
 
     void flush() override {
