@@ -143,6 +143,8 @@ class writer {
 
     /**
      * Finalizes the WAVE file by writing the header and flushing the output stream.
+     * This method can be called multiple times, interleaved with calls to write_audio_data. This can be useful in cases
+     * where the computer might lose power, and you don't want to lose the entire file.
      */
     void finalize();
 
@@ -151,8 +153,7 @@ class writer {
     fmt_chunk fmt_chunk_;
     data_chunk data_chunk_;
     size_t audio_data_written_ {};
-    size_t fmt_chunk_size_ {};
-    size_t data_chunk_size_ {};
+    size_t chunks_total_size_ {};
 
     void write_header();
 };

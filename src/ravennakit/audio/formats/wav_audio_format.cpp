@@ -196,12 +196,12 @@ void rav::wav_audio_format::writer::write_header() {
 
     ostream_.write("RIFF", 4);
     // The riff size will only be correct after calling write_header() once before.
-    const auto riff_size = fmt_chunk_size_ + data_chunk_size_ + audio_data_written_ + 4;  // +4 for "WAVE"
+    const auto riff_size = chunks_total_size_ + audio_data_written_ + 4;  // +4 for "WAVE"
     RAV_ASSERT(riff_size < std::numeric_limits<uint32_t>::max(), "WAV file too large");
     ostream_.write_le<uint32_t>(static_cast<uint32_t>(riff_size));
     ostream_.write("WAVE", 4);
-    fmt_chunk_size_ = fmt_chunk_.write(ostream_);
-    data_chunk_size_ = data_chunk_.write(ostream_, audio_data_written_);
+    chunks_total_size_ = fmt_chunk_.write(ostream_);
+    chunks_total_size_ += data_chunk_.write(ostream_, audio_data_written_);
 
     if (pos > 0) {
         ostream_.set_write_position(pos);
