@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <asio/post.hpp>
+#include <thread>
 
 static bool parse_txt_record(rav::dnssd::txt_record& txt_record, const std::string& string_value) {
     if (string_value.empty())
