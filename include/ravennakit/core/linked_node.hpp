@@ -9,6 +9,7 @@
  */
 
 #pragma once
+#include <functional>
 
 namespace rav {
 
@@ -197,6 +198,15 @@ class linked_node {
      */
     [[nodiscard]] bool is_linked() const {
         return prev_ != nullptr || next_ != nullptr;
+    }
+
+    /**
+     * @param f The function to be called for each node in the linked list.
+     */
+    void for_each(const std::function<void(T&)>& f) {
+        for (auto& node : *this) {
+            f(node);
+        }
     }
 
   private:
