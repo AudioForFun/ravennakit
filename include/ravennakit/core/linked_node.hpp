@@ -28,11 +28,11 @@ class linked_node {
         explicit iterator(linked_node* node) : current(node) {}
 
         T& operator*() const {
-            return current->data();
+            return current->value();
         }
 
         T* operator->() const {
-            return &current->data();
+            return &current->value();
         }
 
         iterator& operator++() {
@@ -71,17 +71,35 @@ class linked_node {
         linked_node* current {};
     };
 
+    linked_node() = default;
+
     /**
      * Creates a new linked node with the given data.
      * @param data The data to be stored in the linked node.
      */
-    explicit linked_node(T data) : data_(data) {}
+    explicit linked_node(T data) : value_(data) {}
 
     /**
      * Destructor which removes itself from the linked list if linked.
      */
     ~linked_node() {
         remove();
+    }
+
+    linked_node(const linked_node&) = delete;
+    linked_node& operator=(const linked_node&) = delete;
+
+    linked_node(linked_node&&) = delete;
+    linked_node& operator=(linked_node&&) = delete;
+
+    /**
+     * Assigns a new value to the linked node.
+     * @param value The new value to be assigned.
+     * @return this
+     */
+    linked_node& operator=(T value) {
+        value_ = std::move(value);
+        return *this;
     }
 
     /**
@@ -136,18 +154,26 @@ class linked_node {
         next_ = nullptr;
     }
 
-    /**
-     * @returns The data stored in the linked node.
-     */
-    T& data() {
-        return data_;
+    T& operator*() const {
+        return value_;
+    }
+
+    T* operator->() {
+        return &value_;
     }
 
     /**
      * @returns The data stored in the linked node.
      */
-    const T& data() const {
-        return data_;
+    T& value() {
+        return value_;
+    }
+
+    /**
+     * @returns The data stored in the linked node.
+     */
+    const T& value() const {
+        return value_;
     }
 
     /**
@@ -210,7 +236,7 @@ class linked_node {
     }
 
   private:
-    T data_;
+    T value_ {};
     linked_node* prev_ = nullptr;
     linked_node* next_ = nullptr;
 };

@@ -13,11 +13,9 @@
 
 rav::ravenna_sink::ravenna_sink(ravenna_browser& browser, std::string session_name) :
     session_name_(std::move(session_name)) {
-    ravenna_browser_subscriber_.on<ravenna_session_resolved>(
-        [this](const ravenna_session_resolved& event, ravenna_browser::subscriber&) {
-            RAV_INFO("RAVENNA Stream resolved: {} ({})", event.description.name, session_name_);
-        }
-    );
+    ravenna_browser_subscriber_->on<ravenna_session_resolved>([this](const ravenna_session_resolved& event) {
+        RAV_INFO("RAVENNA Stream resolved: {} ({})", event.description.name, session_name_);
+    });
     browser.subscribe(ravenna_browser_subscriber_);
 }
 

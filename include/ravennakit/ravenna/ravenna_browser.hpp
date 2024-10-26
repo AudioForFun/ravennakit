@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ravennakit/core/events.hpp"
 #include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 #include "ravennakit/rtsp/rtsp_client.hpp"
@@ -29,20 +30,7 @@ struct ravenna_session_resolved {
  */
 class ravenna_browser final {
   public:
-    class subscriber final:
-        public event_emitter<subscriber, ravenna_session_resolved>,
-        public linked_node<subscriber*> {
-      public:
-        using event_emitter::emit;
-
-        subscriber() : linked_node(this) {}
-
-        subscriber(const subscriber&) = delete;
-        subscriber& operator=(const subscriber&) = delete;
-
-        subscriber(subscriber&&) = delete;
-        subscriber& operator=(subscriber&&) = delete;
-    };
+    using subscriber = linked_node<events<ravenna_session_resolved>>;
 
     explicit ravenna_browser(asio::io_context& io_context);
 
@@ -52,7 +40,7 @@ class ravenna_browser final {
     asio::io_context& io_context_;
     std::unique_ptr<dnssd::dnssd_browser> node_browser_;
     std::unique_ptr<dnssd::dnssd_browser> session_browser_;
-    linked_node<subscriber*> subscribers_ {nullptr};
+    subscriber subscribers_;
 };
 
 }  // namespace rav

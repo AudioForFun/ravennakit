@@ -99,6 +99,8 @@ void rav::dnssd::bonjour_advertiser::register_service_callback(
     const DNSServiceErrorType error_code, [[maybe_unused]] const char* service_name,
     [[maybe_unused]] const char* reg_type, [[maybe_unused]] const char* reply_domain, [[maybe_unused]] void* context
 ) {
+    RAV_ASSERT(context != nullptr, "Expected non-null context");
+
     auto* advertiser = static_cast<bonjour_advertiser*>(context);
     if (error_code == kDNSServiceErr_NameConflict) {
         advertiser->emit(events::name_conflict {reg_type, service_name});

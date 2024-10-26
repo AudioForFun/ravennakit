@@ -21,17 +21,17 @@ TEST_CASE("linked_node | Build a list", "[linked_node]") {
     std::vector<int> nodes;
 
     SECTION("Single node") {
-        REQUIRE(n1.data() == 1);
+        REQUIRE(n1.value() == 1);
         REQUIRE(n1.is_front() == false);
         REQUIRE(n1.is_back() == false);
         REQUIRE(n1.is_linked() == false);
 
-        REQUIRE(n2.data() == 2);
+        REQUIRE(n2.value() == 2);
         REQUIRE(n2.is_front() == false);
         REQUIRE(n2.is_back() == false);
         REQUIRE(n2.is_linked() == false);
 
-        REQUIRE(n3.data() == 3);
+        REQUIRE(n3.value() == 3);
         REQUIRE(n3.is_front() == false);
         REQUIRE(n3.is_back() == false);
         REQUIRE(n3.is_linked() == false);
@@ -46,17 +46,17 @@ TEST_CASE("linked_node | Build a list", "[linked_node]") {
     n1.push_back(n2);
 
     SECTION("Two nodes") {
-        REQUIRE(n1.data() == 1);
+        REQUIRE(n1.value() == 1);
         REQUIRE(n1.is_front() == true);
         REQUIRE(n1.is_back() == false);
         REQUIRE(n1.is_linked() == true);
 
-        REQUIRE(n2.data() == 2);
+        REQUIRE(n2.value() == 2);
         REQUIRE(n2.is_front() == false);
         REQUIRE(n2.is_back() == true);
         REQUIRE(n2.is_linked() == true);
 
-        REQUIRE(n3.data() == 3);
+        REQUIRE(n3.value() == 3);
         REQUIRE(n3.is_front() == false);
         REQUIRE(n3.is_back() == false);
         REQUIRE(n3.is_linked() == false);
@@ -71,17 +71,17 @@ TEST_CASE("linked_node | Build a list", "[linked_node]") {
     n1.push_back(n3);
 
     SECTION("Three nodes") {
-        REQUIRE(n1.data() == 1);
+        REQUIRE(n1.value() == 1);
         REQUIRE(n1.is_front() == true);
         REQUIRE(n1.is_back() == false);
         REQUIRE(n1.is_linked() == true);
 
-        REQUIRE(n2.data() == 2);
+        REQUIRE(n2.value() == 2);
         REQUIRE(n2.is_front() == false);
         REQUIRE(n2.is_back() == false);
         REQUIRE(n2.is_linked() == true);
 
-        REQUIRE(n3.data() == 3);
+        REQUIRE(n3.value() == 3);
         REQUIRE(n3.is_front() == false);
         REQUIRE(n3.is_back() == true);
         REQUIRE(n3.is_linked() == true);
@@ -96,17 +96,17 @@ TEST_CASE("linked_node | Build a list", "[linked_node]") {
     n2.remove();
 
     SECTION("Two nodes again") {
-        REQUIRE(n1.data() == 1);
+        REQUIRE(n1.value() == 1);
         REQUIRE(n1.is_front() == true);
         REQUIRE(n1.is_back() == false);
         REQUIRE(n1.is_linked() == true);
 
-        REQUIRE(n2.data() == 2);
+        REQUIRE(n2.value() == 2);
         REQUIRE(n2.is_front() == false);
         REQUIRE(n2.is_back() == false);
         REQUIRE(n2.is_linked() == false);
 
-        REQUIRE(n3.data() == 3);
+        REQUIRE(n3.value() == 3);
         REQUIRE(n3.is_front() == false);
         REQUIRE(n3.is_back() == true);
         REQUIRE(n3.is_linked() == true);
@@ -121,17 +121,17 @@ TEST_CASE("linked_node | Build a list", "[linked_node]") {
     n1.remove();
 
     SECTION("One node again") {
-        REQUIRE(n1.data() == 1);
+        REQUIRE(n1.value() == 1);
         REQUIRE(n1.is_front() == false);
         REQUIRE(n1.is_back() == false);
         REQUIRE(n1.is_linked() == false);
 
-        REQUIRE(n2.data() == 2);
+        REQUIRE(n2.value() == 2);
         REQUIRE(n2.is_front() == false);
         REQUIRE(n2.is_back() == false);
         REQUIRE(n2.is_linked() == false);
 
-        REQUIRE(n3.data() == 3);
+        REQUIRE(n3.value() == 3);
         REQUIRE(n3.is_front() == false);
         REQUIRE(n3.is_back() == false);
         REQUIRE(n3.is_linked() == false);
