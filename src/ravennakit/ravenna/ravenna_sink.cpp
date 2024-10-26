@@ -11,19 +11,28 @@
 #include "ravennakit/ravenna/ravenna_sink.hpp"
 #include "ravennakit/core/todo.hpp"
 
-rav::ravenna_sink::ravenna_sink(ravenna_browser& browser, std::string session_name) :
-    session_name_(std::move(session_name)) {
-    ravenna_browser_subscriber_->on<ravenna_session_resolved>([this](const ravenna_session_resolved& event) {
-        RAV_INFO("RAVENNA Stream resolved: {} ({})", event.description.name, session_name_);
+rav::ravenna_sink::ravenna_sink(ravenna_rtsp_client& rtsp_client, std::string session_name) :
+    rtsp_client_(rtsp_client) {
+    rtsp_subscriber_->on<ravenna_rtsp_client::sdp_updated>([this](const ravenna_rtsp_client::sdp_updated& event) {
+        RAV_ASSERT(event.session_name == session_name_, "Expecting session_name to match");
+        auto_sdp_ = event.sdp;
+        RAV_INFO("SDP updated for session '{}'", session_name_);
     });
-    browser.subscribe(ravenna_browser_subscriber_);
+
+    set_source(std::move(session_name));
 }
 
-void rav::ravenna_sink::set_manual_sdp(sdp::session_description sdp) {
-    sdp_ = std::move(sdp);
+void rav::ravenna_sink::set_sdp(sdp::session_description sdp) {
+    manual_sdp_ = std::move(sdp);
 }
 
-void rav::ravenna_sink::subscribe_to_session_name(std::string session_name) {
-    std::ignore = session_name;
+void rav::ravenna_sink::set_mode(const mode mode) {
+    mode_ = mode;
+}
+
+void rav::ravenna_sink::set_source(std::string session_name) {
+    session_name_ = std::move(session_name);
+    rtsp_client_.subscribe(session_name_, rtsp_subscriber_);
+
     TODO("Implement");
 }

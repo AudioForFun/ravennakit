@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ravenna_rtsp_client.hpp"
 #include "ravennakit/sdp/session_description.hpp"
 #include "ravennakit/ravenna/ravenna_browser.hpp"
 
@@ -17,18 +18,23 @@ namespace rav {
 
 class ravenna_sink {
   public:
-    explicit ravenna_sink(ravenna_browser& browser, std::string session_name);
+    enum class mode { manual, automatic };
+
+    explicit ravenna_sink(ravenna_rtsp_client& rtsp_client, std::string session_name);
 
     ~ravenna_sink() = default;
 
-    void set_manual_sdp(sdp::session_description sdp);
-
-    void subscribe_to_session_name(std::string session_name);
+    void set_mode(mode mode);
+    void set_source(std::string session_name);
+    void set_sdp(sdp::session_description sdp);
 
   private:
-    std::optional<sdp::session_description> sdp_;
+    ravenna_rtsp_client& rtsp_client_;
+    mode mode_ = mode::automatic;
     std::string session_name_;
-    ravenna_browser::subscriber ravenna_browser_subscriber_;
+    std::optional<sdp::session_description> manual_sdp_;
+    std::optional<sdp::session_description> auto_sdp_;
+    ravenna_rtsp_client::subscriber rtsp_subscriber_;
 };
 
 }  // namespace rav

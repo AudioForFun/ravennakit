@@ -11,6 +11,7 @@
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/ravenna/ravenna_browser.hpp"
+#include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 #include "ravennakit/ravenna/ravenna_sink.hpp"
 
 #include <CLI/App.hpp>
@@ -35,8 +36,9 @@ int main(int const argc, char* argv[]) {
 
     asio::io_context io_context;
     rav::ravenna_browser browser(io_context);
-    rav::ravenna_sink sink1(browser, "sink1");
-    rav::ravenna_sink sink2(browser, "sink2");
+    rav::ravenna_rtsp_client rtsp_client(io_context, browser);
+    rav::ravenna_sink sink1(rtsp_client, "sink1");
+    rav::ravenna_sink sink2(rtsp_client, "sink2");
 
     io_context.run();
 }
