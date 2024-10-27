@@ -30,7 +30,7 @@ TEST_CASE("dnssd | Browse and advertise") {
         return;
 #endif
 
-        const std::string reg_type = "_testlsdjafhalksjfh._tcp.";
+        const std::string reg_type = "_ravennakit_dnssd_unit_test._tcp.";
 
         std::vector<rav::dnssd::service_description> discovered_services;
         std::vector<rav::dnssd::service_description> resolved_services;

@@ -165,11 +165,6 @@ rav::dnssd::bonjour_browser::bonjour_browser(asio::io_context& io_context) : ser
     async_process_results();
 }
 
-rav::dnssd::bonjour_browser::~bonjour_browser() {
-    service_socket_.cancel();
-    service_socket_.release();  // Release the socket to avoid closing it in the destructor
-}
-
 void rav::dnssd::bonjour_browser::async_process_results() {
     service_socket_.async_wait(asio::ip::tcp::socket::wait_read, [this](const asio::error_code& ec) {
         if (ec) {

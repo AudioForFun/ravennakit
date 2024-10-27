@@ -29,7 +29,6 @@ class bonjour_advertiser: public dnssd_advertiser {
      * @param io_context The context to use for the processing results.
      */
     explicit bonjour_advertiser(asio::io_context& io_context);
-    ~bonjour_advertiser() override;
 
     util::id register_service(
         const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
@@ -45,8 +44,8 @@ class bonjour_advertiser: public dnssd_advertiser {
         bonjour_scoped_dns_service_ref service_ref;
     };
 
-    bonjour_shared_connection shared_connection_;
     asio::ip::tcp::socket service_socket_;
+    bonjour_shared_connection shared_connection_;
     util::id::generator id_generator_;
     std::vector<registered_service> registered_services_;
     size_t process_results_failed_attempts_ = 0;

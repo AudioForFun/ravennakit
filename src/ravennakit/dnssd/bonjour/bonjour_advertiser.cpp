@@ -23,11 +23,6 @@ rav::dnssd::bonjour_advertiser::bonjour_advertiser(asio::io_context& io_context)
     async_process_results();
 }
 
-rav::dnssd::bonjour_advertiser::~bonjour_advertiser() {
-    service_socket_.cancel();
-    service_socket_.release();  // Release the socket to avoid closing it in the destructor
-}
-
 rav::util::id rav::dnssd::bonjour_advertiser::register_service(
     const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
     const bool auto_rename
