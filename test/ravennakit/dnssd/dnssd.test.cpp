@@ -16,9 +16,15 @@
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 
-TEST_CASE("dnssd | Browse and advertise") {
+namespace {
+std::string generate_random_reg_type() {
     auto random_string = rav::random::generate_random_string(20);
-    const auto reg_type = fmt::format("_{}._tcp.", random_string);
+    return fmt::format("_{}._tcp.", random_string);
+}
+}  // namespace
+
+TEST_CASE("dnssd | Browse and advertise") {
+    const auto reg_type = generate_random_reg_type();
 
     SECTION("On systems other than Apple and Windows, dnssd is not implemented") {
 #if !RAV_HAS_DNSSD
@@ -96,8 +102,7 @@ TEST_CASE("dnssd | Update a txt record") {
     return;
 #endif
 
-    auto random_string = rav::random::generate_random_string(20);
-    const auto reg_type = fmt::format("_{}._tcp.", random_string);
+    const auto reg_type = generate_random_reg_type();
 
     asio::io_context io_context;
     std::optional<rav::dnssd::service_description> updated_service;
