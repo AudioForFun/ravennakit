@@ -99,10 +99,12 @@ TEST_CASE("dnssd | Update a txt record") {
     std::optional<rav::dnssd::service_description> updated_service;
 
     const auto advertiser = rav::dnssd::dnssd_advertiser::create(io_context);
+    RAV_ASSERT(advertiser, "Expected a dnssd advertiser");
     const rav::dnssd::txt_record txt_record {{"key1", "value1"}, {"key2", "value2"}};
     const auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false);
 
     const auto browser = rav::dnssd::dnssd_browser::create(io_context);
+    RAV_ASSERT(browser, "Expected a dnssd browser");
     bool updated = false;
     browser->on<rav::dnssd::dnssd_service_resolved>([&](const rav::dnssd::dnssd_service_resolved& event) {
         if (event.description.txt.empty() && !updated) {
@@ -121,4 +123,11 @@ TEST_CASE("dnssd | Update a txt record") {
     io_context.run_for(std::chrono::seconds(10));
 
     REQUIRE(updated_service.has_value());
+}
+
+TEST_CASE("dnssd | Name collision") {
+    // It's tempting to test the name collision feature, but as it turns out the name collision doesn't seem to work on
+    // a single host and only between different hosts. To prove this, run this command in two separate terminals:
+    // dns-sd -R test _some_service_name._tcp. local. 1234
+    // You'll find that both will register the service without any conflict.
 }
