@@ -63,7 +63,7 @@ NamespaceIndentation: Inner
 PointerAlignment: Left
 ReferenceAlignment: Left
 ReflowComments: true
-SeparateDefinitionBlocks: Leave
+SeparateDefinitionBlocks: Always
 SortIncludes: Never
 SortUsingDeclarations: true
 SpaceAfterCStyleCast: false

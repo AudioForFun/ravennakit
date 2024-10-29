@@ -108,6 +108,7 @@ class bonjour_browser: public dnssd_browser {
 
     explicit bonjour_browser(asio::io_context& io_context);
     void browse_for(const std::string& service) override;
+    [[nodiscard]] const service_description* find_service(const std::string& service_name) const override;
     [[nodiscard]] std::vector<service_description> get_services() const override;
 
     void subscribe(subscriber& s) override;

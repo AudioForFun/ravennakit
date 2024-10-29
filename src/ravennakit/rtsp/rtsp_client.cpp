@@ -23,9 +23,7 @@ rav::rtsp_client::rtsp_client(asio::io_context& io_context) : socket_(asio::make
 }
 
 void rav::rtsp_client::connect(const asio::ip::tcp::endpoint& endpoint) {
-    asio::post(socket_.get_executor(), [this, endpoint]() {
-        async_connect(endpoint);
-    });
+    async_connect(endpoint);
 }
 
 void rav::rtsp_client::connect(const std::string& addr, uint16_t port) {

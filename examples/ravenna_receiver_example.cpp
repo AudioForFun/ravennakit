@@ -32,24 +32,22 @@ int main(int const argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    fmt::print("RAVENNA Receiver example. Receive from stream: {}\n", stream_name);
+    fmt::println("RAVENNA Receiver example. Receive from stream: {}", stream_name);
 
     asio::io_context io_context;
 
-    auto node_browser = rav::dnssd::dnssd_browser::create(io_context);
-    if (node_browser){
-        node_browser->browse_for("_rtsp._tcp,_ravenna");
+    const auto node_browser = rav::dnssd::dnssd_browser::create(io_context);
 
-        rav::dnssd::dnssd_browser::subscriber subscriber{};
-        subscriber->on<rav::dnssd::dnssd_browser::service_resolved>([](const auto& event) {
-            RAV_INFO("RAVENNA Node resolved: {}", event.description.description());
-        });
-        node_browser->subscribe(subscriber);
-
-        rav::ravenna_rtsp_client rtsp_client(io_context, *node_browser);
-        // rav::ravenna_sink sink1(rtsp_client, "sink1");
-        // rav::ravenna_sink sink2(rtsp_client, "sink2");
+    if (node_browser == nullptr) {
+        fmt::println("No dnssd browser available. Exiting.");
+        exit(0);
     }
+
+    node_browser->browse_for("_rtsp._tcp,_ravenna_session");
+
+    rav::ravenna_rtsp_client rtsp_client(io_context, *node_browser);
+    rav::ravenna_sink sink1(rtsp_client, "Anubis Combo LR");
+    // rav::ravenna_sink sink2(rtsp_client, "sink2");
 
     io_context.run();
 }

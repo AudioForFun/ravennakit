@@ -21,33 +21,38 @@ namespace rav {
 /**
  * Maintains connections to zero or more RAVENNA RTSP servers, upon request.
  */
-class ravenna_rtsp_client  {
+class ravenna_rtsp_client {
   public:
-    struct announced_event {
+    struct announced {
         const std::string& session_name;
         const sdp::session_description& sdp;
     };
 
-    using subscriber = linked_node<events<announced_event>>;
+    using subscriber = linked_node<events<announced>>;
 
     explicit ravenna_rtsp_client(asio::io_context& io_context, dnssd::dnssd_browser& browser);
 
     void subscribe(const std::string& session_name, subscriber& s);
 
   private:
-    asio::io_context& io_context_;
-    dnssd::dnssd_browser::subscriber browser_subscriber_;
-
-    enum class session_state { initial };
+    enum class session_state { waiting_for_service, waiting_for_description };
 
     struct session_context {
+        std::string session_name;
         subscriber subscribers;
         std::optional<sdp::session_description> sdp_;
-        session_state state = session_state::initial;
+        session_state state = session_state::waiting_for_service;
     };
 
-    std::map<std::string, session_context> sessions_;  // session_name -> session_context
-    std::map<std::string, rtsp_client> connections_;   // connection_address -> rtsp_client
+    asio::io_context& io_context_;
+    dnssd::dnssd_browser& browser_;
+    dnssd::dnssd_browser::subscriber browser_subscriber_;
+    std::vector<session_context> sessions_;
+    std::map<std::string, std::weak_ptr<rtsp_client>> existing_connections_;  // service fullname -> rtsp_client
+
+    void describe_session(const std::string& session_name);
+    void connect_to_service(const dnssd::service_description& service);
+    rtsp_client* get_or_create_service_connection(const dnssd::service_description& service);
 };
 
 }  // namespace rav

@@ -36,9 +36,7 @@ void rav::dnssd::bonjour_browser::service::resolve_on_interface(uint32_t index) 
     );
 
     if (result != kDNSServiceErr_NoError) {
-        owner_.emit(
-            browse_error {fmt::format("Resolve on interface error: {}", dns_service_error_to_string(result))}
-        );
+        owner_.emit(browse_error {fmt::format("Resolve on interface error: {}", dns_service_error_to_string(result))});
         return;
     }
 
@@ -119,12 +117,9 @@ void rav::dnssd::bonjour_browser::service::get_addr_info_callback(
     const auto found_interface = browser_service->description_.interfaces.find(interface_index);
     if (found_interface != browser_service->description_.interfaces.end()) {
         const auto result = found_interface->second.insert(ip_addr);
-        browser_service->owner_.emit(address_added {browser_service->description_, *result.first, interface_index}
-        );
+        browser_service->owner_.emit(address_added {browser_service->description_, *result.first, interface_index});
     } else {
-        browser_service->owner_.emit(
-            browse_error {fmt::format("Interface with id \"{}\" not found", interface_index)}
-        );
+        browser_service->owner_.emit(browse_error {fmt::format("Interface with id \"{}\" not found", interface_index)});
         return;
     }
 }
@@ -198,9 +193,9 @@ void rav::dnssd::bonjour_browser::browse_reply(
     auto* browser = static_cast<bonjour_browser*>(context);
 
     if (error_code != kDNSServiceErr_NoError) {
-        browser->emit(browse_error {
-            fmt::format("Browser repy called with error: {}", dns_service_error_to_string(error_code))
-        });
+        browser->emit(
+            browse_error {fmt::format("Browser repy called with error: {}", dns_service_error_to_string(error_code))}
+        );
         return;
     }
 
@@ -266,6 +261,16 @@ void rav::dnssd::bonjour_browser::browse_for(const std::string& service) {
 
     browsers_.insert({service, bonjour_scoped_dns_service_ref(browsing_service_ref)});
     // From here the serviceRef is under RAII inside the ScopedDnsServiceRef class
+}
+
+const rav::dnssd::service_description* rav::dnssd::bonjour_browser::find_service(const std::string& service_name
+) const {
+    for (auto& service : services_) {
+        if (service.second.description().name == service_name) {
+            return &service.second.description();
+        }
+    }
+    return nullptr;
 }
 
 std::vector<rav::dnssd::service_description> rav::dnssd::bonjour_browser::get_services() const {

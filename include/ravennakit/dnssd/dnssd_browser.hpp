@@ -97,6 +97,13 @@ class dnssd_browser {
     static std::unique_ptr<dnssd_browser> create(asio::io_context& io_context);
 
     /**
+     * Tries to find a service by its name.
+     * @param service_name The name of the service to find.
+     * @return The service description if found, otherwise nullptr.
+     */
+    [[nodiscard]] virtual const service_description* find_service(const std::string& service_name) const = 0;
+
+    /**
      * @returns A list of existing services.
      */
     [[nodiscard]] virtual std::vector<service_description> get_services() const = 0;

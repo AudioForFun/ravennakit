@@ -75,11 +75,11 @@ int main(int const argc, char* argv[]) {
 
     advertiser->subscribe(subscriber);
     advertiser->register_service(
-        args[0], "First test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true, false
+        args[0], "Test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true, false
     );
 
     const auto service_id2 = advertiser->register_service(
-        args[0], "Second test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true, false
+        args[0], "Test service", nullptr, static_cast<uint16_t>(port_number + 1), txt_record, true, false
     );
 
     std::thread io_context_thread([&io_context] {

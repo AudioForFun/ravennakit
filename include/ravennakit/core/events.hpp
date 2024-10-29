@@ -21,7 +21,14 @@ namespace rav {
 template<class... Events>
 class events {
   public:
+    events() = default;
     virtual ~events() = default;
+
+    events(const events&) = delete;
+    events& operator=(const events&) = delete;
+
+    events(events&&) = default;
+    events& operator=(events&&) = default;
 
     template<class Type>
     using handler = std::function<void(Type&)>;
