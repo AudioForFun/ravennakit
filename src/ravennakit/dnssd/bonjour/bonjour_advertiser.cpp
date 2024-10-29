@@ -25,7 +25,7 @@ rav::dnssd::bonjour_advertiser::bonjour_advertiser(asio::io_context& io_context)
 
 rav::util::id rav::dnssd::bonjour_advertiser::register_service(
     const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
-    const bool auto_rename
+    const bool auto_rename, bool local_only
 ) {
     DNSServiceRef service_ref = shared_connection_.service_ref();
     const auto record = bonjour_txt_record(txt_record);
@@ -34,6 +34,10 @@ rav::util::id rav::dnssd::bonjour_advertiser::register_service(
 
     if (!auto_rename) {
         flags |= kDNSServiceFlagsNoAutoRename;
+    }
+
+    if (local_only) {
+        flags |= kDNSServiceInterfaceIndexLocalOnly;
     }
 
     const auto result = DNSServiceRegister(
@@ -61,6 +65,10 @@ void rav::dnssd::bonjour_advertiser::unregister_service(util::id id) {
     );
 }
 
+void rav::dnssd::bonjour_advertiser::subscribe(subscriber& s) {
+    subscribers_.push_back(s);
+}
+
 void rav::dnssd::bonjour_advertiser::async_process_results() {
     service_socket_.async_wait(asio::ip::tcp::socket::wait_read, [this](const asio::error_code& ec) {
         if (ec) {
@@ -74,10 +82,10 @@ void rav::dnssd::bonjour_advertiser::async_process_results() {
 
         if (result != kDNSServiceErr_NoError) {
             RAV_ERROR("DNSServiceError: {}", dns_service_error_to_string(result));
-            emit(dnssd_advertiser_error {fmt::format("Process result error: {}", dns_service_error_to_string(result))});
+            emit(advertiser_error {fmt::format("Process result error: {}", dns_service_error_to_string(result))});
             if (++process_results_failed_attempts_ > 10) {
                 RAV_ERROR("Too many failed attempts to process results, stopping");
-                emit(dnssd_advertiser_error {"Too many failed attempts to process results, stopping"});
+                emit(advertiser_error {"Too many failed attempts to process results, stopping"});
                 return;
             }
         } else {
@@ -97,12 +105,12 @@ void rav::dnssd::bonjour_advertiser::register_service_callback(
 
     auto* advertiser = static_cast<bonjour_advertiser*>(context);
     if (error_code == kDNSServiceErr_NameConflict) {
-        advertiser->emit(dnssd_name_conflict {reg_type, service_name});
+        advertiser->emit(name_conflict {reg_type, service_name});
         return;
     }
 
     if (error_code != kDNSServiceErr_NoError) {
-        advertiser->emit(dnssd_advertiser_error {fmt::format("Failed to register service: {}", error_code)});
+        advertiser->emit(advertiser_error {fmt::format("Failed to register service: {}", error_code)});
         return;
     }
 }

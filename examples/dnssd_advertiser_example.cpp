@@ -63,20 +63,23 @@ int main(int const argc, char* argv[]) {
         return -1;
     }
 
-    advertiser->on<rav::dnssd::dnssd_advertiser_error>([](const rav::dnssd::dnssd_advertiser_error& event) {
+    rav::dnssd::dnssd_advertiser::subscriber subscriber;
+
+    subscriber->on<rav::dnssd::dnssd_advertiser::advertiser_error>([](const auto& event) {
         RAV_ERROR("Advertiser error: {}", event.error_message);
     });
 
-    advertiser->on<rav::dnssd::dnssd_name_conflict>([](const rav::dnssd::dnssd_name_conflict& event) {
+    subscriber->on<rav::dnssd::dnssd_advertiser::name_conflict>([](const auto& event) {
         RAV_CRITICAL("Name conflict: {} {}", event.reg_type, event.name);
     });
 
+    advertiser->subscribe(subscriber);
     advertiser->register_service(
-        args[0], "First test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true
+        args[0], "First test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true, false
     );
 
     const auto service_id2 = advertiser->register_service(
-        args[0], "Second test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true
+        args[0], "Second test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true, false
     );
 
     std::thread io_context_thread([&io_context] {

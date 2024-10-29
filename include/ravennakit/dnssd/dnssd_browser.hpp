@@ -102,7 +102,8 @@ class dnssd_browser {
     [[nodiscard]] virtual std::vector<service_description> get_services() const = 0;
 
     /**
-     * Subscribes given subscriber to the browser. The subscriber will receive future events as well as previous events.
+     * Subscribes given subscriber to the browser. The subscriber will receive future events as well event to get
+     * up-to-date with the current state (i.e. existing discovered services).
      * @param s The subscriber to subscribe.
      */
     virtual void subscribe(subscriber& s) = 0;

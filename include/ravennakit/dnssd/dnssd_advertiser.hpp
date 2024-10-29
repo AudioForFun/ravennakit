@@ -5,6 +5,7 @@
 
 #include "service_description.hpp"
 #include "ravennakit/core/events.hpp"
+#include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/core/result.hpp"
 #include "ravennakit/util/id.hpp"
 
@@ -12,28 +13,30 @@
 
 namespace rav::dnssd {
 
+/**
+ * Interface class which represents a dnssd advertiser object, which is able to present itself onto the network.
+ */
+class dnssd_advertiser {
+  public:
     /**
      * Event for when a service was discovered.
      */
-    struct dnssd_advertiser_error {
+    struct advertiser_error {
         const std::string& error_message;
     };
 
     /**
      * Event for when a DNS-SD service registration failed due to a name conflict.
      */
-    struct dnssd_name_conflict {
+    struct name_conflict {
         const char* reg_type;
         const char* name;
     };
 
-/**
- * Interface class which represents a dnssd advertiser object, which is able to present itself onto the network.
- */
-class dnssd_advertiser: public events<dnssd_advertiser_error, dnssd_name_conflict> {
-  public:
+    using subscriber = linked_node<events<advertiser_error, name_conflict>>;
+
     explicit dnssd_advertiser() = default;
-    ~dnssd_advertiser() override = default;
+    virtual ~dnssd_advertiser() = default;
 
     /**
      * Registers a service with given arguments.
@@ -51,11 +54,12 @@ class dnssd_advertiser: public events<dnssd_advertiser_error, dnssd_name_conflic
      * @param txt_record A TXT record to add to the service, consisting of a couple of keys and values.
      * @param auto_rename When true, the name will be automatically renamed if a conflict occurs. If false an
      * events::name_conflict will be emitted.
+     * @param local_only When true, service will only be advertised on the local machine.
      * @throws When an error occurs during registration.
      */
     virtual util::id register_service(
         const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
-        bool auto_rename
+        bool auto_rename, bool local_only
     ) = 0;
 
     /**
@@ -79,6 +83,12 @@ class dnssd_advertiser: public events<dnssd_advertiser_error, dnssd_name_conflic
      * @return The created dnssd_advertiser instance, or nullptr if no implementation is available.
      */
     static std::unique_ptr<dnssd_advertiser> create(asio::io_context& io_context);
+
+    /**
+     * Subscribes given subscriber to the advertiser. The subscriber will receive future events.
+     * @param s The subscriber to subscribe.
+     */
+    virtual void subscribe(subscriber& s) = 0;
 };
 
 }  // namespace rav::dnssd

@@ -32,11 +32,13 @@ class bonjour_advertiser: public dnssd_advertiser {
 
     util::id register_service(
         const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
-        bool auto_rename
+        bool auto_rename, bool local_only
     ) override;
 
     void update_txt_record(util::id id, const txt_record& txt_record) override;
     void unregister_service(util::id id) override;
+
+    void subscribe(subscriber& s) override;
 
   private:
     struct registered_service {
@@ -49,6 +51,7 @@ class bonjour_advertiser: public dnssd_advertiser {
     util::id::generator id_generator_;
     std::vector<registered_service> registered_services_;
     size_t process_results_failed_attempts_ = 0;
+    subscriber subscribers_;
 
     void async_process_results();
 
@@ -58,6 +61,18 @@ class bonjour_advertiser: public dnssd_advertiser {
     );
 
     registered_service* find_registered_service(util::id id);
+
+    /**
+     * Emits fiven event to all subscribers.
+     * @tparam T The type of the event.
+     * @param event The event to emit.
+     */
+    template<class T>
+    void emit(const T& event) {
+        subscribers_.foreach ([&event](auto& s) {
+            s.emit(event);
+        });
+    }
 };
 
 }  // namespace rav::dnssd
