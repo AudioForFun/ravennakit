@@ -49,7 +49,7 @@ struct dnssd_address_added {
     /// The address which was added.
     const std::string& address;
     /// The index of the interface on which the address was added.
-    uint32_t interfaceIndex;
+    uint32_t interface_index;
 };
 
 /**
@@ -62,7 +62,7 @@ struct dnssd_address_removed {
     /// The address which was removed.
     const std::string& address;
     /// The index of the interface on which the address was removed.
-    uint32_t interfaceIndex;
+    uint32_t interface_index;
 };
 
 /**
@@ -96,6 +96,11 @@ class dnssd_browser:
      * @return The created dnssd_browser instance, or nullptr if no implementation is available.
      */
     static std::unique_ptr<dnssd_browser> create(asio::io_context& io_context);
+
+    /**
+     * @returns A list of existing services.
+     */
+    [[nodiscard]] virtual std::vector<service_description> get_services() const = 0;
 };
 
 }  // namespace rav::dnssd

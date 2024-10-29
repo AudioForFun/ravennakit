@@ -9,12 +9,13 @@
  */
 
 #pragma once
+
 #include <functional>
 
 namespace rav {
 
 /**
- * Baseclass for other classes that need to be linked together.
+ * A node which can be linked together into a linked-list, and which can hold data of any type.
  * @tparam T The type of the data to be stored in the linked node.
  */
 template<class T>

@@ -110,6 +110,9 @@ class bonjour_browser: public dnssd_browser {
 
     void browse_for(const std::string& service) override;
 
+    [[nodiscard]] std::vector<service_description> get_services() const override;
+
+
   private:
     asio::ip::tcp::socket service_socket_;
     bonjour_shared_connection shared_connection_;

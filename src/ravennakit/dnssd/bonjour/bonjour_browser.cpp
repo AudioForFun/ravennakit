@@ -269,4 +269,12 @@ void rav::dnssd::bonjour_browser::browse_for(const std::string& service) {
     // From here the serviceRef is under RAII inside the ScopedDnsServiceRef class
 }
 
+std::vector<rav::dnssd::service_description> rav::dnssd::bonjour_browser::get_services() const {
+    std::vector<service_description> services;
+    for (auto& service : services_) {
+        services.push_back(service.second.description());
+    }
+    return services;
+}
+
 #endif
