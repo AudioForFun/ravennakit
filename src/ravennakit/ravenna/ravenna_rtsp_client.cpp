@@ -69,11 +69,13 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
     new_connection.client.on<rtsp_connect_event>([=](const auto&) {
         RAV_TRACE("RTSP Client connected for host target: {}", host_target);
     });
-    new_connection.client.on<rtsp_response>([=](const auto&) {
+    new_connection.client.on<rtsp_response>([=](const auto& response) {
         RAV_TRACE("RTSP Client response for host target: {}", host_target);
+        RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
     });
-    new_connection.client.on<rtsp_request>([=](const auto&) {
+    new_connection.client.on<rtsp_request>([=](const auto& request) {
         RAV_TRACE("RTSP Client request for host target: {}", host_target);
+        RAV_INFO("{}\n{}", request.to_debug_string(), rav::string_replace(request.data, "\r\n", "\n"));
     });
     new_connection.client.async_connect(host_target, port);
     RAV_TRACE("RTSP Created RTSP connection to {}:{}", host_target, port);

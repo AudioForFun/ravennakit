@@ -52,6 +52,15 @@ struct uri {
     static std::string encode(std::string_view str, bool encode_plus = false, bool encode_slash = false);
 
     /**
+     * Shortcut to create a basic encoded URI.
+     * @param scheme Scheme.
+     * @param host Host.
+     * @param path Path.
+     * @return Encoded URI string.
+     */
+    static std::string encode(std::string_view scheme, std::string_view host, std::string_view path);
+
+    /**
      * Decodes a percent-encoded string.
      * @param encoded Encoded string.
      * @param decode_plus Whether to decode '+' as space.

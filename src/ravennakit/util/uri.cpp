@@ -134,7 +134,8 @@ std::string rav::uri::encode(const std::string_view str, const bool encode_plus,
     std::string output;
     output.reserve(str.size());
     for (const auto chr : str) {
-        if (std::isalnum(chr) || chr == '-' || chr == '_' || chr == '.' || chr == '~' || (!encode_slash && chr == '/')) {
+        if (std::isalnum(chr) || chr == '-' || chr == '_' || chr == '.' || chr == '~'
+            || (!encode_slash && chr == '/')) {
             output.push_back(chr);
         } else if (encode_plus && chr == ' ') {
             output.push_back('+');
@@ -145,6 +146,10 @@ std::string rav::uri::encode(const std::string_view str, const bool encode_plus,
         }
     }
     return output;
+}
+
+std::string rav::uri::encode(const std::string_view scheme, const std::string_view host, const std::string_view path) {
+    return fmt::format("{}://{}{}", encode(scheme), encode(host), encode(path));
 }
 
 std::string rav::uri::decode(const std::string_view encoded, const bool decode_plus) {
