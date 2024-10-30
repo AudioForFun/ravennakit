@@ -274,11 +274,11 @@ const rav::dnssd::service_description* rav::dnssd::bonjour_browser::find_service
 }
 
 std::vector<rav::dnssd::service_description> rav::dnssd::bonjour_browser::get_services() const {
-    std::vector<service_description> services;
+    std::vector<service_description> result;
     for (auto& service : services_) {
-        services.push_back(service.second.description());
+        result.push_back(service.second.description());
     }
-    return services;
+    return result;
 }
 
 void rav::dnssd::bonjour_browser::subscribe(subscriber& s) {

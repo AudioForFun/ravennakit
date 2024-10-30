@@ -116,8 +116,8 @@ class bonjour_browser: public dnssd_browser {
   private:
     asio::ip::tcp::socket service_socket_;
     bonjour_shared_connection shared_connection_;
-    std::map<std::string, service> services_;
-    std::map<std::string, bonjour_scoped_dns_service_ref> browsers_;
+    std::map<std::string, service> services_;                         // fullname -> service
+    std::map<std::string, bonjour_scoped_dns_service_ref> browsers_;  // reg_type -> DNSServiceRef
     size_t process_results_failed_attempts_ = 0;
     subscriber subscribers_;
 

@@ -85,10 +85,10 @@ class dnssd_browser {
     /**
      * Starts browsing for a service.
      * This function is not thread safe.
-     * @param service_type The service type (i.e. _http._tcp.).
+     * @param reg_type The service type (i.e. _http._tcp.).
      * @return Returns a result indicating success or failure.
      */
-    virtual void browse_for(const std::string& service_type) = 0;
+    virtual void browse_for(const std::string& reg_type) = 0;
 
     /**
      * Creates the most appropriate dnssd_browser implementation for the platform.
