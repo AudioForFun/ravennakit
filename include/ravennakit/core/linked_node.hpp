@@ -68,11 +68,26 @@ class linked_node {
     linked_node(const linked_node&) = delete;
     linked_node& operator=(const linked_node&) = delete;
 
+    /**
+     * Constructs a linked node with the data moved out of another linked node. This operation doesn't affect the
+     * linking of either node.
+     * Discussion: at this point I'm unsure whether this operation should move the whole node structure, including
+     * removing other from its linked list. The current behaviour resembles moving an element from a vector to another,
+     * where only the contents are moved but not the element itself.
+     * @param other
+     */
     linked_node(linked_node&& other) noexcept {
         value_ = std::move(other.value_);
         other.value_ = T();
     }
 
+    /**
+     * Moves data out of another linked node into this one. This operation doesn't affect the linking of either node.
+     * Discussion: at this point I'm unsure whether this operation should move the whole node structure, including
+     * removing other from its linked list. The current behaviour resembles moving an element from a vector to another,
+     * where only the contents are moved but not the element itself.
+     * @param other
+     */
     linked_node& operator=(linked_node&& other) noexcept {
         value_ = std::move(other.value_);
         other.value_ = T();
