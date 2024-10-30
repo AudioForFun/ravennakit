@@ -29,20 +29,18 @@ void rav::rtsp_client::async_describe(const std::string& path) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    asio::post(socket_.get_executor(), [this, path] {
-        rtsp_request request;
-        request.method = "DESCRIBE";
-        request.uri = uri::encode("rtsp", host_, path);
-        request.headers["CSeq"] = "15";
-        request.headers["Accept"] = "application/sdp";
-        const auto encoded = request.encode();
-        RAV_TRACE("Sending request: {}", request.to_debug_string());
-        const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();
-        output_buffer_.write(encoded);
-        if (should_trigger_async_write) {
-            async_write();
-        }
-    });
+    rtsp_request request;
+    request.method = "DESCRIBE";
+    request.uri = uri::encode("rtsp", host_, path);
+    request.headers["CSeq"] = "15";
+    request.headers["Accept"] = "application/sdp";
+    const auto encoded = request.encode();
+    RAV_TRACE("Sending request: {}", request.to_debug_string());
+    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();
+    output_buffer_.write(encoded);
+    if (should_trigger_async_write) {
+        async_write();
+    }
 }
 
 void rav::rtsp_client::async_setup(const std::string& path) {
@@ -50,22 +48,20 @@ void rav::rtsp_client::async_setup(const std::string& path) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    asio::post(socket_.get_executor(), [this, path] {
-        rtsp_request request;
-        request.method = "SETUP";
-        request.uri = fmt::format("rtsp://{}{}", socket_.remote_endpoint().address().to_string(), path);
-        request.headers["CSeq"] = "15";
-        // request.headers["Session"] = "47112344";
-        request.headers["Transport"] = "RTP/AVP;unicast;client_port=5004-5005";
+    rtsp_request request;
+    request.method = "SETUP";
+    request.uri = uri::encode("rtsp", host_, path);
+    request.headers["CSeq"] = "15";
+    // request.headers["Session"] = "47112344";
+    request.headers["Transport"] = "RTP/AVP;unicast;client_port=5004-5005";
 
-        const auto encoded = request.encode();
-        RAV_TRACE("Sending request: {}", request.to_debug_string());
-        const bool should_trigger_async_write = output_buffer_.exhausted();
-        output_buffer_.write(encoded);
-        if (should_trigger_async_write) {
-            async_write();
-        }
-    });
+    const auto encoded = request.encode();
+    RAV_TRACE("Sending request: {}", request.to_debug_string());
+    const bool should_trigger_async_write = output_buffer_.exhausted();
+    output_buffer_.write(encoded);
+    if (should_trigger_async_write) {
+        async_write();
+    }
 }
 
 void rav::rtsp_client::async_play(const std::string& path) {
@@ -73,21 +69,19 @@ void rav::rtsp_client::async_play(const std::string& path) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    asio::post(socket_.get_executor(), [this, path] {
-        rtsp_request request;
-        request.method = "PLAY";
-        request.uri = fmt::format("rtsp://{}{}", socket_.remote_endpoint().address().to_string(), path);
-        request.headers["CSeq"] = "15";
-        request.headers["Transport"] = "RTP/AVP;unicast;client_port=5004-5005";
+    rtsp_request request;
+    request.method = "PLAY";
+    request.uri = uri::encode("rtsp", host_, path);
+    request.headers["CSeq"] = "15";
+    request.headers["Transport"] = "RTP/AVP;unicast;client_port=5004-5005";
 
-        const auto encoded = request.encode();
-        RAV_TRACE("Sending request: {}", request.to_debug_string());
-        const bool should_trigger_async_write = output_buffer_.exhausted();
-        output_buffer_.write(encoded);
-        if (should_trigger_async_write) {
-            async_write();
-        }
-    });
+    const auto encoded = request.encode();
+    RAV_TRACE("Sending request: {}", request.to_debug_string());
+    const bool should_trigger_async_write = output_buffer_.exhausted();
+    output_buffer_.write(encoded);
+    if (should_trigger_async_write) {
+        async_write();
+    }
 }
 
 void rav::rtsp_client::post(std::function<void()> work) {
@@ -129,7 +123,7 @@ void rav::rtsp_client::async_connect(
                         RAV_ERROR("Failed to connect: {}", connect_error.message());
                         return;
                     }
-                    RAV_INFO("Connected to {}", endpoint.address().to_string());
+                    RAV_INFO("Connected to {}:{}", endpoint.address().to_string(), endpoint.port());
                     async_write();  // Schedule a write operation, in case there is data to send
                     async_read_some();
                     emit<rtsp_connect_event>(rtsp_connect_event {});
