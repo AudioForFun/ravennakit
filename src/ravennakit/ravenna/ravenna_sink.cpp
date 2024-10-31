@@ -12,7 +12,7 @@
 #include "ravennakit/core/todo.hpp"
 
 rav::ravenna_sink::ravenna_sink(ravenna_rtsp_client& rtsp_client, std::string session_name) :
-    rtsp_client_(rtsp_client) {
+    rtsp_client_(rtsp_client), rtsp_subscriber_(&rtsp_client) {
     rtsp_subscriber_->on<ravenna_rtsp_client::announced>([this](const ravenna_rtsp_client::announced& event) {
         RAV_ASSERT(event.session_name == session_name_, "Expecting session_name to match");
         auto_sdp_ = event.sdp;
@@ -22,7 +22,7 @@ rav::ravenna_sink::ravenna_sink(ravenna_rtsp_client& rtsp_client, std::string se
     set_source(std::move(session_name));
 }
 
-void rav::ravenna_sink::set_sdp(sdp::session_description sdp) {
+void rav::ravenna_sink::set_manual_sdp(sdp::session_description sdp) {
     manual_sdp_ = std::move(sdp);
 }
 

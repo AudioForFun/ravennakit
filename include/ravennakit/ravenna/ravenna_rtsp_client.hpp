@@ -28,7 +28,20 @@ class ravenna_rtsp_client {
         const sdp::session_description& sdp;
     };
 
-    using subscriber = linked_node<events<announced>>;
+    class subscriber;
+
+    struct subscriber_about_to_unlink {
+        const subscriber& s;
+    };
+
+    class subscriber : public linked_node<events<announced, subscriber_about_to_unlink>> {
+    public:
+        explicit subscriber(ravenna_rtsp_client* owner);
+        ~subscriber();
+
+      private:
+        ravenna_rtsp_client* owner_{};
+    };
 
     explicit ravenna_rtsp_client(asio::io_context& io_context, dnssd::dnssd_browser& browser);
 
@@ -37,7 +50,7 @@ class ravenna_rtsp_client {
   private:
     struct session_context {
         std::string session_name;
-        subscriber subscribers;
+        linked_node<events<announced, subscriber_about_to_unlink>> subscribers;
         std::optional<sdp::session_description> sdp_;
         std::string host_target;
         uint16_t port {};
@@ -56,6 +69,7 @@ class ravenna_rtsp_client {
     std::vector<connection_context> connections_;
 
     connection_context& find_or_create_connection(const std::string& host_target, uint16_t port);
+    void update_session_with_service(session_context& session, const dnssd::service_description& service);
 };
 
 }  // namespace rav

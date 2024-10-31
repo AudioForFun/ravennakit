@@ -57,7 +57,7 @@ void rav::rtsp_client::async_setup(const std::string& path) {
 
     const auto encoded = request.encode();
     RAV_TRACE("Sending request: {}", request.to_debug_string());
-    const bool should_trigger_async_write = output_buffer_.exhausted();
+    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();;
     output_buffer_.write(encoded);
     if (should_trigger_async_write) {
         async_write();
@@ -77,7 +77,26 @@ void rav::rtsp_client::async_play(const std::string& path) {
 
     const auto encoded = request.encode();
     RAV_TRACE("Sending request: {}", request.to_debug_string());
-    const bool should_trigger_async_write = output_buffer_.exhausted();
+    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();;
+    output_buffer_.write(encoded);
+    if (should_trigger_async_write) {
+        async_write();
+    }
+}
+
+void rav::rtsp_client::async_teardown(const std::string& path) {
+    if (!starts_with(path, "/")) {
+        RAV_THROW_EXCEPTION("Path must start with a /");
+    }
+
+    rtsp_request request;
+    request.method = "TEARDOWN";
+    request.uri = uri::encode("rtsp", host_, path);
+    request.headers["CSeq"] = "15";
+
+    const auto encoded = request.encode();
+    RAV_TRACE("Sending request: {}", request.to_debug_string());
+    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();;
     output_buffer_.write(encoded);
     if (should_trigger_async_write) {
         async_write();
@@ -158,8 +177,9 @@ void rav::rtsp_client::async_read_some() {
         asio::buffer(buffer.data(), buffer.size_bytes()),
         [this](const asio::error_code ec, const std::size_t length) mutable {
             if (ec) {
-                RAV_ERROR("Read error: {}", ec.message());
-                // TODO: Close the connection?
+                if (ec != asio::error::operation_aborted) {
+                    RAV_ERROR("Read error: {}", ec.message());
+                }
                 return;
             }
 

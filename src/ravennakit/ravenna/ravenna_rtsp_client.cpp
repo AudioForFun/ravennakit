@@ -10,16 +10,23 @@
 
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 
+rav::ravenna_rtsp_client::subscriber::subscriber(ravenna_rtsp_client* owner) : owner_(owner) {}
+
+rav::ravenna_rtsp_client::subscriber::~subscriber() {
+    foreach ([this](auto& node) {
+        node->emit(subscriber_about_to_unlink {*this});
+    })
+        ;
+    remove();
+}
+
 rav::ravenna_rtsp_client::ravenna_rtsp_client(asio::io_context& io_context, dnssd::dnssd_browser& browser) :
     io_context_(io_context), browser_(browser) {
     browser_subscriber_->on<dnssd::dnssd_browser::service_resolved>([this](const auto& event) {
         RAV_INFO("RAVENNA Stream resolved: {}", event.description.name);
         for (auto& session : sessions_) {
             if (event.description.name == session.session_name) {
-                session.host_target = event.description.host_target;
-                session.port = event.description.port;
-                auto& connection = find_or_create_connection(session.host_target, session.port);
-                connection.client.async_describe(fmt::format("/by-name/{}", session.session_name));
+                update_session_with_service(session, event.description);
             }
         }
     });
@@ -45,14 +52,14 @@ void rav::ravenna_rtsp_client::subscribe(const std::string& session_name, subscr
     // Create new session
     auto& new_session = sessions_.emplace_back();
     new_session.session_name = session_name;
+    new_session.subscribers->on<subscriber_about_to_unlink>([](const auto& event) {
+        RAV_TRACE("Subscriber about to unlink: {}", static_cast<const void*>(&event.s));
+    });
     new_session.subscribers.push_back(s);
 
+    // Get things going if a service is already available
     if (auto* service = browser_.find_service(session_name)) {
-        new_session.host_target = service->host_target;
-        new_session.port = service->port;
-
-        auto& connection = find_or_create_connection(service->host_target, service->port);
-        connection.client.async_describe(fmt::format("/by-name/{}", session_name));
+        update_session_with_service(new_session, *service);
     }
 }
 
@@ -69,12 +76,22 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
     new_connection.client.on<rtsp_connect_event>([=](const auto&) {
         RAV_TRACE("Connected to: rtsp://{}:{}", host_target, port);
     });
-    new_connection.client.on<rtsp_response>([=](const auto& response) {
-        RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
-    });
     new_connection.client.on<rtsp_request>([=](const auto& request) {
         RAV_INFO("{}\n{}", request.to_debug_string(), rav::string_replace(request.data, "\r\n", "\n"));
     });
+    new_connection.client.on<rtsp_response>([=](const auto& response) {
+        RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
+    });
     new_connection.client.async_connect(host_target, port);
     return new_connection;
+}
+
+void rav::ravenna_rtsp_client::update_session_with_service(
+    session_context& session, const dnssd::service_description& service
+) {
+    session.host_target = service.host_target;
+    session.port = service.port;
+
+    auto& connection = find_or_create_connection(service.host_target, service.port);
+    connection.client.async_describe(fmt::format("/by-name/{}", session.session_name));
 }

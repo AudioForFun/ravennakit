@@ -25,7 +25,7 @@ class ravenna_sink {
 
     void set_mode(mode new_mode);
     void set_source(std::string session_name);
-    void set_sdp(sdp::session_description sdp);
+    void set_manual_sdp(sdp::session_description sdp);
 
   private:
     ravenna_rtsp_client& rtsp_client_;

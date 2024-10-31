@@ -60,6 +60,12 @@ class rtsp_client final: public events<rtsp_connect_event, rtsp_response, rtsp_r
     void async_play(const std::string& path);
 
     /**
+     * Sends a TEARDOWN request to the server. Function is async and will return immediately.
+     * @param path The path for the TEARDOWN command.
+     */
+    void async_teardown(const std::string& path);
+
+    /**
      * Post some work through the executor of the socket.
      * @param work The work to execute.
      */

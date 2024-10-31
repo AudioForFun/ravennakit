@@ -36,7 +36,7 @@ int main(int const argc, char* argv[]) {
 
     asio::io_context io_context;
 
-    const auto node_browser = rav::dnssd::dnssd_browser::create(io_context);
+    auto node_browser = rav::dnssd::dnssd_browser::create(io_context);
 
     if (node_browser == nullptr) {
         fmt::println("No dnssd browser available. Exiting.");
@@ -45,9 +45,19 @@ int main(int const argc, char* argv[]) {
 
     node_browser->browse_for("_rtsp._tcp,_ravenna_session");
 
-    rav::ravenna_rtsp_client rtsp_client(io_context, *node_browser);
-    rav::ravenna_sink sink1(rtsp_client, "Anubis Combo LR");
-    // rav::ravenna_sink sink2(rtsp_client, "sink2");
+    std::thread io_thread([&io_context] {
+        io_context.run();
+    });
 
-    io_context.run();
+    {
+        rav::ravenna_rtsp_client rtsp_client(io_context, *node_browser);
+        rav::ravenna_sink sink1(rtsp_client, "Anubis Combo LR");
+        rav::ravenna_sink sink2(rtsp_client, "Anubis_610120_16");
+
+        fmt::println("Press return key to stop...");
+        std::cin.get();
+    }
+
+    node_browser.reset();
+    io_thread.join();
 }
