@@ -271,6 +271,27 @@ if (${BUILD_EXAMPLES})
         target_link_libraries(ravenna_receiver_example PUBLIC tracy)
     endif ()
 
+    ########################
+    # RAVENNA Node example #
+    ########################
+
+    add_executable(ravenna_node_example
+            examples/ravenna_node_example.cpp
+    )
+
+    target_link_libraries(ravenna_node_example
+            PUBLIC
+            rav_recommended_warning_flags
+            rav_recommended_lto_flags
+            PRIVATE
+            ravennakit
+            CLI11::CLI11
+    )
+
+    if (TRACY_ENABLE)
+        target_link_libraries(ravenna_node_example PUBLIC tracy)
+    endif ()
+
 endif ()
 
 ##############
