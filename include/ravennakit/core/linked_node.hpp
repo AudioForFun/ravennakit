@@ -69,28 +69,58 @@ class linked_node {
     linked_node& operator=(const linked_node&) = delete;
 
     /**
-     * Constructs a linked node with the data moved out of another linked node. This operation doesn't affect the
-     * linking of either node.
-     * Discussion: at this point I'm unsure whether this operation should move the whole node structure, including
-     * removing other from its linked list. The current behaviour resembles moving an element from a vector to another,
-     * where only the contents are moved but not the element itself.
-     * @param other
+     * Constructs a linked node replacing other. After returning, this will have happened:
+     * - This will replace other in its linked list. This will now be part of the linked list of other.
+     * - Other will be unlinked.
+     * - The value contained in other will be moved to this.
+     * @param other The linked node to replace.
      */
     linked_node(linked_node&& other) noexcept {
+        if (other.prev_) {
+            other.prev_->next_ = this;
+            prev_ = other.prev_;
+            other.prev_ = nullptr;
+        }
+
+        if (other.next_) {
+            other.next_->prev_ = this;
+            next_ = other.next_;
+            other.next_ = nullptr;
+        }
+
         value_ = std::move(other.value_);
         other.value_ = T();
     }
 
     /**
-     * Moves data out of another linked node into this one. This operation doesn't affect the linking of either node.
-     * Discussion: at this point I'm unsure whether this operation should move the whole node structure, including
-     * removing other from its linked list. The current behaviour resembles moving an element from a vector to another,
-     * where only the contents are moved but not the element itself.
-     * @param other
+     * Move assigns other to this. After returning, this will have happened:
+     * - This will remove itself from its linked list (if linked).
+     * - This will replace other in its linked list. This will now be part of the linked list of other.
+     * - The value contained in other will be moved to this.
+     * @param other Other node to be moved.
      */
     linked_node& operator=(linked_node&& other) noexcept {
+        if (this == &other) {
+            return *this;
+        }
+
+        remove();
+
+        if (other.prev_) {
+            other.prev_->next_ = this;
+            prev_ = other.prev_;
+            other.prev_ = nullptr;
+        }
+
+        if (other.next_) {
+            other.next_->prev_ = this;
+            next_ = other.next_;
+            other.next_ = nullptr;
+        }
+
         value_ = std::move(other.value_);
         other.value_ = T();
+
         return *this;
     }
 
