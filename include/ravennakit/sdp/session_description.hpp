@@ -55,7 +55,7 @@ class session_description {
     /**
      * @returns The session name of the SDP session description.
      */
-    [[nodiscard]] std::string session_name() const;
+    [[nodiscard]] const std::string& session_name() const;
 
     /**
      * @return The time field of the SDP session description.
@@ -108,13 +108,13 @@ class session_description {
     std::optional<connection_info_field> connection_info_;
     time_active_field time_active_;
     std::optional<std::string> session_information_;
-    std::vector<media_description> media_descriptions_;
     std::optional<media_direction> media_direction_;
     std::optional<reference_clock> reference_clock_;
-    std::optional<sdp::media_clock_source> media_clock_;
+    std::optional<media_clock_source> media_clock_;
     std::optional<ravenna_clock_domain> clock_domain_;
     std::vector<source_filter> source_filters_;
     std::map<std::string, std::string> attributes_;  // Remaining, unknown attributes
+    std::vector<media_description> media_descriptions_;
 
     static parse_result<int> parse_version(std::string_view line);
     parse_result<void> parse_attribute(std::string_view line);

@@ -76,7 +76,8 @@ class ravenna_rtsp_client {
     connection_context& find_or_create_connection(const std::string& host_target, uint16_t port);
     connection_context* find_connection(const std::string& host_target, uint16_t port);
     void update_session_with_service(session_context& session, const dnssd::service_description& service);
-    void schedule_maintenance();
+    void do_maintenance();
+    void handle_incoming_sdp(const std::string& sdp_text);
 };
 
 }  // namespace rav

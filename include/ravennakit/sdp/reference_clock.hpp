@@ -23,7 +23,7 @@ namespace rav::sdp {
 class reference_clock {
 public:
     enum class clock_source { undefined, atomic_clock, gps, terrestrial_radio, ptp, ntp, ntp_server, ntp_pool };
-    enum class ptp_ver { undefined, IEEE_1588_2002, IEEE_1588_2008, IEEE_802_1AS_2011 };
+    enum class ptp_ver { undefined, IEEE_1588_2002, IEEE_1588_2008, IEEE_802_1AS_2011, traceable };
 
     /// A type alias for a parse result.
     template<class T>

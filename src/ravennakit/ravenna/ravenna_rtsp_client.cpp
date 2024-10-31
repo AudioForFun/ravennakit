@@ -48,7 +48,7 @@ void rav::ravenna_rtsp_client::subscriber::subscribe(ravenna_rtsp_client& client
 void rav::ravenna_rtsp_client::subscriber::unsubscribe() {
     node_.unlink();
     if (auto* owner = node_.value().second) {
-        owner->schedule_maintenance();
+        owner->do_maintenance();
     }
     node_.reset();
 }
@@ -56,7 +56,7 @@ void rav::ravenna_rtsp_client::subscriber::unsubscribe() {
 rav::ravenna_rtsp_client::ravenna_rtsp_client(asio::io_context& io_context, dnssd::dnssd_browser& browser) :
     io_context_(io_context), browser_(browser) {
     browser_subscriber_->on<dnssd::dnssd_browser::service_resolved>([this](const auto& event) {
-        RAV_INFO("RAVENNA Stream resolved: {}", event.description.name);
+        RAV_TRACE("RAVENNA Stream resolved: {}", event.description.name);
         for (auto& session : sessions_) {
             if (event.description.name == session.session_name) {
                 update_session_with_service(session, event.description);
@@ -88,9 +88,43 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
     });
     new_connection.client.on<rtsp_request>([=](const auto& request) {
         RAV_INFO("{}\n{}", request.to_debug_string(), rav::string_replace(request.data, "\r\n", "\n"));
+
+        if (request.method == "ANNOUNCE") {
+            if (auto* content_type = request.headers.find_header("content-type")) {
+                if (!rav::string_starts_with(content_type->value, "application/sdp")) {
+                    RAV_ERROR("RTSP request has unexpected Content-Type: {}", content_type->value);
+                    return;
+                }
+            } else {
+                RAV_ERROR("RTSP request missing Content-Type header");
+                return;
+            }
+        } else {
+            RAV_WARNING("Unhandled RTSP request: {}", request.method);
+            return;
+        }
+
+        handle_incoming_sdp(request.data);
     });
     new_connection.client.on<rtsp_response>([=](const auto& response) {
-        RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
+        // RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
+
+        if (response.status_code != 200) {
+            RAV_ERROR("RTSP request failed with status code: {}", response.status_code);
+            return;
+        }
+
+        if (auto* content_type = response.headers.find_header("content-type")) {
+            if (!rav::string_starts_with(content_type->value, "application/sdp")) {
+                RAV_ERROR("RTSP response has unexpected Content-Type: {}", content_type->value);
+                return;
+            }
+        } else {
+            RAV_ERROR("RTSP response missing Content-Type header");
+            return;
+        }
+
+        handle_incoming_sdp(response.data);
     });
     new_connection.client.async_connect(host_target, port);
     return new_connection;
@@ -116,7 +150,7 @@ void rav::ravenna_rtsp_client::update_session_with_service(
     connection.client.async_describe(fmt::format("/by-name/{}", session.session_name));
 }
 
-void rav::ravenna_rtsp_client::schedule_maintenance() {
+void rav::ravenna_rtsp_client::do_maintenance() {
     for (auto& session : sessions_) {
         if (!session.subscribers.is_linked()) {
             if (!session.host_target.empty() && session.port != 0) {
@@ -136,4 +170,25 @@ void rav::ravenna_rtsp_client::schedule_maintenance() {
         ),
         sessions_.end()
     );
+}
+
+void rav::ravenna_rtsp_client::handle_incoming_sdp(const std::string& sdp_text) {
+    auto result = sdp::session_description::parse_new(sdp_text);
+    if (result.is_err()) {
+        RAV_ERROR("Failed to parse SDP: {}", result.get_err());
+        return;
+    }
+
+    auto sdp = result.move_ok();
+
+    for (auto& session : sessions_) {
+        if (session.session_name == sdp.session_name()) {
+            session.sdp_ = sdp;
+            session.subscribers.foreach ([&](auto& node) {
+                if (auto* subscriber = node.value().first) {
+                    subscriber->emit(announced {session.session_name, sdp});
+                }
+            });
+        }
+    }
 }

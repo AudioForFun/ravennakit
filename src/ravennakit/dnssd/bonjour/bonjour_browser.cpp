@@ -199,7 +199,7 @@ void rav::dnssd::bonjour_browser::browse_reply(
         return;
     }
 
-    RAV_DEBUG(
+    RAV_TRACE(
         "browse_reply name={} type={} domain={} browse_service_ref={} interfaceIndex={}", name, type, domain,
         static_cast<void*>(browse_service_ref), interface_index
     );

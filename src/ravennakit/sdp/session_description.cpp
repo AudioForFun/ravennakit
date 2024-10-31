@@ -119,7 +119,7 @@ std::optional<rav::sdp::connection_info_field> rav::sdp::session_description::co
     return connection_info_;
 }
 
-std::string rav::sdp::session_description::session_name() const {
+const std::string& rav::sdp::session_description::session_name() const {
     return session_name_;
 }
 
@@ -160,7 +160,7 @@ const std::map<std::string, std::string>& rav::sdp::session_description::attribu
 
 rav::sdp::session_description::parse_result<int>
 rav::sdp::session_description::parse_version(const std::string_view line) {
-    if (!starts_with(line, "v=")) {
+    if (!string_starts_with(line, "v=")) {
         return parse_result<int>::err("expecting line to start with 'v='");
     }
 

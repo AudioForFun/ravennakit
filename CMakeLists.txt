@@ -250,15 +250,15 @@ if (${BUILD_EXAMPLES})
         target_link_libraries(rtsp_client_example PUBLIC tracy)
     endif ()
 
-    ############################
-    # RAVENNA Receiver example #
-    ############################
+    ########################
+    # RAVENNA Sink example #
+    ########################
 
-    add_executable(ravenna_receiver_example
-            examples/ravenna_receiver_example.cpp
+    add_executable(ravenna_sink_example
+            examples/ravenna_sink_example.cpp
     )
 
-    target_link_libraries(ravenna_receiver_example
+    target_link_libraries(ravenna_sink_example
             PUBLIC
             rav_recommended_warning_flags
             rav_recommended_lto_flags
@@ -268,7 +268,7 @@ if (${BUILD_EXAMPLES})
     )
 
     if (TRACY_ENABLE)
-        target_link_libraries(ravenna_receiver_example PUBLIC tracy)
+        target_link_libraries(ravenna_sink_example PUBLIC tracy)
     endif ()
 
     ########################

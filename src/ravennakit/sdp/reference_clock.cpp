@@ -53,6 +53,8 @@ rav::sdp::reference_clock::parse_new(const std::string_view line) {
                 ref_clock.ptp_version_ = ptp_ver::IEEE_1588_2008;
             } else if (ptp_version == "IEEE802.1AS-2011") {
                 ref_clock.ptp_version_ = ptp_ver::IEEE_802_1AS_2011;
+            } else if (ptp_version == "traceable") {
+                ref_clock.ptp_version_ = ptp_ver::traceable;
             } else {
                 return parse_result<reference_clock>::err("reference_clock: unknown ptp version");
             }

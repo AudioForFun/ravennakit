@@ -25,7 +25,7 @@ void rav::rtsp_client::async_connect(const std::string& host, const std::string&
 }
 
 void rav::rtsp_client::async_describe(const std::string& path) {
-    if (!starts_with(path, "/")) {
+    if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
@@ -44,7 +44,7 @@ void rav::rtsp_client::async_describe(const std::string& path) {
 }
 
 void rav::rtsp_client::async_setup(const std::string& path) {
-    if (!starts_with(path, "/")) {
+    if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
@@ -65,7 +65,7 @@ void rav::rtsp_client::async_setup(const std::string& path) {
 }
 
 void rav::rtsp_client::async_play(const std::string& path) {
-    if (!starts_with(path, "/")) {
+    if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
@@ -85,7 +85,7 @@ void rav::rtsp_client::async_play(const std::string& path) {
 }
 
 void rav::rtsp_client::async_teardown(const std::string& path) {
-    if (!starts_with(path, "/")) {
+    if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
@@ -142,7 +142,7 @@ void rav::rtsp_client::async_connect(
                         RAV_ERROR("Failed to connect: {}", connect_error.message());
                         return;
                     }
-                    RAV_INFO("Connected to {}:{}", endpoint.address().to_string(), endpoint.port());
+                    RAV_TRACE("Connected to {}:{}", endpoint.address().to_string(), endpoint.port());
                     async_write();  // Schedule a write operation, in case there is data to send
                     async_read_some();
                     emit<rtsp_connect_event>(rtsp_connect_event {});

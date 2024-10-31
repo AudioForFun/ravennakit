@@ -284,7 +284,7 @@ TEST_CASE("string | remove_suffix", "[string]") {
 TEST_CASE("string | split_string", "[string]") {
     SECTION("Test string with char delimiter") {
         const std::string text = "line1 line2 line3";
-        auto result = rav::split_string(text, ' ');
+        auto result = rav::string_split(text, ' ');
         REQUIRE(result.size() == 3);
         REQUIRE(result[0] == "line1");
         REQUIRE(result[1] == "line2");
@@ -293,7 +293,7 @@ TEST_CASE("string | split_string", "[string]") {
 
     SECTION("Extra spaces should not create empty strings") {
         const std::string text = " line1 line2  line3";
-        auto result = rav::split_string(text, ' ');
+        auto result = rav::string_split(text, ' ');
         REQUIRE(result.size() == 3);
         REQUIRE(result[0] == "line1");
         REQUIRE(result[1] == "line2");
@@ -302,7 +302,7 @@ TEST_CASE("string | split_string", "[string]") {
 
     SECTION("Test string with char delimiter") {
         const std::string text = "__line1__line2__line3__";
-        auto result = rav::split_string(text, "__");
+        auto result = rav::string_split(text, "__");
         REQUIRE(result.size() == 3);
         REQUIRE(result[0] == "line1");
         REQUIRE(result[1] == "line2");
@@ -311,7 +311,7 @@ TEST_CASE("string | split_string", "[string]") {
 
     SECTION("Test string without delimiter") {
         const std::string text = "line1";
-        auto result = rav::split_string(text, ' ');
+        auto result = rav::string_split(text, ' ');
         REQUIRE(result.size() == 1);
         REQUIRE(result[0] == "line1");
     }

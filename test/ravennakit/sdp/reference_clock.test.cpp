@@ -45,4 +45,15 @@ TEST_CASE("reference_clock", "[reference_clock]") {
         REQUIRE(ref_clock.gmid() == "39-A7-94-FF-FE-07-CB-D0");
         REQUIRE_FALSE(ref_clock.domain().has_value());
     }
+
+    SECTION("Test traceable") {
+        const auto str = "ptp=traceable";
+        auto result = rav::sdp::reference_clock::parse_new(str);
+        REQUIRE(result.is_ok());
+        auto ref_clock = result.move_ok();
+        REQUIRE(ref_clock.source() == rav::sdp::reference_clock::clock_source::ptp);
+        REQUIRE(ref_clock.ptp_version() == rav::sdp::reference_clock::ptp_ver::traceable);
+        REQUIRE_FALSE(ref_clock.gmid().has_value());
+        REQUIRE_FALSE(ref_clock.domain().has_value());
+    }
 }

@@ -20,16 +20,6 @@
 namespace rav {
 
 /**
- * Tests whether given text starts with a certain string.
- * @param text The text to test.
- * @param starts_with The string to test for.
- * @return True if text starts with starts_with, false otherwise.
- */
-inline bool starts_with(const std::string_view text, const std::string_view starts_with) {
-    return text.rfind(starts_with, 0) == 0;
-}
-
-/**
  * Returns a string truncated up to the first occurrence of a needle.
  * @param string_to_search_in String to search in.
  * @param string_to_search_for String to search for.
@@ -237,6 +227,16 @@ inline std::optional<double> stod(const std::string& str) {
 }
 
 /**
+ * Tests whether given text starts with a certain string.
+ * @param text The text to test.
+ * @param starts_with The string to test for.
+ * @return True if text starts with starts_with, false otherwise.
+ */
+inline bool string_starts_with(const std::string_view text, const std::string_view starts_with) {
+    return text.rfind(starts_with, 0) == 0;
+}
+
+/**
  * Returns whether given string contains a certain character.
  * @param string String to look into.
  * @param c Character to find.
@@ -254,7 +254,7 @@ inline bool string_contains(const std::string_view string, char c) {
  * @param delimiter The delimiter to split the string by.
  * @return A vector of strings.
  */
-inline std::vector<std::string> split_string(const std::string& string, const char* delimiter) {
+inline std::vector<std::string> string_split(const std::string& string, const char* delimiter) {
     std::vector<std::string> results;
 
     size_t prev = 0;
@@ -280,9 +280,9 @@ inline std::vector<std::string> split_string(const std::string& string, const ch
  * @param delimiter The delimiter to split the string by.
  * @return A vector of strings.
  */
-inline std::vector<std::string> split_string(const std::string& string, const char delimiter) {
+inline std::vector<std::string> string_split(const std::string& string, const char delimiter) {
     const char delimiter_string[2] = {delimiter, '\0'};
-    return split_string(string, delimiter_string);
+    return string_split(string, delimiter_string);
 }
 
 /**

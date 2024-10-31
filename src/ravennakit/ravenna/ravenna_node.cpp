@@ -20,5 +20,5 @@ rav::ravenna_node::ravenna_node() {
 }
 
 void rav::ravenna_node::create_sink(const std::string& stream_name) {
-    
+    std::ignore = stream_name;
 }

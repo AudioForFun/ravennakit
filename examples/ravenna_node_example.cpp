@@ -9,9 +9,19 @@
  */
 
 #include "ravennakit/core/log.hpp"
+#include "ravennakit/core/system.hpp"
+
+#include <CLI/App.hpp>
 
 int main(int const argc, char* argv[]) {
 #if RAV_ENABLE_SPDLOG
     spdlog::set_level(spdlog::level::trace);
 #endif
+
+    rav::system::do_system_checks();
+
+    CLI::App app {"RAVENNA Receiver example"};
+    argv = app.ensure_utf8(argv);
+
+    CLI11_PARSE(app, argc, argv);
 }

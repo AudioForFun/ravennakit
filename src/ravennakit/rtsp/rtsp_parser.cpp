@@ -39,7 +39,7 @@ rav::rtsp_parser::result rav::rtsp_parser::parse(string_buffer& input) {
                 }
 
                 // Folded headers
-                if (starts_with(*header_line, " ") || starts_with(*header_line, "\t")) {
+                if (string_starts_with(*header_line, " ") || string_starts_with(*header_line, "\t")) {
                     if (headers_.empty()) {
                         return result::bad_header;
                     }
@@ -90,7 +90,7 @@ rav::rtsp_parser::result rav::rtsp_parser::parse(string_buffer& input) {
         if (state_ == state::complete) {
             constexpr auto rtsp_response_prefix = std::string_view("RTSP/");
 
-            if (starts_with(start_line_, rtsp_response_prefix)) {
+            if (string_starts_with(start_line_, rtsp_response_prefix)) {
                 if (const auto r = handle_response(); r != result::good) {
                     return r;
                 }
