@@ -148,30 +148,3 @@ https://datatracker.ietf.org/doc/html/rfc2326
 
 RFC 2068: Hypertext Transfer Protocol -- HTTP/1.1
 https://datatracker.ietf.org/doc/html/rfc2068
-
-## Quick commands
-
-### Send audio as RTP stream example command
-
-    ffmpeg -re -stream_loop -1 -f s16le -ar 48000 -ac 2 -i Sin420Hz@0dB16bit48kHzS.wav -c:a pcm_s16be -f rtp -payload_type 10 rtp://127.0.0.1:5004
-
-## Resources
-
-### RTSP
-
-RTSP Test tool (also has a very good explanation of RTSP):  
-[RTSPTest](https://github.com/rayryeng/RTSPTest)  
-
-### SDP
-
-sdpoker test tool:  
-[sdpoker](https://github.com/AMWA-TV/sdpoker)
-
-### C++ web servers
-
-https://github.com/civetweb/civetweb  
-https://github.com/drogonframework/drogon  
-https://github.com/uNetworking/uWebSockets  
-https://github.com/Stiffstream/restinio  
-https://github.com/CrowCpp/Crow  
-https://github.com/pistacheio/pistache  (only Linux and macOS)

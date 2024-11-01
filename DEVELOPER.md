@@ -31,3 +31,31 @@ Document thrown exceptions: Functions and methods should clearly document which 
 Catch exceptions where it makes sense: Exceptions should be caught and handled at a level where meaningful recovery can occur. If recovery is impossible, exceptions should propagate up to higher layers, where the application can decide how to respond.
 
 In some cases, the library uses return values for error handling. This approach is appropriate when failures are expected and common, or when using exceptions would cause issues with stack unwinding. By returning error codes or status values, the library can handle scenarios where predictable failures occur without triggering the overhead of exception handling.
+
+## Quick commands
+
+### Send audio as RTP stream example command
+
+    ffmpeg -re -stream_loop -1 -f s16le -ar 48000 -ac 2 -i Sin420Hz@0dB16bit48kHzS.wav -c:a pcm_s16be -f rtp -payload_type 10 rtp://127.0.0.1:5004
+
+## Resources
+
+### RTSP
+
+RTSP Test tool (also has a very good explanation of RTSP):  
+[RTSPTest](https://github.com/rayryeng/RTSPTest)
+
+### SDP
+
+sdpoker test tool:  
+[sdpoker](https://github.com/AMWA-TV/sdpoker)
+
+### C++ web servers
+
+https://github.com/oatpp/oatpp
+https://github.com/civetweb/civetweb  
+https://github.com/drogonframework/drogon  
+https://github.com/uNetworking/uWebSockets  
+https://github.com/Stiffstream/restinio  
+https://github.com/CrowCpp/Crow  
+https://github.com/pistacheio/pistache  (only Linux and macOS)
