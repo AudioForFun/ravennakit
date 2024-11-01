@@ -20,10 +20,10 @@ namespace rav {
  * Structure that represents an RTSP response.
  */
 struct rtsp_response {
-    int status_code{};
+    int status_code {};
     std::string reason_phrase;
-    int rtsp_version_major{};
-    int rtsp_version_minor{};
+    int rtsp_version_major {1};
+    int rtsp_version_minor {0};
     rtsp_headers headers;
     std::string data;
 
@@ -60,4 +60,4 @@ struct rtsp_response {
     [[nodiscard]] std::string to_debug_string() const;
 };
 
-}
+}  // namespace rav

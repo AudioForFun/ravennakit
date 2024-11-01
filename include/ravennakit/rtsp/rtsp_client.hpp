@@ -66,6 +66,12 @@ class rtsp_client final: public events<rtsp_connect_event, rtsp_response, rtsp_r
     void async_teardown(const std::string& path);
 
     /**
+     * Sends given response to the server. Function is async and will return immediately.
+     * @param response The response to send.
+     */
+    void async_send_response(const rtsp_response& response);
+
+    /**
      * Post some work through the executor of the socket.
      * @param work The work to execute.
      */

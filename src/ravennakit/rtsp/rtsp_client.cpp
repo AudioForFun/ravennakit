@@ -57,7 +57,7 @@ void rav::rtsp_client::async_setup(const std::string& path) {
 
     const auto encoded = request.encode();
     RAV_TRACE("Sending request: {}", request.to_debug_string());
-    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();;
+    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();
     output_buffer_.write(encoded);
     if (should_trigger_async_write) {
         async_write();
@@ -77,7 +77,7 @@ void rav::rtsp_client::async_play(const std::string& path) {
 
     const auto encoded = request.encode();
     RAV_TRACE("Sending request: {}", request.to_debug_string());
-    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();;
+    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();
     output_buffer_.write(encoded);
     if (should_trigger_async_write) {
         async_write();
@@ -96,6 +96,16 @@ void rav::rtsp_client::async_teardown(const std::string& path) {
 
     const auto encoded = request.encode();
     RAV_TRACE("Sending request: {}", request.to_debug_string());
+    const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();
+    output_buffer_.write(encoded);
+    if (should_trigger_async_write) {
+        async_write();
+    }
+}
+
+void rav::rtsp_client::async_send_response(const rtsp_response& response) {
+    const auto encoded = response.encode();
+    RAV_TRACE("Sending response: {}", response.to_debug_string());
     const bool should_trigger_async_write = output_buffer_.exhausted() && socket_.is_open();
     output_buffer_.write(encoded);
     if (should_trigger_async_write) {
@@ -130,9 +140,14 @@ void rav::rtsp_client::async_connect(
                 RAV_ERROR("Resolve error: {}", resolve_error.message());
                 return;
             }
+
             if (results.empty()) {
                 RAV_ERROR("No results found for host: {}", host);
                 return;
+            }
+
+            for (auto& result : results) {
+                RAV_TRACE("Resolved: {} for host \"{}\"", result.endpoint().address().to_string(), host);
             }
 
             asio::async_connect(
@@ -142,7 +157,7 @@ void rav::rtsp_client::async_connect(
                         RAV_ERROR("Failed to connect: {}", connect_error.message());
                         return;
                     }
-                    RAV_TRACE("Connected to {}:{}", endpoint.address().to_string(), endpoint.port());
+                    RAV_INFO("Connected to {}:{}", endpoint.address().to_string(), endpoint.port());
                     async_write();  // Schedule a write operation, in case there is data to send
                     async_read_some();
                     emit<rtsp_connect_event>(rtsp_connect_event {});
@@ -177,9 +192,15 @@ void rav::rtsp_client::async_read_some() {
         asio::buffer(buffer.data(), buffer.size_bytes()),
         [this](const asio::error_code ec, const std::size_t length) mutable {
             if (ec) {
-                if (ec != asio::error::operation_aborted) {
-                    RAV_ERROR("Read error: {}", ec.message());
+                if (ec == asio::error::operation_aborted) {
+                    RAV_TRACE("Operation aborted");
+                    return;
                 }
+                if (ec == asio::error::eof) {
+                    RAV_TRACE("EOF");
+                    return;
+                }
+                RAV_ERROR("Read error: {}", ec.message());
                 return;
             }
 

@@ -86,8 +86,11 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
     new_connection.client.on<rtsp_connect_event>([=](const auto&) {
         RAV_TRACE("Connected to: rtsp://{}:{}", host_target, port);
     });
-    new_connection.client.on<rtsp_request>([=](const auto& request) {
-        RAV_INFO("{}\n{}", request.to_debug_string(), rav::string_replace(request.data, "\r\n", "\n"));
+    new_connection.client.on<rtsp_request>([this, &client = new_connection.client](const auto& request) {
+        RAV_TRACE("{}", request.to_debug_string());
+        if (!request.data.empty()) {
+            RAV_TRACE("Data:\n{}", rav::string_replace(request.data, "\r\n", "\n"));
+        }
 
         if (request.method == "ANNOUNCE") {
             if (auto* content_type = request.headers.find_header("content-type")) {
@@ -99,18 +102,33 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
                 RAV_ERROR("RTSP request missing Content-Type header");
                 return;
             }
-        } else {
-            RAV_WARNING("Unhandled RTSP request: {}", request.method);
+            handle_incoming_sdp(request.data);
             return;
         }
 
-        handle_incoming_sdp(request.data);
+        if (request.method == "GET_PARAMETER") {
+            if (request.data.empty()) {
+                // Interpret as liveliness check (ping) (https://datatracker.ietf.org/doc/html/rfc2326#section-10.8)
+                rtsp_response response;
+                response.status_code = 200;
+                response.reason_phrase = "OK";
+                client.async_send_response(response);
+            } else {
+                RAV_WARNING("Unsupported parameter: {}", request.uri);
+            }
+            return;
+        }
+
+        RAV_WARNING("Unhandled RTSP request: {}", request.method);
     });
     new_connection.client.on<rtsp_response>([=](const auto& response) {
-        // RAV_INFO("{}\n{}", response.to_debug_string(), rav::string_replace(response.data, "\r\n", "\n"));
+        RAV_TRACE("{}", response.to_debug_string());
+        if (!response.data.empty()) {
+            RAV_TRACE("Data:\n{}", rav::string_replace(response.data, "\r\n", "\n"));
+        }
 
         if (response.status_code != 200) {
-            RAV_ERROR("RTSP request failed with status code: {}", response.status_code);
+            RAV_ERROR("RTSP request failed with status: {} {}", response.status_code, response.reason_phrase);
             return;
         }
 
@@ -119,12 +137,11 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
                 RAV_ERROR("RTSP response has unexpected Content-Type: {}", content_type->value);
                 return;
             }
-        } else {
-            RAV_ERROR("RTSP response missing Content-Type header");
+            handle_incoming_sdp(response.data);
             return;
         }
 
-        handle_incoming_sdp(response.data);
+        RAV_ERROR("RTSP response missing Content-Type header");
     });
     new_connection.client.async_connect(host_target, port);
     return new_connection;
