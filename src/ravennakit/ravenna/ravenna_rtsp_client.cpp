@@ -196,8 +196,8 @@ void rav::ravenna_rtsp_client::handle_incoming_sdp(const std::string& sdp_text) 
         if (session.session_name == sdp.session_name()) {
             session.sdp_ = sdp;
             session.subscribers.foreach ([&](auto& node) {
-                if (auto* subscriber = node.value().first) {
-                    subscriber->emit(announced {session.session_name, sdp});
+                if (auto* s = node.value().first) {
+                    s->emit(announced {session.session_name, sdp});
                 }
             });
         }

@@ -12,7 +12,7 @@
 
 #include <iostream>
 #include <catch2/catch_all.hpp>
-#include <fmt/base.h>
+#include <fmt/format.h>
 
 namespace {
 

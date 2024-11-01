@@ -33,6 +33,7 @@ class rav::rtsp_server::connection_impl final: public connection, public std::en
 
     void async_send_response(const rtsp_response& response) override {
         // TODO: Implement
+        std::ignore = response;
     }
 
     /**
@@ -82,8 +83,8 @@ class rav::rtsp_server::connection_impl final: public connection, public std::en
 };
 
 rav::rtsp_server::~rtsp_server() {
-    for (auto& connection : connections_) {
-        if (const auto shared = connection.lock()) {
+    for (auto& c : connections_) {
+        if (const auto shared = c.lock()) {
             shared->reset();
         }
     }
@@ -134,10 +135,10 @@ void rav::rtsp_server::async_accept() {
             socket.remote_endpoint().port()
         );
 
-        const auto connection = std::make_shared<connection_impl>(std::move(socket), this);
-        connections_.emplace_back(connection);
-        events_.emit(connection_event {*connection});
-        connection->start();
+        const auto new_connection = std::make_shared<connection_impl>(std::move(socket), this);
+        connections_.emplace_back(new_connection);
+        events_.emit(connection_event {*new_connection});
+        new_connection->start();
         async_accept();
     });
 }
