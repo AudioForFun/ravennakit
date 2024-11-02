@@ -17,8 +17,8 @@
 
 namespace rav {
 
-class rtsp_connection {
-public:
+class rtsp_connection final: public std::enable_shared_from_this<rtsp_connection> {
+  public:
     struct connect_event {
         rtsp_connection& connection;
     };
@@ -33,8 +33,54 @@ public:
         rtsp_connection& connection;
     };
 
-    virtual ~rtsp_connection();
-    explicit rtsp_connection(asio::ip::tcp::socket socket);
+    /**
+     * Observer for the connection.
+     */
+    class subscriber {
+      public:
+        subscriber() = default;
+        virtual ~subscriber() = default;
+
+        subscriber(const subscriber&) = default;
+        subscriber& operator=(const subscriber&) = default;
+
+        subscriber(subscriber&&) noexcept = default;
+        subscriber& operator=(subscriber&&) noexcept = default;
+
+        /**
+         * Called when a connection is established.
+         * @param connection The connection that was established.
+         */
+        virtual void on_connect(rtsp_connection& connection) {
+            std::ignore = connection;
+        }
+
+        /**
+         * Called when a request is received.
+         * @param request The request that was received.
+         * @param connection The connection on which the request was received.
+         */
+        virtual void on_request(const rtsp_request& request, rtsp_connection& connection) {
+            std::ignore = connection;
+            std::ignore = request;
+        }
+
+        /**
+         * Called when a response is received.
+         * @param response The response that was received.
+         * @param connection The connection on which the response was received.
+         */
+        virtual void on_response(const rtsp_response& response, rtsp_connection& connection) {
+            std::ignore = connection;
+            std::ignore = response;
+        }
+    };
+
+    static std::shared_ptr<rtsp_connection> create(asio::ip::tcp::socket socket) {
+        return std::shared_ptr<rtsp_connection>(new rtsp_connection(std::move(socket)));
+    }
+
+    ~rtsp_connection();
 
     rtsp_connection(const rtsp_connection&) = delete;
     rtsp_connection& operator=(const rtsp_connection&) = delete;
@@ -60,25 +106,33 @@ public:
     void shutdown();
 
     /**
+     * Starts the connection by reading from the socket.
+     */
+    void start();
+
+    /**
      * Stops the connection by closing the socket.
      */
     void stop();
 
-  protected:
+    /**
+     * Sets the subscriber for this connection.
+     */
+    void set_subscriber(subscriber* subscriber);
+
     void async_connect(const asio::ip::tcp::resolver::results_type& results);
     void async_send_data(const std::string& data);
     void async_write();
     void async_read_some();
 
-    virtual void on_connected() {}
-    virtual void on_rtsp_request([[maybe_unused]] const rtsp_request& request) {}
-    virtual void on_rtsp_response([[maybe_unused]] const rtsp_response& response) {}
-
-private:
+  private:
     asio::ip::tcp::socket socket_;
     string_buffer input_buffer_;
     string_buffer output_buffer_;
     rtsp_parser parser_;
+    subscriber* subscriber_ {};
+
+    explicit rtsp_connection(asio::ip::tcp::socket socket);
 };
 
-}
+}  // namespace rav

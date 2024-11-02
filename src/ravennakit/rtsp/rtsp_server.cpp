@@ -11,56 +11,18 @@
 #include "ravennakit/rtsp/rtsp_server.hpp"
 
 #include "ravennakit/containers/string_buffer.hpp"
+#include "ravennakit/core/todo.hpp"
 #include "ravennakit/rtsp/rtsp_parser.hpp"
 #include "ravennakit/rtsp/rtsp_request.hpp"
 #include "ravennakit/util/exclusive_access_guard.hpp"
 #include "ravennakit/util/tracy.hpp"
 
-class rav::rtsp_server::connection_impl final:
-    public rtsp_connection,
-    public std::enable_shared_from_this<connection_impl> {
-  public:
-    explicit connection_impl(asio::ip::tcp::socket socket, rtsp_server* owner) :
-        rtsp_connection(std::move(socket)), owner_(owner) {}
-
-    void start() {
-        on_connected();
-        async_read_some();  // Start reading chain
-    }
-
-    /**
-     * Sets owner to nullptr, so that the connection cannot emit events anymore.
-     */
-    void reset() {
-        owner_ = nullptr;
-    }
-
-  protected:
-    void on_connected() override {
-        if (owner_) {
-            owner_->events_.emit(connect_event {*this});
-        }
-    }
-
-    void on_rtsp_request(const rtsp_request& request) override {
-        if (owner_) {
-            owner_->events_.emit(request_event {request, *this});
-        }
-    }
-
-    void on_rtsp_response(const rtsp_response& response) override {
-        if (owner_) {
-            owner_->events_.emit(response_event {response, *this});
-        }
-    }
-
-  private:
-    rtsp_server* owner_ {};
-};
-
 rav::rtsp_server::~rtsp_server() {
     for (const auto& c : connections_) {
-        c->reset();
+        c->set_subscriber(nullptr);
+        // TODO: We might want to shutdown the connection here, but a shutdown when shutdown was already called before
+        // will result in an exception thrown by shutdown(). We can either catch the exception or add a flag to the
+        // connection to check if it was already shutdown. For now, we just ignore the shutdown.
     }
 }
 
@@ -79,10 +41,26 @@ rav::rtsp_server::rtsp_server(asio::io_context& io_context, const char* address,
 void rav::rtsp_server::stop() {
     TRACY_ZONE_SCOPED;
     acceptor_.cancel();
+    for (const auto& c : connections_) {
+        c->set_subscriber(nullptr);
+        c->shutdown();
+    }
 }
 
 void rav::rtsp_server::reset() noexcept {
     events_.reset();
+}
+
+void rav::rtsp_server::on_connect(rtsp_connection& connection) {
+    events_.emit(rtsp_connection::connect_event {connection});
+}
+
+void rav::rtsp_server::on_request(const rtsp_request& request, rtsp_connection& connection) {
+    events_.emit(rtsp_connection::request_event {request, connection});
+}
+
+void rav::rtsp_server::on_response(const rtsp_response& response, rtsp_connection& connection) {
+    events_.emit(rtsp_connection::response_event {response, connection});
 }
 
 void rav::rtsp_server::async_accept() {
@@ -112,8 +90,10 @@ void rav::rtsp_server::async_accept() {
             socket.remote_endpoint().port()
         );
 
-        const auto& it = connections_.emplace_back(std::make_unique<connection_impl>(std::move(socket), this));
+        const auto& it = connections_.emplace_back(rtsp_connection::create(std::move(socket)));
+        it->set_subscriber(this);
         it->start();
+        on_connect(*it);
         async_accept();
     });
 }

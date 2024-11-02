@@ -25,14 +25,14 @@ namespace rav {
  * Server for accepting RTSP connections.
  * This class assumes a single threaded io_context and no attempt to synchronise access and callbacks have been made.
  */
-class rtsp_server {
+class rtsp_server: rtsp_connection::subscriber {
   public:
     using events_type =
         events<rtsp_connection::connect_event, rtsp_connection::request_event, rtsp_connection::response_event>;
 
     rtsp_server(asio::io_context& io_context, const asio::ip::tcp::endpoint& endpoint);
     rtsp_server(asio::io_context& io_context, const char* address, uint16_t port);
-    ~rtsp_server();
+    ~rtsp_server() override;
 
     /**
      * @returns The port the server is listening on.
@@ -59,11 +59,14 @@ class rtsp_server {
      */
     void reset() noexcept;
 
-  private:
-    class connection_impl;
+  protected:
+    void on_connect(rtsp_connection& connection) override;
+    void on_request(const rtsp_request& request, rtsp_connection& connection) override;
+    void on_response(const rtsp_response& response, rtsp_connection& connection) override;
 
+  private:
     asio::ip::tcp::acceptor acceptor_;
-    std::vector<std::unique_ptr<connection_impl>> connections_;
+    std::vector<std::shared_ptr<rtsp_connection>> connections_;
     events_type events_;
 
     void async_accept();

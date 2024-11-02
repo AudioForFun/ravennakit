@@ -24,9 +24,10 @@ namespace rav {
  */
 class rtsp_client final:
     public events<rtsp_connection::connect_event, rtsp_connection::response_event, rtsp_connection::request_event>,
-    public rtsp_connection {
+    rtsp_connection::subscriber {
   public:
     explicit rtsp_client(asio::io_context& io_context);
+    ~rtsp_client() override;
 
     rtsp_client(const rtsp_client&) = delete;
     rtsp_client& operator=(const rtsp_client&) = delete;
@@ -53,34 +54,47 @@ class rtsp_client final:
      * @param path The path to describe
      * @param data The data to add.
      */
-    void async_describe(const std::string& path, std::string data = {});
+    void async_describe(const std::string& path, std::string data = {}) const;
 
     /**
      * Sends a SETUP request to the server. Function is async and will return immediately.
      * @param path The path to setup.
      */
-    void async_setup(const std::string& path);
+    void async_setup(const std::string& path) const;
 
     /**
      * Sends a PLAY request to the server. Function is async and will return immediately.
      * @param path The path for the PLAY command.
      */
-    void async_play(const std::string& path);
+    void async_play(const std::string& path) const;
 
     /**
      * Sends a TEARDOWN request to the server. Function is async and will return immediately.
      * @param path The path for the TEARDOWN command.
      */
-    void async_teardown(const std::string& path);
+    void async_teardown(const std::string& path) const;
 
-  protected:
-    void on_connected() override;
-    void on_rtsp_request(const rtsp_request& request) override;
-    void on_rtsp_response(const rtsp_response& response) override;
+    /**
+     * Sends given response to the server. Function is async and will return immediately.
+     * @param response The response to send.
+     */
+    void async_send_response(const rtsp_response& response) const;
+
+    /**
+     * Sends given request to the server. Function is async and will return immediately.
+     * @param request The request to send.
+     */
+    void async_send_request(const rtsp_request& request) const;
+
+    // rtsp_connection::subscriber overrides
+    void on_connect(rtsp_connection& connection) override;
+    void on_request(const rtsp_request& request, rtsp_connection& connection) override;
+    void on_response(const rtsp_response& response, rtsp_connection& connection) override;
 
   private:
     asio::ip::tcp::resolver resolver_;
     std::string host_;
+    std::shared_ptr<rtsp_connection> connection_;
 
     void
     async_resolve_connect(const std::string& host, const std::string& service, asio::ip::resolver_base::flags flags);

@@ -67,7 +67,6 @@ TEST_CASE("rtsp_server | DESCRIBE", "[rtsp_server]") {
         REQUIRE(event.response.reason_phrase == "OK");
         REQUIRE(event.response.data == "announce response data");
         server_num_responses_received++;
-        event.connection.shutdown();
         server.stop();
     });
 
