@@ -59,6 +59,11 @@ public:
      */
     void shutdown();
 
+    /**
+     * Stops the connection by closing the socket.
+     */
+    void stop();
+
   protected:
     void async_connect(const asio::ip::tcp::resolver::results_type& results);
     void async_send_data(const std::string& data);

@@ -42,12 +42,7 @@ class rtsp_server {
     /**
      * Closes the listening socket. Implies cancellation.
      */
-    void close();
-
-    /**
-     * Cancels all outstanding operations on the listening socket.
-     */
-    void cancel();
+    void stop();
 
     /**
      * Registers a handler for a specific event.
@@ -62,9 +57,7 @@ class rtsp_server {
     /**
      * Resets handlers for all events.
      */
-    void reset() noexcept {
-        events_.reset();
-    }
+    void reset() noexcept;
 
   private:
     class connection_impl;

@@ -58,7 +58,11 @@ class rav::rtsp_server::connection_impl final:
     rtsp_server* owner_ {};
 };
 
-rav::rtsp_server::~rtsp_server() = default;
+rav::rtsp_server::~rtsp_server() {
+    for (const auto& c : connections_) {
+        c->reset();
+    }
+}
 
 uint16_t rav::rtsp_server::port() const {
     return acceptor_.local_endpoint().port();
@@ -72,19 +76,13 @@ rav::rtsp_server::rtsp_server(asio::io_context& io_context, const asio::ip::tcp:
 rav::rtsp_server::rtsp_server(asio::io_context& io_context, const char* address, const uint16_t port) :
     rtsp_server(io_context, asio::ip::tcp::endpoint(asio::ip::make_address(address), port)) {}
 
-void rav::rtsp_server::close() {
-    TRACY_ZONE_SCOPED;
-    acceptor_.close();
-
-    for (const auto& c : connections_) {
-        c->reset();
-        c->shutdown();
-    }
-}
-
-void rav::rtsp_server::cancel() {
+void rav::rtsp_server::stop() {
     TRACY_ZONE_SCOPED;
     acceptor_.cancel();
+}
+
+void rav::rtsp_server::reset() noexcept {
+    events_.reset();
 }
 
 void rav::rtsp_server::async_accept() {

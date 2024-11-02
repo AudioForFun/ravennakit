@@ -38,6 +38,10 @@ void rav::rtsp_connection::shutdown() {
     socket_.shutdown(asio::ip::tcp::socket::shutdown_both);
 }
 
+void rav::rtsp_connection::stop() {
+    socket_.close();
+}
+
 void rav::rtsp_connection::async_connect(const asio::ip::tcp::resolver::results_type& results) {
     asio::async_connect(socket_, results, [this](const asio::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
         if (ec) {
