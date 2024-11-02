@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "rtsp_connection.hpp"
 #include "rtsp_parser.hpp"
 #include "ravennakit/containers/string_buffer.hpp"
 
@@ -27,9 +28,15 @@ struct rtsp_connect_event {
  * Client for connecting to an RTSP server. Given io_context must be single-threaded to implicitly support
  * thread-safety.
  */
-class rtsp_client final: public events<rtsp_connect_event, rtsp_response, rtsp_request> {
+class rtsp_client final: public events<rtsp_connect_event, rtsp_response, rtsp_request>, public rtsp_connection {
   public:
     explicit rtsp_client(asio::io_context& io_context);
+
+    rtsp_client(const rtsp_client&) = delete;
+    rtsp_client& operator=(const rtsp_client&) = delete;
+
+    rtsp_client(rtsp_client&&) noexcept = default;
+    rtsp_client& operator=(rtsp_client&&) noexcept = default;
 
     /**
      * Connect to the given address and port. Function is async and will return immediately.
@@ -82,24 +89,16 @@ class rtsp_client final: public events<rtsp_connect_event, rtsp_response, rtsp_r
      */
     void async_send_request(const rtsp_request& request);
 
-    /**
-     * Post some work through the executor of the socket.
-     * @param work The work to execute.
-     */
-    void post(std::function<void()> work);
+protected:
+    void on_connected() override;
+    void on_rtsp_request(const rtsp_request& request) override;
+    void on_rtsp_response(const rtsp_response& response) override;
 
   private:
     asio::ip::tcp::resolver resolver_;
-    asio::ip::tcp::socket socket_;
     std::string host_;
-    string_buffer input_buffer_;
-    string_buffer output_buffer_;
-    rtsp_parser parser_;
 
     void async_connect(const std::string& host, const std::string& service, asio::ip::resolver_base::flags flags);
-    void async_send_data(const std::string& data);
-    void async_write();
-    void async_read_some();
 };
 
 }  // namespace rav
