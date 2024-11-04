@@ -13,6 +13,7 @@
 #include "rtcp_packet_view.hpp"
 #include "rtp_packet_view.hpp"
 #include "ravennakit/core/events.hpp"
+#include "ravennakit/core/linked_node.hpp"
 
 #include <asio.hpp>
 
@@ -28,6 +29,22 @@ struct rtcp_packet_event {
 
 class rtp_receiver final: public events<rtp_packet_event, rtcp_packet_event> {
   public:
+    class subscriber {
+      public:
+        virtual ~subscriber() = default;
+
+        virtual void on(const rtp_packet_event& rtp_event) {
+            std::ignore = rtp_event;
+        }
+
+        virtual void on(const rtcp_packet_event& rtcp_event) {
+            std::ignore = rtcp_event;
+        }
+
+      private:
+        linked_node<subscriber*> node_;
+    };
+
     rtp_receiver() = delete;
     ~rtp_receiver() override;
 
@@ -51,7 +68,7 @@ class rtp_receiver final: public events<rtp_packet_event, rtcp_packet_event> {
      * @param port The port to bind to. Default is 5004.
      * @return A result indicating success or failure.
      */
-    void bind(const std::string& address, uint16_t port = 5004);
+    void bind(const std::string& address, uint16_t port = 5004) const;
 
     /**
      * Sets the multicast membership for the given multicast address and interface address.
@@ -59,32 +76,21 @@ class rtp_receiver final: public events<rtp_packet_event, rtcp_packet_event> {
      * @param interface_address The interface address to use.
      * @return A result indicating success or failure.
      */
-    void join_multicast_group(
-        const std::string& multicast_address, const std::string& interface_address
-    );
+    void join_multicast_group(const std::string& multicast_address, const std::string& interface_address) const;
 
     /**
      * @return Starts receiving datagrams on the bound sockets.
      */
-    void start();
+    void start() const;
 
     /**
      * Stops receiving datagrams on the bound sockets.
      */
-    void stop();
+    void stop() const;
 
   private:
-    asio::ip::udp::socket rtp_socket_;
-    asio::ip::udp::socket rtcp_socket_;
-    asio::ip::udp::endpoint rtp_endpoint_;
-    asio::ip::udp::endpoint rtcp_endpoint_;
-    std::array<uint8_t, 1500> rtp_data_ {};
-    std::array<uint8_t, 1500> rtcp_data_ {};
-    bool is_running_ = false;
-
-    void receive_rtp();
-    void receive_rtcp();
+    class impl;
+    std::shared_ptr<impl> impl_;
 };
 
 }  // namespace rav
-
