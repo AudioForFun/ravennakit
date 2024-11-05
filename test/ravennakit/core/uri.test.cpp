@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/util/uri.hpp"
+#include "ravennakit/core/uri.hpp"
 
 #include <catch2/catch_all.hpp>
 

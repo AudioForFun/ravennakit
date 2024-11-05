@@ -29,6 +29,10 @@ struct rtcp_packet_event {
 
 class rtp_receiver final: public events<rtp_packet_event, rtcp_packet_event> {
   public:
+    /**
+     * Baseclass for other classes that want to subscribe to receiving RTP and RTCP packets.
+     * The class provides several facilities to filter the traffic.
+     */
     class subscriber {
       public:
         virtual ~subscriber() = default;

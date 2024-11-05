@@ -7,7 +7,7 @@
 #include "ravennakit/core/events.hpp"
 #include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/core/result.hpp"
-#include "ravennakit/util/id.hpp"
+#include "ravennakit/core/id.hpp"
 
 #include <asio/io_context.hpp>
 

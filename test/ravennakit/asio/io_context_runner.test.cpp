@@ -14,7 +14,7 @@
 #include <catch2/catch_all.hpp>
 #include <thread>
 
-#include "ravennakit/util/chrono/timeout.hpp"
+#include "ravennakit/core/timeout.hpp"
 
 namespace {
 constexpr auto k_default_timeout_seconds_seconds = std::chrono::seconds(5);

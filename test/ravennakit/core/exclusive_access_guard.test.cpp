@@ -8,8 +8,8 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/util/exclusive_access_guard.hpp"
-#include "ravennakit/util/chrono/timeout.hpp"
+#include "ravennakit/core/exclusive_access_guard.hpp"
+#include "ravennakit/core/timeout.hpp"
 
 #include <future>
 #include <thread>

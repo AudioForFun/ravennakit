@@ -13,7 +13,7 @@
 #include "ravennakit/core/exception.hpp"
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/platform.hpp"
-#include "ravennakit/util/tracy.hpp"
+#include "ravennakit/core/tracy.hpp"
 
 #include <asio.hpp>
 

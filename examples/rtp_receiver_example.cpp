@@ -23,7 +23,7 @@
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
-#include "ravennakit/util/tracy.hpp"
+#include "ravennakit/core/tracy.hpp"
 
 constexpr short k_port = 5004;
 constexpr int k_block_size = 256;
