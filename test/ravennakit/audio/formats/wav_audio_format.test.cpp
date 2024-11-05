@@ -12,7 +12,7 @@
 
 #include "wav_audio_format.data.cpp"
 #include "ravennakit/audio/formats/wav_audio_format.hpp"
-#include "ravennakit/streams/byte_stream.hpp"
+#include "ravennakit/core/streams/byte_stream.hpp"
 #include "ravennakit/core/util.hpp"
 
 TEST_CASE("wav_audio_format | Read wav file", "[wav_audio_format]") {

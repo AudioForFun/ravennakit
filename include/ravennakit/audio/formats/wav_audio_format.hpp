@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include "ravennakit/streams/input_stream.hpp"
-#include "ravennakit/streams/output_stream.hpp"
+#include "ravennakit/core/streams/input_stream.hpp"
+#include "ravennakit/core/streams/output_stream.hpp"
 
 #include <ios>
 #include <array>

@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/streams/input_stream.hpp"
+#include "ravennakit/core/streams/input_stream.hpp"
 
 std::optional<size_t> rav::input_stream::remaining() {
     if (const auto s = size()) {
