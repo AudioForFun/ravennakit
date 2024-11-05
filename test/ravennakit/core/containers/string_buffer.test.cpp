@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/containers/string_buffer.hpp"
+#include "ravennakit/core/containers/string_buffer.hpp"
 #include "ravennakit/rtsp/rtsp_client.hpp"
 
 #include <catch2/catch_all.hpp>

@@ -12,7 +12,7 @@
 #include <ravennakit/audio/circular_audio_buffer.hpp>
 #include <thread>
 
-#include "ravennakit/containers/vector_buffer.hpp"
+#include "ravennakit/core/containers/vector_buffer.hpp"
 
 namespace {
 

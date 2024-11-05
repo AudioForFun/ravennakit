@@ -11,7 +11,7 @@
 #pragma once
 
 #include "rtsp_parser.hpp"
-#include "ravennakit/containers/string_buffer.hpp"
+#include "ravennakit/core/containers/string_buffer.hpp"
 
 #include <asio.hpp>
 

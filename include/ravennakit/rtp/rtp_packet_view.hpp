@@ -13,7 +13,7 @@
 #include <cstdint>
 #include <string>
 
-#include "ravennakit/containers/buffer_view.hpp"
+#include "ravennakit/core/containers/buffer_view.hpp"
 
 namespace rav {
 

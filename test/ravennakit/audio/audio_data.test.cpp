@@ -13,8 +13,8 @@
 #include <catch2/catch_all.hpp>
 
 #include "ravennakit/audio/audio_buffer.hpp"
-#include "ravennakit/containers/buffer_view.hpp"
-#include "ravennakit/containers/vector_buffer.hpp"
+#include "ravennakit/core/containers/buffer_view.hpp"
+#include "ravennakit/core/containers/vector_buffer.hpp"
 #include "ravennakit/core/util.hpp"
 
 using namespace rav::audio_data;

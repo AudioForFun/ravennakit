@@ -10,7 +10,7 @@
 
 #include <catch2/catch_all.hpp>
 
-#include <ravennakit/containers/buffer_view.hpp>
+#include <ravennakit/core/containers/buffer_view.hpp>
 #include <ravennakit/core/util.hpp>
 
 static_assert(std::is_trivially_copyable_v<rav::buffer_view<double>> == true);

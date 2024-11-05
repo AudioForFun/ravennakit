@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include <ravennakit/containers/detail/fifo.hpp>
+#include <ravennakit/core/containers/detail/fifo.hpp>
 
 void rav::fifo::position::update(const size_t pointer, const size_t capacity, const size_t number_of_elements) {
     index1 = pointer;

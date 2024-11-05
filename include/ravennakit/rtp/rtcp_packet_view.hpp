@@ -15,7 +15,7 @@
 #include <string>
 
 #include "rtcp_report_block_view.hpp"
-#include "ravennakit/containers/buffer_view.hpp"
+#include "ravennakit/core/containers/buffer_view.hpp"
 #include "ravennakit/ntp/timestamp.hpp"
 #include "rtp.hpp"
 

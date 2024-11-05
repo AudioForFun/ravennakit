@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/containers/vector_buffer.hpp"
+#include "ravennakit/core/containers/vector_buffer.hpp"
 
 #include <array>
 #include <catch2/catch_all.hpp>

@@ -12,7 +12,7 @@
 
 #include "rtsp_request.hpp"
 #include "rtsp_response.hpp"
-#include "ravennakit/containers/string_buffer.hpp"
+#include "ravennakit/core/containers/string_buffer.hpp"
 #include "ravennakit/core/events.hpp"
 
 namespace rav {

@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include <ravennakit/containers/detail/fifo.hpp>
+#include <ravennakit/core/containers/detail/fifo.hpp>
 
 #include "audio_buffer.hpp"
 #include "audio_data.hpp"

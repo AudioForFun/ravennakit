@@ -9,8 +9,8 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include <ravennakit/containers/circular_buffer.hpp>
-#include <ravennakit/containers/detail/fifo.hpp>
+#include <ravennakit/core/containers/circular_buffer.hpp>
+#include <ravennakit/core/containers/detail/fifo.hpp>
 #include <ravennakit/core/log.hpp>
 #include <thread>
 
