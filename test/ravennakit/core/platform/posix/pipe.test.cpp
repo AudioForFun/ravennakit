@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/platform/posix/pipe.hpp"
+#include "ravennakit/core/platform/posix/pipe.hpp"
 #include "catch2/catch_all.hpp"
 
 #if RAV_POSIX

@@ -15,7 +15,7 @@
     #include "bonjour_scoped_dns_service_ref.hpp"
     #include "bonjour_shared_connection.hpp"
     #include "ravennakit/dnssd/dnssd_browser.hpp"
-    #include "ravennakit/platform/posix/pipe.hpp"
+    #include "ravennakit/core/platform/posix/pipe.hpp"
 
 namespace rav::dnssd {
 

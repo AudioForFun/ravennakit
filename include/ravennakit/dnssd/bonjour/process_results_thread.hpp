@@ -11,8 +11,8 @@
 #pragma once
 
 #include "bonjour.hpp"
-#include "ravennakit/platform/posix/pipe.hpp"
-#include "ravennakit/platform/windows/event.hpp"
+#include "ravennakit/core/platform/posix/pipe.hpp"
+#include "ravennakit/core/platform/windows/event.hpp"
 
 #include <future>
 #include <thread>

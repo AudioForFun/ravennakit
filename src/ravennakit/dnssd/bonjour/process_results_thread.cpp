@@ -12,7 +12,7 @@
 
 #include "ravennakit/core/assert.hpp"
 #include "ravennakit/core/log.hpp"
-#include "ravennakit/platform/windows/socket_event.hpp"
+#include "ravennakit/core/platform/windows/socket_event.hpp"
 
 #if RAV_HAS_APPLE_DNSSD
 
