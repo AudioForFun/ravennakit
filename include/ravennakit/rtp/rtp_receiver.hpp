@@ -39,7 +39,14 @@ class rtp_receiver {
      */
     class subscriber {
       public:
+        subscriber() = default;
         virtual ~subscriber() = default;
+
+        subscriber(const subscriber&) = delete;
+        subscriber& operator=(const subscriber&) = delete;
+
+        subscriber(subscriber&&) noexcept = delete;
+        subscriber& operator=(subscriber&&) noexcept = delete;
 
         /**
          * Called when an RTP packet is received.
@@ -108,8 +115,21 @@ class rtp_receiver {
     void stop() const;
 
   private:
+    /**
+     * Class which sets up sockets for receiving RTP and RTCP packets.
+     */
+    class rtp_endpoint;
+
+    struct session {
+        uint32_t ssrc{};
+        asio::ip::address connection_address;
+        uint16_t connection_port{};
+        std::shared_ptr<rtp_endpoint> rtp_endpoint;
+    };
+
     class impl;
     std::shared_ptr<impl> impl_;
+    std::vector<session> sessions_;
     linked_node<std::pair<subscriber*, rtp_receiver*>> subscriber_nodes_;
 };
 

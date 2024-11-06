@@ -291,7 +291,7 @@ class media_description {
     std::optional<double> max_ptime_;
     std::optional<media_direction> media_direction_;
     std::optional<reference_clock> reference_clock_;
-    std::optional<sdp::media_clock_source> media_clock_;
+    std::optional<media_clock_source> media_clock_;
     std::optional<std::string> session_information_;
     std::optional<ravenna_clock_domain> clock_domain_;   // RAVENNA-specific attribute
     std::optional<uint32_t> sync_time_;                  // RAVENNA-specific attribute

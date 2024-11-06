@@ -10,14 +10,10 @@
 
 #pragma once
 
-#include <ravennakit/core/platform.hpp>
+namespace rav::rtp::constants {
 
-namespace rav::rtp {
-
-using ssrc = uint32_t;
-
-constexpr auto kSsrcLength = 4;
-constexpr auto kRtpTimestampLength = 4;
+constexpr auto k_ssrc_length = 4;
+constexpr auto k_rtp_timestamp_length_length = 4;
 
 enum class validation_result {
     invalid_pointer,

@@ -15,12 +15,12 @@
 #include "ravennakit/core/uri.hpp"
 
 rav::rtsp_client::rtsp_client(asio::io_context& io_context) :
-    resolver_(io_context), connection_(rtsp_connection::create(asio::ip::tcp::socket(io_context))) {
-    connection_->set_subscriber(this);
-}
+    resolver_(io_context), connection_(rtsp_connection::create(asio::ip::tcp::socket(io_context))) {}
 
 rav::rtsp_client::~rtsp_client() {
-    connection_->set_subscriber(nullptr);
+    if (connection_ != nullptr) {
+        connection_->set_subscriber(nullptr);
+    }
 }
 
 void rav::rtsp_client::async_connect(const std::string& host, const uint16_t port) {
@@ -111,6 +111,7 @@ void rav::rtsp_client::async_resolve_connect(
     const std::string& host, const std::string& service, const asio::ip::resolver_base::flags flags
 ) {
     host_ = host;
+    connection_->set_subscriber(this);
     auto connection = connection_;
     resolver_.async_resolve(
         host, service, flags,

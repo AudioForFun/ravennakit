@@ -24,12 +24,10 @@ int main(int const argc, char* argv[]) {
     CLI::App app {"RAVENNA Receiver example"};
     argv = app.ensure_utf8(argv);
 
-    std::string stream_name;
-    app.add_option("stream_name", stream_name, "The name of the stream to receive")->required();
+    std::vector<std::string> stream_names;
+    app.add_option("stream_name", stream_names, "The name of the stream to receive")->required();
 
     CLI11_PARSE(app, argc, argv);
-
-    fmt::println("RAVENNA Receiver example. Receive from stream: {}", stream_name);
 
     asio::io_context io_context;
 
@@ -49,11 +47,15 @@ int main(int const argc, char* argv[]) {
     });
 
     rav::ravenna_rtsp_client rtsp_client(io_context, *node_browser);
-    rav::ravenna_sink sink1(rtsp_client, "Anubis Combo LR");
-    rav::ravenna_sink sink2(rtsp_client, "Anubis_610120_16");
+    rav::rtp_receiver rtp_receiver(io_context);
+    rtp_receiver.bind("::");
+
+    std::vector<std::unique_ptr<rav::ravenna_sink>> sinks;
+    for (auto const& stream_name : stream_names) {
+        sinks.emplace_back(std::make_unique<rav::ravenna_sink>(rtsp_client, rtp_receiver, stream_name));
+    }
 
     io_context.run();
     node_browser.reset();
     cin_thread.join();
 }
-

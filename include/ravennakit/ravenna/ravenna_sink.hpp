@@ -20,8 +20,14 @@ class ravenna_sink: ravenna_rtsp_client::subscriber, rtp_receiver::subscriber {
   public:
     enum class mode { manual, automatic };
 
-    explicit ravenna_sink(ravenna_rtsp_client& rtsp_client, std::string session_name);
+    explicit ravenna_sink(ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver, std::string session_name);
     ~ravenna_sink() override = default;
+
+    ravenna_sink(const ravenna_sink&) = delete;
+    ravenna_sink& operator=(const ravenna_sink&) = delete;
+
+    ravenna_sink(ravenna_sink&&) noexcept = delete;
+    ravenna_sink& operator=(ravenna_sink&&) noexcept = delete;
 
     void set_mode(mode new_mode);
     void set_source(std::string session_name);
@@ -34,7 +40,6 @@ class ravenna_sink: ravenna_rtsp_client::subscriber, rtp_receiver::subscriber {
     std::optional<sdp::session_description> manual_sdp_;
     std::optional<sdp::session_description> auto_sdp_;
 
-  protected:
     void on(const rtp_receiver::rtp_packet_event& rtp_event) override;
     void on(const rtp_receiver::rtcp_packet_event& rtcp_event) override;
     void on(const ravenna_rtsp_client::announced_event& event) override;

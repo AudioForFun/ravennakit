@@ -33,6 +33,12 @@ class ravenna_rtsp_client {
         subscriber() = default;
         virtual ~subscriber();
 
+        subscriber(const subscriber&) = delete;
+        subscriber& operator=(const subscriber&) = delete;
+
+        subscriber(subscriber&&) noexcept = delete;
+        subscriber& operator=(subscriber&&) noexcept = delete;
+
         /**
          * Called when a session is announced.
          * @param event The announced event.
