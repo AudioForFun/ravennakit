@@ -12,8 +12,7 @@
 
 #include "ravennakit/core/containers/string_buffer.hpp"
 #include "ravennakit/core/todo.hpp"
-#include "ravennakit/rtsp/rtsp_parser.hpp"
-#include "ravennakit/rtsp/rtsp_request.hpp"
+#include "ravennakit/rtsp/detail/rtsp_request.hpp"
 #include "ravennakit/core/exclusive_access_guard.hpp"
 #include "ravennakit/core/tracy.hpp"
 

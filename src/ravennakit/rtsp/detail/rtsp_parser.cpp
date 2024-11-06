@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/rtsp/rtsp_parser.hpp"
+#include "ravennakit/rtsp/detail/rtsp_parser.hpp"
 
 rav::rtsp_parser::result rav::rtsp_parser::parse(string_buffer& input) {
     while (!input.exhausted()) {

@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/rtsp/rtsp_connection.hpp"
+#include "ravennakit/rtsp/detail/rtsp_connection.hpp"
 
 rav::rtsp_connection::~rtsp_connection() = default;
 

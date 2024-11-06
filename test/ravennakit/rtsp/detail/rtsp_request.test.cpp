@@ -10,7 +10,7 @@
 
 #include <catch2/catch_all.hpp>
 
-#include "ravennakit/rtsp/rtsp_request.hpp"
+#include "ravennakit/rtsp/detail/rtsp_request.hpp"
 
 TEST_CASE("rtsp_request", "[rtsp_request]") {
     SECTION("Get header") {

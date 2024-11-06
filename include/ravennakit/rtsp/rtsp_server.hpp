@@ -10,14 +10,12 @@
 
 #pragma once
 
-#include "rtsp_connection.hpp"
-#include "rtsp_request.hpp"
-#include "rtsp_response.hpp"
+#include "detail/rtsp_connection.hpp"
+#include "detail/rtsp_request.hpp"
+#include "detail/rtsp_response.hpp"
 #include "ravennakit/core/events.hpp"
-#include "ravennakit/core/log.hpp"
 
 #include <asio.hpp>
-#include <set>
 
 namespace rav {
 

@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/rtsp/rtsp_request.hpp"
+#include "ravennakit/rtsp/detail/rtsp_request.hpp"
 
 #include <catch2/catch_all.hpp>
 

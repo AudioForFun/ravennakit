@@ -10,9 +10,8 @@
 
 #pragma once
 
-#include "rtsp_connection.hpp"
-#include "rtsp_parser.hpp"
-#include "ravennakit/core/containers/string_buffer.hpp"
+#include "detail/rtsp_connection.hpp"
+#include "detail/rtsp_parser.hpp"
 
 #include <asio.hpp>
 

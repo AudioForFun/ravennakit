@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/rtsp/rtsp_response.hpp"
+#include "ravennakit/rtsp/detail/rtsp_response.hpp"
 
 rav::rtsp_response::rtsp_response(const int status, const std::string& reason) : rtsp_response(status, reason, {}) {}
 
