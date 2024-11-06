@@ -98,7 +98,7 @@ void rav::ravenna_sink::on(const ravenna_rtsp_client::announced_event& event) {
         return;
     }
 
-    subscribe_to_rtp_session(rtp_receiver_, connection_address, media_description.port());
+    // TODO: Compile a list of ip destinations and sources from the SDP
 }
 
 void rav::ravenna_sink::start() {

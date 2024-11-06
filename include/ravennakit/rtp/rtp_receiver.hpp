@@ -12,10 +12,10 @@
 
 #include "rtcp_packet_view.hpp"
 #include "rtp_packet_view.hpp"
-#include "detail/rtp_endpoint.hpp"
 #include "ravennakit/core/events.hpp"
 #include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/core/subscriber_list.hpp"
+#include "ravennakit/sdp/media_description.hpp"
 
 #include <asio.hpp>
 
@@ -26,8 +26,13 @@ namespace rav {
  */
 class rtp_receiver {
   public:
-    using rtp_packet_event = rtp_endpoint::rtp_packet_event;
-    using rtcp_packet_event = rtp_endpoint::rtcp_packet_event;
+    struct rtp_packet_event {
+        const rtp_packet_view& packet;
+    };
+
+    struct rtcp_packet_event {
+        const rtcp_packet_view& packet;
+    };
 
     /**
      * Baseclass for other classes that want to subscribe to receiving RTP and RTCP packets.
@@ -35,8 +40,6 @@ class rtp_receiver {
      */
     class subscriber {
       public:
-        using node_type = linked_node<std::pair<subscriber*, rtp_receiver*>>;
-
         subscriber() = default;
         virtual ~subscriber() = default;
 
@@ -58,17 +61,7 @@ class rtp_receiver {
          */
         virtual void on([[maybe_unused]] const rtcp_packet_event& rtcp_event) {}
 
-      protected:
-        /**
-         * Subscribes to the given RTP receiver.
-         * @param receiver The receiver to subscribe to.
-         * @param address
-         * @param port
-         */
-        void subscribe_to_rtp_session(rtp_receiver& receiver, const asio::ip::address& address, uint16_t port);
-
-      private:
-        node_type node_;
+    private:
     };
 
     rtp_receiver() = delete;
@@ -86,33 +79,28 @@ class rtp_receiver {
     rtp_receiver(rtp_receiver&&) = delete;
     rtp_receiver& operator=(rtp_receiver&&) = delete;
 
+    void start(
+        const asio::ip::address& bind_addr = asio::ip::address_v6(), uint16_t rtp_port = 5004, uint16_t rtcp_port = 5005
+    );
+    void stop();
+
+    void subscribe(subscriber& subscriber);
+    void unsubscribe(subscriber& subscriber);
+
   private:
-    class session: public rtp_endpoint::handler {
-      public:
-        session(asio::io_context& io_context, asio::ip::udp::endpoint endpoint);
-        ~session() override;
-
-        void start(const asio::ip::address& interface_addr = asio::ip::address_v6());
-        void stop();
-
-        void on(const rtp_packet_event& rtp_event) override;
-        void on(const rtcp_packet_event& rtcp_event) override;
-
-        [[nodiscard]] asio::ip::udp::endpoint connection_endpoint() const;
-
-        void subscribe(subscriber::node_type& node);
-
-      private:
-        asio::io_context& io_context_;
-        // The RTP connection address as defined in
-        // https://datatracker.ietf.org/doc/html/rfc8866#name-connection-information-c
-        asio::ip::udp::endpoint connection_endpoint_;
-        std::shared_ptr<rtp_endpoint> rtp_endpoint_;
-        subscriber::node_type subscriber_nodes_;
+    struct subscriber_context {
+        asio::ip::address connection_address;
     };
 
+    class impl;
+    std::shared_ptr<impl> impl_;
+
     asio::io_context& io_context_;
-    std::vector<std::unique_ptr<session>> sessions_;
+    subscriber_list<subscriber> subscribers_;
+
+
+    void on(const rtp_packet_event& rtp_event);
+    void on(const rtcp_packet_event& rtcp_event);
 };
 
 }  // namespace rav
