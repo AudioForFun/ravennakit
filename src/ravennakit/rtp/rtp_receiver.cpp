@@ -251,7 +251,7 @@ class rav::rtp_receiver::impl: public std::enable_shared_from_this<impl> {
 #if RAV_WINDOWS
     static size_t receive_from_socket(
         asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf, const std::shared_ptr<impl>& self,
-        asio::error_code& ec
+        asio::ip::udp::endpoint& src_endpoint, asio::ip::udp::endpoint& dst_endpoint, asio::error_code& ec
     ) {
         // Set up the message structure
         char control_buf[1024];
@@ -276,18 +276,38 @@ class rav::rtp_receiver::impl: public std::enable_shared_from_this<impl> {
             return 0;
         }
 
+        if (src_addr.sa_family == AF_INET) {
+            const auto* addr_in = reinterpret_cast<const sockaddr_in*>(&src_addr);
+            src_endpoint = asio::ip::udp::endpoint(
+                asio::ip::address_v4(ntohl(addr_in->sin_addr.s_addr)), ntohs(addr_in->sin_port)
+            );
+        }
+
         // Process control messages to get the destination IP
-        IN_ADDR dest_addr;
         for (WSACMSGHDR* cmsg = WSA_CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = WSA_CMSG_NXTHDR(&msg, cmsg)) {
             if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_PKTINFO) {
                 auto* pktinfo = reinterpret_cast<IN_PKTINFO*>(WSA_CMSG_DATA(cmsg));
-                dest_addr = pktinfo->ipi_addr;
+                IN_ADDR dest_addr = pktinfo->ipi_addr;
+
+                dst_endpoint = asio::ip::udp::endpoint(
+                    asio::ip::address_v4(ntohl(dest_addr.s_addr)), socket.local_endpoint(ec).port()
+                );
+
+                if (ec) {
+                    RAV_ERROR("Failed to get port from local endpoint");
+                }
+
                 char dest_ip[INET_ADDRSTRLEN];
                 inet_ntop(AF_INET, &dest_addr, dest_ip, sizeof(dest_ip));
                 std::cout << "Received packet destined to: " << dest_ip << std::endl;
                 break;
             }
         }
+
+        RAV_TRACE(
+            "Received from {}:{} to {}:{}", src_endpoint.address().to_string(), src_endpoint.port(),
+            dst_endpoint.address().to_string(), dst_endpoint.port()
+        );
 
         return bytes_received;
     }
@@ -332,7 +352,7 @@ class rav::rtp_receiver::impl: public std::enable_shared_from_this<impl> {
             asio::ip::udp::endpoint(asio::ip::address_v4(ntohl(src_addr.sin_addr.s_addr)), ntohs(src_addr.sin_port));
 
         RAV_TRACE(
-            "Received packet destined from {}:{} to {}:{}", src_endpoint.address().to_string(), src_endpoint.port(),
+            "Received from {}:{} to {}:{}", src_endpoint.address().to_string(), src_endpoint.port(),
             dst_endpoint.address().to_string(), dst_endpoint.port()
         );
 
