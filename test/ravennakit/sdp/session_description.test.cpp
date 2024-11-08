@@ -153,7 +153,7 @@ TEST_CASE("session_description | description from anubis", "[session_description
             const auto& filters = media.source_filters();
             REQUIRE(filters.size() == 1);
             const auto& filter = filters[0];
-            REQUIRE(filter.mode() == rav::sdp::source_filter::filter_mode::include);
+            REQUIRE(filter.mode() == rav::sdp::filter_mode::include);
             REQUIRE(filter.network_type() == rav::sdp::netw_type::internet);
             REQUIRE(filter.address_type() == rav::sdp::addr_type::ipv4);
             REQUIRE(filter.dest_address() == "239.1.15.52");
@@ -356,7 +356,7 @@ TEST_CASE("session_description | source filters", "[session_description]") {
         const auto& filters = result.get_ok().source_filters();
         REQUIRE(filters.size() == 1);
         const auto& filter = filters[0];
-        REQUIRE(filter.mode() == rav::sdp::source_filter::filter_mode::include);
+        REQUIRE(filter.mode() == rav::sdp::filter_mode::include);
         REQUIRE(filter.network_type() == rav::sdp::netw_type::internet);
         REQUIRE(filter.address_type() == rav::sdp::addr_type::ipv4);
         REQUIRE(filter.dest_address() == "239.1.15.52");
@@ -375,7 +375,7 @@ TEST_CASE("session_description | source filters", "[session_description]") {
             const auto& filters = media.source_filters();
             REQUIRE(filters.size() == 1);
             const auto& filter = filters[0];
-            REQUIRE(filter.mode() == rav::sdp::source_filter::filter_mode::include);
+            REQUIRE(filter.mode() == rav::sdp::filter_mode::include);
             REQUIRE(filter.network_type() == rav::sdp::netw_type::internet);
             REQUIRE(filter.address_type() == rav::sdp::addr_type::ipv4);
             REQUIRE(filter.dest_address() == "239.1.15.52");
