@@ -10,9 +10,11 @@
 
 #pragma once
 
+#include "platform.hpp"
+
+#include <fmt/format.h>
 #include <exception>
 #include <string>
-#include "platform.hpp"
 
 /**
  * Define the function name macro if it is not already defined.
@@ -25,7 +27,7 @@
     #endif
 #endif
 
-#define RAV_THROW_EXCEPTION(msg) throw rav::exception(msg, __FILE__, __LINE__, RAV_FUNCTION)
+#define RAV_THROW_EXCEPTION(...) throw rav::exception(fmt::format(__VA_ARGS__), __FILE__, __LINE__, RAV_FUNCTION)
 
 namespace rav {
 

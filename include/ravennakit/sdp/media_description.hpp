@@ -205,6 +205,9 @@ class media_description {
     [[nodiscard]] const std::vector<format>& formats() const;
 
     /**
+     * Multiple addresses or "c=" lines MAY be specified on a per media description basis only if they provide multicast
+     * addresses for different layers in a hierarchical or layered encoding scheme.
+     * https://datatracker.ietf.org/doc/html/rfc8866#name-connection-information-c
      * @return The connection information of the media description.
      */
     [[nodiscard]] const std::vector<connection_info_field>& connection_infos() const;

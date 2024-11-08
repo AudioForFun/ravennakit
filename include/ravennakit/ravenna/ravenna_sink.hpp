@@ -12,14 +12,13 @@
 
 #include "ravenna_rtsp_client.hpp"
 #include "ravennakit/rtp/rtp_receiver.hpp"
+#include "ravennakit/rtp/detail/rtp_filter.hpp"
 #include "ravennakit/sdp/session_description.hpp"
 
 namespace rav {
 
 class ravenna_sink: ravenna_rtsp_client::subscriber, rtp_receiver::subscriber {
   public:
-    enum class mode { manual, automatic };
-
     explicit ravenna_sink(ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver, std::string session_name);
     ~ravenna_sink() override;
 
@@ -31,22 +30,30 @@ class ravenna_sink: ravenna_rtsp_client::subscriber, rtp_receiver::subscriber {
 
     void start();
     void stop();
-    void set_mode(mode new_mode);
-    void set_source(std::string session_name);
-    void set_manual_sdp(sdp::session_description sdp);
+    void set_session_name(std::string session_name);
 
   private:
     ravenna_rtsp_client& rtsp_client_;
     rtp_receiver& rtp_receiver_;
-    mode mode_ = mode::automatic;
     std::string session_name_;
-    std::optional<sdp::session_description> manual_sdp_;
-    std::optional<sdp::session_description> auto_sdp_;
+
+    struct settings {
+        asio::ip::address connection_address;
+        sdp::format format;
+        uint16_t rtp_port;
+        uint16_t rtcp_port;
+        rtp_filter rtp_filter;
+    };
+
+    std::optional<settings> current_settings_{};
+
     bool started_ = false;
 
     void on(const rtp_receiver::rtp_packet_event& rtp_event) override;
     void on(const rtp_receiver::rtcp_packet_event& rtcp_event) override;
     void on(const ravenna_rtsp_client::announced_event& event) override;
+
+    [[nodiscard]] bool is_connection_info_valid(const sdp::connection_info_field& conn) const;
 };
 
 }  // namespace rav

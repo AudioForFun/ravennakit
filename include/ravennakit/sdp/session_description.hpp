@@ -50,7 +50,7 @@ class session_description {
     /**
      * @return The connection information of the SDP session description.
      */
-    [[nodiscard]] std::optional<connection_info_field> connection_info() const;
+    [[nodiscard]] const std::optional<rav::sdp::connection_info_field>& connection_info() const;
 
     /**
      * @returns The session name of the SDP session description.
@@ -119,5 +119,7 @@ class session_description {
     static parse_result<int> parse_version(std::string_view line);
     parse_result<void> parse_attribute(std::string_view line);
 };
+
+std::string to_string(const filter_mode& filter_mode);
 
 }  // namespace rav::sdp

@@ -83,7 +83,7 @@ class rtp_receiver {
     rtp_receiver& operator=(rtp_receiver&&) = delete;
 
     void start(
-        const asio::ip::address& bind_addr = asio::ip::address_v6(), uint16_t rtp_port = 5004, uint16_t rtcp_port = 5005
+        const asio::ip::address& bind_addr = asio::ip::address_v4(), uint16_t rtp_port = 5004, uint16_t rtcp_port = 5005
     );
     void stop();
 
