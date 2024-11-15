@@ -69,7 +69,7 @@ class rtp_receiver {
     };
 
     rtp_receiver() = delete;
-    ~rtp_receiver();
+    ~rtp_receiver() = default;
 
     /**
      * Constructs a new RTP receiver using given loop.
@@ -107,13 +107,9 @@ class rtp_receiver {
     session_context* find_or_create_session_context(const rtp_session& session);
     std::shared_ptr<udp_sender_receiver> find_rtp_sender_receiver(uint16_t port);
     std::shared_ptr<udp_sender_receiver> find_rtcp_sender_receiver(uint16_t port);
-    void handle_incoming_rtp_data(
-        const uint8_t* data, size_t size, const asio::ip::udp::endpoint& src, const asio::ip::udp::endpoint& dst
-    );
-    void handle_incoming_rtcp_data(
-        const uint8_t* data, size_t size, const asio::ip::udp::endpoint& src, const asio::ip::udp::endpoint& dst
-    );
-    void stop();
+
+    void handle_incoming_rtp_data(const udp_sender_receiver::recv_event& event);
+    void handle_incoming_rtcp_data(const udp_sender_receiver::recv_event& event);
 };
 
 }  // namespace rav

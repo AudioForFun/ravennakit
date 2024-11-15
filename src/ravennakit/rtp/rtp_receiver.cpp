@@ -37,25 +37,6 @@ typedef BOOL(PASCAL* LPFN_WSARECVMSG)(
 
 rav::rtp_receiver::rtp_receiver(asio::io_context& io_context) : io_context_(io_context) {}
 
-rav::rtp_receiver::~rtp_receiver() {
-    stop();
-}
-
-void rav::rtp_receiver::stop() {
-    for (auto& context : sessions_contexts_) {
-        RAV_ASSERT(context.rtp_sender_receiver != nullptr, "Expecting valid rtp_sender_receiver");
-        RAV_ASSERT(context.rtcp_sender_receiver != nullptr, "Expecting valid rtcp_sender_receiver");
-        context.rtp_sender_receiver->stop();
-        context.rtcp_sender_receiver->stop();
-        context.rtp_sender_receiver.reset();
-        context.rtcp_sender_receiver.reset();
-    }
-
-    sessions_contexts_.clear();
-
-    RAV_TRACE("RTP Receiver stopped.");
-}
-
 void rav::rtp_receiver::subscribe(subscriber& subscriber, const rtp_session& session) {
     auto* context = find_or_create_session_context(session);
 
@@ -77,7 +58,15 @@ void rav::rtp_receiver::subscribe(subscriber& subscriber, const rtp_session& ses
     }
 }
 
-void rav::rtp_receiver::unsubscribe(subscriber& subscriber) {}
+void rav::rtp_receiver::unsubscribe(subscriber& subscriber) {
+    for (auto it = sessions_contexts_.begin(); it != sessions_contexts_.end();) {
+        if (it->subscribers.remove(&subscriber) && it->subscribers.empty()) {
+            it = sessions_contexts_.erase(it);  // Remove the session
+        } else {
+            ++it;
+        }
+    }
+}
 
 rav::rtp_receiver::session_context* rav::rtp_receiver::find_session_context(const rtp_session& session) {
     for (auto& context : sessions_contexts_) {
@@ -97,30 +86,24 @@ rav::rtp_receiver::session_context* rav::rtp_receiver::create_new_session_contex
     const auto bind_addr = asio::ip::address_v4();
 
     if (new_session.rtp_sender_receiver == nullptr) {
-        new_session.rtp_sender_receiver = udp_sender_receiver::make(io_context_, bind_addr, session.rtp_port);
+        new_session.rtp_sender_receiver =
+            std::make_shared<udp_sender_receiver>(io_context_, bind_addr, session.rtp_port);
         // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
-        new_session.rtp_sender_receiver->start([this](
-                                                   const uint8_t* data, const size_t size,
-                                                   const asio::ip::udp::endpoint& src,
-                                                   const asio::ip::udp::endpoint& dst
-                                               ) {
-            handle_incoming_rtp_data(data, size, src, dst);
+        new_session.rtp_sender_receiver->start([this](const udp_sender_receiver::recv_event& event) {
+            handle_incoming_rtp_data(event);
         });
     }
 
     if (new_session.rtcp_sender_receiver == nullptr) {
-        new_session.rtcp_sender_receiver = udp_sender_receiver::make(io_context_, bind_addr, session.rtcp_port);
+        new_session.rtcp_sender_receiver =
+            std::make_shared<udp_sender_receiver>(io_context_, bind_addr, session.rtcp_port);
         // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
-        new_session.rtcp_sender_receiver->start([this](
-                                                    const uint8_t* data, const size_t size,
-                                                    const asio::ip::udp::endpoint& src,
-                                                    const asio::ip::udp::endpoint& dst
-                                                ) {
-            handle_incoming_rtcp_data(data, size, src, dst);
+        new_session.rtcp_sender_receiver->start([this](const udp_sender_receiver::recv_event& event) {
+            handle_incoming_rtcp_data(event);
         });
     }
 
-    sessions_contexts_.push_back(std::move(new_session));
+    sessions_contexts_.emplace_back(std::move(new_session));
     return &sessions_contexts_.back();
 }
 
@@ -158,35 +141,31 @@ std::shared_ptr<rav::udp_sender_receiver> rav::rtp_receiver::find_rtcp_sender_re
     return {};
 }
 
-void rav::rtp_receiver::handle_incoming_rtp_data(
-    const uint8_t* data, const size_t size, const asio::ip::udp::endpoint& src, const asio::ip::udp::endpoint& dst
-) {
-    const rtp_packet_view packet(data, size);
+void rav::rtp_receiver::handle_incoming_rtp_data(const udp_sender_receiver::recv_event& event) {
+    const rtp_packet_view packet(event.data, event.size);
     if (!packet.validate()) {
         RAV_WARNING("Invalid RTP packet received");
         return;
     }
-    const rtp_packet_event event {packet, src, dst};
+    const rtp_packet_event rtp_event {packet, event.src_endpoint, event.dst_endpoint};
     RAV_INFO(
-        "{} from {}:{} to {}:{}", packet.to_string(), event.src_endpoint.address().to_string(),
-        event.src_endpoint.port(), event.dst_endpoint.address().to_string(), event.dst_endpoint.port()
+        "{} from {}:{} to {}:{}", packet.to_string(), rtp_event.src_endpoint.address().to_string(),
+        rtp_event.src_endpoint.port(), rtp_event.dst_endpoint.address().to_string(), rtp_event.dst_endpoint.port()
     );
 
     // TODO: Process the packet
 }
 
-void rav::rtp_receiver::handle_incoming_rtcp_data(
-    const uint8_t* data, const size_t size, const asio::ip::udp::endpoint& src, const asio::ip::udp::endpoint& dst
-) {
-    const rtcp_packet_view packet(data, size);
+void rav::rtp_receiver::handle_incoming_rtcp_data(const udp_sender_receiver::recv_event& event) {
+    const rtcp_packet_view packet(event.data, event.size);
     if (!packet.validate()) {
         RAV_WARNING("Invalid RTCP packet received");
         return;
     }
-    const rtcp_packet_event event {packet, src, dst};
+    const rtcp_packet_event rtcp_event {packet, event.src_endpoint, event.dst_endpoint};
     RAV_INFO(
-        "{} from {}:{} to {}:{}", packet.to_string(), event.src_endpoint.address().to_string(),
-        event.src_endpoint.port(), event.dst_endpoint.address().to_string(), event.dst_endpoint.port()
+        "{} from {}:{} to {}:{}", packet.to_string(), rtcp_event.src_endpoint.address().to_string(),
+        rtcp_event.src_endpoint.port(), rtcp_event.dst_endpoint.address().to_string(), rtcp_event.dst_endpoint.port()
     );
 
     // TODO: Process the packet

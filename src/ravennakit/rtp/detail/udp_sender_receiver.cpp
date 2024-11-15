@@ -18,118 +18,11 @@
     #define IP_RECVDSTADDR_PKTINFO IP_PKTINFO
 #endif
 
-void rav::udp_sender_receiver::start(handler_type handler) {
-    TRACY_ZONE_SCOPED;
-
-    if (handler_) {
-        RAV_WARNING("RTP receiver is already running");
-        return;
-    }
-
-    handler_ = std::move(handler);
-
-    async_receive();
-
-    RAV_TRACE(
-        "Started udp_sender_receiver on {}:{}", socket_.local_endpoint().address().to_string(),
-        socket_.local_endpoint().port()
-    );
-}
-
-void rav::udp_sender_receiver::stop() {
-    if (handler_ == nullptr) {
-        return;  // Nothing to do here
-    }
-
-    handler_ = nullptr;
-
-    // (No need to call shutdown on the sockets as they are datagram sockets).
-
-    asio::error_code ec;
-    socket_.close(ec);
-    if (ec) {
-        RAV_ERROR("Failed to close socket: {}", ec.message());
-    }
-
-    RAV_TRACE("Stopped udp_sender_receiver");
-}
-
-void rav::udp_sender_receiver::join_multicast_group(
-    const asio::ip::address& multicast_address, const asio::ip::address& interface_address
-) {
-    socket_.set_option(asio::ip::multicast::join_group(multicast_address.to_v4(), interface_address.to_v4()));
-}
-
-rav::udp_sender_receiver::udp_sender_receiver(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
-    socket_(io_context) {
-    socket_.open(endpoint.protocol());
-    socket_.set_option(asio::ip::udp::socket::reuse_address(true));
-    socket_.bind(endpoint);
-    socket_.non_blocking(true);
-    socket_.set_option(asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
-}
-
-rav::udp_sender_receiver::udp_sender_receiver(
-    asio::io_context& io_context, const asio::ip::address& interface_address, const uint16_t port
-) :
-    udp_sender_receiver(io_context, asio::ip::udp::endpoint(interface_address, port)) {}
-
-void rav::udp_sender_receiver::async_receive() {
-    auto self = shared_from_this();
-    socket_.async_wait(asio::socket_base::wait_read, [self](std::error_code ec) {
-        if (ec) {
-            if (ec == asio::error::operation_aborted) {
-                RAV_TRACE("Operation aborted");
-                return;
-            }
-            if (ec == asio::error::eof) {
-                RAV_TRACE("EOF");
-                return;
-            }
-            RAV_ERROR("Read error: {}. Closing connection.", ec.message());
-            return;
-        }
-
-        if (self->handler_ == nullptr) {
-            RAV_ERROR("No handler. Closing connection.");
-            return;
-        }
-
-        while (self->socket_.available(ec) > 0) {
-            if (ec) {
-                RAV_ERROR("Read error: {}. Closing connection.", ec.message());
-                return;
-            }
-
-            asio::ip::udp::endpoint src_endpoint;
-            asio::ip::udp::endpoint dst_endpoint;
-
-            const auto bytes_received =
-                receive_from_socket(self->socket_, self->recv_data_, self, src_endpoint, dst_endpoint, ec);
-
-            if (ec) {
-                RAV_ERROR("Read error: {}. Closing connection.", ec.message());
-                return;
-            }
-            if (bytes_received == 0) {
-                break;
-            }
-
-            if (self->handler_) {
-                self->handler_(self->recv_data_.data(), bytes_received, src_endpoint, dst_endpoint);
-            } else {
-                RAV_ERROR("No handler available. Closing connection.");
-                return;
-            }
-        }
-        self->async_receive();  // Schedule another round.
-    });
-}
+namespace {
 
 #if RAV_WINDOWS
-size_t rav::udp_sender_receiver::receive_from_socket(
-    asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf,
-    const std::shared_ptr<udp_sender_receiver>& self, asio::ip::udp::endpoint& src_endpoint,
+size_t receive_from_socket(
+    asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf asio::ip::udp::endpoint& src_endpoint,
     asio::ip::udp::endpoint& dst_endpoint, asio::error_code& ec
 ) {
     // Set up the message structure
@@ -191,12 +84,10 @@ size_t rav::udp_sender_receiver::receive_from_socket(
     return bytes_received;
 }
 #else
-size_t rav::udp_sender_receiver::receive_from_socket(
-    asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf,
-    const std::shared_ptr<udp_sender_receiver>& self, asio::ip::udp::endpoint& src_endpoint,
+size_t receive_from_socket(
+    asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf, asio::ip::udp::endpoint& src_endpoint,
     asio::ip::udp::endpoint& dst_endpoint, asio::error_code& ec
 ) {
-    std::ignore = self;
     sockaddr_in src_addr {};
     iovec iov[1];
     char ctrl_buf[CMSG_SPACE(sizeof(in_addr))];
@@ -234,3 +125,147 @@ size_t rav::udp_sender_receiver::receive_from_socket(
     return static_cast<size_t>(received_bytes);
 }
 #endif
+
+}  // namespace
+
+class rav::udp_sender_receiver::impl: public std::enable_shared_from_this<impl> {
+  public:
+    explicit impl(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint);
+
+    void start(handler_type handler);
+    void stop();
+
+    /**
+     * Start the async receive loop.
+     */
+    void async_receive();
+
+  private:
+    asio::ip::udp::socket socket_;
+    asio::ip::udp::endpoint sender_endpoint_ {};  // For receiving the senders address.
+    std::array<uint8_t, 1500> recv_data_ {};
+    handler_type handler_;
+};
+
+void rav::udp_sender_receiver::impl::stop() {
+    if (handler_ == nullptr) {
+        return;  // Nothing to do here
+    }
+
+    handler_ = nullptr;
+
+    // (No need to call shutdown on the sockets as they are datagram sockets).
+
+    asio::error_code ec;
+    socket_.close(ec);
+    if (ec) {
+        RAV_ERROR("Failed to close socket: {}", ec.message());
+    }
+
+    RAV_TRACE("Stopped udp_sender_receiver");
+}
+
+void rav::udp_sender_receiver::impl::start(handler_type handler) {
+    if (handler_) {
+        RAV_WARNING("RTP receiver is already running");
+        return;
+    }
+
+    handler_ = std::move(handler);
+
+    async_receive();
+
+    RAV_TRACE(
+        "Started udp_sender_receiver on {}:{}", socket_.local_endpoint().address().to_string(),
+        socket_.local_endpoint().port()
+    );
+}
+
+void rav::udp_sender_receiver::start(handler_type handler) const {
+    TRACY_ZONE_SCOPED;
+    impl_->start(std::move(handler));
+}
+
+void rav::udp_sender_receiver::join_multicast_group(
+    const asio::ip::address& multicast_address, const asio::ip::address& interface_address
+) {
+    std::ignore = multicast_address;
+    std::ignore = interface_address;
+    // socket_.set_option(asio::ip::multicast::join_group(multicast_address.to_v4(), interface_address.to_v4()));
+}
+
+rav::udp_sender_receiver::impl::impl(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
+    socket_(io_context) {
+    socket_.open(endpoint.protocol());
+    socket_.set_option(asio::ip::udp::socket::reuse_address(true));
+    socket_.bind(endpoint);
+    socket_.non_blocking(true);
+    socket_.set_option(asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
+}
+
+rav::udp_sender_receiver::udp_sender_receiver(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
+    impl_(std::make_shared<impl>(io_context, endpoint)) {}
+
+rav::udp_sender_receiver::udp_sender_receiver(
+    asio::io_context& io_context, const asio::ip::address& interface_address, const uint16_t port
+) :
+    udp_sender_receiver(io_context, asio::ip::udp::endpoint(interface_address, port)) {}
+
+rav::udp_sender_receiver::~udp_sender_receiver() {
+    if (impl_) {
+        impl_->stop();
+        impl_.reset();
+    }
+}
+
+void rav::udp_sender_receiver::impl::async_receive() {
+    auto self = shared_from_this();
+    socket_.async_wait(asio::socket_base::wait_read, [self](std::error_code ec) {
+        if (ec) {
+            if (ec == asio::error::operation_aborted) {
+                RAV_TRACE("Operation aborted");
+                return;
+            }
+            if (ec == asio::error::eof) {
+                RAV_TRACE("EOF");
+                return;
+            }
+            RAV_ERROR("Read error: {}. Closing connection.", ec.message());
+            return;
+        }
+
+        if (self->handler_ == nullptr) {
+            RAV_ERROR("No handler. Closing connection.");
+            return;
+        }
+
+        while (self->socket_.available(ec) > 0) {
+            if (ec) {
+                RAV_ERROR("Read error: {}. Closing connection.", ec.message());
+                return;
+            }
+
+            asio::ip::udp::endpoint src_endpoint;
+            asio::ip::udp::endpoint dst_endpoint;
+
+            const auto bytes_received =
+                receive_from_socket(self->socket_, self->recv_data_, src_endpoint, dst_endpoint, ec);
+
+            if (ec) {
+                RAV_ERROR("Read error: {}. Closing connection.", ec.message());
+                return;
+            }
+            if (bytes_received == 0) {
+                break;
+            }
+
+            if (self->handler_) {
+                self->handler_({self->recv_data_.data(), bytes_received, src_endpoint, dst_endpoint});
+            } else {
+                RAV_ERROR("No handler available. Closing connection.");
+                return;
+            }
+        }
+        self->async_receive();  // Schedule another round.
+    });
+}

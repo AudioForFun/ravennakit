@@ -87,6 +87,13 @@ class subscriber_list {
     }
 
     /**
+     * Clears the list.
+     */
+    void clear() {
+        subscribers_.clear();
+    }
+
+    /**
      * Calls given function for each subscriber.
      * @param f The function to call for each subscriber. Must be not null.
      * @param excluding The subscriber to exclude from the call.

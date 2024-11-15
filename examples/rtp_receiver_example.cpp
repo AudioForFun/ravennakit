@@ -39,6 +39,7 @@ class example_receiver final: public rav::rtp_receiver::subscriber {
         audio_file_stream(audio_file),
         audio_writer_(audio_file_stream, rav::wav_audio_format::format_code::pcm, sample_rate, num_channels, 16) {
         // subscribe_to_rtp_receiver(rtp_receiver);
+        std::ignore = rtp_receiver;
     }
 
     void on(const rav::rtp_receiver::rtp_packet_event& event) override {
@@ -153,7 +154,7 @@ int main(int const argc, char* argv[]) {
     rav::rtp_receiver rtp_receiver(io_context);
 
     asio::error_code ec;
-    auto bind_addr = asio::ip::make_address(listen_addr, ec);
+    // auto bind_addr = asio::ip::make_address(listen_addr, ec);
     if (ec) {
         RAV_ERROR("Failed to make address: {}", ec.message());
         exit(1);
@@ -204,13 +205,13 @@ int main(int const argc, char* argv[]) {
     }
 
     // if (multicast_addr.has_value()) {
-        // if (multicast_interface.has_value()) {
-            // rtp_receiver.join_multicast_group(
-                // asio::ip::make_address(*multicast_addr), asio::ip::make_address(*multicast_interface)
-            // );
-        // } else {
-            // rtp_receiver.join_multicast_group(asio::ip::make_address(*multicast_addr), {});
-        // }
+    // if (multicast_interface.has_value()) {
+    // rtp_receiver.join_multicast_group(
+    // asio::ip::make_address(*multicast_addr), asio::ip::make_address(*multicast_interface)
+    // );
+    // } else {
+    // rtp_receiver.join_multicast_group(asio::ip::make_address(*multicast_addr), {});
+    // }
     // }
 
     asio::signal_set signals(io_context, SIGINT, SIGTERM);
