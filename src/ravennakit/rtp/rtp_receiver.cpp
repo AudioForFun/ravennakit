@@ -50,11 +50,6 @@ void rav::rtp_receiver::subscribe(subscriber& subscriber, const rtp_session& ses
     if (!context->subscribers.add(&subscriber)) {
         // Note: this can never happen if the session was created, hence it's find to not clean up the session here.
         RAV_WARNING("Already subscribed to session");
-        return;
-    }
-
-    if (session.connection_address.is_multicast()) {
-        // TODO: Join multicast group (ref counted)
     }
 }
 
@@ -92,6 +87,10 @@ rav::rtp_receiver::session_context* rav::rtp_receiver::create_new_session_contex
         new_session.rtp_sender_receiver->start([this](const udp_sender_receiver::recv_event& event) {
             handle_incoming_rtp_data(event);
         });
+        if (session.connection_address.is_multicast()) {
+            new_session.rtp_multicast_subscription =
+                new_session.rtp_sender_receiver->join_multicast_group(session.connection_address, bind_addr);
+        }
     }
 
     if (new_session.rtcp_sender_receiver == nullptr) {
@@ -101,6 +100,10 @@ rav::rtp_receiver::session_context* rav::rtp_receiver::create_new_session_contex
         new_session.rtcp_sender_receiver->start([this](const udp_sender_receiver::recv_event& event) {
             handle_incoming_rtcp_data(event);
         });
+        if (session.connection_address.is_multicast()) {
+            new_session.rtcp_multicast_subscription =
+                new_session.rtcp_sender_receiver->join_multicast_group(session.connection_address, bind_addr);
+        }
     }
 
     sessions_contexts_.emplace_back(std::move(new_session));

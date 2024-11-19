@@ -83,7 +83,17 @@ class rtp_receiver {
     rtp_receiver(rtp_receiver&&) = delete;
     rtp_receiver& operator=(rtp_receiver&&) = delete;
 
+    /**
+     * Subscribes to the given session.
+     * @param subscriber The subscriber to add.
+     * @param session The session to subscribe to.
+     */
     void subscribe(subscriber& subscriber, const rtp_session& session);
+
+    /**
+     * Unsubscribes given subscriber from all sessions it's subscribed to.
+     * @param subscriber The subscriber to remove.
+     */
     void unsubscribe(subscriber& subscriber);
 
   private:
@@ -97,6 +107,8 @@ class rtp_receiver {
         subscriber_list<subscriber> subscribers;
         std::shared_ptr<udp_sender_receiver> rtp_sender_receiver;
         std::shared_ptr<udp_sender_receiver> rtcp_sender_receiver;
+        subscription rtp_multicast_subscription;
+        subscription rtcp_multicast_subscription;
     };
 
     asio::io_context& io_context_;

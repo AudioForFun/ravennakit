@@ -130,21 +130,28 @@ size_t receive_from_socket(
 
 class rav::udp_sender_receiver::impl: public std::enable_shared_from_this<impl> {
   public:
+    struct multicast_group {
+        asio::ip::address multicast_address;
+        asio::ip::address interface_address;
+        int32_t use_count {0};
+    };
+
     explicit impl(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint);
 
     void start(handler_type handler);
     void stop();
 
-    /**
-     * Start the async receive loop.
-     */
     void async_receive();
+
+    subscription
+    join_multicast_group(const asio::ip::address& multicast_address, const asio::ip::address& interface_address);
 
   private:
     asio::ip::udp::socket socket_;
     asio::ip::udp::endpoint sender_endpoint_ {};  // For receiving the senders address.
     std::array<uint8_t, 1500> recv_data_ {};
     handler_type handler_;
+    std::vector<multicast_group> multicast_groups_;
 };
 
 void rav::udp_sender_receiver::impl::stop() {
@@ -186,12 +193,14 @@ void rav::udp_sender_receiver::start(handler_type handler) const {
     impl_->start(std::move(handler));
 }
 
-void rav::udp_sender_receiver::join_multicast_group(
+rav::subscription rav::udp_sender_receiver::join_multicast_group(
     const asio::ip::address& multicast_address, const asio::ip::address& interface_address
-) {
-    std::ignore = multicast_address;
-    std::ignore = interface_address;
-    // socket_.set_option(asio::ip::multicast::join_group(multicast_address.to_v4(), interface_address.to_v4()));
+) const {
+    if (impl_ == nullptr) {
+        RAV_WARNING("No implementation available");
+        return {};
+    }
+    return impl_->join_multicast_group(multicast_address, interface_address);
 }
 
 rav::udp_sender_receiver::impl::impl(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
@@ -268,4 +277,49 @@ void rav::udp_sender_receiver::impl::async_receive() {
         }
         self->async_receive();  // Schedule another round.
     });
+}
+
+rav::subscription rav::udp_sender_receiver::impl::join_multicast_group(
+    const asio::ip::address& multicast_address, const asio::ip::address& interface_address
+) {
+    auto leave_group = [self = shared_from_this(), multicast_address, interface_address] {
+        for (auto group = self->multicast_groups_.begin(); group != self->multicast_groups_.end(); ++group) {
+            if (group->multicast_address == multicast_address && group->interface_address == interface_address) {
+                if (--group->use_count == 0) {
+                    self->socket_.set_option(
+                        asio::ip::multicast::leave_group(multicast_address.to_v4(), interface_address.to_v4())
+                    );
+                    RAV_TRACE(
+                        "Left multicast group: {} on {}:{}", multicast_address.to_string(),
+                        interface_address.to_string(), self->socket_.local_endpoint().port()
+                    );
+                    self->multicast_groups_.erase(group);
+                }
+                return;
+            }
+        }
+        RAV_WARNING("Didn't find multicast group to leave");
+    };
+
+    // Try to find an existing group and bump the use count
+
+    for (auto& group : multicast_groups_) {
+        if (group.multicast_address == multicast_address && group.interface_address == interface_address) {
+            RAV_ASSERT(group.use_count > 0, "Invalid use count");
+            group.use_count++;
+            return subscription(leave_group);
+        }
+    }
+
+    // At this point we have to join the group
+
+    multicast_group new_group {multicast_address, interface_address, 1};
+    socket_.set_option(asio::ip::multicast::join_group(multicast_address.to_v4(), interface_address.to_v4()));
+    multicast_groups_.push_back(std::move(new_group));
+    RAV_TRACE(
+        "Joined multicast group: {} on {}:{}", multicast_address.to_string(), interface_address.to_string(),
+        socket_.local_endpoint().port()
+    );
+
+    return subscription(leave_group);
 }

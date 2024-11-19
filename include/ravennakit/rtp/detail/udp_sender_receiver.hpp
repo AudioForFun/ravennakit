@@ -48,6 +48,12 @@ class udp_sender_receiver {
      */
     udp_sender_receiver(asio::io_context& io_context, const asio::ip::address& interface_address, uint16_t port);
 
+    udp_sender_receiver(const udp_sender_receiver&) = delete;
+    udp_sender_receiver& operator=(const udp_sender_receiver&) = delete;
+
+    udp_sender_receiver(udp_sender_receiver&&) noexcept = delete;
+    udp_sender_receiver& operator=(udp_sender_receiver&&) noexcept = delete;
+
     ~udp_sender_receiver();
 
     /**
@@ -57,11 +63,14 @@ class udp_sender_receiver {
     void start(handler_type handler) const;
 
     /**
-     * Join a multicast group.
+     * Join a multicast group. A group can be joined multiple times as the group will be counted internally. Only when
+     * the last subscription is removed will the group be left.
      * @param multicast_address The multicast address to join.
      * @param interface_address The interface address to join the multicast group on.
+     * @returns A subscription object which will leave the multicast group when it goes out of scope.
      */
-    void join_multicast_group(const asio::ip::address& multicast_address, const asio::ip::address& interface_address);
+    [[nodiscard]] subscription
+    join_multicast_group(const asio::ip::address& multicast_address, const asio::ip::address& interface_address) const;
 
   private:
     class impl;
