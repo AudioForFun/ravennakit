@@ -40,6 +40,10 @@ class rtp_receiver {
         const asio::ip::udp::endpoint& dst_endpoint;
     };
 
+    struct configuration {
+        asio::ip::address interface_address {};
+    };
+
     /**
      * Baseclass for other classes that want to subscribe to receiving RTP and RTCP packets.
      * The class provides several facilities to filter the traffic.
@@ -74,8 +78,9 @@ class rtp_receiver {
     /**
      * Constructs a new RTP receiver using given loop.
      * @param io_context The io_context to use.
+     * @param config The configuration to use.
      */
-    explicit rtp_receiver(asio::io_context& io_context);
+    explicit rtp_receiver(asio::io_context& io_context, configuration config);
 
     rtp_receiver(const rtp_receiver&) = delete;
     rtp_receiver& operator=(const rtp_receiver&) = delete;
@@ -112,6 +117,7 @@ class rtp_receiver {
     };
 
     asio::io_context& io_context_;
+    configuration config_;
     std::vector<session_context> sessions_contexts_;
 
     session_context* find_session_context(const rtp_session& session);

@@ -27,6 +27,9 @@ int main(int const argc, char* argv[]) {
     std::vector<std::string> stream_names;
     app.add_option("stream_name", stream_names, "The name of the stream to receive")->required();
 
+    std::string interface_address = "0.0.0.0";
+    app.add_option("--interface-addr", interface_address, "The interface address");
+
     CLI11_PARSE(app, argc, argv);
 
     asio::io_context io_context;
@@ -47,7 +50,9 @@ int main(int const argc, char* argv[]) {
     });
 
     rav::ravenna_rtsp_client rtsp_client(io_context, *node_browser);
-    rav::rtp_receiver rtp_receiver(io_context);
+    rav::rtp_receiver::configuration config;
+    config.interface_address = asio::ip::make_address(interface_address);
+    rav::rtp_receiver rtp_receiver(io_context, config);
 
     std::vector<std::unique_ptr<rav::ravenna_sink>> sinks;
     for (auto const& stream_name : stream_names) {

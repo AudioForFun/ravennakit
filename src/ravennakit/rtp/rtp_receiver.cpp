@@ -35,7 +35,8 @@ typedef BOOL(PASCAL* LPFN_WSARECVMSG)(
 );
 #endif
 
-rav::rtp_receiver::rtp_receiver(asio::io_context& io_context) : io_context_(io_context) {}
+rav::rtp_receiver::rtp_receiver(asio::io_context& io_context, configuration config) :
+    io_context_(io_context), config_(std::move(config)) {}
 
 void rav::rtp_receiver::subscribe(subscriber& subscriber_to_add, const rtp_session& session) {
     auto* context = find_or_create_session_context(session);
@@ -78,32 +79,39 @@ rav::rtp_receiver::session_context* rav::rtp_receiver::create_new_session_contex
     new_session.rtp_sender_receiver = find_rtp_sender_receiver(session.rtp_port);
     new_session.rtcp_sender_receiver = find_rtcp_sender_receiver(session.rtcp_port);
 
-    const auto bind_addr = asio::ip::address_v4();
+    const auto any_addr = asio::ip::address_v4();
+    const auto bind_addr = config_.interface_address;
 
     if (new_session.rtp_sender_receiver == nullptr) {
-        new_session.rtp_sender_receiver =
-            std::make_shared<udp_sender_receiver>(io_context_, bind_addr, session.rtp_port);
+        if (session.connection_address.is_multicast()) {
+            new_session.rtp_sender_receiver =
+                std::make_shared<udp_sender_receiver>(io_context_, any_addr, session.rtp_port);
+            new_session.rtp_multicast_subscription =
+                new_session.rtp_sender_receiver->join_multicast_group(session.connection_address, bind_addr);
+        } else {
+            new_session.rtp_sender_receiver =
+                std::make_shared<udp_sender_receiver>(io_context_, bind_addr, session.rtp_port);
+        }
         // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
         new_session.rtp_sender_receiver->start([this](const udp_sender_receiver::recv_event& event) {
             handle_incoming_rtp_data(event);
         });
-        if (session.connection_address.is_multicast()) {
-            new_session.rtp_multicast_subscription =
-                new_session.rtp_sender_receiver->join_multicast_group(session.connection_address, bind_addr);
-        }
     }
 
     if (new_session.rtcp_sender_receiver == nullptr) {
-        new_session.rtcp_sender_receiver =
-            std::make_shared<udp_sender_receiver>(io_context_, bind_addr, session.rtcp_port);
+        if (session.connection_address.is_multicast()) {
+            new_session.rtcp_sender_receiver =
+                std::make_shared<udp_sender_receiver>(io_context_, any_addr, session.rtcp_port);
+            new_session.rtcp_multicast_subscription =
+                new_session.rtcp_sender_receiver->join_multicast_group(session.connection_address, bind_addr);
+        } else {
+            new_session.rtcp_sender_receiver =
+                std::make_shared<udp_sender_receiver>(io_context_, bind_addr, session.rtcp_port);
+        }
         // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
         new_session.rtcp_sender_receiver->start([this](const udp_sender_receiver::recv_event& event) {
             handle_incoming_rtcp_data(event);
         });
-        if (session.connection_address.is_multicast()) {
-            new_session.rtcp_multicast_subscription =
-                new_session.rtcp_sender_receiver->join_multicast_group(session.connection_address, bind_addr);
-        }
     }
 
     sessions_contexts_.emplace_back(std::move(new_session));
@@ -151,7 +159,7 @@ void rav::rtp_receiver::handle_incoming_rtp_data(const udp_sender_receiver::recv
         return;
     }
     const rtp_packet_event rtp_event {packet, event.src_endpoint, event.dst_endpoint};
-    RAV_INFO(
+    RAV_TRACE(
         "{} from {}:{} to {}:{}", packet.to_string(), rtp_event.src_endpoint.address().to_string(),
         rtp_event.src_endpoint.port(), rtp_event.dst_endpoint.address().to_string(), rtp_event.dst_endpoint.port()
     );
@@ -166,7 +174,7 @@ void rav::rtp_receiver::handle_incoming_rtcp_data(const udp_sender_receiver::rec
         return;
     }
     const rtcp_packet_event rtcp_event {packet, event.src_endpoint, event.dst_endpoint};
-    RAV_INFO(
+    RAV_TRACE(
         "{} from {}:{} to {}:{}", packet.to_string(), rtcp_event.src_endpoint.address().to_string(),
         rtcp_event.src_endpoint.port(), rtcp_event.dst_endpoint.address().to_string(), rtcp_event.dst_endpoint.port()
     );
