@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "rtp_filter.hpp"
 #include "../rtcp_packet_view.hpp"
 #include "../rtp_packet_view.hpp"
 #include "rtp_session.hpp"
@@ -21,6 +22,7 @@
 #include "ravennakit/sdp/media_description.hpp"
 
 #include <asio.hpp>
+#include <utility>
 
 namespace rav {
 
@@ -93,20 +95,29 @@ class rtp_receiver {
      * Subscribes to the given session.
      * @param subscriber_to_add The subscriber to add.
      * @param session The session to subscribe to.
+     * @param filter
      */
-    void subscribe(subscriber& subscriber_to_add, const rtp_session& session);
+    void subscribe(subscriber& subscriber_to_add, const rtp_session& session, const rtp_filter& filter);
 
     /**
      * Unsubscribes given subscriber from all sessions it's subscribed to.
-     * @param subscriber_to_add The subscriber to remove.
+     * @param subscriber_to_remove The subscriber to remove.
      */
-    void unsubscribe(subscriber& subscriber_to_add);
+    void unsubscribe(const subscriber& subscriber_to_remove);
 
   private:
+    struct subscriber_context {
+        subscriber_context(subscriber* subscriber, rtp_filter filter) :
+            subscriber(subscriber), filter(std::move(filter)) {}
+
+        subscriber* subscriber {};
+        rtp_filter filter;
+    };
+
     struct session_context {
         rtp_session session;
         std::vector<rtp_stream> streams;
-        subscriber_list<subscriber> subscribers;
+        std::vector<subscriber_context> subscribers;
         std::shared_ptr<udp_sender_receiver> rtp_sender_receiver;
         std::shared_ptr<udp_sender_receiver> rtcp_sender_receiver;
         subscription rtp_multicast_subscription;

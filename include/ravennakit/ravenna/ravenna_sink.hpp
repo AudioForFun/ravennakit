@@ -11,14 +11,14 @@
 #pragma once
 
 #include "ravenna_rtsp_client.hpp"
-#include "ravennakit/rtp/rtp_rx_stream.hpp"
+#include "ravennakit/rtp/rtp_stream_receiver.hpp"
 #include "ravennakit/rtp/detail/rtp_receiver.hpp"
 #include "ravennakit/rtp/detail/rtp_filter.hpp"
 #include "ravennakit/sdp/session_description.hpp"
 
 namespace rav {
 
-class ravenna_sink: ravenna_rtsp_client::subscriber, rtp_rx_stream {
+class ravenna_sink: ravenna_rtsp_client::subscriber, rtp_stream_receiver {
   public:
     explicit ravenna_sink(ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver, std::string session_name);
     ~ravenna_sink() override;

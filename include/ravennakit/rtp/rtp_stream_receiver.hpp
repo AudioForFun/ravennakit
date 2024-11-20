@@ -16,11 +16,11 @@
 
 namespace rav {
 
-class rtp_rx_stream: rtp_receiver::subscriber {
+class rtp_stream_receiver: rtp_receiver::subscriber {
   public:
-    explicit rtp_rx_stream(rtp_receiver& receiver);
+    explicit rtp_stream_receiver(rtp_receiver& receiver);
 
-    ~rtp_rx_stream() override;
+    ~rtp_stream_receiver() override;
 
     void update_sdp(const sdp::session_description& sdp);
 

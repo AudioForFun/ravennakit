@@ -27,7 +27,7 @@ struct rtp_session {
     }
 
     [[nodiscard]] std::string to_string() const {
-        return fmt::format("{}:{}:{}", connection_address.to_string(), rtp_port, rtcp_port);
+        return fmt::format("{}/{}/{}", connection_address.to_string(), rtp_port, rtcp_port);
     }
 
     friend auto operator==(const rtp_session& lhs, const rtp_session& rhs) -> bool {

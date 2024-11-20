@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/rtp/rtp_rx_stream.hpp"
+#include "ravennakit/rtp/rtp_stream_receiver.hpp"
 
 namespace {
 
@@ -32,13 +32,13 @@ bool is_connection_info_valid(const rav::sdp::connection_info_field& conn) {
 
 }  // namespace
 
-rav::rtp_rx_stream::rtp_rx_stream(rtp_receiver& receiver) : rtp_receiver_(receiver) {}
+rav::rtp_stream_receiver::rtp_stream_receiver(rtp_receiver& receiver) : rtp_receiver_(receiver) {}
 
-rav::rtp_rx_stream::~rtp_rx_stream() {
+rav::rtp_stream_receiver::~rtp_stream_receiver() {
     reset();
 }
 
-void rav::rtp_rx_stream::update_sdp(const sdp::session_description& sdp) {
+void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     const sdp::media_description* primary_media_description = nullptr;
     const sdp::connection_info_field* primary_connection_info = nullptr;
     const sdp::format* found_format = nullptr;
@@ -147,13 +147,23 @@ void rav::rtp_rx_stream::update_sdp(const sdp::session_description& sdp) {
     // Now we have a suitable media description
     RAV_TRACE("Found suitable media description in SDP");
 
-    rtp_receiver_.subscribe(*this, primary_session_info_->session);
+    rtp_receiver_.subscribe(*this, primary_session_info_->session, primary_session_info_->filter);
 }
 
-void rav::rtp_rx_stream::reset() {
+void rav::rtp_stream_receiver::reset() {
     rtp_receiver_.unsubscribe(*this);
 }
 
-void rav::rtp_rx_stream::on_rtp_packet(const rtp_receiver::rtp_packet_event& rtp_event) {}
+void rav::rtp_stream_receiver::on_rtp_packet(const rtp_receiver::rtp_packet_event& rtp_event) {
+    RAV_TRACE(
+        "{} from {}:{} to {}:{}", rtp_event.packet.to_string(), rtp_event.src_endpoint.address().to_string(),
+        rtp_event.src_endpoint.port(), rtp_event.dst_endpoint.address().to_string(), rtp_event.dst_endpoint.port()
+    );
+}
 
-void rav::rtp_rx_stream::on_rtcp_packet(const rtp_receiver::rtcp_packet_event& rtcp_event) {}
+void rav::rtp_stream_receiver::on_rtcp_packet(const rtp_receiver::rtcp_packet_event& rtcp_event) {
+    RAV_TRACE(
+        "{} from {}:{} to {}:{}", rtcp_event.packet.to_string(), rtcp_event.src_endpoint.address().to_string(),
+        rtcp_event.src_endpoint.port(), rtcp_event.dst_endpoint.address().to_string(), rtcp_event.dst_endpoint.port()
+    );
+}

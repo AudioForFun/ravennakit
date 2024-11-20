@@ -38,7 +38,7 @@ typedef BOOL(PASCAL* LPFN_WSARECVMSG)(
 rav::rtp_receiver::rtp_receiver(asio::io_context& io_context, configuration config) :
     io_context_(io_context), config_(std::move(config)) {}
 
-void rav::rtp_receiver::subscribe(subscriber& subscriber_to_add, const rtp_session& session) {
+void rav::rtp_receiver::subscribe(subscriber& subscriber_to_add, const rtp_session& session, const rtp_filter& filter) {
     auto* context = find_or_create_session_context(session);
 
     if (context == nullptr) {
@@ -48,18 +48,32 @@ void rav::rtp_receiver::subscribe(subscriber& subscriber_to_add, const rtp_sessi
 
     RAV_ASSERT(context != nullptr, "Expecting valid session at this point");
 
-    if (!context->subscribers.add(&subscriber_to_add)) {
-        // Note: this can never happen if the session was created, hence it's find to not clean up the session here.
-        RAV_WARNING("Already subscribed to session");
+    // Check if already subscribed, and update the filter if so
+    for (auto& sub : context->subscribers) {
+        if (sub.subscriber == &subscriber_to_add) {
+            sub.filter = filter;
+            return;
+        }
     }
+
+    context->subscribers.emplace_back(&subscriber_to_add, filter);
 }
 
-void rav::rtp_receiver::unsubscribe(subscriber& subscriber_to_add) {
-    for (auto it = sessions_contexts_.begin(); it != sessions_contexts_.end();) {
-        if (it->subscribers.remove(&subscriber_to_add) && it->subscribers.empty()) {
-            it = sessions_contexts_.erase(it);  // Remove the session
+void rav::rtp_receiver::unsubscribe(const subscriber& subscriber_to_remove) {
+    for (auto session = sessions_contexts_.begin(); session != sessions_contexts_.end();) {
+        for (auto sub = session->subscribers.begin(); sub != session->subscribers.end();) {
+            if (sub->subscriber == &subscriber_to_remove) {
+                sub = session->subscribers.erase(sub);
+            } else {
+                ++sub;
+            }
+        }
+
+        // Remove the session if there are no more subscribers
+        if (session->subscribers.empty()) {
+            session = sessions_contexts_.erase(session);
         } else {
-            ++it;
+            ++session;
         }
     }
 }
@@ -79,8 +93,17 @@ rav::rtp_receiver::session_context* rav::rtp_receiver::create_new_session_contex
     new_session.rtp_sender_receiver = find_rtp_sender_receiver(session.rtp_port);
     new_session.rtcp_sender_receiver = find_rtcp_sender_receiver(session.rtcp_port);
 
-    // TODO: The udp_sender_receivers should be differentiated by the binding address because for multicast we need to
-    // bind to the any (0.0.0.0) address, but for unicast we need to bind to the interface address.
+    // Note: we bind to the any address because the behaviour of macOS and Windows slightly differs. On macOS the bind
+    // address functions as a filter (at least when joining a multicast group), while on Windows it's the actual address
+    // to bind to. Secondly, binding to the multicast address would work on macOS, but not on Windows where this is an
+    // invalid operation. To have a cross-platform solution we bind to the any address, which potentially results in
+    // more traffic being received than we need, but since we're filtering on the endpoint anyway, this is not a
+    // problem.
+    // The ideal solution would be a platform-specific implementation, where on macOS we would use a single socket bound
+    // to a specific interface for unicast and a separate sockets for each multicast address (bound to the multicast
+    // address to filter). On Windows we would use a single socket for all traffic (unicast + multicast) but bound to a
+    // specific interface (address).
+    // To summarize: on macOS we cannot bind to a specific interface and receive both unicast and multicast traffic.
 
     if (new_session.rtp_sender_receiver == nullptr) {
         new_session.rtp_sender_receiver =
@@ -110,7 +133,7 @@ rav::rtp_receiver::session_context* rav::rtp_receiver::create_new_session_contex
     }
 
     sessions_contexts_.emplace_back(std::move(new_session));
-    RAV_TRACE("New session context created for session {}", session.to_string());
+    RAV_TRACE("New RTP session context created for: {}", session.to_string());
     return &sessions_contexts_.back();
 }
 
@@ -155,10 +178,6 @@ void rav::rtp_receiver::handle_incoming_rtp_data(const udp_sender_receiver::recv
         return;
     }
     const rtp_packet_event rtp_event {packet, event.src_endpoint, event.dst_endpoint};
-    RAV_TRACE(
-        "{} from {}:{} to {}:{}", packet.to_string(), rtp_event.src_endpoint.address().to_string(),
-        rtp_event.src_endpoint.port(), rtp_event.dst_endpoint.address().to_string(), rtp_event.dst_endpoint.port()
-    );
 
     for (auto& context : sessions_contexts_) {
         if (context.session.connection_address == event.dst_endpoint.address()
@@ -188,10 +207,6 @@ void rav::rtp_receiver::handle_incoming_rtcp_data(const udp_sender_receiver::rec
         return;
     }
     const rtcp_packet_event rtcp_event {packet, event.src_endpoint, event.dst_endpoint};
-    RAV_TRACE(
-        "{} from {}:{} to {}:{}", packet.to_string(), rtcp_event.src_endpoint.address().to_string(),
-        rtcp_event.src_endpoint.port(), rtcp_event.dst_endpoint.address().to_string(), rtcp_event.dst_endpoint.port()
-    );
 
     // TODO: Process the packet
 }

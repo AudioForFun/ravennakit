@@ -18,7 +18,7 @@
 rav::ravenna_sink::ravenna_sink(
     ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver, std::string session_name
 ) :
-    rtp_rx_stream(rtp_receiver), rtsp_client_(rtsp_client) {
+    rtp_stream_receiver(rtp_receiver), rtsp_client_(rtsp_client) {
     set_session_name(std::move(session_name));
 }
 
