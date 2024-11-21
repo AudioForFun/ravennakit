@@ -198,8 +198,8 @@ struct spsc {
     void reset();
 
   private:
-    size_t read_ts_ = 0;               // Consumer index
-    size_t write_ts_ = 0;              // Producer index
+    size_t read_ts_ = 0;            // Consumer index
+    size_t write_ts_ = 0;           // Producer index
     std::atomic<size_t> size_ = 0;  // Number of elements in the buffer
     size_t capacity_ = 0;
 };

@@ -11,6 +11,7 @@
 #pragma once
 
 #include "detail/rtp_filter.hpp"
+#include "detail/rtp_receive_buffer.hpp"
 #include "detail/rtp_receiver.hpp"
 #include "ravennakit/sdp/session_description.hpp"
 
@@ -35,6 +36,7 @@ class rtp_stream_receiver: rtp_receiver::subscriber {
     std::optional<session_info> secondary_session_info_;
     std::optional<sdp::format> expected_format_;
     std::vector<uint8_t> buffer_;
+    rtp_receive_buffer receiver_buffer_;
 
     void reset() const;
 

@@ -19,6 +19,19 @@ std::string rav::sdp::format::to_string() const {
     return fmt::format("{} {}/{}/{}", payload_type, encoding_name, clock_rate, num_channels);
 }
 
+std::optional<size_t> rav::sdp::format::sample_size_bytes() const {
+    if (encoding_name == "L16") {
+        return 2;
+    }
+    if (encoding_name == "L24") {
+        return 3;
+    }
+    if (encoding_name == "L32") {
+        return 4;
+    }
+    return std::nullopt;
+}
+
 rav::sdp::format::parse_result<rav::sdp::format> rav::sdp::format::parse_new(const std::string_view line) {
     string_parser parser(line);
 
@@ -39,14 +52,14 @@ rav::sdp::format::parse_result<rav::sdp::format> rav::sdp::format::parse_new(con
         return parse_result<format>::err("rtpmap: failed to parse encoding name");
     }
 
-    if (const auto clock_rate = parser.read_int<int32_t>()) {
+    if (const auto clock_rate = parser.read_int<uint32_t>()) {
         map.clock_rate = *clock_rate;
     } else {
         return parse_result<format>::err("rtpmap: invalid clock rate");
     }
 
     if (parser.skip('/')) {
-        if (const auto num_channels = parser.read_int<int32_t>()) {
+        if (const auto num_channels = parser.read_int<uint32_t>()) {
             // Note: strictly speaking the encoding parameters can be anything, but as of now it's only used for
             // channels.
             map.num_channels = *num_channels;
@@ -305,8 +318,8 @@ rav::sdp::media_description::parse_new(const std::string_view line) {
     return parse_result<media_description>::ok(std::move(media));
 }
 
-rav::sdp::media_description::parse_result<void> rav::sdp::media_description::parse_attribute(const std::string_view line
-) {
+rav::sdp::media_description::parse_result<void>
+rav::sdp::media_description::parse_attribute(const std::string_view line) {
     string_parser parser(line);
 
     if (!parser.skip("a=")) {

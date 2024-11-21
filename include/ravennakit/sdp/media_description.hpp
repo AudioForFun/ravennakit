@@ -31,14 +31,19 @@ namespace rav::sdp {
 struct format {
     int8_t payload_type {-1};
     std::string encoding_name;
-    int32_t clock_rate {};
-    int32_t num_channels {};
+    uint32_t clock_rate {};
+    uint32_t num_channels {};
 
     /// A type alias for a parse result.
     template<class T>
     using parse_result = result<T, std::string>;
 
     [[nodiscard]] std::string to_string() const;
+
+    /**
+     * @return The size of a sample in bytes, or an empty optional if the size cannot be determined.
+     */
+    [[nodiscard]] std::optional<size_t> sample_size_bytes() const;
 
     /**
      * Parses a format from a string.

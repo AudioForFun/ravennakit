@@ -141,6 +141,13 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
         reset();
     }
 
+    const auto sample_size_bytes = found_format->sample_size_bytes();
+
+    if (!sample_size_bytes.has_value()) {
+        RAV_ERROR("Unable to determine sample size for format {}", found_format->to_string());
+        return;
+    }
+
     expected_format_ = *found_format;
     primary_session_info_ = std::move(primary);
 

@@ -198,7 +198,7 @@ void rav::rtp_receiver::handle_incoming_rtcp_data(const udp_sender_receiver::rec
         RAV_WARNING("Invalid RTCP packet received");
         return;
     }
-    const rtcp_packet_event rtcp_event {packet, event.src_endpoint, event.dst_endpoint};
+    // const rtcp_packet_event rtcp_event {packet, event.src_endpoint, event.dst_endpoint};
 
     // TODO: Process the packet
 }

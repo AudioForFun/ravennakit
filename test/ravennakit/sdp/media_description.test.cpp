@@ -14,7 +14,7 @@
 
 #include "ravennakit/core/util.hpp"
 
-TEST_CASE("media_description | origin_field", "[session_description]") {
+TEST_CASE("media_description | origin_field") {
     SECTION("Parse origin line") {
         auto result = rav::sdp::origin_field::parse_new("o=- 13 0 IN IP4 192.168.15.52");
         REQUIRE(result.is_ok());
@@ -28,7 +28,7 @@ TEST_CASE("media_description | origin_field", "[session_description]") {
     }
 }
 
-TEST_CASE("media_description | connection_info_field", "[session_description]") {
+TEST_CASE("media_description | connection_info_field") {
     SECTION("Parse connection line") {
         auto result = rav::sdp::connection_info_field::parse_new("c=IN IP4 239.1.15.52");
         REQUIRE(result.is_ok());
@@ -83,7 +83,7 @@ TEST_CASE("media_description | connection_info_field", "[session_description]") 
     }
 }
 
-TEST_CASE("media_description | time_field", "[session_description]") {
+TEST_CASE("media_description | time_field") {
     SECTION("Test time field") {
         auto result = rav::sdp::time_active_field::parse_new("t=123456789 987654321");
         REQUIRE(result.is_ok());
@@ -103,7 +103,7 @@ TEST_CASE("media_description | time_field", "[session_description]") {
     }
 }
 
-TEST_CASE("media_description | media_description", "[session_description]") {
+TEST_CASE("media_description | media_description") {
     SECTION("Test media field") {
         auto result = rav::sdp::media_description::parse_new("m=audio 5004 RTP/AVP 98");
         REQUIRE(result.is_ok());
@@ -215,5 +215,62 @@ TEST_CASE("media_description | media_description", "[session_description]") {
         REQUIRE(media.clock_deviation().has_value());
         REQUIRE(media.clock_deviation().value().numerator == 1001);
         REQUIRE(media.clock_deviation().value().denominator == 1000);
+    }
+}
+
+TEST_CASE("media_description | format") {
+    SECTION("98/L16/48000/2") {
+        auto result = rav::sdp::format::parse_new("98 L16/48000/2");
+        REQUIRE(result.is_ok());
+        auto fmt = result.move_ok();
+        REQUIRE(fmt.payload_type == 98);
+        REQUIRE(fmt.encoding_name == "L16");
+        REQUIRE(fmt.clock_rate == 48000);
+        REQUIRE(fmt.num_channels == 2);
+        REQUIRE(fmt.sample_size_bytes() == 2);
+    }
+
+    SECTION("98/L16/48000/4") {
+        auto result = rav::sdp::format::parse_new("98 L16/48000/4");
+        REQUIRE(result.is_ok());
+        auto fmt = result.move_ok();
+        REQUIRE(fmt.payload_type == 98);
+        REQUIRE(fmt.encoding_name == "L16");
+        REQUIRE(fmt.clock_rate == 48000);
+        REQUIRE(fmt.num_channels == 4);
+        REQUIRE(fmt.sample_size_bytes() == 2);
+    }
+
+    SECTION("98/L24/48000/2") {
+        auto result = rav::sdp::format::parse_new("98 L24/48000/2");
+        REQUIRE(result.is_ok());
+        auto fmt = result.move_ok();
+        REQUIRE(fmt.payload_type == 98);
+        REQUIRE(fmt.encoding_name == "L24");
+        REQUIRE(fmt.clock_rate == 48000);
+        REQUIRE(fmt.num_channels == 2);
+        REQUIRE(fmt.sample_size_bytes() == 3);
+    }
+
+    SECTION("98/L32/48000/2") {
+        auto result = rav::sdp::format::parse_new("98 L32/48000/2");
+        REQUIRE(result.is_ok());
+        auto fmt = result.move_ok();
+        REQUIRE(fmt.payload_type == 98);
+        REQUIRE(fmt.encoding_name == "L32");
+        REQUIRE(fmt.clock_rate == 48000);
+        REQUIRE(fmt.num_channels == 2);
+        REQUIRE(fmt.sample_size_bytes() == 4);
+    }
+
+    SECTION("98/NA/48000/2") {
+        auto result = rav::sdp::format::parse_new("98 NA/48000/2");
+        REQUIRE(result.is_ok());
+        auto fmt = result.move_ok();
+        REQUIRE(fmt.payload_type == 98);
+        REQUIRE(fmt.encoding_name == "NA");
+        REQUIRE(fmt.clock_rate == 48000);
+        REQUIRE(fmt.num_channels == 2);
+        REQUIRE_FALSE(fmt.sample_size_bytes().has_value());
     }
 }
