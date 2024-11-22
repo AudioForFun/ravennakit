@@ -77,13 +77,18 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
         break;
     }
 
+    RAV_ASSERT(selected_media_description != nullptr, "Expecting found_media_description to be set");
+    RAV_ASSERT(selected_format != nullptr, "Expecting found_format to be set");
+
     if (!selected_media_description) {
         RAV_WARNING("No suitable media description found in SDP");
         return;
     }
 
-    RAV_ASSERT(selected_media_description != nullptr, "Expecting found_media_description to be set");
-    RAV_ASSERT(selected_format != nullptr, "Expecting found_format to be set");
+    if (!selected_format) {
+        RAV_WARNING("No suitable format found in SDP");
+        return;
+    }
 
     if (selected_connection_info == nullptr) {
         if (const auto& conn = sdp.connection_info()) {
@@ -139,21 +144,21 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
 
     bool should_restart = false;
 
-    auto& stream_info = find_or_create_stream_info(session);
+    auto& stream = find_or_create_stream_info(session);
 
     // Session
-    if (stream_info.session != session) {
+    if (stream.session != session) {
         should_restart = true;
-        stream_info.session = session;
+        stream.session = session;
     }
-    stream_info.session = session;
+    stream.session = session;
 
     // Filter
     RAV_ASSERT(
-        stream_info.filter.connection_address() == filter.connection_address(),
+        stream.filter.connection_address() == filter.connection_address(),
         "Expecting connection address to be the same"
     );
-    stream_info.filter = filter;
+    stream.filter = filter;
 
     if (selected_format_ != *selected_format) {
         should_restart = true;

@@ -10,9 +10,10 @@
 
 #pragma once
 
-#include <vector>
-
 #include "detail/fifo.hpp"
+
+#include <vector>
+#include <cstring>
 
 namespace rav {
 

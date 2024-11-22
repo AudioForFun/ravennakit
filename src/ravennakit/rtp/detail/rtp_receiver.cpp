@@ -174,30 +174,30 @@ void rav::rtp_receiver::handle_incoming_rtp_data(const udp_sender_receiver::recv
         return;
     }
 
-    for (auto& session_context : sessions_contexts_) {
-        if (session_context.session.connection_address == event.dst_endpoint.address()
-            && session_context.session.rtp_port == event.dst_endpoint.port()) {
-            const rtp_packet_event rtp_event {packet, session_context.session, event.src_endpoint};
+    for (auto& context : sessions_contexts_) {
+        if (context.session.connection_address == event.dst_endpoint.address()
+            && context.session.rtp_port == event.dst_endpoint.port()) {
+            const rtp_packet_event rtp_event {packet, context.session, event.src_endpoint};
 
             bool did_find_stream = false;
 
-            for (auto& stream_state : session_context.stream_states) {
-                if (stream_state.ssrc() == packet.ssrc()) {
+            for (auto& state : context.stream_states) {
+                if (state.ssrc() == packet.ssrc()) {
                     did_find_stream = true;
                 }
             }
 
             if (!did_find_stream) {
-                auto& it = session_context.stream_states.emplace_back(packet.ssrc());
+                auto& it = context.stream_states.emplace_back(packet.ssrc());
                 RAV_TRACE(
                     "Added new stream with SSRC {} from {}:{}", it.ssrc(), event.src_endpoint.address().to_string(),
                     event.src_endpoint.port()
                 );
             }
 
-            for (auto& [subscriber, context] : session_context.subscribers) {
-                if (context.filter.is_valid_source(event.dst_endpoint.address(), event.src_endpoint.address())) {
-                    subscriber->on_rtp_packet(rtp_event);
+            for (auto& [sub, ctx] : context.subscribers) {
+                if (ctx.filter.is_valid_source(event.dst_endpoint.address(), event.src_endpoint.address())) {
+                    sub->on_rtp_packet(rtp_event);
                 }
             }
         }

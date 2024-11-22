@@ -16,6 +16,5 @@ namespace rav::ravenna::constants {
 
 constexpr uint16_t k_default_rtp_port = 5004;
 constexpr uint16_t k_default_rtcp_port = k_default_rtp_port + 1;
-constexpr std::array k_supported_rtp_encoding_names = {"L16", "L24"};
 
 }  // namespace rav::ravenna::constants

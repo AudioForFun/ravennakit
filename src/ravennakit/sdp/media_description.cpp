@@ -461,7 +461,7 @@ rav::sdp::media_description::parse_attribute(const std::string_view line) {
             return parse_result<void>::err("media: failed to parse source-filter value");
         }
     } else if (key == "framecount") {
-        if (auto value = parser.read_int<int>()) {
+        if (auto value = parser.read_int<uint32_t>()) {
             framecount_ = *value;
         } else {
             return parse_result<void>::err("media: failed to parse framecount value");
@@ -546,7 +546,7 @@ const std::vector<rav::sdp::source_filter>& rav::sdp::media_description::source_
     return source_filters_;
 }
 
-std::optional<int> rav::sdp::media_description::framecount() const {
+std::optional<uint32_t> rav::sdp::media_description::framecount() const {
     return framecount_;
 }
 
