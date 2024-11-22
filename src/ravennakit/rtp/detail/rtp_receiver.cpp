@@ -88,6 +88,19 @@ rav::rtp_receiver::session_context* rav::rtp_receiver::create_new_session_contex
     // specific interface (address).
     // To summarize: on macOS we cannot bind to a specific interface and receive both unicast and multicast traffic.
 
+    // TODO: Disallow a port to be used in multiple sessions because when receiving RTP data we don't know which session
+    // it belongs to.
+
+    // For future refactor:
+    // - Create a udp_sender_receiver_pool which manages udp_sender_receiver instances (weakly reference them). This
+    // pool will hand out a single instance per interface address + port on Windows and separate instances on macos for
+    // address + multicast addresses + unicast. This allows the socket to bind to a specific interface (see above).
+    // - Make rtp_receiver work with a port pair (i.e. 5004/5004). Limit a port to only be used in a single port pair.
+    // - Create a rtp_receiver_pool which manages rtp_receiver instances (weakly reference them). This pool will hand
+    // out instances based on port pair. If one of the ports is already used in another instance, refuse.
+    // - rtp_stream_receiver gets a rtp_receiver from the pool and holds on to it locally. This allows multiple streams
+    // to use the same rtp_receiver instance.
+
     if (new_session.rtp_sender_receiver == nullptr) {
         new_session.rtp_sender_receiver =
             std::make_shared<udp_sender_receiver>(io_context_, asio::ip::address_v4(), session.rtp_port);
@@ -160,21 +173,22 @@ void rav::rtp_receiver::handle_incoming_rtp_data(const udp_sender_receiver::recv
         RAV_WARNING("Invalid RTP packet received");
         return;
     }
-    const rtp_packet_event rtp_event {packet, event.src_endpoint, event.dst_endpoint};
 
     for (auto& session_context : sessions_contexts_) {
         if (session_context.session.connection_address == event.dst_endpoint.address()
             && session_context.session.rtp_port == event.dst_endpoint.port()) {
+            const rtp_packet_event rtp_event {packet, session_context.session, event.src_endpoint};
+
             bool did_find_stream = false;
 
-            for (auto& stream : session_context.streams) {
-                if (stream.ssrc() == packet.ssrc()) {
+            for (auto& stream_state : session_context.stream_states) {
+                if (stream_state.ssrc() == packet.ssrc()) {
                     did_find_stream = true;
                 }
             }
 
             if (!did_find_stream) {
-                auto& it = session_context.streams.emplace_back(packet.ssrc());
+                auto& it = session_context.stream_states.emplace_back(packet.ssrc());
                 RAV_TRACE(
                     "Added new stream with SSRC {} from {}:{}", it.ssrc(), event.src_endpoint.address().to_string(),
                     event.src_endpoint.port()
