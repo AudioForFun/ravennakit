@@ -16,7 +16,7 @@ TEST_CASE("rtp_filter") {
     const auto connection_address = asio::ip::make_address("239.3.8.1");
     rav::rtp_filter filter(connection_address);
     SECTION("matches") {
-        REQUIRE(filter.matches(connection_address));
+        REQUIRE(filter.connection_address() == connection_address);
     }
 
     SECTION("matches") {
@@ -57,7 +57,7 @@ TEST_CASE("rtp_filter") {
         REQUIRE(src_filter.is_ok());
         REQUIRE(filter.add_filter(src_filter.get_ok()) == 1);
         REQUIRE_FALSE(filter.empty());
-        REQUIRE(filter.matches(asio::ip::make_address("239.3.8.1")));
+        REQUIRE(filter.connection_address() == asio::ip::make_address("239.3.8.1"));
         REQUIRE(filter.is_valid_source(asio::ip::make_address("239.3.8.1"), asio::ip::make_address("192.168.16.52")));
         REQUIRE_FALSE(
             filter.is_valid_source(asio::ip::make_address("239.3.8.1"), asio::ip::make_address("192.168.16.53"))
@@ -69,7 +69,7 @@ TEST_CASE("rtp_filter") {
         REQUIRE(src_filter.is_ok());
         REQUIRE(filter.add_filter(src_filter.get_ok()) == 1);
         REQUIRE_FALSE(filter.empty());
-        REQUIRE(filter.matches(asio::ip::make_address("239.3.8.1")));
+        REQUIRE(filter.connection_address() == asio::ip::make_address("239.3.8.1"));
         REQUIRE_FALSE(
             filter.is_valid_source(asio::ip::make_address("239.3.8.1"), asio::ip::make_address("192.168.16.52"))
         );

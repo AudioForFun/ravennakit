@@ -82,12 +82,10 @@ class rtp_filter {
     }
 
     /**
-     * Checks if the given connection address matches the filter.
-     * @param connection_address The connection address.
-     * @return True if the connection address matches the filter, or false if not.
+     * @return The connection address.
      */
-    [[nodiscard]] bool matches(const asio::ip::address& connection_address) const {
-        return connection_address_ == connection_address;
+    [[nodiscard]] asio::ip::address connection_address() const {
+        return connection_address_;
     }
 
     /**

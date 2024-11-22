@@ -101,7 +101,7 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     RAV_ASSERT(selected_connection_info != nullptr, "Expecting found_connection_info to be set");
 
     uint32_t packet_time_frames = 0;
-    auto ptime = selected_media_description->ptime();
+    const auto ptime = selected_media_description->ptime();
     if (ptime.has_value()) {
         packet_time_frames = static_cast<uint32_t>(std::round(*ptime * selected_format->clock_rate)) / 1000;
     }
@@ -149,7 +149,11 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     stream_info.session = session;
 
     // Filter
-    stream_info.filter = filter;  // TODO: Is a restart required if the filter changes?
+    RAV_ASSERT(
+        stream_info.filter.connection_address() == filter.connection_address(),
+        "Expecting connection address to be the same"
+    );
+    stream_info.filter = filter;
 
     if (selected_format_ != *selected_format) {
         should_restart = true;

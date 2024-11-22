@@ -32,7 +32,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
 
   private:
     struct stream_info {
-        stream_info(rtp_session session_, const rtp_depacketizer& depacketizer_) :
+        stream_info(rtp_session session_, const rtp_depacketizer depacketizer_) :
             session(std::move(session_)), depacketizer(depacketizer_) {}
 
         rtp_session session;
