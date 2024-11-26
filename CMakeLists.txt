@@ -161,115 +161,30 @@ if (WIN32)
     target_link_libraries(ravennakit PUBLIC ws2_32)
 endif ()
 
+############
+# Examples #
+############
+
 if (${BUILD_EXAMPLES})
+    file(GLOB RAVENNAKIT_EXAMPLES "examples/*.cpp")
 
-    #########################
-    # DNSSD Browser example #
-    #########################
-
-    add_executable(dnssd_browser_example
-            examples/dnssd_browser_example.cpp
-    )
-
-    target_link_libraries(dnssd_browser_example
-            PUBLIC
-            rav_recommended_warning_flags
-            rav_recommended_lto_flags
-            PRIVATE
-            ravennakit
-            portaudio_static
-            CLI11::CLI11
-    )
-
-    if (TRACY_ENABLE)
-        target_link_libraries(dnssd_browser_example PUBLIC tracy)
-    endif ()
-
-    ############################
-    # DNSSD Advertiser example #
-    ############################
-
-    add_executable(dnssd_advertiser_example
-            examples/dnssd_advertiser_example.cpp
-    )
-
-    target_link_libraries(dnssd_advertiser_example
-            PUBLIC
-            rav_recommended_warning_flags
-            rav_recommended_lto_flags
-            PRIVATE
-            ravennakit
-            portaudio_static
-            CLI11::CLI11
-    )
-
-    if (TRACY_ENABLE)
-        target_link_libraries(dnssd_advertiser_example PUBLIC tracy)
-    endif ()
-
-    #######################
-    # RTSP Client example #
-    #######################
-
-    add_executable(rtsp_client_example
-            examples/rtsp_client_example.cpp
-    )
-
-    target_link_libraries(rtsp_client_example
-            PUBLIC
-            rav_recommended_warning_flags
-            rav_recommended_lto_flags
-            PRIVATE
-            ravennakit
-            CLI11::CLI11
-    )
-
-    if (TRACY_ENABLE)
-        target_link_libraries(rtsp_client_example PUBLIC tracy)
-    endif ()
-
-    ########################
-    # RAVENNA Sink example #
-    ########################
-
-    add_executable(ravenna_sink_example
-            examples/ravenna_sink_example.cpp
-    )
-
-    target_link_libraries(ravenna_sink_example
-            PUBLIC
-            rav_recommended_warning_flags
-            rav_recommended_lto_flags
-            PRIVATE
-            ravennakit
-            CLI11::CLI11
-    )
-
-    if (TRACY_ENABLE)
-        target_link_libraries(ravenna_sink_example PUBLIC tracy)
-    endif ()
-
-    ########################
-    # RAVENNA Node example #
-    ########################
-
-    add_executable(ravenna_node_example
-            examples/ravenna_node_example.cpp
-    )
-
-    target_link_libraries(ravenna_node_example
-            PUBLIC
-            rav_recommended_warning_flags
-            rav_recommended_lto_flags
-            PRIVATE
-            ravennakit
-            CLI11::CLI11
-    )
-
-    if (TRACY_ENABLE)
-        target_link_libraries(ravenna_node_example PUBLIC tracy)
-    endif ()
-
+    # Build example targets based on the .cpp files in the examples subfolder
+    foreach(FILE ${RAVENNAKIT_EXAMPLES})
+        get_filename_component(FILE_NAME ${FILE} NAME_WE)
+        add_executable(${FILE_NAME} ${FILE})
+        target_link_libraries(${FILE_NAME}
+                PUBLIC
+                rav_recommended_warning_flags
+                rav_recommended_lto_flags
+                PRIVATE
+                ravennakit
+                portaudio_static
+                CLI11::CLI11
+        )
+        if (TRACY_ENABLE)
+            target_link_libraries(${FILE_NAME} PUBLIC tracy)
+        endif ()
+    endforeach()
 endif ()
 
 ##############
