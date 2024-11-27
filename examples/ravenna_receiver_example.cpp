@@ -23,13 +23,13 @@
 constexpr int k_block_size = 256;
 
 class portaudio {
-public:
+  public:
     static void init() {
         static portaudio instance;
         std::ignore = instance;
     }
 
-private:
+  private:
     portaudio() {
         if (const auto error = Pa_Initialize(); error != paNoError) {
             RAV_THROW_EXCEPTION("PortAudio failed to initialize! Error: {}", Pa_GetErrorText(error));
@@ -202,7 +202,9 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
         portaudio_stream_.stop();
     }
 
-    void on_audio_format_changed(const rav::audio_format& new_format) override {
+    void on_audio_format_changed(
+        const rav::audio_format& new_format, [[maybe_unused]] uint32_t packet_time_frames
+    ) override {
         audio_format_ = new_format;
         const auto sample_format = get_sample_format_for_audio_format(new_format);
         if (!sample_format.has_value()) {
@@ -216,11 +218,11 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
         timestamp_ = std::nullopt;
     }
 
-    void on_stream_started() override {}
-
-    void on_first_packet(const uint32_t timestamp, const uint32_t delay) override {
-        timestamp_ = timestamp - delay;
-        RAV_TRACE("First packet received with timestamp: {}", timestamp);
+    void on_data_available(uint32_t timestamp) override {
+        if (!timestamp_.has_value()) {
+            timestamp_ = timestamp;
+            RAV_TRACE("First packet received with timestamp: {}", timestamp);
+        }
     }
 
   private:

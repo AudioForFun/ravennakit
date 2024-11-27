@@ -32,6 +32,7 @@ class ravenna_sink: public rtp_stream_receiver, ravenna_rtsp_client::subscriber 
     void start();
     void stop();
     void set_session_name(std::string session_name);
+    [[nodiscard]] std::string get_session_name() const;
 
   private:
     ravenna_rtsp_client& rtsp_client_;

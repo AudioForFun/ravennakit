@@ -8,14 +8,80 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
+#include "ravennakit/core/file.hpp"
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/system.hpp"
+#include "ravennakit/core/audio/formats/wav_audio_format.hpp"
+#include "ravennakit/core/streams/file_output_stream.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 #include "ravennakit/ravenna/ravenna_sink.hpp"
 
 #include <CLI/App.hpp>
 #include <asio/io_context.hpp>
+#include <utility>
+
+class stream_recorder: public rav::rtp_stream_receiver::subscriber {
+  public:
+    explicit stream_recorder(std::unique_ptr<rav::ravenna_sink> sink) : sink_(std::move(sink)) {
+        if (sink_) {
+            sink_->start();
+            sink_->add_subscriber(this);
+        }
+    }
+
+    ~stream_recorder() override {
+        if (sink_) {
+            sink_->remove_subscriber(this);
+            sink_->stop();
+        }
+        close();
+    }
+
+    void close() {
+        if (wav_writer_) {
+            wav_writer_->finalize();
+            wav_writer_.reset();
+        }
+        if (file_output_stream_) {
+            file_output_stream_.reset();
+        }
+    }
+
+    void on_audio_format_changed(const rav::audio_format& new_format, const uint32_t packet_time_frames) override {
+        close();
+        if (sink_ == nullptr) {
+            RAV_ERROR("No sink available");
+            return;
+        }
+
+        audio_format_ = new_format;
+        file_output_stream_ = std::make_unique<rav::file_output_stream>(rav::file(sink_->get_session_name() + ".wav"));
+        wav_writer_ = std::make_unique<rav::wav_audio_format::writer>(
+            *file_output_stream_, rav::wav_audio_format::format_code::pcm, new_format.sample_rate,
+            new_format.num_channels, new_format.bytes_per_sample() * 8
+        );
+        audio_data_.resize(packet_time_frames * new_format.bytes_per_frame());
+    }
+
+    void on_data_available(const uint32_t timestamp) override {
+        if (!sink_->read_data(timestamp, audio_data_.data(), audio_data_.size())) {
+            RAV_ERROR("Failed to read audio data");
+            return;
+        }
+        if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
+            rav::byte_order::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
+        }
+        wav_writer_->write_audio_data(audio_data_.data(), audio_data_.size());
+    }
+
+  private:
+    std::unique_ptr<rav::ravenna_sink> sink_;
+    std::unique_ptr<rav::file_output_stream> file_output_stream_;
+    std::unique_ptr<rav::wav_audio_format::writer> wav_writer_;
+    std::vector<uint8_t> audio_data_;
+    rav::audio_format audio_format_;
+};
 
 /**
  * This examples demonstrates how to receive audio streams from a RAVENNA device and write the audio data to wav files.
@@ -42,11 +108,12 @@ class ravenna_recorder_example {
 
     ~ravenna_recorder_example() = default;
 
-    void add_sink(const std::string& stream_name) {
-        const auto& it = ravenna_sinks_.emplace_back(
-            std::make_unique<rav::ravenna_sink>(*rtsp_client_, *rtp_receiver_, stream_name)
+    void add_stream(const std::string& stream_name) {
+        const auto& it = recorders_.emplace_back(
+            std::make_unique<stream_recorder>(
+                std::make_unique<rav::ravenna_sink>(*rtsp_client_, *rtp_receiver_, stream_name)
+            )
         );
-        it->start();
     }
 
     void start() {
@@ -62,7 +129,7 @@ class ravenna_recorder_example {
     std::unique_ptr<rav::dnssd::dnssd_browser> node_browser_;
     std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
     std::unique_ptr<rav::rtp_receiver> rtp_receiver_;
-    std::vector<std::unique_ptr<rav::ravenna_sink>> ravenna_sinks_;
+    std::vector<std::unique_ptr<stream_recorder>> recorders_;
 };
 
 int main(int const argc, char* argv[]) {
@@ -83,7 +150,7 @@ int main(int const argc, char* argv[]) {
     ravenna_recorder_example receiver_example(interface_address);
 
     for (auto& stream_name : stream_names) {
-        receiver_example.add_sink(stream_name);
+        receiver_example.add_stream(stream_name);
     }
 
     std::thread cin_thread([&receiver_example] {

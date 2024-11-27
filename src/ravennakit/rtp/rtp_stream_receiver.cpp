@@ -168,7 +168,7 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
             "Audio format changed from {} to {}", selected_format_.to_string(), selected_audio_format->to_string()
         );
         for (const auto& subscriber : subscribers_) {
-            subscriber->on_audio_format_changed(*selected_audio_format);
+            subscriber->on_audio_format_changed(*selected_audio_format, stream.packet_time_frames);
         }
         selected_format_ = *selected_audio_format;
     }
@@ -201,7 +201,6 @@ bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber) {
     if (!subscribers_.add(subscriber)) {
         return false;
     }
-    subscriber->on_stream_started();
     return true;
 }
 
@@ -223,11 +222,7 @@ void rav::rtp_stream_receiver::restart() {
 
     for (auto& stream : streams_) {
         rtp_receiver_.subscribe(*this, stream.session, stream.filter);
-        stream.first_packet = true;
-    }
-
-    for (const auto& subscriber : subscribers_) {
-        subscriber->on_stream_started();
+        stream.first_packet_timestamp.reset();
     }
 
     RAV_TRACE("(Re)Started rtp_stream_receiver");
@@ -241,7 +236,7 @@ rav::rtp_stream_receiver::find_or_create_stream_info(const rtp_session& session)
         }
     }
 
-    return streams_.emplace_back(stream_info {session, rtp_filter(), 0});
+    return streams_.emplace_back(session);
 }
 
 void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_view& packet, stream_info& stream) {
@@ -259,11 +254,8 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
         RAV_ERROR("Packet not written to buffer");
     }
 
-    if (stream.first_packet) {
-        stream.first_packet = false;
-        for (const auto& subscriber : subscribers_) {
-            subscriber->on_first_packet(packet.timestamp(), delay_);
-        }
+    if (!stream.first_packet_timestamp.has_value()) {
+        stream.first_packet_timestamp = packet.timestamp();
     }
 
     TRACY_PLOT("RTP Timestamp", static_cast<int64_t>(packet.timestamp()));
@@ -277,6 +269,11 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
 
     if (packet.sequence_number() > stream.sequence_number) {
         stream.sequence_number = packet.sequence_number();
+        if (packet.timestamp() - delay_ >= *stream.first_packet_timestamp) {
+            for (const auto& subscriber : subscribers_) {
+                subscriber->on_data_available(packet.timestamp() - delay_);
+            }
+        }
     }
 }
 
