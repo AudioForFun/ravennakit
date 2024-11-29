@@ -12,6 +12,7 @@
 
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/string_parser.hpp"
+#include "ravennakit/core/todo.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
 #include "ravennakit/sdp/detail/sdp_constants.hpp"
 #include "ravennakit/sdp/detail/sdp_source_filter.hpp"
@@ -221,20 +222,51 @@ const std::string& rav::sdp::media_description::media_type() const {
     return media_type_;
 }
 
+void rav::sdp::media_description::set_media_type(std::string media_type) {
+    media_type_ = std::move(media_type);
+}
+
 uint16_t rav::sdp::media_description::port() const {
     return port_;
+}
+
+void rav::sdp::media_description::set_port(uint16_t port) {
+    port_ = port;
 }
 
 uint16_t rav::sdp::media_description::number_of_ports() const {
     return number_of_ports_;
 }
 
+void rav::sdp::media_description::set_number_of_ports(const uint16_t number_of_ports) {
+    if (number_of_ports == 0) {
+        RAV_ASSERT_FALSE("media: number of ports cannot be 0, setting to 1");
+        number_of_ports_ = 1;
+        return;
+    }
+    number_of_ports_ = number_of_ports;
+}
+
 const std::string& rav::sdp::media_description::protocol() const {
     return protocol_;
 }
 
+void rav::sdp::media_description::set_protocol(std::string protocol) {
+    protocol_ = std::move(protocol);
+}
+
 const std::vector<rav::sdp::format>& rav::sdp::media_description::formats() const {
     return formats_;
+}
+
+void rav::sdp::media_description::add_format(const format& format_to_add) {
+    for (auto& fmt : formats_) {
+        if (fmt.payload_type == format_to_add.payload_type) {
+            fmt = format_to_add;
+            return;
+        }
+    }
+    formats_.push_back(format_to_add);
 }
 
 const std::vector<rav::sdp::connection_info_field>& rav::sdp::media_description::connection_infos() const {
@@ -253,20 +285,40 @@ std::optional<double> rav::sdp::media_description::ptime() const {
     return ptime_;
 }
 
+void rav::sdp::media_description::set_ptime(const std::optional<double> ptime) {
+    ptime_ = ptime;
+}
+
 std::optional<double> rav::sdp::media_description::max_ptime() const {
     return max_ptime_;
+}
+
+void rav::sdp::media_description::set_max_ptime(const std::optional<double> max_ptime) {
+    max_ptime_ = max_ptime;
 }
 
 const std::optional<rav::sdp::media_direction>& rav::sdp::media_description::direction() const {
     return media_direction_;
 }
 
+void rav::sdp::media_description::set_direction(media_direction direction) {
+    media_direction_ = direction;
+}
+
 const std::optional<rav::sdp::reference_clock>& rav::sdp::media_description::ref_clock() const {
     return reference_clock_;
 }
 
+void rav::sdp::media_description::set_ref_clock(reference_clock ref_clock) {
+    reference_clock_ = std::move(ref_clock);
+}
+
 const std::optional<rav::sdp::media_clock_source>& rav::sdp::media_description::media_clock() const {
     return media_clock_;
+}
+
+void rav::sdp::media_description::set_media_clock(media_clock_source media_clock) {
+    media_clock_ = std::move(media_clock);
 }
 
 const std::optional<std::string>& rav::sdp::media_description::session_information() const {
@@ -277,20 +329,68 @@ std::optional<uint32_t> rav::sdp::media_description::sync_time() const {
     return sync_time_;
 }
 
+void rav::sdp::media_description::set_sync_time(const std::optional<uint32_t> sync_time) {
+    sync_time_ = sync_time;
+}
+
 const std::optional<rav::fraction<unsigned>>& rav::sdp::media_description::clock_deviation() const {
     return clock_deviation_;
+}
+
+void rav::sdp::media_description::set_clock_deviation(const std::optional<fraction<uint32_t>> clock_deviation) {
+    clock_deviation_ = clock_deviation;
 }
 
 const std::vector<rav::sdp::source_filter>& rav::sdp::media_description::source_filters() const {
     return source_filters_;
 }
 
+void rav::sdp::media_description::add_source_filter(const source_filter& filter) {
+    for (auto& f : source_filters_) {
+        if (f.network_type() == filter.network_type() && f.address_type() == filter.address_type()
+            && f.dest_address() == filter.dest_address()) {
+            f = filter;
+            return;
+        }
+    }
+
+    source_filters_.push_back(filter);
+}
+
 std::optional<uint32_t> rav::sdp::media_description::framecount() const {
     return framecount_;
 }
 
+void rav::sdp::media_description::set_framecount(const std::optional<uint32_t> framecount) {
+    framecount_ = framecount;
+}
+
 const std::map<std::string, std::string>& rav::sdp::media_description::attributes() const {
     return attributes_;
+}
+
+tl::expected<void, std::string> rav::sdp::media_description::validate() const {
+    if (media_type_.empty()) {
+        return tl::make_unexpected("media: media type is empty");
+    }
+    if (port_ == 0) {
+        return tl::make_unexpected("media: port is 0");
+    }
+    if (number_of_ports_ == 0) {
+        return tl::make_unexpected("media: number of ports is 0");
+    }
+    if (protocol_.empty()) {
+        return tl::make_unexpected("media: protocol is empty");
+    }
+    if (formats_.empty()) {
+        return tl::make_unexpected("media: no formats specified");
+    }
+    return {};
+}
+
+tl::expected<std::string, std::string> rav::sdp::media_description::to_string(const char* newline) const {
+    TODO("No implemented");
+    return {};
 }
 
 bool rav::sdp::operator==(const format& lhs, const format& rhs) {

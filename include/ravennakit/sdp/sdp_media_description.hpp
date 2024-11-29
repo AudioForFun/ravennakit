@@ -11,6 +11,7 @@
 #pragma once
 
 #include "detail/sdp_connection_info.hpp"
+#include "detail/sdp_constants.hpp"
 #include "detail/sdp_format.hpp"
 
 #include <cstdint>
@@ -59,9 +60,21 @@ class media_description {
     [[nodiscard]] const std::string& media_type() const;
 
     /**
+     * Sets the media type.
+     * @param media_type The media type to set.
+     */
+    void set_media_type(std::string media_type);
+
+    /**
      * @return The port number of the media description.
      */
     [[nodiscard]] uint16_t port() const;
+
+    /**
+     * Sets the port number of the media description.
+     * @param port The port number to set.
+     */
+    void set_port(uint16_t port);
 
     /**
      * @return The number of ports
@@ -69,14 +82,33 @@ class media_description {
     [[nodiscard]] uint16_t number_of_ports() const;
 
     /**
+     * Set number of ports. Must be 1 or higher.
+     * @param number_of_ports The number of ports to set.
+     */
+    void set_number_of_ports(uint16_t number_of_ports);
+
+    /**
      * @return The protocol of the media description.
      */
     [[nodiscard]] const std::string& protocol() const;
 
     /**
+     * Sets the protocol of the media description.
+     * @param protocol The protocol to set.
+     */
+    void set_protocol(std::string protocol);
+
+    /**
      * @return The formats of the media description.
      */
     [[nodiscard]] const std::vector<format>& formats() const;
+
+    /**
+     * Adds a format to the media description. If a format with the same payload type already exists, it will be
+     * replaced.
+     * @param format_to_add The format to add.
+     */
+    void add_format(const format& format_to_add);
 
     /**
      * Multiple addresses or "c=" lines MAY be specified on a per media description basis only if they provide multicast
@@ -92,11 +124,6 @@ class media_description {
      */
     void add_connection_info(connection_info_field connection_info);
 
-    /**
-     * Sets the session information of the media description.
-     * @param session_information The session information to set.
-     */
-    void set_session_information(std::string session_information);
 
     /**
      * @returns The value of the "ptime" attribute, or an empty optional if the attribute does not exist or the
@@ -105,10 +132,22 @@ class media_description {
     [[nodiscard]] std::optional<double> ptime() const;
 
     /**
+     * Sets the ptime attribute.
+     * @param ptime The ptime to set.
+     */
+    void set_ptime(std::optional<double> ptime);
+
+    /**
      * @return The value of the "maxptime" attribute, or an empty optional if the attribute does not exist or the
      * value is invalid.
      */
     [[nodiscard]] std::optional<double> max_ptime() const;
+
+    /**
+     * Sets the maxptime attribute.
+     * @param max_ptime The maxptime to set.
+     */
+    void set_max_ptime(std::optional<double> max_ptime);
 
     /**
      * @return The direction of the media description.
@@ -116,9 +155,21 @@ class media_description {
     [[nodiscard]] const std::optional<media_direction>& direction() const;
 
     /**
+     * Sets the direction of the media description.
+     * @param direction The direction to set.
+     */
+    void set_direction(media_direction direction);
+
+    /**
      * @return The reference clock of the media description.
      */
     [[nodiscard]] const std::optional<reference_clock>& ref_clock() const;
+
+    /**
+     * Sets the reference clock of the media description.
+     * @param ref_clock The reference clock to set.
+     */
+    void set_ref_clock(reference_clock ref_clock);
 
     /**
      * @return The media clock of the media description.
@@ -126,9 +177,21 @@ class media_description {
     [[nodiscard]] const std::optional<media_clock_source>& media_clock() const;
 
     /**
+     * Sets the media clock of the media description.
+     * @param media_clock The media clock to set.
+     */
+    void set_media_clock(media_clock_source media_clock);
+
+    /**
      * @return The session information of the media description.
      */
     [[nodiscard]] const std::optional<std::string>& session_information() const;
+
+    /**
+     * Sets the session information of the media description.
+     * @param session_information The session information to set.
+     */
+    void set_session_information(std::string session_information);
 
     /**
      * @return The sync-time of the stream. This is a RAVENNA-specific attribute extension.
@@ -136,14 +199,32 @@ class media_description {
     [[nodiscard]] std::optional<uint32_t> sync_time() const;
 
     /**
+     * Sets the sync-time of the stream. This is a RAVENNA-specific attribute extension.
+     * @param sync_time The sync-time to set.
+     */
+    void set_sync_time(std::optional<uint32_t> sync_time);
+
+    /**
      * @return The clock deviation of the stream. This is a RAVENNA-specific attribute extension.
      */
     [[nodiscard]] const std::optional<fraction<uint32_t>>& clock_deviation() const;
 
     /**
+     * Sets the clock deviation of the stream. This is a RAVENNA-specific attribute extension.
+     * @param clock_deviation The clock deviation to set.
+     */
+    void set_clock_deviation(std::optional<fraction<uint32_t>> clock_deviation);
+
+    /**
      * @returns The source filters of the media description.
      */
     [[nodiscard]] const std::vector<source_filter>& source_filters() const;
+
+    /**
+     * Adds a source filter to the session description. If the filter already exists, it will be replaced.
+     * @param filter The source filter to add.
+     */
+    void add_source_filter(const source_filter& filter);
 
     /**
      * Returns framecount attribute. This is a legacy RAVENNA attribute, replaced by ptime. Only use when ptime is not
@@ -153,14 +234,32 @@ class media_description {
     [[nodiscard]] std::optional<uint32_t> framecount() const;
 
     /**
+     * Sets the frame count of the media description. This is a legacy RAVENNA attribute, replaced by ptime.
+     * @param framecount The frame count to set.
+     */
+    void set_framecount(std::optional<uint32_t> framecount);
+
+    /**
      * @returns Attributes which have not been parsed into a specific field.
      */
     [[nodiscard]] const std::map<std::string, std::string>& attributes() const;
 
+    /**
+     * Validates the media description.
+     * @return An error message if the media description is invalid.
+     */
+    [[nodiscard]] tl::expected<void, std::string> validate() const;
+
+    /**
+     * Converts the media description to a string.
+     * @return The media description as a string.
+     */
+    tl::expected<std::string, std::string> to_string(const char* newline = k_sdp_crlf) const;
+
   private:
     std::string media_type_;
     uint16_t port_ {};
-    uint16_t number_of_ports_ {};
+    uint16_t number_of_ports_ {1};
     std::string protocol_;
     std::vector<format> formats_;
     std::vector<connection_info_field> connection_infos_;
@@ -174,7 +273,7 @@ class media_description {
     std::optional<uint32_t> sync_time_;                  // RAVENNA-specific attribute
     std::optional<fraction<uint32_t>> clock_deviation_;  // RAVENNA-specific attribute
     std::vector<source_filter> source_filters_;
-    std::optional<uint32_t> framecount_;                  // Legacy RAVENNA attribute, replaced by ptime
+    std::optional<uint32_t> framecount_;             // Legacy RAVENNA attribute, replaced by ptime
     std::map<std::string, std::string> attributes_;  // Remaining, unknown attributes
 };
 
