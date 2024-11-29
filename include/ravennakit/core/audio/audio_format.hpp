@@ -13,6 +13,7 @@
 #include "audio_encoding.hpp"
 
 #include <string>
+#include <tuple>
 #include <fmt/format.h>
 
 namespace rav {
