@@ -29,29 +29,6 @@
 namespace rav::sdp {
 
 
-
-/**
- * A type representing the time field (t=*) of an SDP session description.
- * Defined as seconds since January 1, 1900, UTC.
- */
-struct time_active_field {
-    /// The start time of the session.
-    int64_t start_time {-1};
-    /// The stop time of the session.
-    int64_t stop_time {-1};
-
-    /// A type alias for a parse result.
-    template<class T>
-    using parse_result = result<T, std::string>;
-
-    /**
-     * Parses a time field from a string.
-     * @param line The string to parse.
-     * @return A pair containing the parse result and the time field.
-     */
-    static parse_result<time_active_field> parse_new(std::string_view line);
-};
-
 /**
  * Defines a clock source and domain. This is a RAVENNA-specific attribute extension to the SDP specification.
  */

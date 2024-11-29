@@ -17,6 +17,7 @@
 #include "ravennakit/core/result.hpp"
 #include "detail/sdp_reference_clock.hpp"
 #include "detail/sdp_origin.hpp"
+#include "detail/sdp_time_active.hpp"
 
 namespace rav::sdp {
 

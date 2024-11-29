@@ -15,35 +15,6 @@
 #include "ravennakit/sdp/sdp_session_description.hpp"
 #include "ravennakit/sdp/detail/sdp_source_filter.hpp"
 
-rav::sdp::time_active_field::parse_result<rav::sdp::time_active_field>
-rav::sdp::time_active_field::parse_new(const std::string_view line) {
-    string_parser parser(line);
-
-    if (!parser.skip("t=")) {
-        return parse_result<time_active_field>::err("time: expecting 't='");
-    }
-
-    time_active_field time;
-
-    if (const auto start_time = parser.read_int<int64_t>()) {
-        time.start_time = *start_time;
-    } else {
-        return parse_result<time_active_field>::err("time: failed to parse start time as integer");
-    }
-
-    if (!parser.skip(' ')) {
-        return parse_result<time_active_field>::err("time: expecting space after start time");
-    }
-
-    if (const auto stop_time = parser.read_int<int64_t>()) {
-        time.stop_time = *stop_time;
-    } else {
-        return parse_result<time_active_field>::err("time: failed to parse stop time as integer");
-    }
-
-    return parse_result<time_active_field>::ok(time);
-}
-
 rav::sdp::ravenna_clock_domain::parse_result<rav::sdp::ravenna_clock_domain>
 rav::sdp::ravenna_clock_domain::parse_new(const std::string_view line) {
     string_parser parser(line);
