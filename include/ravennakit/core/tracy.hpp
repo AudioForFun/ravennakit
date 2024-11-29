@@ -26,5 +26,5 @@ END_IGNORE_WARNINGS
 
 #else
     #define TRACY_ZONE_SCOPED
-    #define TRACY_PLOT
+    #define TRACY_PLOT(...)
 #endif

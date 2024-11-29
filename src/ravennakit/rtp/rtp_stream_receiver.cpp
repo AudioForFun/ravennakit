@@ -167,8 +167,8 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
         RAV_TRACE(
             "Audio format changed from {} to {}", selected_format_.to_string(), selected_audio_format->to_string()
         );
-        for (const auto& subscriber : subscribers_) {
-            subscriber->on_audio_format_changed(*selected_audio_format, stream.packet_time_frames);
+        for (const auto& s : subscribers_) {
+            s->on_audio_format_changed(*selected_audio_format, stream.packet_time_frames);
         }
         selected_format_ = *selected_audio_format;
     }
@@ -196,16 +196,16 @@ void rav::rtp_stream_receiver::set_delay(const uint32_t delay) {
     restart();
 }
 
-bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber) {
+bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber_to_add) {
     // TODO: call subscriber with current state
-    if (!subscribers_.add(subscriber)) {
+    if (!subscribers_.add(subscriber_to_add)) {
         return false;
     }
     return true;
 }
 
-bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber) {
-    return subscribers_.remove(subscriber);
+bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber_to_remove) {
+    return subscribers_.remove(subscriber_to_remove);
 }
 
 bool rav::rtp_stream_receiver::read_data(const size_t at_timestamp, uint8_t* buffer, const size_t buffer_size) {
@@ -270,8 +270,8 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
     if (packet.sequence_number() > stream.sequence_number) {
         stream.sequence_number = packet.sequence_number();
         if (packet.timestamp() - delay_ >= *stream.first_packet_timestamp) {
-            for (const auto& subscriber : subscribers_) {
-                subscriber->on_data_available(packet.timestamp() - delay_);
+            for (const auto& s : subscribers_) {
+                s->on_data_available(packet.timestamp() - delay_);
             }
         }
     }

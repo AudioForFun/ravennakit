@@ -37,8 +37,8 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     void update_sdp(const sdp::session_description& sdp);
     void set_delay(uint32_t delay);
 
-    bool add_subscriber(subscriber* subscriber);
-    bool remove_subscriber(subscriber* subscriber);
+    bool add_subscriber(subscriber* subscriber_to_add);
+    bool remove_subscriber(subscriber* subscriber_to_remove);
 
     /**
      * Reads data from the buffer at the given timestamp.
