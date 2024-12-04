@@ -29,6 +29,7 @@ namespace rav::sdp {
 class session_description {
   public:
     /// A type alias for a parse result.
+    /// TODO: Replace with tl::expected
     template<class T>
     using parse_result = result<T, std::string>;
 
