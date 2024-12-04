@@ -17,6 +17,8 @@
 
 #if RAV_APPLE
     #include <mach/mach_time.h>
+#elif RAV_WINDOWS
+    #include <windows.h>
 #endif
 
 namespace rav {
@@ -35,8 +37,16 @@ class high_resolution_clock {
 #if RAV_APPLE
         const uint64_t raw = mach_absolute_time();
         return raw * clock.timebase_.numerator / clock.timebase_.denominator;
+#elif RAV_WINDOWS
+        LARGE_INTEGER counter;
+        QueryPerformanceCounter(&counter);
+        return static_cast<uint64_t>((counter.QuadPart * 1'000'000'000) / clock.frequency_.QuadPart);
+#elif RAV_POSIX
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        return static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000 + ts.tv_nsec;
 #else
-    #warning "high_resolution_clock is not implemented for this platform."
+    #error "high_resolution_clock is not implemented for this platform."
         return 0;
 #endif
     }
@@ -44,6 +54,8 @@ class high_resolution_clock {
   private:
 #if RAV_APPLE
     fraction<uint32_t> timebase_ {};
+#elif RAV_WINDOWS
+    LARGE_INTEGER frequency_{};
 #endif
 
     high_resolution_clock() {
@@ -52,6 +64,8 @@ class high_resolution_clock {
         mach_timebase_info(&info);
         timebase_.numerator = info.numer;
         timebase_.denominator = info.denom;
+#elif RAV_WINDOWS
+        QueryPerformanceFrequency(&frequency_);
 #endif
     }
 };
