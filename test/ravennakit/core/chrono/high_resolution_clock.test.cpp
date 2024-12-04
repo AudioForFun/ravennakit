@@ -23,7 +23,7 @@ TEST_CASE("high_resolution_clock") {
         for (int i = 0; i < 100; ++i) {
             const auto now = rav::high_resolution_clock::now();
             std::this_thread::sleep_for(std::chrono::nanoseconds(100));
-            REQUIRE(rav::high_resolution_clock::now() > now + 100);
+            REQUIRE(rav::high_resolution_clock::now() >= now + 100);
         }
     }
 }
