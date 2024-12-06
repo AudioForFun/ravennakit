@@ -33,6 +33,20 @@ class sc_network_interface : public cf_type<SCNetworkInterfaceRef> {
     [[nodiscard]] std::string get_bsd_name() const {
         return cf_string::to_string(SCNetworkInterfaceGetBSDName(get()));
     }
+
+    /**
+     * @return The localized display name of the interface.
+     */
+    [[nodiscard]] std::string get_localized_display_name() const {
+        return cf_string::to_string(SCNetworkInterfaceGetLocalizedDisplayName(get()));
+    }
+
+    /**
+     * @returns The type of the interface.
+     */
+    [[nodiscard]] std::string get_type()const {
+        return cf_string::to_string(SCNetworkInterfaceGetInterfaceType(get()));
+    }
 };
 
 }  // namespace rav

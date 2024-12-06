@@ -40,6 +40,15 @@ class network_interface {
         bool multicast;
     };
 
+    enum class type {
+        undefined,
+        wired,
+        wifi,
+        cellular,
+        loopback,
+        other,
+    };
+
     /**
      * Constructs a network interface with the given bsd name. The name is used to uniquely identify the interface.
      * @param bsd_name The unique BSD name of the interface.
@@ -66,6 +75,12 @@ class network_interface {
     void set_flags(const flags& flags);
 
     /**
+     * Sets the display name of the network interface.
+     * @param display_name The display name to set.
+     */
+    void set_display_name(const std::string& display_name);
+
+    /**
      *
      * @return The name of the network interface.
      */
@@ -78,16 +93,31 @@ class network_interface {
     void add_service_name(const std::string& service_name);
 
     /**
+     * Sets the type of the network interface.
+     * @param type The type to set.
+     */
+    void set_type(type type);
+
+    /**
      * @returns A description of the network interface as string.
      */
     std::string to_string();
 
+    /**
+     * Converts the given type to a string.
+     * @param type The type to convert.
+     * @returns The string representation of the type.
+     */
+    static const char* type_to_string(type type);
+
   private:
     std::string bsd_name_;
+    std::string display_name_;
     std::vector<std::string> service_names_;
     mac_address mac_address_;
     std::vector<asio::ip::address> addresses_;
     flags flags_{};
+    type type_{type::undefined};
 };
 
 /**

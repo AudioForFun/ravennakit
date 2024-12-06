@@ -33,6 +33,49 @@
     #endif
 #endif
 
+#if RAV_APPLE
+namespace {
+
+// Get the type of the interface
+rav::network_interface::type functional_type_for_interface(const char* name) {
+    const int fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        return rav::network_interface::type::undefined;
+    }
+
+    struct ifreq ifr = {};
+    strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+
+    const bool success = ioctl(fd, SIOCGIFFUNCTIONALTYPE, &ifr) >= 0;
+
+    const int junk = close(fd);
+    assert(junk == 0);
+
+    if (!success) {
+        return rav::network_interface::type::undefined;
+    }
+
+    switch (ifr.ifr_ifru.ifru_functional_type) {
+        case IFRTYPE_FUNCTIONAL_LOOPBACK:
+            return rav::network_interface::type::loopback;
+        case IFRTYPE_FUNCTIONAL_WIRED:
+            return rav::network_interface::type::wired;
+        case IFRTYPE_FUNCTIONAL_WIFI_INFRA:
+        case IFRTYPE_FUNCTIONAL_WIFI_AWDL:
+            return rav::network_interface::type::wifi;
+        case IFRTYPE_FUNCTIONAL_CELLULAR:
+            return rav::network_interface::type::cellular;
+        case IFRTYPE_FUNCTIONAL_UNKNOWN:
+        default:
+            return rav::network_interface::type::other;
+    }
+
+    return rav::network_interface::type::undefined;
+}
+
+}  // namespace
+#endif
+
 void rav::network_interface::add_address(const asio::ip::address& address) {
     for (auto& addr : addresses_) {
         if (addr == address) {
@@ -50,6 +93,10 @@ void rav::network_interface::set_flags(const flags& flags) {
     flags_ = flags;
 }
 
+void rav::network_interface::set_display_name(const std::string& display_name) {
+    display_name_ = display_name;
+}
+
 const std::string& rav::network_interface::bsd_name() const {
     return bsd_name_;
 }
@@ -63,9 +110,20 @@ void rav::network_interface::add_service_name(const std::string& service_name) {
     service_names_.push_back(service_name);
 }
 
+void rav::network_interface::set_type(type type) {
+    type_ = type;
+}
+
 std::string rav::network_interface::to_string() {
     std::string output = fmt::format("{}\n", bsd_name_);
+
+    if (!display_name_.empty()) {
+        fmt::format_to(std::back_inserter(output), "  display_name:\n    {}\n", display_name_);
+    }
+
     fmt::format_to(std::back_inserter(output), "  mac:\n    {}\n", mac_address_.to_string());
+
+    fmt::format_to(std::back_inserter(output), "  type:\n    {}\n", type_to_string(type_));
 
     if (!addresses_.empty()) {
         fmt::format_to(std::back_inserter(output), "  addrs:\n");
@@ -106,6 +164,24 @@ std::string rav::network_interface::to_string() {
     fmt::format_to(std::back_inserter(output), "\n");
 
     return output;
+}
+
+const char* rav::network_interface::type_to_string(const type type) {
+    switch (type) {
+        case type::wired:
+            return "wired";
+        case type::wifi:
+            return "wifi";
+        case type::cellular:
+            return "cellular";
+        case type::loopback:
+            return "loopback";
+        case type::other:
+            return "other";
+        case type::undefined:
+        default:
+            return "undefined";
+    }
 }
 
 tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_interfaces() {
@@ -166,6 +242,10 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
             }
         }
 
+    #if RAV_APPLE
+        it->set_type(functional_type_for_interface(ifa->ifa_name));
+    #endif
+
         network_interface::flags flags {};
         if (ifa->ifa_flags & IFF_UP) {
             flags.up = true;
@@ -187,7 +267,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
 #endif
 
 #if RAV_APPLE
-    // Fill in the network services and type
+    // Fill in the network display name
 
     const sc_preferences preferences;
     if (!preferences) {
@@ -225,10 +305,11 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
         );
 
         if (it == network_interfaces.end()) {
-            continue; // We're only filling in the existing interfaces (found with getifaddrs)
+            continue;  // We're only filling in the existing interfaces (found with getifaddrs)
         }
 
         it->add_service_name(service.get_name());
+        it->set_display_name(interface.get_localized_display_name());
     }
 
 #endif
