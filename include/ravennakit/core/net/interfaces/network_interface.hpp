@@ -40,6 +40,7 @@ class network_interface {
         bool multicast;
     };
 
+    /// The type of the network interface.
     enum class type {
         undefined,
         wired,
@@ -87,12 +88,6 @@ class network_interface {
     [[nodiscard]] const std::string& bsd_name() const;
 
     /**
-     * Adds given service name to the list of service names, if the name is not already in the list.
-     * @param service_name The service name to add.
-     */
-    void add_service_name(const std::string& service_name);
-
-    /**
      * Sets the type of the network interface.
      * @param type The type to set.
      */
@@ -113,7 +108,6 @@ class network_interface {
   private:
     std::string bsd_name_;
     std::string display_name_;
-    std::vector<std::string> service_names_;
     mac_address mac_address_;
     std::vector<asio::ip::address> addresses_;
     flags flags_{};

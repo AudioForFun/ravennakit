@@ -101,15 +101,6 @@ const std::string& rav::network_interface::bsd_name() const {
     return bsd_name_;
 }
 
-void rav::network_interface::add_service_name(const std::string& service_name) {
-    for (auto& name : service_names_) {
-        if (name == service_name) {
-            return;
-        }
-    }
-    service_names_.push_back(service_name);
-}
-
 void rav::network_interface::set_type(type type) {
     type_ = type;
 }
@@ -129,13 +120,6 @@ std::string rav::network_interface::to_string() {
         fmt::format_to(std::back_inserter(output), "  addrs:\n");
         for (const auto& address : addresses_) {
             fmt::format_to(std::back_inserter(output), "    {}\n", address.to_string());
-        }
-    }
-
-    if (!service_names_.empty()) {
-        fmt::format_to(std::back_inserter(output), "  services:\n");
-        for (const auto& service_name : service_names_) {
-            fmt::format_to(std::back_inserter(output), "    {}\n", service_name);
         }
     }
 
@@ -269,25 +253,15 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
 #if RAV_APPLE
     // Fill in the network display name
 
-    const sc_preferences preferences;
-    if (!preferences) {
-        RAV_ERROR("Failed to create SCPreferences");
+    const auto interfaces = sc_preferences::get_network_interfaces();
+
+    if (!interfaces) {
+        RAV_ERROR("Failed to get network interfaces");
         return tl::unexpected(-1);
     }
 
-    const auto services = preferences.get_network_services();
-    if (!services) {
-        RAV_ERROR("Failed to get network services");
-        return tl::unexpected(-1);
-    }
-
-    for (CFIndex i = 0; i < services.count(); ++i) {
-        const auto service = sc_network_service(services[i], true);
-        if (!service) {
-            continue;
-        }
-
-        const auto interface = sc_network_interface(SCNetworkServiceGetInterface(service.get()), true);
+    for (CFIndex i = 0; i < interfaces.count(); ++i) {
+        const auto interface = sc_network_interface(interfaces[i], true);
         if (!interface) {
             continue;
         }
@@ -305,10 +279,9 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
         );
 
         if (it == network_interfaces.end()) {
-            continue;  // We're only filling in the existing interfaces (found with getifaddrs)
+            continue;  // We're only filling in the existing interfaces, skipping interfaces not gotten from getifaddrs.
         }
 
-        it->add_service_name(service.get_name());
         it->set_display_name(interface.get_localized_display_name());
     }
 
