@@ -33,7 +33,10 @@
     #endif
 #elif RAV_WINDOWS
     #include <Iphlpapi.h>             // if_nametoindex
+    #include <ws2tcpip.h>
+
     #pragma comment(lib, "Iphlpapi")  // if_nametoindex
+    #pragma comment(lib, "Ws2_32")
 #endif
 
 #if RAV_APPLE
@@ -261,9 +264,8 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
         }
         it->set_flags(flags);
     }
-#endif
 
-#if RAV_APPLE
+    #if RAV_APPLE
     // Fill in the network display name
 
     const auto interfaces = sc_preferences::get_network_interfaces();
@@ -297,7 +299,61 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
 
         it->set_display_name(interface.get_localized_display_name());
     }
+    #endif
 
+#elif RAV_WINDOWS
+    ULONG bufferSize = 15000; // As per recommendation from Microsoft
+    std::vector<uint8_t> buffer(bufferSize);
+    auto* addresses = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data());
+
+    auto result = GetAdaptersAddresses(AF_UNSPEC, 0, nullptr, addresses, &bufferSize);
+
+    if (result != NO_ERROR) {
+        if (result == ERROR_BUFFER_OVERFLOW) {
+            // The buffer was not big enough, do a 2nd attempt.
+            buffer.resize(bufferSize);
+            addresses = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data());
+            result = GetAdaptersAddresses(AF_UNSPEC, 0, nullptr, addresses, &bufferSize);
+            if (result != NO_ERROR) {
+                RAV_ERROR("Failed to get network interface information ({})", result);
+                return {};
+            }
+        } else {
+            RAV_ERROR("Failed to get network interface information ({})", result);
+            return {};
+        }
+    }
+
+    for (IP_ADAPTER_ADDRESSES* adapter = addresses; adapter != nullptr; adapter = adapter->Next) {
+        auto* bsd_name = adapter->AdapterName;
+        if (bsd_name == nullptr) {
+            continue;
+        }
+
+        auto it = std::find_if(
+            network_interfaces.begin(), network_interfaces.end(),
+            [&bsd_name](const network_interface& network_interface) {
+                return network_interface.bsd_name() == bsd_name;
+            }
+        );
+
+        if (it == network_interfaces.end()) {
+            it = network_interfaces.emplace(it, bsd_name);
+        }
+
+        if (adapter->Description != nullptr) {
+            auto length = wcslen(adapter->Description);
+            std::string result_str;
+            result_str.resize(length * sizeof(wchar_t));
+
+            std::locale loc("C");
+
+            std::use_facet<std::ctype<wchar_t> >(loc).narrow(
+                adapter->Description, adapter->Description + length, '?',  &*result_str.begin());
+
+            it->set_display_name(result_str);
+        }
+    }
 #endif
 
     return network_interfaces;

@@ -17,6 +17,10 @@
 #include <tl/expected.hpp>
 #include <optional>
 
+#if RAV_WINDOWS
+    #include <ifdef.h>
+#endif
+
 namespace rav {
 
 /**
@@ -117,8 +121,11 @@ class network_interface {
     std::string display_name_;
     std::optional<mac_address> mac_address_;
     std::vector<asio::ip::address> addresses_;
-    flags flags_{};
-    type type_{type::undefined};
+    flags flags_ {};
+    type type_ {type::undefined};
+#if RAV_WINDOWS
+    IF_LUID interface_luid_;
+#endif
 };
 
 /**
