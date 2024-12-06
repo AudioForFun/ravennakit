@@ -118,8 +118,8 @@ find_package(Catch2 CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(portaudio CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
-target_compile_definitions(asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
-#target_compile_definitions(asio INTERFACE ASIO_ENABLE_HANDLER_TRACKING)
+target_compile_definitions(asio::asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
+#target_compile_definitions(asio::asio INTERFACE ASIO_ENABLE_HANDLER_TRACKING)
 
 ##############
 # RAVENNAKIT #

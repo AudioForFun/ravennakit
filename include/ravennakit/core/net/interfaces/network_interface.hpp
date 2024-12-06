@@ -15,6 +15,7 @@
 #include <vector>
 #include <asio/ip/address.hpp>
 #include <tl/expected.hpp>
+#include <optional>
 
 namespace rav {
 

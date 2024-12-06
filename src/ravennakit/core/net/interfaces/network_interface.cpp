@@ -43,7 +43,7 @@ rav::network_interface::type functional_type_for_interface(const char* name) {
         return rav::network_interface::type::undefined;
     }
 
-    struct ifreq ifr = {};
+    ifreq ifr = {};
     strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
 
     const bool success = ioctl(fd, SIOCGIFFUNCTIONALTYPE, &ifr) >= 0;
@@ -69,8 +69,6 @@ rav::network_interface::type functional_type_for_interface(const char* name) {
         default:
             return rav::network_interface::type::other;
     }
-
-    return rav::network_interface::type::undefined;
 }
 
 }  // namespace
