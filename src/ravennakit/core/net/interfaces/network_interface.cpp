@@ -20,13 +20,11 @@
 #include <asio/ip/address.hpp>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#if RAV_APPLE
 #include <net/if_dl.h>
+#elif RAV_LINUX
+#include <linux/if_packet.h>
 #endif
-
-#if RAV_LINUX
-    #define MAC_ADDRESS_FAMILY AF_PACKET
-#elif RAV_POSIX
-    #define MAC_ADDRESS_FAMILY AF_LINK
 #endif
 
 void rav::network_interface::add_address(const asio::ip::address& address) {
@@ -131,15 +129,21 @@ tl::expected<std::vector<rav::network_interface>, int> rav::get_all_network_inte
                 std::memcpy(bytes.data(), &sa->sin6_addr, sizeof(bytes));
                 asio::ip::address_v6 addr_v6(bytes, sa->sin6_scope_id);
                 it->add_address(addr_v6);
-            } else if (ifa->ifa_addr->sa_family == MAC_ADDRESS_FAMILY) {
+                #if RAV_APPLE
+            } else if (ifa->ifa_addr->sa_family == AF_LINK) {
                 const sockaddr_dl* sdl = reinterpret_cast<struct sockaddr_dl*>(ifa->ifa_addr);
                 if (sdl->sdl_alen == 6) {  // MAC addresses are 6 bytes
                     it->set_mac_address(mac_address(reinterpret_cast<uint8_t*>(LLADDR(sdl))));
                 }
+                #elif RAV_LINUX
+            } else if (ifa->ifa_addr->sa_family == AF_PACKET) {
+                const sockaddr_ll* sdl = reinterpret_cast<struct sockaddr_ll*>(ifa->ifa_addr);
+                it->set_mac_address(mac_address(sdl->sll_addr));
+                #endif
             }
         }
 
-        network_interface::flags flags;
+        network_interface::flags flags{};
         if (ifa->ifa_flags & IFF_UP) {
             flags.up = true;
         } else if (ifa->ifa_flags & IFF_BROADCAST) {
