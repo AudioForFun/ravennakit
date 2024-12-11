@@ -74,6 +74,41 @@ class network_interface {
      */
     [[nodiscard]] const std::string& identifier() const;
 
+    /**
+     * @return The display name of the network interface.
+     */
+    [[nodiscard]] const std::string& display_name() const {
+        return display_name_;
+    }
+
+    /**
+     * @return The description of the network interface.
+     */
+    [[nodiscard]] const std::string& description() const {
+        return description_;
+    }
+
+    /**
+     * @return The MAC address of the network interface, or nullopt if the MAC address could not be found.
+     */
+    [[nodiscard]] const std::optional<mac_address>& get_mac_address() const {
+        return mac_address_;
+    }
+
+    /**
+     * @return The addresses of the interface.
+     */
+    [[nodiscard]] const std::vector<asio::ip::address>& addresses() const {
+        return addresses_;
+    }
+
+    /**
+     * @return The type of the interface.
+     */
+    [[nodiscard]] type get_type() const {
+        return type_;
+    }
+
 #if HAS_WIN32 || defined(GENERATING_DOCUMENTATION)
     /**
      * @return The LUID of the interface.
@@ -100,7 +135,6 @@ class network_interface {
     static const char* type_to_string(type type);
 
     /**
-     *
      * @returns A list of all network interfaces on the system. Only several operating systems are supported: macOS,
      * Windows and Linux. Not Android.
      */

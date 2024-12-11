@@ -67,7 +67,7 @@ class mac_address {
     /**
      * @return The MAC address as a string.
      */
-    std::string to_string() {
+    std::string to_string() const {
         return fmt::format(
             "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}", address_[0], address_[1], address_[2], address_[3],
             address_[4], address_[5]
