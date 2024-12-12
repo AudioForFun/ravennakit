@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <algorithm>
+#include <cstring>
 
 namespace rav {
 
