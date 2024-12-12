@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/core/uint48.hpp"
+#include "ravennakit/core/types/uint48.hpp"
 
 #include <catch2/catch_all.hpp>
 
