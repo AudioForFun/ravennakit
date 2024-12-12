@@ -40,4 +40,17 @@ bool is_within(T a, T b, T tolerance) {
     return std::fabs(a - b) <= tolerance;
 }
 
+/**
+ * Tests if a value is between two other values.
+ * @tparam T The type of the values to compare.
+ * @param a The value to test.
+ * @param min The minimum value.
+ * @param max The maximum value.
+ * @return True if the value is between the minimum and maximum values, false otherwise.
+ */
+template<typename T>
+bool is_between(T a, T min, T max) {
+    return a >= min && a <= max;
+}
+
 }  // namespace rav::util

@@ -1,0 +1,166 @@
+/*
+ * Owllab License Agreement
+ *
+ * This software is provided by Owllab and may not be used, copied, modified,
+ * merged, published, distributed, sublicensed, or sold without a valid and
+ * explicit agreement with Owllab.
+ *
+ * Copyright (c) 2024 Owllab. All rights reserved.
+ */
+
+#include "ravennakit/core/file.hpp"
+#include "ravennakit/core/log.hpp"
+#include "ravennakit/core/system.hpp"
+#include "ravennakit/core/audio/formats/wav_audio_format.hpp"
+#include "ravennakit/core/streams/file_output_stream.hpp"
+#include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
+#include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
+#include "ravennakit/ravenna/ravenna_sink.hpp"
+
+#include <CLI/App.hpp>
+#include <asio/io_context.hpp>
+#include <utility>
+
+class stream_recorder: public rav::rtp_stream_receiver::subscriber {
+  public:
+    explicit stream_recorder(std::unique_ptr<rav::ravenna_sink> sink) : sink_(std::move(sink)) {
+        if (sink_) {
+            sink_->start();
+            sink_->add_subscriber(this);
+        }
+    }
+
+    ~stream_recorder() override {
+        if (sink_) {
+            sink_->remove_subscriber(this);
+            sink_->stop();
+        }
+        close();
+    }
+
+    void close() {
+        if (wav_writer_) {
+            wav_writer_->finalize();
+            wav_writer_.reset();
+        }
+        if (file_output_stream_) {
+            file_output_stream_.reset();
+        }
+    }
+
+    void on_audio_format_changed(const rav::audio_format& new_format, const uint32_t packet_time_frames) override {
+        close();
+        if (sink_ == nullptr) {
+            RAV_ERROR("No sink available");
+            return;
+        }
+
+        audio_format_ = new_format;
+        file_output_stream_ = std::make_unique<rav::file_output_stream>(rav::file(sink_->get_session_name() + ".wav"));
+        wav_writer_ = std::make_unique<rav::wav_audio_format::writer>(
+            *file_output_stream_, rav::wav_audio_format::format_code::pcm, new_format.sample_rate,
+            new_format.num_channels, new_format.bytes_per_sample() * 8
+        );
+        audio_data_.resize(packet_time_frames * new_format.bytes_per_frame());
+    }
+
+    void on_data_available(const uint32_t timestamp) override {
+        if (!sink_->read_data(timestamp, audio_data_.data(), audio_data_.size())) {
+            RAV_ERROR("Failed to read audio data");
+            return;
+        }
+        if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
+            rav::byte_order::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
+        }
+        wav_writer_->write_audio_data(audio_data_.data(), audio_data_.size());
+    }
+
+  private:
+    std::unique_ptr<rav::ravenna_sink> sink_;
+    std::unique_ptr<rav::file_output_stream> file_output_stream_;
+    std::unique_ptr<rav::wav_audio_format::writer> wav_writer_;
+    std::vector<uint8_t> audio_data_;
+    rav::audio_format audio_format_;
+};
+
+/**
+ * This examples demonstrates how to receive audio streams from a RAVENNA device and write the audio data to wav files.
+ * It sets up a RAVENNA sink that listens for announcements from a RAVENNA device and starts receiving audio data.
+ * Separate files for each stream are created and existing files will be overwritten.
+ */
+class ravenna_recorder_example {
+  public:
+    explicit ravenna_recorder_example(const std::string& interface_address) {
+        node_browser_ = rav::dnssd::dnssd_browser::create(io_context_);
+
+        if (node_browser_ == nullptr) {
+            RAV_THROW_EXCEPTION("No dnssd browser available");
+        }
+
+        node_browser_->browse_for("_rtsp._tcp,_ravenna_session");
+
+        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, *node_browser_);
+
+        rav::rtp_receiver::configuration config;
+        config.interface_address = asio::ip::make_address(interface_address);
+        rtp_receiver_ = std::make_unique<rav::rtp_receiver>(io_context_, config);
+    }
+
+    ~ravenna_recorder_example() = default;
+
+    void add_stream(const std::string& stream_name) {
+        recorders_.emplace_back(
+            std::make_unique<stream_recorder>(
+                std::make_unique<rav::ravenna_sink>(*rtsp_client_, *rtp_receiver_, stream_name)
+            )
+        );
+    }
+
+    void start() {
+        io_context_.run();
+    }
+
+    void stop() {
+        io_context_.stop();
+    }
+
+  private:
+    asio::io_context io_context_;
+    std::unique_ptr<rav::dnssd::dnssd_browser> node_browser_;
+    std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
+    std::unique_ptr<rav::rtp_receiver> rtp_receiver_;
+    std::vector<std::unique_ptr<stream_recorder>> recorders_;
+};
+
+int main(int const argc, char* argv[]) {
+    rav::log::set_level_from_env();
+    rav::system::do_system_checks();
+
+    CLI::App app {"RAVENNA Receiver example"};
+    argv = app.ensure_utf8(argv);
+
+    std::vector<std::string> stream_names;
+    app.add_option("stream_names", stream_names, "The names of the streams to receive")->required();
+
+    std::string interface_address = "0.0.0.0";
+    app.add_option("--interface-addr", interface_address, "The interface address");
+
+    CLI11_PARSE(app, argc, argv);
+
+    ravenna_recorder_example receiver_example(interface_address);
+
+    for (auto& stream_name : stream_names) {
+        receiver_example.add_stream(stream_name);
+    }
+
+    std::thread cin_thread([&receiver_example] {
+        fmt::println("Press return key to stop...");
+        std::cin.get();
+        receiver_example.stop();
+    });
+
+    receiver_example.start();
+    cin_thread.join();
+
+    return 0;
+}

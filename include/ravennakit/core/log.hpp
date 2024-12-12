@@ -10,7 +10,22 @@
 
 #pragma once
 
-#ifdef RAV_ENABLE_SPDLOG
+#include "platform.hpp"
+#include "env.hpp"
+
+#include <cstdlib>
+
+#ifndef RAV_ENABLE_SPDLOG
+    #define RAV_ENABLE_SPDLOG 0
+#endif
+
+#if RAV_ENABLE_SPDLOG
+
+    #define SPDLOG_ACTIVE_LEVEL SPDLOG_LEVEL_TRACE
+
+    #if RAV_MACOS
+        #define SPDLOG_FUNCTION __PRETTY_FUNCTION__
+    #endif
 
     #include <spdlog/spdlog.h>
 
@@ -44,7 +59,7 @@
 
 #else
 
-    #include <fmt/format.h>
+    #include "ravennakit/core/format.hpp"
 
     #ifndef RAV_TRACE
         #define RAV_TRACE(...) fmt::println(__VA_ARGS__)
@@ -76,13 +91,6 @@
 
 #endif
 
-/**
- * Define the function name macro if it is not already defined.
- */
-#ifndef RAV_FUNCTION
-    #define RAV_FUNCTION static_cast<const char*>(__FUNCTION__)
-#endif
-
 #define CATCH_LOG_UNCAUGHT_EXCEPTIONS                                                                          \
     catch (const rav::exception& e) {                                                                          \
         RAV_CRITICAL(                                                                                          \
@@ -97,3 +105,50 @@
     catch (...) {                                                                                              \
         RAV_CRITICAL("unknown exception caucght - please handle your exceptions before reaching this point."); \
     }
+
+namespace rav::log {
+
+/**
+ * Tries to find given environment variable and set the log level accordingly.
+ * The following are valid values for the log level:
+ *  - TRACE
+ *  - DEBUG
+ *  - INFO (default)
+ *  - WARN
+ *  - ERROR
+ *  - CRITICAL
+ *  - OFF
+ * By default the log level is set to INFO.
+ * Note: setting the log level is currently only implemented for spdlog.
+ * TODO: Implement log level setting for fmt.
+ * @param env_var The environment variable to read the log level from.
+ */
+inline void set_level_from_env(const char* env_var = "RAV_LOG_LEVEL") {
+    if (const auto env_value = rav::env::get(env_var)) {
+#if RAV_ENABLE_SPDLOG
+        if (env_value == "TRACE") {
+            spdlog::set_level(spdlog::level::trace);
+        } else if (env_value == "DEBUG") {
+            spdlog::set_level(spdlog::level::debug);
+        } else if (env_value == "INFO") {
+            spdlog::set_level(spdlog::level::info);
+        } else if (env_value == "WARN") {
+            spdlog::set_level(spdlog::level::warn);
+        } else if (env_value == "ERROR") {
+            spdlog::set_level(spdlog::level::err);
+        } else if (env_value == "CRITICAL") {
+            spdlog::set_level(spdlog::level::critical);
+        } else if (env_value == "CRITICAL") {
+            spdlog::set_level(spdlog::level::off);
+        } else {
+            fmt::println("Invalid value for {}: {}. Setting log level to info.", env_var, *env_value);
+            spdlog::set_level(spdlog::level::info);
+        }
+#endif
+    } else {
+#if RAV_ENABLE_SPDLOG
+        spdlog::set_level(spdlog::level::info);
+#endif
+    }
+}
+}  // namespace rav::log

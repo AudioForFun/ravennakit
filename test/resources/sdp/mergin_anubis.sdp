@@ -1,0 +1,21 @@
+v=0
+o=- 13 0 IN IP4 192.168.16.51
+s=Anubis Combo LR
+c=IN IP4 239.1.16.51/15
+t=0 0
+a=clock-domain:PTPv2 0
+a=ts-refclk:ptp=IEEE1588-2008:30-D6-59-FF-FE-01-DB-72:0
+a=mediaclk:direct=0
+m=audio 5004 RTP/AVP 98
+c=IN IP4 239.1.16.51/15
+a=rtpmap:98 L16/48000/2
+a=source-filter: incl IN IP4 239.1.16.51 192.168.16.51
+a=clock-domain:PTPv2 0
+a=sync-time:0
+a=framecount:48
+a=palign:0
+a=ptime:1
+a=ts-refclk:ptp=IEEE1588-2008:30-D6-59-FF-FE-01-DB-72:0
+a=mediaclk:direct=0
+a=recvonly
+a=midi-pre2:50040 0,0;0,1

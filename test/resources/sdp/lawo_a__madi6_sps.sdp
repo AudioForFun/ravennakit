@@ -1,0 +1,33 @@
+v=0
+o=- 1731086923289383 0 IN IP4 192.168.4.8
+s=MADI-1
+t=0 0
+a=group:DUP primary secondary
+a=clock-domain:PTPv2 0
+a=sync-time:0
+a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0
+a=mediaclk:direct=0
+m=audio 5004 RTP/AVP 98
+c=IN IP4 239.3.8.1/31
+a=source-filter: incl IN IP4 239.3.8.1 192.168.16.52
+a=recvonly
+a=rtpmap:98 L24/48000/64
+a=framecount:6
+a=ptime:0.12
+a=mid:primary
+a=clock-domain:PTPv2 0
+a=sync-time:0
+a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0
+a=mediaclk:direct=0
+m=audio 5004 RTP/AVP 98
+c=IN IP4 239.4.8.2/31
+a=source-filter: incl IN IP4 239.4.8.2 192.168.4.8
+a=recvonly
+a=rtpmap:98 L24/48000/64
+a=framecount:6
+a=ptime:0.12
+a=mid:secondary
+a=clock-domain:PTPv2 0
+a=sync-time:0
+a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0
+a=mediaclk:direct=0

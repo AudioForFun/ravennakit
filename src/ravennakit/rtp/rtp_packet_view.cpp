@@ -8,9 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include <fmt/core.h>
-
-#include "ravennakit/platform/byte_order.hpp"
+#include "ravennakit/core/byte_order.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 
 namespace {
@@ -30,14 +28,17 @@ bool rav::rtp_packet_view::validate() const {
         return false;
     }
 
-    if (version() > 2) {
+    if (version() != 2) {
         return false;
     }
+
+
 
     return true;
 }
 
 bool rav::rtp_packet_view::marker_bit() const {
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < 1) {
         return false;
     }
@@ -45,6 +46,7 @@ bool rav::rtp_packet_view::marker_bit() const {
 }
 
 uint8_t rav::rtp_packet_view::payload_type() const {
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < 1) {
         return false;
     }
@@ -53,6 +55,7 @@ uint8_t rav::rtp_packet_view::payload_type() const {
 
 uint16_t rav::rtp_packet_view::sequence_number() const {
     constexpr auto kOffset = 2;
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < kOffset + sizeof(uint16_t)) {
         return 0;
     }
@@ -62,6 +65,7 @@ uint16_t rav::rtp_packet_view::sequence_number() const {
 
 uint32_t rav::rtp_packet_view::timestamp() const {
     constexpr auto kOffset = 4;
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < kOffset + sizeof(uint32_t)) {
         return 0;
     }
@@ -70,6 +74,7 @@ uint32_t rav::rtp_packet_view::timestamp() const {
 
 uint32_t rav::rtp_packet_view::ssrc() const {
     constexpr auto kOffset = 8;
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < kOffset + sizeof(uint32_t)) {
         return 0;
     }
@@ -77,6 +82,7 @@ uint32_t rav::rtp_packet_view::ssrc() const {
 }
 
 uint8_t rav::rtp_packet_view::version() const {
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < 1) {
         return 0;
     }
@@ -84,6 +90,7 @@ uint8_t rav::rtp_packet_view::version() const {
 }
 
 bool rav::rtp_packet_view::padding() const {
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < 1) {
         return false;
     }
@@ -91,6 +98,7 @@ bool rav::rtp_packet_view::padding() const {
 }
 
 bool rav::rtp_packet_view::extension() const {
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < 1) {
         return false;
     }
@@ -98,6 +106,7 @@ bool rav::rtp_packet_view::extension() const {
 }
 
 uint32_t rav::rtp_packet_view::csrc_count() const {
+    // TODO: This check should probably be skipped, assuming validate() is called before calling this method.
     if (size_bytes_ < 1) {
         return 0;
     }
@@ -144,16 +153,17 @@ size_t rav::rtp_packet_view::header_total_length() const {
     return kRtpHeaderBaseLengthOctets + csrc_count() * sizeof(uint32_t) + extension_length_octets;
 }
 
-rav::buffer_view<const unsigned char> rav::rtp_packet_view::payload_data() const {
+rav::buffer_view<const uint8_t> rav::rtp_packet_view::payload_data() const {
     if (data_ == nullptr) {
         return {};
     }
 
-    if (size_bytes_ < header_total_length()) {
+    const auto header_length = header_total_length();
+    if (size_bytes_ < header_length) {
         return {};
     }
 
-    return {data_ + header_total_length(), size_bytes_ - header_total_length()};
+    return {data_ + header_length, size_bytes_ - header_length};
 }
 
 std::string rav::rtp_packet_view::to_string() const {

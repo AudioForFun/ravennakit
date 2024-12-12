@@ -1,0 +1,43 @@
+/*
+ * Owllab License Agreement
+ *
+ * This software is provided by Owllab and may not be used, copied, modified,
+ * merged, published, distributed, sublicensed, or sold without a valid and
+ * explicit agreement with Owllab.
+ *
+ * Copyright (c) 2024 Owllab. All rights reserved.
+ */
+
+#pragma once
+
+#include <asio.hpp>
+#include "ravennakit/core/format.hpp"
+
+namespace rav {
+
+struct rtp_session {
+    asio::ip::address connection_address;
+    uint16_t rtp_port {};
+    uint16_t rtcp_port {};
+
+    void reset() {
+        connection_address = asio::ip::address{};
+        rtp_port = {};
+        rtcp_port = {};
+    }
+
+    [[nodiscard]] std::string to_string() const {
+        return fmt::format("{}/{}/{}", connection_address.to_string(), rtp_port, rtcp_port);
+    }
+
+    friend auto operator==(const rtp_session& lhs, const rtp_session& rhs) -> bool {
+        return std::tie(lhs.connection_address, lhs.rtp_port, lhs.rtcp_port)
+            == std::tie(rhs.connection_address, rhs.rtp_port, rhs.rtcp_port);
+    }
+
+    friend bool operator!=(const rtp_session& lhs, const rtp_session& rhs) {
+        return !(lhs == rhs);
+    }
+};
+
+}  // namespace rav

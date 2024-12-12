@@ -9,10 +9,7 @@
  */
 
 #include "ravennakit/rtp/rtcp_packet_view.hpp"
-
-#include <fmt/core.h>
-
-#include "ravennakit/platform/byte_order.hpp"
+#include "ravennakit/core/byte_order.hpp"
 
 namespace {
 constexpr size_t kHeaderLength = 8;
@@ -20,8 +17,9 @@ constexpr size_t kSenderReportNtpTimestampHalfLength = 4;
 constexpr size_t kSenderReportNtpTimestampFullLength = kSenderReportNtpTimestampHalfLength * 2;
 constexpr size_t kSenderReportPacketCountLength = 4;
 constexpr size_t kSenderReportOctetCountLength = 4;
-constexpr size_t kSenderInfoLength = kSenderReportNtpTimestampFullLength + rav::rtp::kRtpTimestampLength
-    + kSenderReportPacketCountLength + kSenderReportOctetCountLength;
+constexpr size_t kSenderInfoLength = kSenderReportNtpTimestampFullLength
+    + rav::rtp::constants::k_rtp_timestamp_length_length + kSenderReportPacketCountLength
+    + kSenderReportOctetCountLength;
 }  // namespace
 
 rav::rtcp_packet_view::rtcp_packet_view(const uint8_t* data, const size_t size_bytes) :
@@ -129,7 +127,7 @@ uint32_t rav::rtcp_packet_view::rtp_timestamp() const {
     }
 
     constexpr auto offset = kHeaderLength + kSenderReportNtpTimestampFullLength;
-    if (size_bytes_ < offset + rtp::kRtpTimestampLength) {
+    if (size_bytes_ < offset + rtp::constants::k_rtp_timestamp_length_length) {
         return {};
     }
 
@@ -141,7 +139,7 @@ uint32_t rav::rtcp_packet_view::packet_count() const {
         return {};
     }
 
-    constexpr auto offset = kHeaderLength + kSenderReportNtpTimestampFullLength + rtp::kRtpTimestampLength;
+    constexpr auto offset = kHeaderLength + kSenderReportNtpTimestampFullLength + rtp::constants::k_rtp_timestamp_length_length;
     if (size_bytes_ < offset + kSenderReportPacketCountLength) {
         return {};
     }
@@ -155,7 +153,7 @@ uint32_t rav::rtcp_packet_view::octet_count() const {
     }
 
     constexpr auto offset =
-        kHeaderLength + kSenderReportNtpTimestampFullLength + rtp::kRtpTimestampLength + kSenderReportOctetCountLength;
+        kHeaderLength + kSenderReportNtpTimestampFullLength + rtp::constants::k_rtp_timestamp_length_length + kSenderReportOctetCountLength;
     if (size_bytes_ < offset + kSenderReportOctetCountLength) {
         return {};
     }

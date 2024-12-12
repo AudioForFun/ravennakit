@@ -1,10 +1,13 @@
 {
-  "name": "ravenna-sdk",
+  "name": "ravennakit",
   "version-string": "0.1.0",
   "dependencies": [
     "spdlog",
     "fmt",
     "catch2",
-    "uvw"
+    "portaudio",
+    "cli11",
+    "asio",
+    "tl-expected"
   ]
 }

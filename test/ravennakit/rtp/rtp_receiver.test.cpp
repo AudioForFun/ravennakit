@@ -8,18 +8,8 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/rtp/rtp_receiver.hpp"
+#include "ravennakit/rtp/detail/rtp_receiver.hpp"
 
 #include <catch2/catch_all.hpp>
 
-TEST_CASE("rtp_receiver::rtp_receiver()", "[rtp_receiver]") {
-    auto loop = uvw::loop::create();
-    REQUIRE(loop != nullptr);
-
-    SECTION("Start and stop receiving unicast") {
-        rav::rtp_receiver receiver(loop);
-        receiver.on<rav::rtp_packet_event>([](const rav::rtp_packet_event&, rav::rtp_receiver&) {});
-        REQUIRE_NOTHROW(receiver.bind("0.0.0.0"));
-        REQUIRE_NOTHROW(receiver.close());
-    }
-}
+TEST_CASE("rtp_receiver::rtp_receiver()", "[rtp_receiver]") {}

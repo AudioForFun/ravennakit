@@ -10,10 +10,24 @@
 
 #pragma once
 
+#include "platform.hpp"
+
+#include "ravennakit/core/format.hpp"
 #include <exception>
 #include <string>
 
-#define RAV_THROW_EXCEPTION(msg) throw rav::exception(msg, __FILE__, __LINE__, RAV_FUNCTION)
+/**
+ * Define the function name macro if it is not already defined.
+ */
+#ifndef RAV_FUNCTION
+    #if RAV_MACOS
+        #define RAV_FUNCTION __PRETTY_FUNCTION__
+    #else
+        #define RAV_FUNCTION static_cast<const char*>(__FUNCTION__)
+    #endif
+#endif
+
+#define RAV_THROW_EXCEPTION(...) throw rav::exception(fmt::format(__VA_ARGS__), __FILE__, __LINE__, RAV_FUNCTION)
 
 namespace rav {
 
