@@ -11,7 +11,9 @@
 #pragma once
 
 #include "ravennakit/core/byte_order.hpp"
+#include "ravennakit/core/containers/buffer_view.hpp"
 #include "ravennakit/ptp/ptp_definitions.hpp"
+#include "ravennakit/ptp/ptp_error.hpp"
 #include "ravennakit/ptp/ptp_types.hpp"
 
 #include <cstdint>
@@ -31,6 +33,8 @@ struct ptp_version {
  * Provides a view over given data, interpreting it as a PTP message header.
  */
 struct ptp_message_header {
+    constexpr static size_t k_header_size = 34;
+
     struct flag_field {
         bool alternate_master_flag {};      // Announce, Sync, Follow_Up, Delay_Resp
         bool two_step_flag {};              // Sync, Pdelay_resp
@@ -65,9 +69,7 @@ struct ptp_message_header {
     uint16_t sequence_id {};
     int8_t logMessageInterval {};
 
-    enum class error { invalid_data, not_enough_data, invalid_message_length };
-
-    static tl::expected<ptp_message_header, error> from_data(const uint8_t* data, size_t size_bytes);
+    static tl::expected<ptp_message_header, ptp_error> from_data(buffer_view<const uint8_t> data);
 
     [[nodiscard]] std::string to_string() const;
 
@@ -75,7 +77,6 @@ struct ptp_message_header {
     friend bool operator!=(const ptp_message_header& lhs, const ptp_message_header& rhs);
 
   private:
-    constexpr static size_t k_header_size = 34;
     [[nodiscard]] auto tie_members() const;
 };
 

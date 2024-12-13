@@ -13,7 +13,7 @@
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("ptp_message_header") {
-    std::array<uint8_t, 300> data {
+    constexpr std::array<const uint8_t, 300> data {
         0xfd,                                            // majorSdoId & messageType
         0x12,                                            // minorVersionPTP & versionPTP
         0x01, 0x2c,                                      // messageLength (300)
@@ -29,7 +29,7 @@ TEST_CASE("ptp_message_header") {
         0x81,                                            // logMessageInterval
     };
 
-    auto header = rav::ptp_message_header::from_data(data.data(), data.size());
+    auto header = rav::ptp_message_header::from_data(rav::buffer_view(data));
 
     REQUIRE(header.has_value());
     REQUIRE(header->sdo_id == 0xf22);

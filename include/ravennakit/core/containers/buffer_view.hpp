@@ -11,6 +11,7 @@
 #pragma once
 
 #include <cstddef>
+#include <array>
 
 namespace rav {
 
@@ -30,15 +31,29 @@ class buffer_view {
     buffer_view& operator=(buffer_view&& other) noexcept = default;
 
     /**
-     * Constructs a view pointing to given data.
+     * Construct a view pointing to given data.
      * @param data The data to refer to.
-     * @param count The number of elements in the buffer.
+     * @param size The number of elements in the buffer.
      */
-    buffer_view(Type* data, const size_t count) : data_(data), size_(count) {
+    buffer_view(Type* data, const size_t size) : data_(data), size_(size) {
         if (data_ == nullptr) {
             size_ = 0;
         }
     }
+
+    /**
+     * Construct a view from a std::array.
+     * @tparam S The size of the array.
+     * @param array The array to refer to.
+     */
+    template<size_t S>
+    explicit buffer_view(const std::array<Type, S>& array) : buffer_view(array.data(), array.size()) {}
+
+    /**
+     * Construct a view from a std::vector.
+     * @param vector The vector to refer to.
+     */
+    explicit buffer_view(const std::vector<Type>& vector) : buffer_view(vector.data(), vector.size()) {}
 
     /**
      * @param index The index to access.
@@ -81,6 +96,25 @@ class buffer_view {
      */
     [[nodiscard]] bool empty() const {
         return size_ == 0;
+    }
+
+    /**
+     * @returns A new buffer_view pointing to a sub-range of this buffer.
+     * @param offset The offset of the sub-range.
+     */
+    [[nodiscard]] buffer_view subview(size_t offset) const {
+        offset = std::min(offset, size_);
+        return buffer_view(data_ + offset, size_ - offset);
+    }
+
+    /**
+     * @returns A new buffer_view pointing to a sub-range of this buffer.
+     * @param offset The offset of the sub-range.
+     * @param size The number of elements in the sub-range. The size will be limited to the available size.
+     */
+    [[nodiscard]] buffer_view subview(size_t offset, const size_t size) const {
+        offset = std::min(offset, size_);
+        return buffer_view(data_ + offset, std::min(size_ - offset, size));
     }
 
     /**

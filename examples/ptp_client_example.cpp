@@ -9,6 +9,8 @@
  */
 
 #include "ravennakit/core/system.hpp"
+#include "ravennakit/ptp/messages/ptp_announce_message.hpp"
+#include "ravennakit/ptp/messages/ptp_message.hpp"
 #include "ravennakit/ptp/messages/ptp_message_header.hpp"
 #include "ravennakit/rtp/detail/udp_sender_receiver.hpp"
 
@@ -42,14 +44,14 @@ int main(int const argc, char* argv[]) {
     );
 
     auto handler = [](const rav::udp_sender_receiver::recv_event& event) {
-        auto header = rav::ptp_message_header::from_data(event.data, event.size);
-        if (!header.has_value()) {
-            RAV_TRACE(
-                "PTP Error: {}", static_cast<std::underlying_type_t<rav::ptp_message_header::error>>(header.error())
-            );
+        const rav::buffer_view data(event.data, event.size);
+
+        auto message = rav::ptp_message::from_data(data);
+        if (!message.has_value()) {
+            RAV_TRACE("PTP Error: {}", static_cast<std::underlying_type_t<rav::ptp_error>>(message.error()));
             return;
         }
-        RAV_TRACE("{}", header->to_string());
+        RAV_TRACE("{}", message->to_string());
     };
 
     ptp_event_socket.start(handler);

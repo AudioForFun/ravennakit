@@ -54,19 +54,16 @@ auto rav::ptp_message_header::flag_field::tie_members() const {
     );
 }
 
-tl::expected<rav::ptp_message_header, rav::ptp_message_header::error>
-rav::ptp_message_header::from_data(const uint8_t* data, const size_t size_bytes) {
-    if (data == nullptr) {
-        return tl::unexpected(error::invalid_data);
-    }
-    if (size_bytes < k_header_size) {
-        return tl::unexpected(error::not_enough_data);
+tl::expected<rav::ptp_message_header, rav::ptp_error>
+rav::ptp_message_header::from_data(buffer_view<const uint8_t> data) {
+    if (data.empty()) {
+        return tl::unexpected(ptp_error::invalid_data);
     }
 
     ptp_message_header header;
-    header.message_length = rav::byte_order::read_be<uint16_t>(data + 2);
-    if (header.message_length != size_bytes) {
-        return tl::unexpected(error::invalid_message_length);
+    header.message_length = rav::byte_order::read_be<uint16_t>(data.data() + 2);
+    if (data.size() != header.message_length) {
+        return tl::unexpected(ptp_error::invalid_message_length);
     }
 
     header.sdo_id = static_cast<uint16_t>((data[0] & 0b11110000) << 4 | data[5]);
@@ -75,11 +72,11 @@ rav::ptp_message_header::from_data(const uint8_t* data, const size_t size_bytes)
     header.version.minor = (data[1] & 0b11110000) >> 4;
     header.domain_number = data[4];
     header.flags = flag_field::from_octets(data[6], data[7]);
-    header.correction_field = rav::byte_order::read_be<int64_t>(data + 8);
+    header.correction_field = rav::byte_order::read_be<int64_t>(data.data() + 8);
     // Type specific octets are ignored (4 octets)
-    std::memcpy(header.source_port_identity.clock_identity.data, data + 20, 8);
-    header.source_port_identity.port_number = rav::byte_order::read_be<uint16_t>(data + 28);
-    header.sequence_id = rav::byte_order::read_be<uint16_t>(data + 30);
+    std::memcpy(header.source_port_identity.clock_identity.data, data.data() + 20, 8);
+    header.source_port_identity.port_number = rav::byte_order::read_be<uint16_t>(data.data() + 28);
+    header.sequence_id = rav::byte_order::read_be<uint16_t>(data.data() + 30);
     // Control field is ignored (1 byte)
     header.logMessageInterval = static_cast<int8_t>(data[33]);
 

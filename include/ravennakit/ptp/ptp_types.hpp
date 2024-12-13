@@ -16,7 +16,7 @@
 namespace rav {
 
 struct ptp_timestamp {
-    uint48_t seconds {};
+    uint48_t seconds;
     uint32_t nanoseconds {};
 };
 
@@ -59,7 +59,7 @@ struct ptp_port_identity {
 struct ptp_clock_quality {
     /// The clock class. Default is 248, for slave-only the value is 255.
     uint8_t clock_class {};
-    ptp_clock_accuracy clock_accuracy {};
+    ptp_clock_accuracy clock_accuracy {ptp_clock_accuracy::unknown};
     uint16_t offset_scaled_log_variance {};
 };
 

@@ -69,8 +69,27 @@ enum class ptp_clock_accuracy : uint8_t {
 };
 
 /**
+ * PTP Time source
+ * IEEE1588-2019: 7.6.2.8, Table 6
+ */
+enum class ptp_time_source : uint8_t {
+    undefined = 0x0,  // Not specified in IEEE1588-2019 (afaik)
+    atomic_clock = 0x10,
+    gnss = 0x20,
+    terrestrial_radio = 0x30,
+    serial_time_code = 0x39,
+    ptp = 0x40,
+    ntp = 0x50,
+    hand_set = 0x60,
+    other = 0x90,
+    internal_oscillator = 0xA0,
+    // 0xF0 to 0xFE Designated for assignment by alternate PTP Profiles
+    reserved = 0xFF,
+};
+
+/**
  * State decision codes.
- * IEEE1588-2019: sections 9.3.1, 9.3.5, Table 30, 31, 32, 33.
+ * IEEE1588-2019: 9.3.1, 9.3.5, Table 30, 31, 32, 33.
  */
 enum class ptp_state_decision_code {
     /// The PTP Port is in the MASTER state because it is on a clockClass 1 through 127 PTP Instance and is a PTP Port
