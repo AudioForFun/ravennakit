@@ -12,50 +12,71 @@
 
 #include "ravennakit/core/byte_order.hpp"
 #include "ravennakit/ptp/ptp_definitions.hpp"
+#include "ravennakit/ptp/ptp_types.hpp"
 
 #include <cstdint>
 #include <tl/expected.hpp>
 
 namespace rav {
 
-class ptp_message_header {
-  public:
-    enum class error { not_enough_data, invalid_data_length };
+struct ptp_version {
+    uint8_t major {};
+    uint8_t minor {};
 
-    tl::expected<void, error> decode(const uint8_t* data, const size_t size_bytes) {
-        if (size_bytes < k_header_size) {
-            return tl::unexpected(error::not_enough_data);
-        }
+    friend bool operator==(const ptp_version& lhs, const ptp_version& rhs);
+    friend bool operator!=(const ptp_version& lhs, const ptp_version& rhs);
+};
 
-        message_length_ = rav::byte_order::read_be<uint16_t>(data + 2);
-        if (message_length_ != size_bytes) {
-            return tl::unexpected(error::invalid_data_length);
-        }
+/**
+ * Provides a view over given data, interpreting it as a PTP message header.
+ */
+struct ptp_message_header {
+    struct flag_field {
+        bool alternate_master_flag {};      // Announce, Sync, Follow_Up, Delay_Resp
+        bool two_step_flag {};              // Sync, Pdelay_resp
+        bool unicast_flag {};               // All
+        bool profile_specific_1 {};         // All
+        bool profile_specific_2 {};         // All
+        bool leap61 {};                     // Announce
+        bool leap59 {};                     // Announce
+        bool current_utc_offset_valid {};   // Announce
+        bool ptp_timescale {};              // Announce
+        bool time_traceable {};             // Announce
+        bool frequency_traceable {};        // Announce
+        bool synchronization_uncertain {};  // Announce
 
-        sdo_id_ = static_cast<uint16_t>((data[0] & 0b11110000) << 4 | data[5]);
+        static flag_field from_octets(uint8_t octet1, uint8_t octet2);
 
-        message_type_ = static_cast<ptp_message_type>(data[0] & 0b00001111);
-        version_ptp_ = data[1] | 0b00001111;
-        minor_version_ptp_ = (data[1] | 0b11110000) >> 4;
+        friend bool operator==(const flag_field& lhs, const flag_field& rhs);
+        friend bool operator!=(const flag_field& lhs, const flag_field& rhs);
 
-        return {};
-    }
+      private:
+        [[nodiscard]] auto tie_members() const;
+    };
 
-    [[nodiscard]] uint16_t sdo_id() const {
-        return sdo_id_;
-    }
+    uint16_t sdo_id {};
+    ptp_message_type message_type {};
+    ptp_version version;
+    uint16_t message_length {};
+    uint8_t domain_number {};
+    flag_field flags;
+    int64_t correction_field {};
+    ptp_port_identity source_port_identity;
+    uint16_t sequence_id {};
+    int8_t logMessageInterval {};
 
-    [[nodiscard]] std::string to_string() const {
-        return fmt::format("PTP {}: sdo_id={} version={}.{}", ptp_message_type_to_string(message_type_), sdo_id_, version_ptp_, minor_version_ptp_);
-    }
+    enum class error { invalid_data, not_enough_data, invalid_message_length };
+
+    static tl::expected<ptp_message_header, error> from_data(const uint8_t* data, size_t size_bytes);
+
+    [[nodiscard]] std::string to_string() const;
+
+    friend bool operator==(const ptp_message_header& lhs, const ptp_message_header& rhs);
+    friend bool operator!=(const ptp_message_header& lhs, const ptp_message_header& rhs);
 
   private:
     constexpr static size_t k_header_size = 34;
-    uint16_t sdo_id_ {};
-    ptp_message_type message_type_ {};
-    uint16_t message_length_ {};
-    uint8_t version_ptp_{};
-    uint8_t minor_version_ptp_{};
+    [[nodiscard]] auto tie_members() const;
 };
 
 }  // namespace rav

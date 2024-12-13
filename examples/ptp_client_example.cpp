@@ -42,9 +42,14 @@ int main(int const argc, char* argv[]) {
     );
 
     auto handler = [](const rav::udp_sender_receiver::recv_event& event) {
-        rav::ptp_message_header header;
-        header.decode(event.data, event.size);
-        RAV_TRACE("{}", header.to_string());
+        auto header = rav::ptp_message_header::from_data(event.data, event.size);
+        if (!header.has_value()) {
+            RAV_TRACE(
+                "PTP Error: {}", static_cast<std::underlying_type_t<rav::ptp_message_header::error>>(header.error())
+            );
+            return;
+        }
+        RAV_TRACE("{}", header->to_string());
     };
 
     ptp_event_socket.start(handler);
