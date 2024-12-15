@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ravennakit/core/warnings.hpp"
+#include "ravennakit/core/platform.hpp"
 
 #if defined(TRACY_ENABLE) && TRACY_ENABLE
     #if RAV_APPLE
