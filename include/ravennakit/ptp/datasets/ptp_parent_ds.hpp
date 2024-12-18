@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ptp_default_ds.hpp"
 #include "ravennakit/ptp/types/ptp_clock_quality.hpp"
 #include "ravennakit/ptp/types/ptp_port_identity.hpp"
 

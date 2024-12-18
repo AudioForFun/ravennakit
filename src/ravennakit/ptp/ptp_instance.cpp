@@ -46,10 +46,25 @@ tl::expected<void, rav::ptp_error> rav::ptp_instance::add_port(const asio::ip::a
     port_identity.clock_identity = default_ds_.clock_identity;
     port_identity.port_number = get_next_available_port_number();
 
-    ports_.emplace_back(std::make_unique<ptp_port>(io_context_, interface_address, port_identity))
+    ports_.emplace_back(std::make_unique<ptp_port>(*this, io_context_, interface_address, port_identity))
         ->assert_valid_state(ptp_default_profile_1);
 
     return {};
+}
+
+const rav::ptp_parent_ds& rav::ptp_instance::get_parent_ds() const {
+    return parent_ds_;
+}
+
+void rav::ptp_instance::update_data_sets(
+    const ptp_state_decision_code state_decision_code, const ptp_announce_message& announce_message
+) {
+    if (state_decision_code != ptp_state_decision_code::s1) {
+        RAV_ASSERT_FALSE("State decision code not implemented");
+        return;
+    }
+
+    std::ignore = announce_message;
 }
 
 uint16_t rav::ptp_instance::get_next_available_port_number() const {

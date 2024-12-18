@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "datasets/ptp_parent_ds.hpp"
 #include "datasets/ptp_port_ds.hpp"
 #include "messages/ptp_announce_message.hpp"
 #include "messages/ptp_delay_req_message.hpp"
@@ -27,9 +28,11 @@
 
 namespace rav {
 
+class ptp_instance;
+
 class ptp_port {
   public:
-    ptp_port(asio::io_context& io_context, const asio::ip::address& interface_address, ptp_port_identity port_identity);
+    ptp_port(ptp_instance& parent, asio::io_context& io_context, const asio::ip::address& interface_address, ptp_port_identity port_identity);
 
     [[nodiscard]] uint16_t get_port_number() const;
 
@@ -39,6 +42,7 @@ class ptp_port {
     void assert_valid_state(const ptp_profile& profile) const;
 
   private:
+    ptp_instance& parent_;
     ptp_port_ds port_ds_;
     udp_sender_receiver event_socket_;
     udp_sender_receiver general_socket_;

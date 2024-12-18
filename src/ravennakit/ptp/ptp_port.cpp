@@ -12,6 +12,7 @@
 
 #include "ravennakit/core/util.hpp"
 #include "ravennakit/core/containers/buffer_view.hpp"
+#include "ravennakit/ptp/ptp_instance.hpp"
 #include "ravennakit/ptp/ptp_profiles.hpp"
 #include "ravennakit/ptp/messages/ptp_follow_up_message.hpp"
 #include "ravennakit/ptp/messages/ptp_message.hpp"
@@ -25,8 +26,10 @@ constexpr auto k_ptp_general_port = 320;
 }  // namespace
 
 rav::ptp_port::ptp_port(
-    asio::io_context& io_context, const asio::ip::address& interface_address, const ptp_port_identity port_identity
+    ptp_instance& parent, asio::io_context& io_context, const asio::ip::address& interface_address,
+    const ptp_port_identity port_identity
 ) :
+    parent_(parent),
     event_socket_(io_context, asio::ip::address_v4(), k_ptp_event_port),
     general_socket_(io_context, asio::ip::address_v4(), k_ptp_general_port) {
     // Initialize the port data set
@@ -183,7 +186,15 @@ void rav::ptp_port::handle_announce_message(
         return;
     }
 
+    if ((port_ds_.port_state == ptp_state::slave || port_ds_.port_state == ptp_state::uncalibrated)
+        && header.source_port_identity == parent_.get_parent_ds().parent_port_identity) {
+        // Message is from current parent ptp instance (master)
+        parent_.update_data_sets(ptp_state_decision_code::s1, announce_message);
+    } else {
+        // TODO: Update or create entry in foreign master list
+    }
 
+    // TODO: Trigger STATE_DECISION_EVENT? Can also happen on a regular interval.
 }
 
 void rav::ptp_port::handle_sync_message(

@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ravennakit/core/streams/output_stream.hpp"
 #include "ravennakit/ptp/ptp_definitions.hpp"
 
 namespace rav {

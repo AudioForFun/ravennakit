@@ -10,6 +10,9 @@
 
 #pragma once
 
+#include "ravennakit/ptp/types/ptp_clock_identity.hpp"
+#include "ravennakit/ptp/types/ptp_clock_quality.hpp"
+
 namespace rav {
 
 /**
