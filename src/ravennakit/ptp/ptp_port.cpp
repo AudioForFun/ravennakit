@@ -15,7 +15,6 @@
 #include "ravennakit/ptp/ptp_instance.hpp"
 #include "ravennakit/ptp/ptp_profiles.hpp"
 #include "ravennakit/ptp/messages/ptp_follow_up_message.hpp"
-#include "ravennakit/ptp/messages/ptp_message.hpp"
 #include "ravennakit/ptp/messages/ptp_pdelay_resp_follow_up_message.hpp"
 #include "ravennakit/ptp/messages/ptp_pdelay_resp_message.hpp"
 
@@ -31,7 +30,8 @@ rav::ptp_port::ptp_port(
 ) :
     parent_(parent),
     event_socket_(io_context, asio::ip::address_v4(), k_ptp_event_port),
-    general_socket_(io_context, asio::ip::address_v4(), k_ptp_general_port) {
+    general_socket_(io_context, asio::ip::address_v4(), k_ptp_general_port),
+    foreign_master_list_(port_identity) {
     // Initialize the port data set
     port_ds_.port_identity = port_identity;
     port_ds_.port_state = ptp_state::initializing;
@@ -49,8 +49,8 @@ rav::ptp_port::ptp_port(
     port_ds_.port_state = ptp_state::listening;
 }
 
-uint16_t rav::ptp_port::get_port_number() const {
-    return port_ds_.port_identity.port_number;
+const rav::ptp_port_identity& rav::ptp_port::get_port_identity() const {
+    return port_ds_.port_identity;
 }
 
 void rav::ptp_port::assert_valid_state(const ptp_profile& profile) const {
@@ -72,12 +72,13 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
 
     switch (header->message_type) {
         case ptp_message_type::announce: {
-            auto announce_message = ptp_announce_message::from_data(data.subview(ptp_message_header::k_header_size));
+            auto announce_message =
+                ptp_announce_message::from_data(header.value(), data.subview(ptp_message_header::k_header_size));
             if (!announce_message) {
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(announce_message.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), announce_message->to_string());
-            handle_announce_message(header.value(), announce_message.value(), {});
+            handle_announce_message(announce_message.value(), {});
             break;
         }
         case ptp_message_type::sync: {
@@ -86,7 +87,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(sync_message.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), sync_message->to_string());
-            handle_sync_message(header.value(), sync_message.value(), {});
+            handle_sync_message(sync_message.value(), {});
             break;
         }
         case ptp_message_type::delay_req: {
@@ -95,7 +96,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(delay_req.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), delay_req->to_string());
-            handle_delay_req_message(header.value(), delay_req.value(), {});
+            handle_delay_req_message(delay_req.value(), {});
             break;
         }
         case ptp_message_type::p_delay_req: {
@@ -104,7 +105,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(pdelay_req.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), pdelay_req->to_string());
-            handle_pdelay_req_message(header.value(), pdelay_req.value(), {});
+            handle_pdelay_req_message(pdelay_req.value(), {});
             break;
         }
         case ptp_message_type::p_delay_resp: {
@@ -113,7 +114,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(pdelay_resp.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), pdelay_resp->to_string());
-            handle_pdelay_resp_message(header.value(), pdelay_resp.value(), {});
+            handle_pdelay_resp_message(pdelay_resp.value(), {});
             break;
         }
         case ptp_message_type::follow_up: {
@@ -122,7 +123,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(follow_up.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), follow_up->to_string());
-            handle_follow_up_message(header.value(), follow_up.value(), {});
+            handle_follow_up_message(follow_up.value(), {});
             break;
         }
         case ptp_message_type::delay_resp: {
@@ -131,7 +132,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(delay_resp.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), delay_resp->to_string());
-            handle_delay_resp_message(header.value(), delay_resp.value(), {});
+            handle_delay_resp_message(delay_resp.value(), {});
             break;
         }
         case ptp_message_type::p_delay_resp_follow_up: {
@@ -141,7 +142,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(pdelay_resp_follow_up.error()));
             }
             RAV_TRACE("{} {}", header->to_string(), pdelay_resp_follow_up->to_string());
-            handle_pdelay_resp_follow_up_message(header.value(), pdelay_resp_follow_up.value(), {});
+            handle_pdelay_resp_follow_up_message(pdelay_resp_follow_up.value(), {});
             break;
         }
         case ptp_message_type::signaling: {
@@ -165,9 +166,8 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
 }
 
 void rav::ptp_port::handle_announce_message(
-    const ptp_message_header& header, const ptp_announce_message& announce_message, buffer_view<const uint8_t> tlvs
+    const ptp_announce_message& announce_message, buffer_view<const uint8_t> tlvs
 ) {
-    std::ignore = header;
     std::ignore = announce_message;
     std::ignore = tlvs;
 
@@ -186,10 +186,17 @@ void rav::ptp_port::handle_announce_message(
         return;
     }
 
+    /// IEEE 1588-2019: 9.3.2.5 a)
+    if (parent_.has_port_identity(announce_message.header.source_port_identity)) {
+        RAV_TRACE("Discarding announce message from known port identity");
+        return;
+    }
+
     if ((port_ds_.port_state == ptp_state::slave || port_ds_.port_state == ptp_state::uncalibrated)
-        && header.source_port_identity == parent_.get_parent_ds().parent_port_identity) {
+        && announce_message.header.source_port_identity == parent_.get_parent_ds().parent_port_identity) {
         // Message is from current parent ptp instance (master)
         parent_.update_data_sets(ptp_state_decision_code::s1, announce_message);
+        // TODO: Update port_ds state
     } else {
         // TODO: Update or create entry in foreign master list
     }
@@ -197,59 +204,49 @@ void rav::ptp_port::handle_announce_message(
     // TODO: Trigger STATE_DECISION_EVENT? Can also happen on a regular interval.
 }
 
-void rav::ptp_port::handle_sync_message(
-    const ptp_message_header& header, const ptp_sync_message& sync_message, buffer_view<const uint8_t> tlvs
-) {
-    std::ignore = header;
+void rav::ptp_port::handle_sync_message(const ptp_sync_message& sync_message, buffer_view<const uint8_t> tlvs) {
     std::ignore = sync_message;
     std::ignore = tlvs;
 }
 
 void rav::ptp_port::handle_delay_req_message(
-    const ptp_message_header& header, const ptp_delay_req_message& delay_req_message, buffer_view<const uint8_t> tlvs
+    const ptp_delay_req_message& delay_req_message, buffer_view<const uint8_t> tlvs
 ) {
-    std::ignore = header;
     std::ignore = delay_req_message;
     std::ignore = tlvs;
 }
 
 void rav::ptp_port::handle_follow_up_message(
-    const ptp_message_header& header, const ptp_follow_up_message& follow_up_message, buffer_view<const uint8_t> tlvs
+    const ptp_follow_up_message& follow_up_message, buffer_view<const uint8_t> tlvs
 ) {
-    std::ignore = header;
     std::ignore = follow_up_message;
     std::ignore = tlvs;
 }
 
 void rav::ptp_port::handle_delay_resp_message(
-    const ptp_message_header& header, const ptp_delay_req_message& delay_resp_message, buffer_view<const uint8_t> tlvs
+    const ptp_delay_req_message& delay_resp_message, buffer_view<const uint8_t> tlvs
 ) {
-    std::ignore = header;
     std::ignore = delay_resp_message;
     std::ignore = tlvs;
 }
 
 void rav::ptp_port::handle_pdelay_req_message(
-    const ptp_message_header& header, const ptp_pdelay_req_message& delay_req_message, buffer_view<const uint8_t> tlvs
+    const ptp_pdelay_req_message& delay_req_message, buffer_view<const uint8_t> tlvs
 ) {
-    std::ignore = header;
     std::ignore = delay_req_message;
     std::ignore = tlvs;
 }
 
 void rav::ptp_port::handle_pdelay_resp_message(
-    const ptp_message_header& header, const ptp_pdelay_resp_message& delay_req_message, buffer_view<const uint8_t> tlvs
+    const ptp_pdelay_resp_message& delay_req_message, buffer_view<const uint8_t> tlvs
 ) {
-    std::ignore = header;
     std::ignore = delay_req_message;
     std::ignore = tlvs;
 }
 
 void rav::ptp_port::handle_pdelay_resp_follow_up_message(
-    const ptp_message_header& header, const ptp_pdelay_resp_follow_up_message& delay_req_message,
-    buffer_view<const uint8_t> tlvs
+    const ptp_pdelay_resp_follow_up_message& delay_req_message, buffer_view<const uint8_t> tlvs
 ) {
-    std::ignore = header;
     std::ignore = delay_req_message;
     std::ignore = tlvs;
 }

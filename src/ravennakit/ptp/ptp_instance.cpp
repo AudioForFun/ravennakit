@@ -59,18 +59,24 @@ const rav::ptp_parent_ds& rav::ptp_instance::get_parent_ds() const {
 void rav::ptp_instance::update_data_sets(
     const ptp_state_decision_code state_decision_code, const ptp_announce_message& announce_message
 ) {
-    if (state_decision_code != ptp_state_decision_code::s1) {
-        RAV_ASSERT_FALSE("State decision code not implemented");
-        return;
-    }
+    current_ds_.update(state_decision_code, announce_message);
+    parent_ds_.update(state_decision_code, announce_message);
+    time_properties_ds_.update(state_decision_code, announce_message);
+}
 
-    std::ignore = announce_message;
+bool rav::ptp_instance::has_port_identity(const ptp_port_identity& port_identity) const {
+    for (auto& port : ports_) {
+        if (port->get_port_identity() == port_identity) {
+            return true;
+        }
+    }
+    return false;
 }
 
 uint16_t rav::ptp_instance::get_next_available_port_number() const {
     for (uint16_t i = ptp_port_identity::k_port_number_min; i <= ptp_port_identity::k_port_number_max; ++i) {
         if (std::none_of(ports_.begin(), ports_.end(), [i](const auto& port) {
-                return port->get_port_number() == i;
+                return port->get_port_identity().port_number == i;
             })) {
             return i;
         }

@@ -43,9 +43,16 @@ class ptp_instance {
     /**
      * Updates the data sets of the PTP instance based on the state decision code.
      * @param state_decision_code The state decision code.
-     * @param announce_message The announce message to update the data sets with.
+     * @param announce_message The announcement message to update the data sets with.
      */
     void update_data_sets(ptp_state_decision_code state_decision_code, const ptp_announce_message& announce_message);
+
+    /**
+     * Tests whether any of the ports in the PTP instance has the given port identity.
+     * @param port_identity The port identity to test for.
+     * @return True if any of the ports has the given port identity, false otherwise.
+     */
+    [[nodiscard]] bool has_port_identity(const ptp_port_identity& port_identity) const;
 
   private:
     asio::io_context& io_context_;

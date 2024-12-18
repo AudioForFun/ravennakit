@@ -12,12 +12,13 @@
 #include "ravennakit/core/byte_order.hpp"
 
 tl::expected<rav::ptp_announce_message, rav::ptp_error>
-rav::ptp_announce_message::from_data(buffer_view<const uint8_t> data) {
+rav::ptp_announce_message::from_data(const ptp_message_header& header, buffer_view<const uint8_t> data) {
     if (data.size() < k_message_size) {
         return tl::unexpected(ptp_error::invalid_message_length);
     }
 
     ptp_announce_message msg;
+    msg.header = header;
     msg.origin_timestamp = ptp_timestamp::from_data(data);
     msg.current_utc_offset = data.read_be<int16_t>(10);
     // Byte 12 is reserved
