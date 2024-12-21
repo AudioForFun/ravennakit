@@ -12,27 +12,36 @@ Include headers in the following order:
 
 Each block separated by a space (to not have the include order changed by clang-format).
 
-## Guidelines for exception safety and error handling in the Library
-1. Ensure exception-safe code
+## Guidelines for exception safety and error handling in the library
+
+1. **Ensure exception-safe code**
+
    - All code within the library must be exception-safe.
    - Resources must be managed using RAII (Resource Acquisition Is Initialization) or equivalent techniques to guarantee proper cleanup, even in the presence of exceptions.
-   - Assume that any non-noexcept function can throw an exception.
-   - Be aware that many components of the C++ Standard Library and other third-party libraries rely on exceptions for error handling, making it impractical to avoid exceptions entirely.
-2. Leverage tl::expected for error handling
-   - Use tl::expected wherever applicable to encapsulate the result of an operation that might fail.
-   tl::expected allows the caller to handle errors as return values rather than exceptions, providing a more flexible mechanism for error handling.
-   - This approach gives the caller the choice to process errors using custom logic or convert them into exceptions when appropriate.
-   - It is especially useful for operations where the library user may want greater control over error handling strategies.
-3. Throw exceptions in constructors for critical errors
-   - A constructor should throw an exception if it fails to establish the invariants required for an object's proper functionality.
-   - Since constructors cannot return values, throwing exceptions is the idiomatic way to signal failure during object creation.
-   - Ensure any partially initialized resources are cleaned up properly to avoid leaks when an exception occurs.
-4. Avoid using exceptions or error codes for control flow
-   - Both exceptions and error return values must be reserved for truly exceptional circumstances.
-   They should not be used to control routine program logic or handle non-critical events.
+   - Assume that any non-`noexcept` function can throw an exception.
+   - Be aware that many components of the C++ standard library and other third-party libraries rely on exceptions for error handling, making it impractical to avoid exceptions entirely.
+
+2. **Use both return values and exceptions for error handling**
+
+   - Use return values wherever possible to signal errors. For example, leverage `tl::expected` to encapsulate the result of an operation that might fail.
+      - `tl::expected` allows the caller to handle errors explicitly as return values, providing a more flexible mechanism for error handling.
+      - This approach gives the caller the choice to process errors using custom logic or convert them into exceptions when appropriate.
+   - Throw exceptions where return values are not feasible, such as in constructors.
+      - A constructor should throw an exception if it fails to establish the invariants required for an object’s proper functionality.
+      - Ensure any partially initialized resources are cleaned up properly to avoid leaks when an exception occurs.
+
+3. **Prioritize explicit error handling**
+
+   - Make error handling as explicit as possible, ensuring that the code’s behavior in error scenarios is predictable and clear.
+   - Avoid relying on exceptions solely because of stack unwinding. Instead, use exceptions to signal critical failures that cannot be represented with return values.
+   - Provide clear and detailed documentation for all error-handling paths, whether they involve return values or exceptions.
+
+4. **Avoid using exceptions or return values for control flow**
+
+   - Both exceptions and error return values must be reserved for truly exceptional circumstances. They should not be used to control routine program logic or handle non-critical events.
    - Examples of misuse:
-     - Using exceptions for looping conditions or state transitions.
-     - Using error codes for predictable outcomes (e.g., checking if a file exists).
+      - Using exceptions for looping conditions or state transitions.
+      - Using error codes for predictable outcomes (e.g., checking if a file exists).
    - Ensure normal operations are handled with predictable, clear, and performant logic without relying on exceptions or error propagation mechanisms.
 
 ## Quick commands
