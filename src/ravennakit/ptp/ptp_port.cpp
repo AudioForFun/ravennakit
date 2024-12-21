@@ -70,7 +70,7 @@ std::optional<rav::ptp_announce_message> rav::ptp_port::execute_state_decision_e
     // If SLAVE, UNCALIBRATED, or PASSIVE include previous Erbest, but if a newer message from this port is available
     // then this should be used.
 
-
+    return std::nullopt;
 }
 
 rav::ptp_state rav::ptp_port::state() const {
@@ -85,8 +85,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
         return;
     }
 
-    if (header->source_port_identity == port_ds_.port_identity) {
-        RAV_WARNING("Received own message, ignoring");
+    if (!parent_.should_process_ptp_messages(header.value())) {
         return;
     }
 
@@ -208,7 +207,7 @@ void rav::ptp_port::handle_announce_message(
 
     if (announce_message.header.source_port_identity.clock_identity == port_ds_.port_identity.clock_identity) {
         RAV_TRACE("Discarding announce message from the same PTP instance");
-        // Note: this is a shortcut for one of the checks if a message is qualified.
+        // Note: this is a shortcut for one of the checks whether a message is qualified.
         return;
     }
 

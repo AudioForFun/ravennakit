@@ -94,6 +94,7 @@ class ptp_foreign_master_list {
         if (auto* entry = find_entry(foreign_port_identity)) {
             entry->foreign_master_announce_messages++;
             entry->most_recent_announce_message = announce_message;
+            // Note: I think we need to work out how many messages are received within the time window.
         } else {
             // IEEE 1588-2019: 9.5.3 b) states that a new records start with 0 announce messages.
             entries_.push_back({foreign_port_identity, 0, announce_message});

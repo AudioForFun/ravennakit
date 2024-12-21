@@ -12,6 +12,7 @@
 
 #include "ravennakit/ptp/types/ptp_clock_identity.hpp"
 #include "ravennakit/ptp/types/ptp_clock_quality.hpp"
+#include "ravennakit/ptp/types/ptp_sdo_id.hpp"
 
 namespace rav {
 
@@ -36,7 +37,7 @@ struct ptp_default_ds {
     /// Default profile: false (if configurable)
     bool slave_only {false }; // Default for default profile
 
-    uint16_t sdo_id { 0 };  // 12 bit on the wire (0-4095), default for default profile
+    ptp_sdo_id sdo_id; // 12 bit on the wire (0-4095), default for default profile
 
     explicit ptp_default_ds(const bool slave_only_) {
         slave_only = slave_only_;

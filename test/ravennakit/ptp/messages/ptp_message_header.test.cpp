@@ -34,7 +34,8 @@ TEST_CASE("ptp_message_header") {
         auto header = rav::ptp_message_header::from_data(rav::buffer_view(data));
 
         REQUIRE(header.has_value());
-        REQUIRE(header->sdo_id == 0xf22);
+        REQUIRE(header->sdo_id.major == 0xf);
+        REQUIRE(header->sdo_id.minor == 0x22);
         REQUIRE(header->message_type == rav::ptp_message_type::management);
         REQUIRE(header->version.major == 0x2);
         REQUIRE(header->version.minor == 0x1);
@@ -73,7 +74,8 @@ TEST_CASE("ptp_message_header") {
     SECTION("Pack to stream") {
         rav::byte_stream stream;
         rav::ptp_message_header header;
-        header.sdo_id = 0xf22;
+        header.sdo_id.major = 0xf;
+        header.sdo_id.minor = 0x22;
         header.message_type = rav::ptp_message_type::management;
         header.version.major = 0x2;
         header.version.minor = 0x1;

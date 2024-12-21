@@ -49,6 +49,8 @@ tl::expected<void, rav::ptp_error> rav::ptp_instance::add_port(const asio::ip::a
     ports_.emplace_back(std::make_unique<ptp_port>(*this, io_context_, interface_address, port_identity))
         ->assert_valid_state(ptp_default_profile_1);
 
+    default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
+
     return {};
 }
 
@@ -62,15 +64,6 @@ void rav::ptp_instance::update_data_sets(
     current_ds_.update(state_decision_code, announce_message);
     parent_ds_.update(state_decision_code, announce_message);
     time_properties_ds_.update(state_decision_code, announce_message);
-}
-
-bool rav::ptp_instance::has_port_identity(const ptp_port_identity& port_identity) const {
-    for (auto& port : ports_) {
-        if (port->get_port_identity() == port_identity) {
-            return true;
-        }
-    }
-    return false;
 }
 
 void rav::ptp_instance::execute_state_decision_event() {
@@ -96,6 +89,38 @@ void rav::ptp_instance::execute_state_decision_event() {
     // TODO: Apply state decision algorithm
     // TODO: Update data sets for all ports
     // TODO: Instantiate the recommended state event in the state machine and make required changes in all PTP ports
+}
+
+bool rav::ptp_instance::should_process_ptp_messages(const ptp_message_header& header) const {
+    // IEEE1588-2019: 7.1.2.1
+    if (header.domain_number != default_ds_.domain_number) {
+        RAV_TRACE("Discarding message with different domain number: {}", header.to_string());
+        return false;
+    }
+
+    // IEEE1588-2019: 7.1.2.1
+    if (header.sdo_id.major != default_ds_.sdo_id.major) {
+        RAV_TRACE("Discarding message with different SDO ID major: {}", header.to_string());
+        return false;
+    }
+
+    // Not checking sdo_id minor, since this must only be done when "isolation option of 16.5" is used.
+
+    // IEEE1588-2019: 9.5.2.1
+    // Comparing the clock identity, because each port of this instance should have (has) the same clock identity.
+    if (header.source_port_identity.clock_identity == default_ds_.clock_identity) {
+        RAV_TRACE("Discarding message from own instance: {}", header.to_string());
+        return false;
+    }
+
+    // IEEE1588-2019: 9.1
+    // Unless the alternate master option is active, messages from alternate masters should be discarded.
+    if (header.flags.alternate_master_flag) {
+        RAV_TRACE("Discarding message with alternate master flag: {}", header.to_string());
+        return false;
+    }
+
+    return true;
 }
 
 uint16_t rav::ptp_instance::get_next_available_port_number() const {

@@ -84,7 +84,8 @@ rav::ptp_message_header::from_data(buffer_view<const uint8_t> data) {
         return tl::unexpected(ptp_error::invalid_message_length);
     }
 
-    header.sdo_id = static_cast<uint16_t>((data[0] & 0b11110000) << 4 | data[5]);
+    header.sdo_id.major = (data[0] & 0b11110000) >> 4;
+    header.sdo_id.minor = data[5];
     header.message_type = static_cast<ptp_message_type>(data[0] & 0b00001111);
     header.version.major = data[1] & 0b00001111;
     header.version.minor = (data[1] & 0b11110000) >> 4;
@@ -102,13 +103,13 @@ rav::ptp_message_header::from_data(buffer_view<const uint8_t> data) {
 }
 
 void rav::ptp_message_header::write_to(output_stream& stream) const {
-    // major sdo id + message type
-    stream.write_be<uint8_t>((sdo_id >> 4 & 0b11110000) | (static_cast<uint8_t>(message_type) & 0b00001111));
-    // minor version ptp + version ptp
-    stream.write_be<uint8_t>(static_cast<uint8_t>(version.minor << 4) | (version.major & 0b00001111));
+    // major sdo id + message type (left shift by multiplication to avoid type promotion)
+    stream.write_be<uint8_t>(((sdo_id.major & 0b00001111) * 16) | (static_cast<uint8_t>(message_type) & 0b00001111));
+    // minor version ptp + version ptp (left shift by multiplication to avoid type promotion)
+    stream.write_be<uint8_t>((version.minor * 16) | (version.major & 0b00001111));
     stream.write_be<uint16_t>(message_length);
     stream.write_be<uint8_t>(domain_number);
-    stream.write_be<uint8_t>(static_cast<uint8_t>(sdo_id));
+    stream.write_be<uint8_t>(sdo_id.minor);
     stream.write_be<uint16_t>(flags.to_octets());
     stream.write_be<int64_t>(correction_field);
     stream.write_be<uint32_t>(0);  // Ignored
@@ -121,7 +122,7 @@ void rav::ptp_message_header::write_to(output_stream& stream) const {
 std::string rav::ptp_message_header::to_string() const {
     return fmt::format(
         "PTP {}: sdo_id={} version={}.{} domain_number={} sequence_id={} source_port_identity={}.{}",
-        rav::to_string(message_type), sdo_id, version.major, version.minor, domain_number, sequence_id,
+        rav::to_string(message_type), sdo_id.to_string(), version.major, version.minor, domain_number, sequence_id,
         source_port_identity.clock_identity.to_string(), source_port_identity.port_number
     );
 }

@@ -16,6 +16,7 @@
 #include "ravennakit/ptp/ptp_definitions.hpp"
 #include "ravennakit/ptp/ptp_error.hpp"
 #include "ravennakit/ptp/types/ptp_port_identity.hpp"
+#include "ravennakit/ptp/types/ptp_sdo_id.hpp"
 
 #include <cstdint>
 #include <tl/expected.hpp>
@@ -56,7 +57,7 @@ struct ptp_message_header {
         [[nodiscard]] auto tie_members() const;
     };
 
-    uint16_t sdo_id {};
+    ptp_sdo_id sdo_id;
     ptp_message_type message_type {};
     ptp_version version;
     uint16_t message_length {};

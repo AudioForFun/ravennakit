@@ -48,16 +48,16 @@ class ptp_instance {
     void update_data_sets(ptp_state_decision_code state_decision_code, const ptp_announce_message& announce_message);
 
     /**
-     * Tests whether any of the ports in the PTP instance has the given port identity.
-     * @param port_identity The port identity to test for.
-     * @return True if any of the ports has the given port identity, false otherwise.
-     */
-    [[nodiscard]] bool has_port_identity(const ptp_port_identity& port_identity) const;
-
-    /**
      * Execute a state decision event on all ports in the PTP instance.
      */
     void execute_state_decision_event();
+
+    /**
+     * Determines whether the PTP instance should process the given PTP message.
+     * @param header The PTP message header.
+     * @return True if the PTP instance should process the message, false otherwise.
+     */
+    [[nodiscard]] bool should_process_ptp_messages(const ptp_message_header& header) const;
 
   private:
     asio::io_context& io_context_;
