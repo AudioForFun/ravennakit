@@ -43,4 +43,39 @@ TEST_CASE("ptp_clock_identity") {
             }
         }
     }
+
+    SECTION("Comparison") {
+        rav::ptp_clock_identity a;
+        rav::ptp_clock_identity b;
+
+        SECTION("Equal") {
+            REQUIRE(a == b);
+            REQUIRE_FALSE(a < b);
+            REQUIRE_FALSE(a > b);
+        }
+
+        SECTION("a < b") {
+            b.data[0] = 1;
+            REQUIRE(a < b);
+            REQUIRE(a != b);
+        }
+
+        SECTION("a > b") {
+            a.data[0] = 1;
+            REQUIRE(a > b);
+            REQUIRE(a != b);
+        }
+
+        SECTION("a < b") {
+            b.data[7] = 1;
+            REQUIRE(a < b);
+            REQUIRE(a != b);
+        }
+
+        SECTION("a > b") {
+            a.data[7] = 1;
+            REQUIRE(a > b);
+            REQUIRE(a != b);
+        }
+    }
 }

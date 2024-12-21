@@ -93,7 +93,7 @@ rav::ptp_message_header::from_data(buffer_view<const uint8_t> data) {
     header.flags = flag_field::from_octets(data[6], data[7]);
     header.correction_field = data.read_be<int64_t>(8);
     // Type specific octets are ignored (4 octets)
-    std::memcpy(header.source_port_identity.clock_identity.data, data.data() + 20, 8);
+    std::memcpy(header.source_port_identity.clock_identity.data.data(), data.data() + 20, 8);
     header.source_port_identity.port_number = data.read_be<uint16_t>(28);
     header.sequence_id = data.read_be<uint16_t>(30);
     // Control field is ignored (1 byte)

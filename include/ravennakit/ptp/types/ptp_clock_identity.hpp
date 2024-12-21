@@ -26,7 +26,7 @@ namespace rav {
  * IEEE1588-2019: 5.3.4
  */
 struct ptp_clock_identity {
-    uint8_t data[8] {};
+    std::array<uint8_t, 8> data {};
 
     /**
      * Construct a PTP clock identity from a byte array.
@@ -44,7 +44,7 @@ struct ptp_clock_identity {
     static ptp_clock_identity from_data(buffer_view<const uint8_t> view) {
         RAV_ASSERT(view.size() >= 8, "Data is too short to construct a PTP clock identity");
         ptp_clock_identity clock_identity;
-        std::memcpy(clock_identity.data, view.data(), sizeof(clock_identity.data));
+        std::memcpy(clock_identity.data.data(), view.data(), sizeof(clock_identity.data));
         return clock_identity;
     }
 
@@ -53,7 +53,7 @@ struct ptp_clock_identity {
      * @param stream The stream to write the clock identity to.
      */
     void write_to(output_stream& stream) const {
-        stream.write(data, sizeof(data));
+        stream.write(data.data(), data.size());
     }
 
     /**
@@ -100,17 +100,25 @@ struct ptp_clock_identity {
      * @return True if all bytes are zero, false otherwise.
      */
     [[nodiscard]] bool empty() const {
-        return std::all_of(data, data + 8, [](const uint8_t byte) {
+        return std::all_of(data.data(), data.data() + 8, [](const uint8_t byte) {
             return byte == 0;
         });
     }
 
     friend bool operator==(const ptp_clock_identity& lhs, const ptp_clock_identity& rhs) {
-        return std::memcmp(lhs.data, rhs.data, sizeof(lhs.data)) == 0;
+        return lhs.data == rhs.data;
     }
 
     friend bool operator!=(const ptp_clock_identity& lhs, const ptp_clock_identity& rhs) {
-        return !(lhs == rhs);
+        return lhs.data != rhs.data;
+    }
+
+    friend bool operator<(const ptp_clock_identity& lhs, const ptp_clock_identity& rhs) {
+        return std::lexicographical_compare(lhs.data.begin(), lhs.data.end(), rhs.data.begin(), rhs.data.end());
+    }
+
+    friend bool operator>(const ptp_clock_identity& lhs, const ptp_clock_identity& rhs) {
+        return std::lexicographical_compare(rhs.data.begin(), rhs.data.end(), lhs.data.begin(), lhs.data.end());
     }
 };
 
