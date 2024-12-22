@@ -117,6 +117,8 @@ class ptp_port {
     ) const;
 
     void schedule_announce_receipt_timeout();
+    void set_state(ptp_state new_state);
+    void trigger_announce_receipt_timeout_expires_event();
 };
 
 }  // namespace rav

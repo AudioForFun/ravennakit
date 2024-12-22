@@ -19,6 +19,8 @@
 #include "ravennakit/ptp/messages/ptp_pdelay_resp_follow_up_message.hpp"
 #include "ravennakit/ptp/messages/ptp_pdelay_resp_message.hpp"
 
+#include <random>
+
 namespace {
 const auto k_ptp_multicast_address = asio::ip::make_address("224.0.1.129");
 constexpr auto k_ptp_event_port = 319;
@@ -35,7 +37,7 @@ rav::ptp_port::ptp_port(
     general_socket_(io_context, asio::ip::address_v4(), k_ptp_general_port) {
     // Initialize the port data set
     port_ds_.port_identity = port_identity;
-    port_ds_.port_state = ptp_state::initializing;
+    set_state(ptp_state::initializing);
 
     subscriptions_.push_back(event_socket_.join_multicast_group(k_ptp_multicast_address, interface_address));
     subscriptions_.push_back(general_socket_.join_multicast_group(k_ptp_multicast_address, interface_address));
@@ -47,7 +49,9 @@ rav::ptp_port::ptp_port(
     event_socket_.start(handler);
     general_socket_.start(handler);
 
-    port_ds_.port_state = ptp_state::listening;
+    set_state(ptp_state::listening);
+
+    schedule_announce_receipt_timeout();
 }
 
 const rav::ptp_port_identity& rav::ptp_port::get_port_identity() const {
@@ -62,19 +66,26 @@ void rav::ptp_port::apply_state_decision_algorithm(
     const ptp_default_ds& default_ds, const std::optional<ptp_best_announce_message>& ebest
 ) {
     if (!ebest && port_ds_.port_state == ptp_state::listening) {
-        RAV_TRACE("Remaining in listening state because no Ebest is available");
         return;
     }
 
-    const auto recommended_state = calculate_recommended_state(default_ds, ebest->get_comparison_data_set());
+    auto recommended_state = calculate_recommended_state(default_ds, ebest->get_comparison_data_set());
     if (!recommended_state) {
         RAV_TRACE("Port is listening, and no ebest is available. No state change is recommended.");
         return;
     }
 
-    RAV_TRACE("Calculated recommended state: {}", to_string(recommended_state.value()));
+    // IEEE 1588-2019: Figure 31 states that in a slave-only configuration, when BMC_MASTER or BMC_PASSIVE is
+    // recommended the port should go into listening state. However, when this instance is also the best master
+    // according to the state decision algorithm, it will never go into slave state. Since the result is a
+    // recommendation anyway, I'm taking the liberty to place the PTP instance into slave state instead of listening
+    // state.
+    if (default_ds.slave_only) {
+        recommended_state = ptp_state_decision_code::s1;
+    }
 
-    parent_.update_data_sets(recommended_state.value(), ebest ? std::optional(ebest->message) : std::nullopt);
+    parent_.set_recommended_state(recommended_state.value(), ebest ? std::optional(ebest->message) : std::nullopt);
+    set_state(parent_.get_state_for_decision_code(*recommended_state));
 }
 
 std::optional<rav::ptp_state_decision_code> rav::ptp_port::calculate_recommended_state(
@@ -117,16 +128,65 @@ std::optional<rav::ptp_state_decision_code> rav::ptp_port::calculate_recommended
 }
 
 void rav::ptp_port::schedule_announce_receipt_timeout() {
-    announce_receipt_timeout_timer_.expires_after(std::chrono::seconds(1));
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution range(0, 1000);  // In milliseconds
+    const auto announce_interval_ms = static_cast<int>(std::pow(2, port_ds_.log_announce_interval)) * 1000;
+    const auto random = static_cast<double>(range(gen)) / 1000;
+    const auto announce_receipt_timeout =
+        port_ds_.announce_receipt_timeout * announce_interval_ms + static_cast<int>(random * announce_interval_ms);
+
+    announce_receipt_timeout_timer_.expires_after(std::chrono::milliseconds(announce_receipt_timeout));
     announce_receipt_timeout_timer_.async_wait([this](const std::error_code& error) {
         if (error == asio::error::operation_aborted) {
             return;
         }
         if (error) {
-            RAV_ERROR("State decision timer error: {}", error.message());
+            RAV_ERROR("Announce receipt timeout timer error: {}", error.message());
         }
+        trigger_announce_receipt_timeout_expires_event();
         schedule_announce_receipt_timeout();
     });
+}
+
+void rav::ptp_port::set_state(const ptp_state new_state) {
+    if (new_state == port_ds_.port_state) {
+        return;
+    }
+
+    // IEEE 1588-2019: 9.2.6.12.c Update time state
+    switch (new_state) {
+        case ptp_state::listening:
+        case ptp_state::passive:
+        case ptp_state::uncalibrated:
+        case ptp_state::slave:
+            schedule_announce_receipt_timeout();
+            break;
+        case ptp_state::master:
+        case ptp_state::pre_master:
+            RAV_ASSERT_FALSE("Master state not implemented");
+            return;
+        case ptp_state::initializing:
+        case ptp_state::faulty:
+        case ptp_state::disabled:
+            announce_receipt_timeout_timer_.cancel();
+            break;
+        case ptp_state::undefined:
+            break;
+    }
+
+    port_ds_.port_state = new_state;
+
+    RAV_INFO("Switching port {} to state {}", port_ds_.port_identity.port_number, to_string(new_state));
+}
+
+void rav::ptp_port::trigger_announce_receipt_timeout_expires_event() {
+    erbest_.reset();
+    if (parent_.default_ds().slave_only) {
+        set_state(ptp_state::listening);
+    } else {
+        RAV_ASSERT_FALSE("Master state not implemented");
+    }
 }
 
 rav::ptp_state rav::ptp_port::state() const {
@@ -334,8 +394,8 @@ void rav::ptp_port::handle_announce_message(
     // IEEE 1588-2019: 9.5.3
     if (port_ds_.port_state == ptp_state::slave || port_ds_.port_state == ptp_state::uncalibrated) {
         if (announce_message.header.source_port_identity == parent_.get_parent_ds().parent_port_identity) {
-            parent_.update_data_sets(ptp_state_decision_code::s1, announce_message);
-            // TODO: Reset the announce receipt timeout timer
+            parent_.set_recommended_state(ptp_state_decision_code::s1, announce_message);
+            schedule_announce_receipt_timeout();
         } else {
             // Message is considered foreign
             foreign_master_list_.add_or_update_entry(announce_message);
@@ -352,7 +412,6 @@ void rav::ptp_port::handle_announce_message(
         if (erbest_ && erbest_->header.source_port_identity == announce_message.header.source_port_identity) {
             if (announce_message.header.sequence_id > erbest_->header.sequence_id) {
                 erbest_ = announce_message;
-                RAV_TRACE("Updated Erbest with newer announce message from the same port: {}", erbest_->to_string());
             } else {
                 RAV_WARNING("Received an older announce message from the same port");
             }
@@ -445,10 +504,6 @@ void rav::ptp_port::calculate_erbest() {
             if (entry.foreign_master_announce_messages < k_foreign_master_threshold) {
                 continue;
             }
-            RAV_TRACE(
-                "Consider foreign master: {} with age {} and count {}", announce_message->source_to_string(), entry.age,
-                entry.foreign_master_announce_messages
-            );
             if (erbest) {
                 if (ptp_comparison_data_set::compare(*announce_message, *erbest, port_ds_.port_identity)
                     >= ptp_comparison_data_set::result::better_by_topology) {
@@ -465,11 +520,9 @@ void rav::ptp_port::calculate_erbest() {
             if (ptp_comparison_data_set::compare(*erbest, *erbest_, port_ds_.port_identity)
                 >= ptp_comparison_data_set::result::better_by_topology) {
                 erbest_ = erbest;
-                RAV_TRACE("New Erbest: {}", erbest_->source_to_string());
             }
         } else {
             erbest_ = erbest;  // The non-empty set is considered better than the empty set.
-            RAV_TRACE("New Erbest: {}", erbest_->source_to_string());
         }
     }
 

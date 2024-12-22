@@ -46,6 +46,11 @@ class ptp_instance {
     tl::expected<void, ptp_error> add_port(const asio::ip::address& interface_address);
 
     /**
+     * @return The default data set of the PTP instance.
+     */
+    [[nodiscard]] const ptp_default_ds& default_ds() const;
+
+    /**
      * @returns The parent ds of the PTP instance.
      */
     [[nodiscard]] const ptp_parent_ds& get_parent_ds() const;
@@ -55,7 +60,7 @@ class ptp_instance {
      * @param state_decision_code The state decision code.
      * @param announce_message The announcement message to update the data sets with.
      */
-    bool update_data_sets(
+    bool set_recommended_state(
         ptp_state_decision_code state_decision_code, const std::optional<ptp_announce_message>& announce_message
     );
 
@@ -70,6 +75,14 @@ class ptp_instance {
      * @return True if the PTP instance should process the message, false otherwise.
      */
     [[nodiscard]] bool should_process_ptp_messages(const ptp_message_header& header) const;
+
+    /**
+     * Determines what the state of a port should be based on the state decision code and the internal state of this
+     * instance.
+     * @param code State decision code to determine the state for.
+     * @return The state the port should be in.
+     */
+    [[nodiscard]] ptp_state get_state_for_decision_code(ptp_state_decision_code code) const;
 
   private:
     asio::io_context& io_context_;

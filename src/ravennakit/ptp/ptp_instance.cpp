@@ -63,17 +63,18 @@ tl::expected<void, rav::ptp_error> rav::ptp_instance::add_port(const asio::ip::a
     return {};
 }
 
+const rav::ptp_default_ds& rav::ptp_instance::default_ds() const {
+    return default_ds_;
+}
+
 const rav::ptp_parent_ds& rav::ptp_instance::get_parent_ds() const {
     return parent_ds_;
 }
 
-bool rav::ptp_instance::update_data_sets(
+bool rav::ptp_instance::set_recommended_state(
     const ptp_state_decision_code state_decision_code, const std::optional<ptp_announce_message>& announce_message
 ) {
     if (state_decision_code == ptp_state_decision_code::m1 || state_decision_code == ptp_state_decision_code::m2) {
-        if (default_ds_.slave_only) {
-            RAV_WARNING("State decision code is M1 or M2, but the default data set is slave only");
-        }
         current_ds_.steps_removed = 0;
         current_ds_.offset_from_master = 0;
         current_ds_.mean_delay = 0;
@@ -99,6 +100,15 @@ bool rav::ptp_instance::update_data_sets(
             RAV_ERROR("State decision code is S1 needs announcement message");
             return false;
         }
+
+        bool log_new_parent = false;
+        if (parent_ds_.parent_port_identity != announce_message->header.source_port_identity) {
+            log_new_parent = true;
+        }
+        if (parent_ds_.grandmaster_identity != announce_message->grandmaster_identity) {
+            log_new_parent = true;
+        }
+
         current_ds_.steps_removed = 1 + announce_message->steps_removed;
         parent_ds_.parent_port_identity = announce_message->header.source_port_identity;
         parent_ds_.grandmaster_identity = announce_message->grandmaster_identity;
@@ -113,6 +123,11 @@ bool rav::ptp_instance::update_data_sets(
         time_properties_ds_.frequency_traceable = announce_message->header.flags.frequency_traceable;
         time_properties_ds_.ptp_timescale = announce_message->header.flags.ptp_timescale;
         time_properties_ds_.time_source = announce_message->time_source;
+
+        if (log_new_parent) {
+            RAV_INFO("{}", parent_ds_.to_string());
+        }
+
         return true;
     }
 
@@ -173,6 +188,28 @@ bool rav::ptp_instance::should_process_ptp_messages(const ptp_message_header& he
     }
 
     return true;
+}
+
+rav::ptp_state rav::ptp_instance::get_state_for_decision_code(const ptp_state_decision_code code) const {
+    switch (code) {
+        case ptp_state_decision_code::m1:
+        case ptp_state_decision_code::m2:
+        case ptp_state_decision_code::m3:
+            if (default_ds_.slave_only) {
+                return ptp_state::listening; // IEEE 1588-2019: Figure 31
+            }
+            return ptp_state::master;
+        case ptp_state_decision_code::s1:
+            return ptp_state::slave;
+        case ptp_state_decision_code::p1:
+        case ptp_state_decision_code::p2:
+            if (default_ds_.slave_only) {
+                return ptp_state::listening; // IEEE 1588-2019: Figure 31
+            }
+            return ptp_state::passive;
+        default:
+            return ptp_state::undefined;
+    }
 }
 
 uint16_t rav::ptp_instance::get_next_available_port_number() const {

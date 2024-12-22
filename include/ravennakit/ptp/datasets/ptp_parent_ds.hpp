@@ -38,6 +38,17 @@ struct ptp_parent_ds {
         grandmaster_priority1 = default_ds.priority1;                     // IEEE1588-2019: 8.2.3.8
         grandmaster_priority2 = default_ds.priority2;                     // IEEE1588-2019: 8.2.3.9
     }
+
+    /**
+     * @return A string representation of the parent data set.
+     */
+    [[nodiscard]] std::string to_string() const {
+        return fmt::format(
+            "Parent port identity: {}, grandmaster identity: {}, grandmaster priority1: {}, grandmaster priority2: {}",
+            parent_port_identity.clock_identity.to_string(), grandmaster_identity.to_string(), grandmaster_priority1,
+            grandmaster_priority2
+        );
+    }
 };
 
 }  // namespace rav

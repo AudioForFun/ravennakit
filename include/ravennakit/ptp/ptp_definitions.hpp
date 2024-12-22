@@ -31,6 +31,38 @@ enum class ptp_state : uint8_t {
 };
 
 /**
+ * Converts a ptp_state to a string.
+ * @param state The state to convert.
+ * @return The string representation of the state.
+ */
+inline const char* to_string(const ptp_state state) {
+    switch (state) {
+        case ptp_state::undefined:
+            return "undefined";
+        case ptp_state::initializing:
+            return "initializing";
+        case ptp_state::faulty:
+            return "faulty";
+        case ptp_state::disabled:
+            return "disabled";
+        case ptp_state::listening:
+            return "listening";
+        case ptp_state::pre_master:
+            return "pre_master";
+        case ptp_state::master:
+            return "master";
+        case ptp_state::passive:
+            return "passive";
+        case ptp_state::uncalibrated:
+            return "uncalibrated";
+        case ptp_state::slave:
+            return "slave";
+        default:
+            return "unknown";
+    }
+}
+
+/**
  * IEEE1588-2019: 7.6.2.6, Table 5
  */
 enum class ptp_clock_accuracy : uint8_t {

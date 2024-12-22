@@ -74,20 +74,12 @@ class ptp_foreign_master_list {
                 entries_.begin(), entries_.end(),
                 [&erbest](const entry& entry) {
                     if (erbest && erbest->header.source_port_identity == entry.foreign_master_port_identity) {
-                        RAV_TRACE("Keeping entry for Erbest: {}", entry.foreign_master_port_identity.to_string());
                         return false;  // Keep the entry for the new Erbest.
                     }
                     if (entry.age > k_foreign_master_time_window) {
-                        RAV_TRACE(
-                            "Removing entry because it is too old: {}", entry.foreign_master_port_identity.to_string()
-                        );
                         return true;  // Entry is too old, so we remove it.
                     }
                     if (entry.foreign_master_announce_messages < k_foreign_master_threshold) {
-                        RAV_TRACE(
-                            "Removing entry because it didn't receive enough messages: {}",
-                            entry.foreign_master_port_identity.to_string()
-                        );
                         return false;  // Message is not qualified, so we don't remove it.
                     }
                     return true;
@@ -129,10 +121,6 @@ class ptp_foreign_master_list {
             if (entry.foreign_master_announce_messages > max_num_messages_in_window) {
                 entry.foreign_master_announce_messages = max_num_messages_in_window;
             }
-            RAV_TRACE(
-                "Increased age of entry: {} to {}. Num valid messages is now: {}",
-                entry.foreign_master_port_identity.to_string(), entry.age, entry.foreign_master_announce_messages
-            );
         }
     }
 
