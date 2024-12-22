@@ -19,13 +19,13 @@ namespace rav {
 struct ptp_announce_message {
     ptp_message_header header;
     ptp_timestamp origin_timestamp;
-    int16_t current_utc_offset {}; // Seconds
+    int16_t current_utc_offset {};  // Seconds
     uint8_t grandmaster_priority1 {};
     ptp_clock_quality grandmaster_clock_quality;
     uint8_t grandmaster_priority2 {};
     ptp_clock_identity grandmaster_identity;
     uint16_t steps_removed {};
-    ptp_time_source time_source{};
+    ptp_time_source time_source {};
 
     /**
      * Create a ptp_announce_message from a buffer_view.
@@ -33,7 +33,8 @@ struct ptp_announce_message {
      * @param data The message data. Expects it to start at the beginning of the message, excluding the header.
      * @return A ptp_announce_message if the data is valid, otherwise a ptp_error.
      */
-    static tl::expected<ptp_announce_message, ptp_error> from_data(const ptp_message_header& header, buffer_view<const uint8_t> data);
+    static tl::expected<ptp_announce_message, ptp_error>
+    from_data(const ptp_message_header& header, buffer_view<const uint8_t> data);
 
     /**
      * Writes the ptp_announce_message to the given stream.
@@ -46,8 +47,15 @@ struct ptp_announce_message {
      */
     [[nodiscard]] std::string to_string() const;
 
-private:
-    constexpr static size_t k_message_size = 30; // Excluding header size
+    /**
+     * @return A string representation of the source of the message.
+     */
+    [[nodiscard]] std::string source_to_string() const {
+        return header.source_port_identity.clock_identity.to_string();
+    }
+
+  private:
+    constexpr static size_t k_message_size = 30;  // Excluding header size
 };
 
-}
+}  // namespace rav

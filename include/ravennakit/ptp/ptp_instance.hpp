@@ -53,7 +53,9 @@ class ptp_instance {
      * @param state_decision_code The state decision code.
      * @param announce_message The announcement message to update the data sets with.
      */
-    void update_data_sets(ptp_state_decision_code state_decision_code, const ptp_announce_message& announce_message);
+    bool update_data_sets(
+        ptp_state_decision_code state_decision_code, const std::optional<ptp_announce_message>& announce_message
+    );
 
     /**
      * Execute a state decision event on all ports in the PTP instance.

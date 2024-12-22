@@ -10,13 +10,13 @@
 
 #pragma once
 
+#include "bmca/ptp_best_announce_message.hpp"
 #include "bmca/ptp_foreign_master_list.hpp"
 #include "datasets/ptp_parent_ds.hpp"
 #include "datasets/ptp_port_ds.hpp"
 #include "messages/ptp_announce_message.hpp"
 #include "messages/ptp_delay_req_message.hpp"
 #include "messages/ptp_follow_up_message.hpp"
-#include "messages/ptp_message_header.hpp"
 #include "messages/ptp_pdelay_req_message.hpp"
 #include "messages/ptp_pdelay_resp_follow_up_message.hpp"
 #include "messages/ptp_pdelay_resp_message.hpp"
@@ -52,7 +52,7 @@ class ptp_port {
      * Applies the state decision algorithm to this port.
      */
     void apply_state_decision_algorithm(
-        const ptp_default_ds& default_ds, const std::optional<ptp_comparison_data_set>& ebest
+        const ptp_default_ds& default_ds, const std::optional<ptp_best_announce_message>& ebest
     );
 
     /**
@@ -71,7 +71,8 @@ class ptp_port {
      * @param ports The ports to find the best announce message from.
      * @return The best announce message, or nullopt if there is no best announce message.
      */
-    static std::optional<ptp_comparison_data_set> find_ebest(const std::vector<std::unique_ptr<ptp_port>>& ports);
+    static std::optional<ptp_best_announce_message>
+    determine_ebest(const std::vector<std::unique_ptr<ptp_port>>& ports);
 
   private:
     ptp_instance& parent_;
@@ -103,8 +104,6 @@ class ptp_port {
     [[nodiscard]] std::optional<ptp_state_decision_code> calculate_recommended_state(
         const ptp_default_ds& default_ds, const std::optional<ptp_comparison_data_set>& ebest
     ) const;
-
-
 };
 
 }  // namespace rav

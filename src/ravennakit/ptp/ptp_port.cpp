@@ -57,20 +57,24 @@ void rav::ptp_port::assert_valid_state(const ptp_profile& profile) const {
 }
 
 void rav::ptp_port::apply_state_decision_algorithm(
-    const ptp_default_ds& default_ds, const std::optional<ptp_comparison_data_set>& ebest
+    const ptp_default_ds& default_ds, const std::optional<ptp_best_announce_message>& ebest
 ) {
     if (!ebest && port_ds_.port_state == ptp_state::listening) {
         RAV_TRACE("Remaining in listening state because no Ebest is available");
         return;
     }
 
-    const auto recommended_state = calculate_recommended_state(default_ds, ebest);
+    const auto recommended_state = calculate_recommended_state(default_ds, ebest->get_comparison_data_set());
     if (!recommended_state) {
         RAV_TRACE("Port is listening, and no ebest is available. No state change is recommended.");
         return;
     }
 
     RAV_TRACE("Calculated recommended state: {}", to_string(recommended_state.value()));
+
+    parent_.update_data_sets(recommended_state.value(), ebest ? std::optional(ebest->message) : std::nullopt);
+
+
 }
 
 std::optional<rav::ptp_state_decision_code> rav::ptp_port::calculate_recommended_state(
@@ -116,8 +120,8 @@ rav::ptp_state rav::ptp_port::state() const {
     return port_ds_.port_state;
 }
 
-std::optional<rav::ptp_comparison_data_set>
-rav::ptp_port::find_ebest(const std::vector<std::unique_ptr<ptp_port>>& ports) {
+std::optional<rav::ptp_best_announce_message>
+rav::ptp_port::determine_ebest(const std::vector<std::unique_ptr<ptp_port>>& ports) {
     const ptp_port* best_port = nullptr;
 
     for (auto& port : ports) {
@@ -163,7 +167,7 @@ rav::ptp_port::find_ebest(const std::vector<std::unique_ptr<ptp_port>>& ports) {
 
     RAV_ASSERT(best_port->erbest_, "Best port should have a valid Erbest");
 
-    return ptp_comparison_data_set(*best_port->erbest_, best_port->port_ds_.port_identity);
+    return ptp_best_announce_message {*best_port->erbest_, best_port->port_ds_.port_identity};
 }
 
 void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& event) {
@@ -185,7 +189,7 @@ void rav::ptp_port::handle_recv_event(const udp_sender_receiver::recv_event& eve
             if (!announce_message) {
                 RAV_ERROR("{} error: {}", header->to_string(), to_string(announce_message.error()));
             }
-            RAV_TRACE("{}", announce_message->to_string());
+            RAV_TRACE("Announce from {}", announce_message->source_to_string());
             handle_announce_message(announce_message.value(), {});
             break;
         }
@@ -418,6 +422,7 @@ void rav::ptp_port::calculate_erbest() {
                 // the foreign master list.
                 continue;
             }
+            RAV_TRACE("Consider Erbest candidate: {}", announce_message->source_to_string());
             if (erbest) {
                 if (ptp_comparison_data_set::compare(*announce_message, *erbest, port_ds_.port_identity)
                     >= ptp_comparison_data_set::result::better_by_topology) {
@@ -434,11 +439,11 @@ void rav::ptp_port::calculate_erbest() {
             if (ptp_comparison_data_set::compare(*erbest, *erbest_, port_ds_.port_identity)
                 >= ptp_comparison_data_set::result::better_by_topology) {
                 erbest_ = erbest;
-                RAV_TRACE("New Erbest: {}", erbest_->to_string());
+                RAV_TRACE("New Erbest: {}", erbest_->source_to_string());
             }
         } else {
             erbest_ = erbest;  // The non-empty set is considered better than the empty set.
-            RAV_TRACE("New Erbest: {}", erbest_->to_string());
+            RAV_TRACE("New Erbest: {}", erbest_->source_to_string());
         }
 
         // IEEE 1588-2019: 9.3.2.3.b Remove entries from the foreign master list which didn't become Erbest.

@@ -38,18 +38,6 @@ struct ptp_parent_ds {
         grandmaster_priority1 = default_ds.priority1;                     // IEEE1588-2019: 8.2.3.8
         grandmaster_priority2 = default_ds.priority2;                     // IEEE1588-2019: 8.2.3.9
     }
-
-    void update(const ptp_state_decision_code state_decision_code, const ptp_announce_message& announce_message) {
-        if (state_decision_code == ptp_state_decision_code::s1) {
-            parent_port_identity = announce_message.header.source_port_identity;
-            grandmaster_identity = announce_message.grandmaster_identity;
-            grandmaster_clock_quality = announce_message.grandmaster_clock_quality;
-            grandmaster_priority1 = announce_message.grandmaster_priority1;
-            grandmaster_priority2 = announce_message.grandmaster_priority2;
-        } else {
-            RAV_ASSERT_FALSE("Unsupported state decision code");
-        }
-    }
 };
 
 }  // namespace rav

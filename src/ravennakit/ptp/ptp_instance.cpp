@@ -58,12 +58,54 @@ const rav::ptp_parent_ds& rav::ptp_instance::get_parent_ds() const {
     return parent_ds_;
 }
 
-void rav::ptp_instance::update_data_sets(
-    const ptp_state_decision_code state_decision_code, const ptp_announce_message& announce_message
+bool rav::ptp_instance::update_data_sets(
+    const ptp_state_decision_code state_decision_code, const std::optional<ptp_announce_message>& announce_message
 ) {
-    current_ds_.update(state_decision_code, announce_message);
-    parent_ds_.update(state_decision_code, announce_message);
-    time_properties_ds_.update(state_decision_code, announce_message);
+    if (state_decision_code == ptp_state_decision_code::m1 || state_decision_code == ptp_state_decision_code::m2) {
+        RAV_ASSERT(!default_ds_.slave_only, "State decision code is M1 or M2, but the default data set is slave only");
+        current_ds_.steps_removed = 0;
+        current_ds_.offset_from_master = 0;
+        current_ds_.mean_delay = 0;
+        parent_ds_.parent_port_identity.clock_identity = default_ds_.clock_identity;
+        parent_ds_.parent_port_identity.port_number = 0;
+        parent_ds_.grandmaster_identity = default_ds_.clock_identity;
+        parent_ds_.grandmaster_clock_quality = default_ds_.clock_quality;
+        parent_ds_.grandmaster_priority1 = default_ds_.priority1;
+        parent_ds_.grandmaster_priority2 = default_ds_.priority2;
+        time_properties_ds_.leap59 = false;
+        time_properties_ds_.leap61 = false;
+        time_properties_ds_.time_traceable = false;
+        time_properties_ds_.current_utc_offset = 0;
+        time_properties_ds_.current_utc_offset_valid = false;
+        time_properties_ds_.frequency_traceable = false;
+        time_properties_ds_.ptp_timescale = false;
+        time_properties_ds_.time_source = ptp_time_source::internal_oscillator;
+        return true;
+    }
+
+    if (state_decision_code == ptp_state_decision_code::s1) {
+        if (!announce_message) {
+            RAV_ERROR("State decision code is S1 needs announcement message");
+            return false;
+        }
+        current_ds_.steps_removed = 1 + announce_message->steps_removed;
+        parent_ds_.parent_port_identity = announce_message->header.source_port_identity;
+        parent_ds_.grandmaster_identity = announce_message->grandmaster_identity;
+        parent_ds_.grandmaster_clock_quality = announce_message->grandmaster_clock_quality;
+        parent_ds_.grandmaster_priority1 = announce_message->grandmaster_priority1;
+        parent_ds_.grandmaster_priority2 = announce_message->grandmaster_priority2;
+        time_properties_ds_.current_utc_offset = announce_message->current_utc_offset;
+        time_properties_ds_.current_utc_offset_valid = announce_message->header.flags.current_utc_offset_valid;
+        time_properties_ds_.leap59 = announce_message->header.flags.leap59;
+        time_properties_ds_.leap61 = announce_message->header.flags.leap61;
+        time_properties_ds_.time_traceable = announce_message->header.flags.time_traceable;
+        time_properties_ds_.frequency_traceable = announce_message->header.flags.frequency_traceable;
+        time_properties_ds_.ptp_timescale = announce_message->header.flags.ptp_timescale;
+        time_properties_ds_.time_source = announce_message->time_source;
+        return true;
+    }
+
+    return true;
 }
 
 void rav::ptp_instance::execute_state_decision_event() {
@@ -73,24 +115,19 @@ void rav::ptp_instance::execute_state_decision_event() {
         return port->state() == ptp_state::initializing;
     });
 
+    // IEEE1588-2019: 9.2.6.9
     if (all_ports_initializing) {
         RAV_TRACE("Not executing state decision event because all ports are in initializing state");
-        // IEEE1588-2019: 9.2.6.9
         return;
     }
 
-    const auto ebest = ptp_port::find_ebest(ports_);
-
-    if (!ebest) {
-        RAV_TRACE("Not executing state decision event because no Ebest is available");
-    }
+    const auto ebest = ptp_port::determine_ebest(ports_);
 
     for (const auto& port : ports_) {
         RAV_ASSERT(port, "Found a nullptr in the port list");
         port->apply_state_decision_algorithm(default_ds_, ebest);
     }
 
-    // TODO: Apply state decision algorithm with Ebest, Erbest and defaultDS
     // TODO: Update data sets for all ports
     // TODO: Instantiate the recommended state event in the state machine and make required changes in all PTP ports
 }

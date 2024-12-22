@@ -9,20 +9,18 @@
  */
 
 #pragma once
-
-#include "ravennakit/ptp/types/ptp_timestamp.hpp"
-
-#include <cstdint>
+#include "ptp_comparison_data_set.hpp"
+#include "ravennakit/ptp/messages/ptp_announce_message.hpp"
 
 namespace rav {
 
-/**
- * Represents the data set as described in IEEE1588-2019: 8.2.2.
- */
-struct ptp_current_ds {
-    uint16_t steps_removed {0};
-    ptp_time_interval offset_from_master {0};
-    ptp_time_interval mean_delay {0};
+struct ptp_best_announce_message {
+    ptp_announce_message message;
+    ptp_port_identity receiver_identity;
+
+    [[nodiscard]] ptp_comparison_data_set get_comparison_data_set() const {
+        return {message, receiver_identity};
+    }
 };
 
 }  // namespace rav
