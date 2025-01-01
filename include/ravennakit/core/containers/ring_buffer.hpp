@@ -13,6 +13,7 @@
 #include "ravennakit/core/assert.hpp"
 
 #include <vector>
+#include <optional>
 
 namespace rav {
 
