@@ -36,7 +36,7 @@ TEST_CASE("ptp_sync_message") {
         rav::byte_stream stream;
         REQUIRE(sync.write_to(stream));
         REQUIRE(stream.size() == rav::ptp_sync_message::k_message_length);
-        stream.skip(rav::ptp_message_header::k_header_size);
+        REQUIRE(stream.skip(rav::ptp_message_header::k_header_size));
         REQUIRE(stream.read_be<rav::uint48_t>() == sync.origin_timestamp.seconds);
         REQUIRE(stream.read_be<uint32_t>() == sync.origin_timestamp.nanoseconds);
     }

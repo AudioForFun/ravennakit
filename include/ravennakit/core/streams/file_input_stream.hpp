@@ -37,7 +37,7 @@ class file_input_stream final: public input_stream {
     }
 
     // input_stream overrides
-    size_t read(uint8_t* buffer, const size_t size) override {
+    [[nodiscard]] tl::expected<size_t, error> read(uint8_t* buffer, const size_t size) override {
         fstream_.read(reinterpret_cast<char*>(buffer), static_cast<std::streamsize>(size));
 
         // Check if reading was unsuccessful

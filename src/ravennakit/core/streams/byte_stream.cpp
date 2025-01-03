@@ -18,9 +18,9 @@ void rav::byte_stream::reset() {
     write_position_ = 0;
 }
 
-size_t rav::byte_stream::read(uint8_t* buffer, const size_t size) {
+tl::expected<size_t, rav::input_stream::error> rav::byte_stream::read(uint8_t* buffer, const size_t size) {
     if (data_.size() - read_position_ < size) {
-        return 0;
+        return tl::unexpected(input_stream::error::insufficient_data);
     }
     std::memcpy(buffer, data_.data() + read_position_, size);
     read_position_ += size;
@@ -54,7 +54,7 @@ rav::byte_stream::write(const uint8_t* buffer, const size_t size) {
             data_.resize(write_position_ + size, 0);
         }
     } catch (...) {
-        return tl::unexpected(error::out_of_memory);
+        return tl::unexpected(output_stream::error::out_of_memory);
     }
 
     std::memcpy(data_.data() + write_position_, buffer, size);

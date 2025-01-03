@@ -25,7 +25,7 @@ void rav::input_stream_view::reset() {
     read_position_ = 0;
 }
 
-size_t rav::input_stream_view::read(uint8_t* buffer, const size_t size) {
+tl::expected<size_t, rav::input_stream::error> rav::input_stream_view::read(uint8_t* buffer, const size_t size) {
     if (size_ - read_position_ < size) {
         return 0;
     }

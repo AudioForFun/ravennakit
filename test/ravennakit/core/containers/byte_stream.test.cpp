@@ -45,7 +45,7 @@ TEST_CASE("byte_stream", "[byte_stream]") {
         rav::byte_stream stream;
         REQUIRE(stream.write_ne<uint32_t>(1));
         REQUIRE(stream.get_read_position() == 0);
-        stream.read_ne<uint32_t>();
+        REQUIRE(stream.read_ne<uint32_t>());
         REQUIRE(stream.get_read_position() == 4);
     }
 

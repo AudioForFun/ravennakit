@@ -81,7 +81,7 @@ struct data_chunk {
      * @param istream The input stream to read from.
      * @param chunk_size The size of the data chunk.
      */
-    void read(input_stream& istream, uint32_t chunk_size);
+    [[nodiscard]] bool read(input_stream& istream, uint32_t chunk_size);
 
     /**
      * Writes the data chunk to the output stream.
@@ -105,7 +105,7 @@ class reader {
      * @param size The number of bytes to read.
      * @return The number of bytes read.
      */
-    size_t read_audio_data(uint8_t* buffer, size_t size) const;
+    [[nodiscard]] tl::expected<size_t, input_stream::error> read_audio_data(uint8_t* buffer, size_t size) const;
 
     /**
      * @return The sample rate of the audio data.
