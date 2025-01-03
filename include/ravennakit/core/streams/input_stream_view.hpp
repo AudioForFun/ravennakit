@@ -50,7 +50,7 @@ class input_stream_view: public input_stream {
     void reset();
 
     // input_stream overrides
-    [[nodiscard]] tl::expected<size_t, input_stream::error> read(uint8_t* buffer, size_t size) override;
+    [[nodiscard]] tl::expected<size_t, error> read(uint8_t* buffer, size_t size) override;
     [[nodiscard]] bool set_read_position(size_t position) override;
     [[nodiscard]] size_t get_read_position() override;
     [[nodiscard]] std::optional<size_t> size() const override;
