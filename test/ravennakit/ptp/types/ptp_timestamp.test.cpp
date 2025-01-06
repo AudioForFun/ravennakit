@@ -99,7 +99,7 @@ TEST_CASE("ptp_timestamp") {
             auto remaining_fractional_ps = ts.add_correction(0x28000);  // 2.5ns
             REQUIRE(ts.seconds == 1);
             REQUIRE(ts.nanoseconds == 3);
-            REQUIRE(remaining_fractional_ps == 500);
+            REQUIRE(remaining_fractional_ps == 0x8000);
         }
 
         SECTION("Add -2.5ns") {
@@ -107,7 +107,7 @@ TEST_CASE("ptp_timestamp") {
             auto remaining_fractional_ps = ts.add_correction(-0x28000);  // 2.5ns
             REQUIRE(ts.seconds == 0);
             REQUIRE(ts.nanoseconds == 999'999'999);
-            REQUIRE(remaining_fractional_ps == -500);
+            REQUIRE(remaining_fractional_ps == -0x8000);
         }
     }
 }

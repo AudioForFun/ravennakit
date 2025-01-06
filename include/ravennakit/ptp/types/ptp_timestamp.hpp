@@ -18,6 +18,8 @@
 
 namespace rav {
 
+using ptp_time_interval = int64_t;
+
 /**
  * A PTP timestamp, consisting of a seconds and nanoseconds part.
  * Note: not suitable for memcpy to and from the wire.
@@ -28,6 +30,8 @@ struct ptp_timestamp {
 
     /// Size on the wire in bytes.
     static constexpr size_t k_size = 10;
+
+    constexpr static int64_t k_correction_field_multiplier = 0x10000;  // pow(2, 16) = 65536
 
     ptp_timestamp() = default;
 
@@ -76,12 +80,11 @@ struct ptp_timestamp {
      * Subtracts given correction field from the timestamp, returning the remaining fractional nanoseconds. This is
      * because ptp_timestamp has a resolution of 1 ns, but the correction field has a resolution of 1/65536 ns.
      * @param correction_field The correction field to subtract. This number is as specified in IEEE 1588-2019 13.3.2.9
-     * @return The remaining fractional nanoseconds in picoseconds.
+     * @return The remaining fractional nanoseconds.
      */
     int64_t add_correction(const int64_t correction_field) {
-        constexpr static int64_t correction_field_multiplier = 0x10000;  // pow(2, 16) = 65536
-        const auto correction_field_ns = correction_field / correction_field_multiplier;
-        const auto remaining_fractional_ns = correction_field - correction_field_ns * correction_field_multiplier;
+        const auto correction_field_ns = correction_field / k_correction_field_multiplier;
+        const auto remaining_fractional_ns = correction_field - correction_field_ns * k_correction_field_multiplier;
 
         if (correction_field_ns < 0) {
             if (nanoseconds < static_cast<uint32_t>(-correction_field_ns)) {
@@ -99,7 +102,7 @@ struct ptp_timestamp {
             }
         }
 
-        return remaining_fractional_ns * 1000 / correction_field_multiplier;
+        return remaining_fractional_ns;
     }
 
     friend bool operator<(const ptp_timestamp& lhs, const ptp_timestamp& rhs) {
@@ -152,11 +155,32 @@ struct ptp_timestamp {
      * @return The number of nanoseconds represented by this timestamp. If the resulting number of nanoseconds is too
      * large to fit, the behaviour is undefined.
      */
-    [[nodiscard]] std::optional<uint64_t> to_nanoseconds() const {
+    [[nodiscard]] uint64_t to_nanoseconds() const {
         return seconds * 1'000'000'000 + nanoseconds;
     }
-};
 
-using ptp_time_interval = int64_t;
+    /**
+     * @return The number of milliseconds represented by this timestamp.
+     */
+    [[nodiscard]] double to_milliseconds_double() const {
+        return static_cast<double>(seconds) * 1'000.0 + static_cast<double>(nanoseconds) / 1'000'000.0;
+    }
+
+    /**
+     * @return The number of nanoseconds represented by this timestamp. The resulting number will clamp to int64 min/max
+     * and never overflow.
+     */
+    [[nodiscard]] ptp_time_interval to_time_interval() const {
+        int64_t total = 0;
+        if (seconds > std::numeric_limits<int64_t>::max() / 1'000'000'000) {
+            return std::numeric_limits<int64_t>::max();
+        }
+        total = static_cast<int64_t>(seconds) * 1'000'000'000;
+        if (total > std::numeric_limits<int64_t>::max() - nanoseconds) {
+            return std::numeric_limits<int64_t>::max();
+        }
+        return (static_cast<ptp_time_interval>(seconds) * 1'000'000'000 + nanoseconds) * k_correction_field_multiplier;
+    }
+};
 
 }  // namespace rav

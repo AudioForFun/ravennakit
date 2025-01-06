@@ -216,6 +216,14 @@ rav::ptp_timestamp rav::ptp_instance::get_local_ptp_time() const {
     return local_ptp_clock_.now();
 }
 
+void rav::ptp_instance::adjust_ptp_clock(
+    const ptp_time_interval mean_delay, const ptp_time_interval offset_from_master
+) {
+    current_ds_.mean_delay = mean_delay;
+    current_ds_.offset_from_master = offset_from_master;
+    local_ptp_clock_.adjust(offset_from_master);
+}
+
 uint16_t rav::ptp_instance::get_next_available_port_number() const {
     for (uint16_t i = ptp_port_identity::k_port_number_min; i <= ptp_port_identity::k_port_number_max; ++i) {
         if (std::none_of(ports_.begin(), ports_.end(), [i](const auto& port) {

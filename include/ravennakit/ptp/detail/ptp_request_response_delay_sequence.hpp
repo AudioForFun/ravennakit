@@ -99,20 +99,20 @@ class ptp_request_response_delay_sequence {
     [[nodiscard]] ptp_time_interval calculate_mean_path_delay() const {
         RAV_ASSERT(state_ == state::delay_resp_received, "State should be delay_resp_received");
         if (sync_message_.header.flags.two_step_flag) {
-            // <meanPathDelay> = [(t2 - t3) + (receiveTimestamp of Delay_Resp message – preciseOriginTimestamp of
-            // Follow_Up message) – <correctedSyncCorrectionField> – correctionField of Follow_Up message –
-            // correctionField of Delay_Resp message]/2
-
-            const auto correction =
-                -corrected_sync_correction_field_ - follow_up_correction_field_ - delay_resp_correction_field_;
-            auto mean_delay = (t2_ - t3_) + (t4_ - t1_);
-            mean_delay.add_correction(correction);
-            // TODO: Correct behaviour not yet verified.
-        } else {
-            // <meanPathDelay> = [(t2 - t3) + (receiveTimestamp of Delay_Resp message – originTimestamp of Sync message)
-            // – <correctedSyncCorrectionField> – correctionField of Delay_Resp message]/2
+            return (((t2_ - t3_) + (t4_ - t1_)).to_time_interval() - corrected_sync_correction_field_
+                    - follow_up_correction_field_ - delay_resp_correction_field_)
+                / 2;
         }
-        return {};
+        return (((t2_ - t3_) + (t4_ - t1_)).to_time_interval() - corrected_sync_correction_field_
+                - delay_resp_correction_field_)
+            / 2;
+    }
+
+    [[nodiscard]] std::pair<int64_t, int64_t> calculate_offset_from_master() const {
+        RAV_ASSERT(state_ == state::delay_resp_received, "State should be delay_resp_received");
+        auto mean_delay = calculate_mean_path_delay();
+        const auto offset = (t2_ - t1_).to_time_interval() - mean_delay - corrected_sync_correction_field_;
+        return {offset, mean_delay};
     }
 
   private:

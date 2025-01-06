@@ -563,7 +563,10 @@ void rav::ptp_port::handle_delay_resp_message(
                 // in the header is the one to be used.
                 seq.update(delay_resp_message);
                 port_ds_.log_min_delay_req_interval = delay_resp_message.header.log_message_interval;
-                // TODO: Make clock adjustments
+
+                auto [offset, mean_delay] = seq.calculate_offset_from_master();
+                parent_.adjust_ptp_clock(mean_delay, offset);
+
                 return;  // Done here.
             }
         }
