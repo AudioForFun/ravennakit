@@ -76,8 +76,8 @@ bool rav::ptp_instance::set_recommended_state(
 ) {
     if (state_decision_code == ptp_state_decision_code::m1 || state_decision_code == ptp_state_decision_code::m2) {
         current_ds_.steps_removed = 0;
-        current_ds_.offset_from_master = 0;
-        current_ds_.mean_delay = 0;
+        current_ds_.offset_from_master = {};
+        current_ds_.mean_delay = {};
         parent_ds_.parent_port_identity.clock_identity = default_ds_.clock_identity;
         parent_ds_.parent_port_identity.port_number = 0;
         parent_ds_.grandmaster_identity = default_ds_.clock_identity;
@@ -217,11 +217,11 @@ rav::ptp_timestamp rav::ptp_instance::get_local_ptp_time() const {
 }
 
 void rav::ptp_instance::adjust_ptp_clock(
-    const double mean_delay, const double offset_from_master, const ptp_timestamp best_guess_timestamp
+    const ptp_time_interval mean_delay, const ptp_time_interval offset_from_master
 ) {
-    current_ds_.mean_delay = ptp_request_response_delay_sequence::double_to_time_interval(mean_delay);
-    current_ds_.offset_from_master = ptp_request_response_delay_sequence::double_to_time_interval(offset_from_master);
-    local_ptp_clock_.adjust(offset_from_master, best_guess_timestamp);
+    current_ds_.mean_delay = mean_delay;
+    current_ds_.offset_from_master = offset_from_master;
+    local_ptp_clock_.adjust(offset_from_master);
 }
 
 uint16_t rav::ptp_instance::get_next_available_port_number() const {

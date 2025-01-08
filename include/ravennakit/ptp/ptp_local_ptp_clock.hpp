@@ -49,7 +49,7 @@ class ptp_local_ptp_clock {
         return false;  // TODO: Implement calibration
     }
 
-    void adjust(const double offset_from_master, const ptp_timestamp best_guess_timestamp) {
+    void adjust(const ptp_time_interval offset_from_master) {
 
         // if (offset_from_master == std::numeric_limits<int64_t>::max()) {
         //     const auto now = ptp_local_clock::now();
@@ -69,7 +69,7 @@ class ptp_local_ptp_clock {
         // RAV_TRACE("Correct PTP clock by {} ns", diff);
         // TRACY_PLOT("Correction diff (ns): ", diff);
         // TRACY_PLOT("Correction value (ns): ", correction_ns_);
-        correction_ns_ = offset_from_master / ptp_timestamp::k_time_interval_multiplier;
+        // correction_ns_ = offset_from_master / ptp_timestamp::k_time_interval_multiplier;
     }
 
     void step_clock() {

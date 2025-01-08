@@ -21,8 +21,8 @@ namespace rav {
  */
 struct ptp_current_ds {
     uint16_t steps_removed {0};
-    ptp_time_interval offset_from_master {0};
-    ptp_time_interval mean_delay {0};
+    ptp_time_interval offset_from_master;
+    ptp_time_interval mean_delay;
 };
 
 }  // namespace rav

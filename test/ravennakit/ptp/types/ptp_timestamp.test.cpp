@@ -96,36 +96,30 @@ TEST_CASE("ptp_timestamp") {
     SECTION("Add correction field") {
         SECTION("Add 2.5ns") {
             rav::ptp_timestamp ts(1'000'000'001);
-            auto remaining_fractional_ps = ts.add_time_interval(0x28000);  // 2.5ns
+            ts.add({2, 0x8000});  // 2.5ns
             REQUIRE(ts.seconds == 1);
-            REQUIRE(ts.nanoseconds == 3);
-            REQUIRE(remaining_fractional_ps == 0x8000);
+            REQUIRE(ts.nanoseconds == 4); // 4 because of rounding
         }
 
         SECTION("Add -2.5ns") {
             rav::ptp_timestamp ts(1'000'000'001);
-            auto remaining_fractional_ps = ts.add_time_interval(-0x28000);  // 2.5ns
+            ts.add({-3, 0x8000});  // -2.5ns
             REQUIRE(ts.seconds == 0);
             REQUIRE(ts.nanoseconds == 999'999'999);
-            REQUIRE(remaining_fractional_ps == -0x8000);
         }
 
         SECTION("Add 2.5s") {
             rav::ptp_timestamp ts(1'000'000'001);
-            auto remaining_fractional_ps =
-                ts.add_time_interval(0x9502F9000001); // 2.5s + 1
+            ts.add({2'500'000'001, 0});  // 2.5s + 1
             REQUIRE(ts.seconds == 3);
-            REQUIRE(ts.nanoseconds == 500'000'001);
-            REQUIRE(remaining_fractional_ps == 0x1);
+            REQUIRE(ts.nanoseconds == 500'000'002);
         }
 
         SECTION("Add -2.5s") {
             rav::ptp_timestamp ts(3'000'000'001);
-            auto remaining_fractional_ps =
-                ts.add_time_interval(-0x9502F9000001); // 2.5s + 1
+            ts.add({-2'500'000'001, 0});  // 2.5s + 1
             REQUIRE(ts.seconds == 0);
-            REQUIRE(ts.nanoseconds == 500'000'001);
-            REQUIRE(remaining_fractional_ps == -0x1);
+            REQUIRE(ts.nanoseconds == 500'000'000);
         }
     }
 }

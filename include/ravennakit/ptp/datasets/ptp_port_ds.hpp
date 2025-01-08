@@ -25,7 +25,7 @@ struct ptp_port_ds {
     ptp_state port_state {ptp_state::undefined};
     /// Valid range: [0,5]
     int8_t log_min_delay_req_interval {0};  // Required for e2e only
-    ptp_time_interval mean_link_delay {0};  // Required for p2p only
+    ptp_time_interval mean_link_delay;      // Required for p2p only
 
     /// Specifies the mean time interval between successive Announce messages. Should be uniform throughout a domain.
     /// IEEE 1588-2019: 7.7.2.2
@@ -43,7 +43,7 @@ struct ptp_port_ds {
     int8_t log_min_pdelay_req_interval {0};  // Required for p2p only
     uint8_t version_number {2};              // 4 bits on the wire (one nibble)
     uint8_t minor_version_number {1};        // 4 bits on the wire (one nibble)
-    ptp_time_interval delay_asymmetry {0};
+    ptp_time_interval delay_asymmetry;
 
     /**
      * Checks the internal state of this object according to IEEE1588-2019. Asserts when something is wrong.

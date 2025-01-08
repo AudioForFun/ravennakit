@@ -94,9 +94,8 @@ class ptp_instance {
      * Adjusts the PTP clock of the PTP instance based on the mean delay and offset from the master.
      * @param mean_delay The mean delay in nanoseconds multiplied by 2^16.
      * @param offset_from_master The offset from the master in nanoseconds multiplied by 2^16.
-     * @param best_guess_timestamp
      */
-    void adjust_ptp_clock(double mean_delay, double offset_from_master, ptp_timestamp best_guess_timestamp);
+    void adjust_ptp_clock(ptp_time_interval mean_delay, ptp_time_interval offset_from_master);
 
   private:
     asio::io_context& io_context_;

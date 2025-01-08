@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ptp_time_interval.hpp"
 #include "ravennakit/core/byte_order.hpp"
 #include "ravennakit/core/containers/buffer_view.hpp"
 #include "ravennakit/core/containers/byte_buffer.hpp"
@@ -18,20 +19,16 @@
 
 namespace rav {
 
-using ptp_time_interval = int64_t;
-
 /**
  * A PTP timestamp, consisting of a seconds and nanoseconds part.
  * Note: not suitable for memcpy to and from the wire.
  */
 struct ptp_timestamp {
-    uint64_t seconds {};  // 48 bits on the wire
-    uint32_t nanoseconds {};
+    uint64_t seconds {};      // 6 bytes (48 bits) on the wire
+    uint32_t nanoseconds {};  // 4 bytes (32 bits) on the wire, should be 1'000'000'000 or less.
 
     /// Size on the wire in bytes.
     static constexpr size_t k_size = 10;
-
-    constexpr static int64_t k_time_interval_multiplier = 0x10000;  // pow(2, 16) = 65536
 
     ptp_timestamp() = default;
 
@@ -42,15 +39,6 @@ struct ptp_timestamp {
     explicit ptp_timestamp(const uint64_t nanos) {
         seconds = nanos / 1'000'000'000;
         nanoseconds = static_cast<uint32_t>(nanos % 1'000'000'000);
-    }
-
-    /**
-     * Create a ptp_timestamp from a number of nanoseconds.
-     * @param nanos The number of nanoseconds.
-     */
-    explicit ptp_timestamp(const double nanos) {
-        seconds = static_cast<uint64_t>(nanos / 1'000'000'000.0);
-        nanoseconds = static_cast<uint32_t>(nanos - static_cast<double>(seconds) * 1'000'000'000.0);
     }
 
     /**
@@ -86,32 +74,44 @@ struct ptp_timestamp {
     }
 
     /**
-     * Subtracts given correction field from the timestamp, returning the remaining fractional nanoseconds. This is
+     * Adds given time interval to the timestamp, returning the remaining fractional nanoseconds. This is
      * because ptp_timestamp has a resolution of 1 ns, but the correction field has a resolution of 1/65536 ns.
      * @param time_interval The correction field to subtract. This number is as specified in IEEE 1588-2019 13.3.2.9
      * @return The remaining fractional nanoseconds.
      */
-    ptp_time_interval add_time_interval(const ptp_time_interval time_interval) {
-        const auto time_interval_ns = time_interval / k_time_interval_multiplier;
-        const auto remaining_fractional_ns = time_interval - time_interval_ns * k_time_interval_multiplier;
-
-        if (time_interval_ns < 0) {
-            if (nanoseconds < static_cast<uint32_t>(-time_interval_ns)) {
+    void add(const ptp_time_interval time_interval) {
+        const auto nanos = time_interval.nanos_rounded();
+        if (nanos < 0) {
+            // Subtract the value
+            const auto seconds_delta = std::abs(nanos / 1'000'000'000);
+            const auto nanoseconds_delta = std::abs(nanos % 1'000'000'000);
+            if (nanoseconds_delta > nanoseconds) {
+                if (seconds < 1) {
+                    RAV_WARNING("ptp_timestamp underflow");
+                    *this = {};  // Prevent underflow
+                    return;
+                }
                 seconds -= 1;
                 nanoseconds += 1'000'000'000;
             }
-            seconds -= static_cast<uint64_t>(-time_interval_ns) / 1'000'000'000;
-            nanoseconds -= static_cast<uint32_t>(-time_interval_ns) % 1'000'000'000;
+            if (seconds_delta > seconds) {
+                RAV_WARNING("ptp_timestamp underflow");
+                *this = {};  // Prevent underflow
+                return;
+            }
+            seconds -= seconds_delta;
+            nanoseconds -= nanoseconds_delta;
         } else {
-            seconds += static_cast<uint64_t>(time_interval_ns) / 1'000'000'000;
-            nanoseconds += static_cast<uint32_t>(time_interval_ns) % 1'000'000'000;
+            // Add the value
+            const auto seconds_delta = nanos / 1'000'000'000;
+            const auto nanoseconds_delta = nanos % 1'000'000'000;
+            seconds += seconds_delta;
+            nanoseconds += nanoseconds_delta;
             if (nanoseconds >= 1'000'000'000) {
                 seconds += 1;
                 nanoseconds -= 1'000'000'000;
             }
         }
-
-        return remaining_fractional_ns;
     }
 
     friend bool operator<(const ptp_timestamp& lhs, const ptp_timestamp& rhs) {
@@ -180,24 +180,13 @@ struct ptp_timestamp {
      * and never overflow.
      */
     [[nodiscard]] ptp_time_interval to_time_interval() const {
-        int64_t total = 0;
-        if (seconds > std::numeric_limits<int64_t>::max() / 1'000'000'000) {
-            return std::numeric_limits<int64_t>::max();
+        const auto nanos = seconds * 1'000'000'000 + nanoseconds;
+        if (nanos > std::numeric_limits<int64_t>::max()) {
+            RAV_WARNING("Time interval overflow");
+            return {};
         }
-        total = static_cast<int64_t>(seconds) * 1'000'000'000;
-        if (total > std::numeric_limits<int64_t>::max() - nanoseconds) {
-            return std::numeric_limits<int64_t>::max();
-        }
-        return (static_cast<ptp_time_interval>(seconds) * 1'000'000'000 + nanoseconds) * k_time_interval_multiplier;
-    }
 
-    /**
-     * @return The number of nanoseconds times k_correction_field_multiplier as a double. The value might be outside the
-     * range of an int64_t, so it is returned as a double.
-     */
-    [[nodiscard]] double to_time_interval_double() const {
-        return (static_cast<double>(seconds) * 1'000'000'000.0 + static_cast<double>(nanoseconds))
-            * k_time_interval_multiplier;
+        return {static_cast<int64_t>(nanos), 0};
     }
 };
 

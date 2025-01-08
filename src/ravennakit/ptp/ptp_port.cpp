@@ -565,15 +565,13 @@ void rav::ptp_port::handle_delay_resp_message(
                 port_ds_.log_min_delay_req_interval = delay_resp_message.header.log_message_interval;
 
                 auto [offset, mean_delay] = seq.calculate_offset_from_master();
-                TRACY_PLOT("Offset", offset / ptp_timestamp::k_time_interval_multiplier / 1'000'000);
-                TRACY_PLOT("Mean delay", mean_delay / ptp_timestamp::k_time_interval_multiplier / 1'000'000);
 
-                if (std::abs(offset) >= 1'000'000'000 * ptp_timestamp::k_time_interval_multiplier) {
-                    RAV_WARNING("Offset from master is too large: {}", offset);
+                if (std::abs(offset.nanos()) >= 1'000'000'000) {
+                    RAV_WARNING("Offset from master is too large: {}", offset.nanos());
                     return;
                 }
 
-                parent_.adjust_ptp_clock(mean_delay, offset, seq.get_estimated_timestamp());
+                parent_.adjust_ptp_clock(mean_delay, offset);
                 return;  // Done here.
             }
         }
