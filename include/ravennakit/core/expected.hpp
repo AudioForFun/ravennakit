@@ -13,7 +13,7 @@
 #include "log.hpp"
 
 #ifdef TL_ASSERT
-    #error "TL_ASSERT is already defined"
+    #error "TL_ASSERT is already defined. Please include this header before including <tl/expected.hpp>."
 #else
     #define TL_ASSERT(condition) RAV_ASSERT(condition, "tl::expected assertion failed: " #condition)
 #endif
