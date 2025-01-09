@@ -54,6 +54,13 @@ class ptp_time_interval {
     }
 
     /**
+     * @return The number of nanoseconds, including the seconds part. The result will never overflow.
+     */
+    double total_seconds_double() const {
+        return static_cast<double>(seconds_) + static_cast<double>(nanos_) / 1'000'000'000.0 / k_fractional_scale;
+    }
+
+    /**
      * @return The number of nanoseconds, rounded to the nearest nanosecond.
      */
     [[nodiscard]] int64_t nanos_rounded() const {

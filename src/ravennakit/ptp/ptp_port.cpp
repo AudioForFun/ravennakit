@@ -566,8 +566,8 @@ void rav::ptp_port::handle_delay_resp_message(
 
                 auto [offset, mean_delay] = seq.calculate_offset_from_master();
 
-                TRACY_PLOT("Offset from master", offset.nanos());
-                RAV_TRACE("Offset from master: {}.{}", offset.seconds(), offset.nanos_raw());
+                TRACY_PLOT("Offset from master", offset.total_seconds_double() * 1000.0);
+                RAV_TRACE("Offset from master: {}", offset.total_seconds_double() * 1000.0);
 
                 parent_.adjust_ptp_clock(mean_delay, offset);
                 return;  // Done here.

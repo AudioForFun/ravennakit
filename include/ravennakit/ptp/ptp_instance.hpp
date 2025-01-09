@@ -107,6 +107,8 @@ class ptp_instance {
     std::vector<std::unique_ptr<ptp_port>> ports_;
     network_interface_list network_interfaces_;
     ptp_local_ptp_clock local_ptp_clock_;
+    running_average offset_average_;
+    sliding_window_average offset_window_average_{2024};
 
     [[nodiscard]] uint16_t get_next_available_port_number() const;
     void schedule_state_decision_timer();

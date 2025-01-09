@@ -51,15 +51,8 @@ struct ptp_timestamp {
      * @param other The timestamp to add.
      * @return The sum of the two timestamps.
      */
-    [[nodiscard]] ptp_timestamp operator+(const ptp_timestamp& other) const {
-        auto result = *this;
-        result.seconds_ += other.seconds_;
-        result.nanoseconds_ += other.nanoseconds_;
-        if (result.nanoseconds_ >= 1'000'000'000) {
-            result.seconds_ += 1;
-            result.nanoseconds_ -= 1'000'000'000;
-        }
-        return result;
+    [[nodiscard]] ptp_time_interval operator+(const ptp_timestamp& other) const {
+        return this->to_time_interval() + other.to_time_interval();
     }
 
     /**
@@ -67,15 +60,8 @@ struct ptp_timestamp {
      * @param other The timestamp to subtract.
      * @return The difference of the two timestamps.
      */
-    [[nodiscard]] ptp_timestamp operator-(const ptp_timestamp& other) const {
-        auto result = *this;
-        if (result.nanoseconds_ < other.nanoseconds_) {
-            result.seconds_ -= 1;
-            result.nanoseconds_ += 1'000'000'000;
-        }
-        result.seconds_ -= other.seconds_;
-        result.nanoseconds_ -= other.nanoseconds_;
-        return result;
+    [[nodiscard]] ptp_time_interval operator-(const ptp_timestamp& other) const {
+        return this->to_time_interval() - other.to_time_interval();
     }
 
     /**

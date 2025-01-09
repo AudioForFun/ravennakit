@@ -224,10 +224,17 @@ void rav::ptp_instance::adjust_ptp_clock(
 
     if (std::abs(offset_from_master.seconds()) >= 10) {
         local_ptp_clock_.step_clock(offset_from_master);
+        offset_average_.reset();
         return;
     }
 
-    local_ptp_clock_.adjust(offset_from_master);
+    offset_average_.add(offset_from_master.total_seconds_double());
+    offset_window_average_.add(offset_from_master.total_seconds_double());
+
+    TRACY_PLOT("Offset from master (avg)", offset_average_.average() * 1000.0);
+    TRACY_PLOT("Offset from master (sliding avg)", offset_window_average_.average() * 1000.0);
+
+    local_ptp_clock_.adjust(0);
 }
 
 uint16_t rav::ptp_instance::get_next_available_port_number() const {

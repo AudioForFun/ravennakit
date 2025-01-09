@@ -36,7 +36,7 @@ TEST_CASE("ptp_timestamp") {
         rav::ptp_timestamp ts2(1'000'000'002);
         auto result = ts1 + ts2;
         REQUIRE(result.seconds() == 2);
-        REQUIRE(result.nanoseconds() == 3);
+        REQUIRE(result.nanos_raw() == 3);
     }
 
     SECTION("Add overflow") {
@@ -44,7 +44,7 @@ TEST_CASE("ptp_timestamp") {
         rav::ptp_timestamp ts2(1'500'000'001);
         auto result = ts1 + ts2;
         REQUIRE(result.seconds() == 3);
-        REQUIRE(result.nanoseconds() == 1);
+        REQUIRE(result.nanos_raw() == 1);
     }
 
     SECTION("Subtract") {
@@ -52,7 +52,7 @@ TEST_CASE("ptp_timestamp") {
         rav::ptp_timestamp ts2(1'000'000'001);
         auto result = ts1 - ts2;
         REQUIRE(result.seconds() == 1);
-        REQUIRE(result.nanoseconds() == 1);
+        REQUIRE(result.nanos_raw() == 1);
     }
 
     SECTION("Subtract underflow") {
@@ -60,7 +60,7 @@ TEST_CASE("ptp_timestamp") {
         rav::ptp_timestamp ts2(1'500'000'002);
         auto result = ts1 - ts2;
         REQUIRE(result.seconds() == 0);
-        REQUIRE(result.nanoseconds() == 999999999);
+        REQUIRE(result.nanos_raw() == 999999999);
     }
 
     SECTION("Less than") {
