@@ -12,6 +12,7 @@
 
 #include "ravennakit/core/net/interfaces/network_interface.hpp"
 #include "ravennakit/core/net/interfaces/network_interface_list.hpp"
+#include "ravennakit/ptp/ptp_constants.hpp"
 
 rav::ptp_instance::ptp_instance(asio::io_context& io_context) :
     io_context_(io_context), state_decision_timer_(io_context), default_ds_(true), parent_ds_(default_ds_) {}
@@ -216,25 +217,24 @@ rav::ptp_timestamp rav::ptp_instance::get_local_ptp_time() const {
     return local_ptp_clock_.now();
 }
 
-void rav::ptp_instance::adjust_ptp_clock(
-    const ptp_time_interval mean_delay, const ptp_time_interval offset_from_master
-) {
-    current_ds_.mean_delay = mean_delay.to_wire_format();
-    current_ds_.offset_from_master = offset_from_master.to_wire_format();
+void rav::ptp_instance::adjust_ptp_clock(const ptp_measurement& measurement) {
+    current_ds_.mean_delay = measurement.mean_delay.to_wire_format();
+    current_ds_.offset_from_master = measurement.offset_from_master.to_wire_format();
 
-    if (std::abs(offset_from_master.seconds()) >= 10) {
-        local_ptp_clock_.step_clock(offset_from_master);
+    if (std::abs(measurement.offset_from_master.seconds()) >= k_clock_step_threshold_seconds) {
+        local_ptp_clock_.step_clock(measurement.offset_from_master);
         offset_average_.reset();
+        offset_window_average_.reset();
         return;
     }
 
-    offset_average_.add(offset_from_master.total_seconds_double());
-    offset_window_average_.add(offset_from_master.total_seconds_double());
+    offset_average_.add(measurement.offset_from_master.total_seconds_double());
+    offset_window_average_.add(measurement.offset_from_master.total_seconds_double());
 
     TRACY_PLOT("Offset from master (avg)", offset_average_.average() * 1000.0);
     TRACY_PLOT("Offset from master (sliding avg)", offset_window_average_.average() * 1000.0);
 
-    local_ptp_clock_.adjust(0);
+    local_ptp_clock_.adjust(measurement);
 }
 
 uint16_t rav::ptp_instance::get_next_available_port_number() const {

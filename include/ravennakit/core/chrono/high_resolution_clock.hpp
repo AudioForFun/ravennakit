@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "ravennakit/core/fraction.hpp"
+#include "ravennakit/core/math/fraction.hpp"
 #include "ravennakit/core/platform.hpp"
 
 #include <cstdint>

@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ptp_local_clock.hpp"
+#include "detail/ptp_measurement.hpp"
 #include "ravennakit/core/tracy.hpp"
 #include "ravennakit/core/math/running_average.hpp"
 #include "ravennakit/core/math/sliding_window_average.hpp"
@@ -37,9 +38,10 @@ class ptp_local_ptp_clock {
         // let elapsed = roclock_time - self.last_sync;
         auto elapsed = now - last_sync_;
         // let corr = elapsed * self.freq_scale_ppm_diff / 1_000_000;
-        auto correction = 0; // elapsed * frequency_correction_ppm_ / 1'000'000;
+        // auto correction = elapsed * frequency_correction_ppm_ / 1'000'000;
 
         now.add(shift_);
+        // now.add(correction);
 
         return now;
     }
@@ -48,23 +50,45 @@ class ptp_local_ptp_clock {
         return false;  // TODO: Implement calibration
     }
 
-    void adjust(const double frequency_ppm) {
+    void adjust(const ptp_measurement& measurement) {
         const auto local_now = ptp_local_clock::now();
         const auto ptp_now = now();
         shift_ = ptp_now - local_now;
         last_sync_ = local_now;
-        frequency_correction_ppm_ = frequency_ppm;
-        freq_average_.add(frequency_ppm);
-        freq_window_average_.add(frequency_ppm);
-        TRACY_PLOT("Frequency (avg)", freq_average_.average());
-        TRACY_PLOT("Frequency (sliding avg)", freq_window_average_.average());
+
+        measurements_.push_back(measurement);
+        if (measurements_.size() > 1) {
+            bool first = true;
+            ptp_time_interval local_interval = {};
+            ptp_time_interval master_interval = {};
+            for (const auto& m : measurements_) {
+                if (first) {
+                    local_interval = m.sync_event_ingress_timestamp;
+                    master_interval = m.corrected_master_event_timestamp;
+                    first = false;
+                    continue;
+                }
+                local_interval -= m.sync_event_ingress_timestamp;
+                master_interval -= m.corrected_master_event_timestamp;
+            }
+
+            const auto ratio =
+                static_cast<double>(local_interval.nanos()) / static_cast<double>(master_interval.nanos());
+            const auto ppm = -(ratio - 1.0) * 1e6;
+            freq_average_.add(ppm);
+            TRACY_PLOT("Frequency ratio (ppm)", ppm);
+            TRACY_PLOT("Frequency ratio (ppm, avg)", freq_average_.average());
+            frequency_correction_ppm_ = static_cast<int64_t>(freq_average_.average());
+        }
+
+        frequency_correction_ppm_ = 0;
     }
 
     void step_clock(const ptp_time_interval offset_from_master) {
         last_sync_ = ptp_local_clock::now();
         const auto multiplier = 1'000'000.0 + frequency_correction_ppm_;
         const auto reciprocal = 1'000'000.0 / multiplier;
-        shift_ += offset_from_master * -1;// * reciprocal;
+        shift_ += offset_from_master * -1;  // * reciprocal;
         freq_average_.reset();
         freq_window_average_.reset();
         TRACY_MESSAGE("Clock stepped");
@@ -73,9 +97,10 @@ class ptp_local_ptp_clock {
   private:
     ptp_timestamp last_sync_ {};  // Timestamp from ptp_local_clock when the clock was last synchronized
     ptp_time_interval shift_ {};
+    ring_buffer<ptp_measurement> measurements_ {8};
     double frequency_correction_ppm_ {};
     running_average freq_average_;
-    sliding_window_average freq_window_average_{2024};
+    sliding_window_average freq_window_average_ {2024};
 };
 
 }  // namespace rav

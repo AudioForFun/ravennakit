@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ptp_measurement.hpp"
 #include "ravennakit/ptp/messages/ptp_delay_req_message.hpp"
 #include "ravennakit/ptp/messages/ptp_follow_up_message.hpp"
 #include "ravennakit/ptp/messages/ptp_sync_message.hpp"
@@ -35,7 +36,8 @@ class ptp_request_response_delay_sequence {
         const ptp_sync_message& sync_message, const ptp_timestamp sync_receive_time, const ptp_port_ds& port_ds
     ) :
         sync_message_(sync_message), t1_(sync_message.origin_timestamp), t2_(sync_receive_time) {
-        corrected_sync_correction_field_ = ptp_time_interval::from_wire_format(sync_message.header.correction_field);  // Ignoring delayAsymmetry
+        corrected_sync_correction_field_ =
+            ptp_time_interval::from_wire_format(sync_message.header.correction_field);  // Ignoring delayAsymmetry
         if (sync_message.header.flags.two_step_flag) {
             state_ = state::awaiting_follow_up;
         } else {
@@ -99,20 +101,6 @@ class ptp_request_response_delay_sequence {
 
     [[nodiscard]] ptp_time_interval calculate_mean_path_delay() const {
         RAV_ASSERT(state_ == state::delay_resp_received, "State should be delay_resp_received");
-        // const auto t1 = t1_.to_time_interval_double();
-        // const auto t2 = t2_.to_time_interval_double();
-        // const auto t3 = t3_.to_time_interval_double();
-        // const auto t4 = t4_.to_time_interval_double();
-        // if (sync_message_.header.flags.two_step_flag) {
-        //     return ((t2 - t3) + (t4 - t1) - static_cast<double>(corrected_sync_correction_field_)
-        //             - static_cast<double>(follow_up_correction_field_)
-        //             - static_cast<double>(delay_resp_correction_field_))
-        //         / 2;
-        // }
-        // return ((t2 - t3) + (t4 - t1) - static_cast<double>(corrected_sync_correction_field_)
-        //         - static_cast<double>(delay_resp_correction_field_))
-        //     / 2;
-
         const auto t1 = t1_.to_time_interval();
         const auto t2 = t2_.to_time_interval();
         const auto t3 = t3_.to_time_interval();
@@ -131,19 +119,20 @@ class ptp_request_response_delay_sequence {
      * Calculate the offset from the master clock.
      * @return A pair of the offset and the mean path delay.
      */
-    [[nodiscard]] std::pair<ptp_time_interval, ptp_time_interval> calculate_offset_from_master() const {
+    [[nodiscard]] ptp_measurement calculate_offset_from_master() const {
         RAV_ASSERT(state_ == state::delay_resp_received, "State should be delay_resp_received");
         const auto mean_delay = calculate_mean_path_delay();
         const auto t1 = t1_.to_time_interval();
         const auto t2 = t2_.to_time_interval();
         const auto offset = t2 - t1 - mean_delay - corrected_sync_correction_field_;
-        return {offset, mean_delay};
 
-        // const auto t1 = t1_.to_time_interval_double();
-        // const auto t2 = t2_.to_time_interval_double();
-        // const auto offset = t2 - t1 - mean_delay - static_cast<double>(corrected_sync_correction_field_);
-        // return {offset, mean_delay};
-        return {};
+        auto corrected_master_event_timestamp = t1 + mean_delay + corrected_sync_correction_field_;
+
+        if (sync_message_.header.flags.two_step_flag) {
+            corrected_master_event_timestamp += follow_up_correction_field_;
+        }
+
+        return {t2, offset, mean_delay, corrected_master_event_timestamp};
     }
 
     state get_state() const {
