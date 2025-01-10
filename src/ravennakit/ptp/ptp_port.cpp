@@ -213,14 +213,12 @@ void rav::ptp_port::trigger_announce_receipt_timeout_expires_event() {
 }
 
 void rav::ptp_port::process_request_response_delay_sequence() {
-    RAV_ASSERT(
-        port_ds_.port_state == ptp_state::slave || port_ds_.port_state == ptp_state::uncalibrated,
-        "Request-response delay sequence should only be processed in slave or uncalibrated state"
-    );
-    RAV_ASSERT(
-        port_ds_.delay_mechanism == ptp_delay_mechanism::e2e,
-        "Request-response delay sequence should only be processed in E2E delay mechanism"
-    );
+    if (!(port_ds_.port_state == ptp_state::slave || port_ds_.port_state == ptp_state::uncalibrated)) {
+        RAV_WARNING("Request-response delay sequence should only be processed in slave or uncalibrated state");
+    }
+    if (port_ds_.delay_mechanism != ptp_delay_mechanism::e2e) {
+        RAV_WARNING("Request-response delay sequence should only be processed in E2E delay mechanism");
+    }
 
     const auto now = std::chrono::steady_clock::now();
     std::optional<std::chrono::time_point<std::chrono::steady_clock>> next_timer_expires_at;
