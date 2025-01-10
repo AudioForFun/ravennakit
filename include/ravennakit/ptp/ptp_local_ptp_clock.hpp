@@ -51,50 +51,46 @@ class ptp_local_ptp_clock {
     void adjust(const ptp_measurement<double>& measurement) {
         offset_average_.add(measurement.offset_from_master);
         TRACY_PLOT("Offset from master (ms median)", offset_average_.median() * 1000.0);
+        TRACY_PLOT("Adjustments since last step", static_cast<int64_t>(adjustments_since_last_step_));
 
-        measurements_.push_back(measurement);
-        if (measurements_.size() > 1) {
-            bool first = true;
-            double local_interval = {};
-            double master_interval = {};
-            for (const auto& m : measurements_) {
-                if (first) {
-                    local_interval = m.sync_event_ingress_timestamp;
-                    master_interval = m.corrected_master_event_timestamp;
-                    first = false;
-                    continue;
-                }
-                local_interval -= m.sync_event_ingress_timestamp;
-                master_interval -= m.corrected_master_event_timestamp;
-            }
+        if (adjustments_since_last_step_ >= 20) {
+            constexpr double base = 1.5;  // The higher the value, the faster the clock will adjust (>= 1.0)
+            constexpr double max_ratio = 0.2;
+            constexpr double rc = 0.5;  // Time constant (adjust to control smoothing strength)
+            constexpr double dt = 0.1;  // Time step (constant interval between samples)
+            const auto nominal_ratio =
+                std::clamp(std::pow(base, -offset_average_.median()), 1.0 - max_ratio, 1 + max_ratio);
 
-            frequency_ratio_ = local_interval / master_interval;
-            frequency_ratio_average_.add(frequency_ratio_);
+            frequency_ratio_ = low_pass_filter(nominal_ratio, frequency_ratio_, rc, dt);
         } else {
+            adjustments_since_last_step_++;
             frequency_ratio_ = 1.0;
         }
 
         TRACY_PLOT("Frequency ratio", frequency_ratio_);
-        TRACY_PLOT("Frequency ratio (avg)", frequency_ratio_average_.average());
     }
 
     void step_clock(const double offset_from_master_seconds) {
         last_sync_ = system_clock_now();
         shift_ += -offset_from_master_seconds;
         TRACY_PLOT("Step clock add (ms)", shift_ * 1000.0);
-        offset_average_.add(offset_from_master_seconds);
-        frequency_ratio_average_.reset();
+        // offset_average_.add(offset_from_master_seconds);
+        offset_average_.reset();
         frequency_ratio_ = 1.0;
-        measurements_.clear();
+        adjustments_since_last_step_ = 0;
     }
 
   private:
     ptp_timestamp last_sync_ = system_clock_now();
     double shift_ {};
-    ring_buffer<ptp_measurement<double>> measurements_ {8};
     double frequency_ratio_ = 1.0;
-    sliding_average frequency_ratio_average_ {100};
     sliding_median offset_average_ {101};
+    size_t adjustments_since_last_step_ {};
+
+    static double low_pass_filter(const double current, const double previous, const double rc, const double dt) {
+        const double alpha = dt / (rc + dt);  // Compute the smoothing factor
+        return alpha * current + (1.0 - alpha) * previous;
+    }
 };
 
 }  // namespace rav
