@@ -13,6 +13,7 @@
 #include "ravennakit/core/containers/ring_buffer.hpp"
 
 #include <vector>
+#include <algorithm>
 
 namespace rav {
 
