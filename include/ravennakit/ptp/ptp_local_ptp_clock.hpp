@@ -45,6 +45,14 @@ class ptp_local_ptp_clock {
         return result;
     }
 
+    [[nodiscard]] ptp_timestamp now(const ptp_timestamp local_timestamp) const {
+        const auto elapsed = local_timestamp.total_seconds_double() - last_sync_.total_seconds_double();
+        auto result = last_sync_;
+        result.add_seconds(elapsed * frequency_ratio_);
+        result.add_seconds(shift_);
+        return result;
+    }
+
     [[nodiscard]] bool is_calibrated() const {
         return false;  // TODO: Implement calibration
     }

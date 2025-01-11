@@ -217,6 +217,10 @@ rav::ptp_timestamp rav::ptp_instance::get_local_ptp_time() const {
     return local_ptp_clock_.now();
 }
 
+rav::ptp_timestamp rav::ptp_instance::get_local_ptp_time(const ptp_timestamp local_timestamp) const {
+    return local_ptp_clock_.now(local_timestamp);
+}
+
 void rav::ptp_instance::adjust_ptp_clock(const ptp_measurement<double>& measurement) {
     current_ds_.mean_delay = ptp_time_interval::to_fractional_interval(measurement.mean_delay);
     current_ds_.offset_from_master = ptp_time_interval::to_fractional_interval(measurement.offset_from_master);
