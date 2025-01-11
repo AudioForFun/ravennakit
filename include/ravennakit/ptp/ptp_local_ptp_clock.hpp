@@ -53,8 +53,11 @@ class ptp_local_ptp_clock {
         return result;
     }
 
+    // TODO: Make a difference between 'locked' and 'calibrated'
+    // Calibrated means that the clock has been adjusted enough times to be considered stable
+    // Locked means that the clock has been adjusted enough times to be considered stable and is locked to the master
     [[nodiscard]] bool is_calibrated() const {
-        return false;  // TODO: Implement calibration
+        return adjustments_since_last_step_ >= k_calibrated_threshold;
     }
 
     void adjust(const ptp_measurement<double>& measurement) {
@@ -63,7 +66,7 @@ class ptp_local_ptp_clock {
         last_sync_ = system_now;
 
         // Filter out outliers
-        if (offset_median_.is_outlier(measurement.offset_from_master, 0.0015)) {
+        if (is_calibrated() && offset_median_.is_outlier(measurement.offset_from_master, 0.0015)) {
             RAV_WARNING("Ignoring outlier in offset from master: {}", measurement.offset_from_master * 1000.0);
             TRACY_MESSAGE("Ignoring outlier in offset from master");
             return;
@@ -75,7 +78,7 @@ class ptp_local_ptp_clock {
         TRACY_PLOT("Offset from master (ms median)", offset_median_.median() * 1000.0);
         TRACY_PLOT("Adjustments since last step", static_cast<int64_t>(adjustments_since_last_step_));
 
-        if (adjustments_since_last_step_ >= 10) {
+        if (is_calibrated()) {
             constexpr double base = 1.5;        // The higher the value, the faster the clock will adjust (>= 1.0)
             constexpr double max_ratio = 0.5;   // +/-
             constexpr double max_step = 0.001;  // Maximum step size
@@ -107,6 +110,7 @@ class ptp_local_ptp_clock {
     }
 
   private:
+    constexpr static size_t k_calibrated_threshold = 10;
     ptp_timestamp last_sync_ = system_clock_now();
     double shift_ {};
     double frequency_ratio_ = 1.0;
