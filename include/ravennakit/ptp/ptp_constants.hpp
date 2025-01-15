@@ -14,8 +14,7 @@
 
 namespace rav {
 
-constexpr uint8_t k_foreign_master_time_window = 4;    // times announce interval
-constexpr uint8_t k_foreign_master_threshold = 2;      // Announce messages received within time window
-constexpr int64_t k_clock_step_threshold_seconds = 1;  // seconds
+constexpr uint8_t k_foreign_master_time_window = 4;  // times announce interval
+constexpr uint8_t k_foreign_master_threshold = 2;    // Announce messages received within time window
 
 }  // namespace rav

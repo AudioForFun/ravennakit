@@ -10,13 +10,13 @@
 
 #pragma once
 
+#include "ptp_constants.hpp"
 #include "detail/ptp_basic_filter.hpp"
 #include "detail/ptp_measurement.hpp"
 #include "ravennakit/core/tracy.hpp"
 #include "ravennakit/core/util.hpp"
 #include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/math/running_average.hpp"
-#include "ravennakit/core/math/sliding_average.hpp"
 #include "ravennakit/core/math/sliding_median.hpp"
 #include "types/ptp_timestamp.hpp"
 
@@ -26,56 +26,86 @@ namespace rav {
 
 /**
  * A class that maintains a local PTP clock as close as possible to some grand master clock.
- * This particular implementation maintains a 'virtual' clock based on the local clock and a correction value.
+ * This particular implementation maintains a 'virtual' clock based on the monotonic system clock.
  */
 class ptp_local_ptp_clock {
   public:
     ptp_local_ptp_clock() = default;
 
+    /**
+     * @return The current system time as a PTP timestamp. The timestamp is based on the high resolution clock and bears
+     * no relation to wallclock time (UTC or TAI).
+     */
     static ptp_timestamp system_clock_now() {
         return ptp_timestamp(high_resolution_clock::now());
     }
 
-    [[nodiscard]] ptp_timestamp now(const ptp_timestamp local_timestamp) const {
-        const auto elapsed = local_timestamp.total_seconds_double() - last_sync_.total_seconds_double();
+    /**
+     * @param system_timestamp The local timestamp to convert to the timescale of the grand master clock.
+     * @return The best estimate of the PTP time based on given system time.
+     */
+    [[nodiscard]] ptp_timestamp system_to_ptp_time(const ptp_timestamp system_timestamp) const {
+        TRACY_ZONE_SCOPED;
+        const auto elapsed = system_timestamp.total_seconds_double() - last_sync_.total_seconds_double();
         auto result = last_sync_;
         result.add_seconds(elapsed * frequency_ratio_);
         result.add_seconds(shift_);
         return result;
     }
 
+    /**
+     * @return The best estimate of 'now' in the timescale of the grand master clock.
+     */
     [[nodiscard]] ptp_timestamp now() const {
-        return now(system_clock_now());
+        TRACY_ZONE_SCOPED;
+        return system_to_ptp_time(system_clock_now());
     }
 
+    /**
+     * @return True if the clock is locked and within a certain amount of error, false otherwise.
+     */
     [[nodiscard]] bool is_calibrated() const {
-        return util::is_between(offset_median_.median(), -0.0013, 0.0013);
+        return is_locked()
+            && util::is_between(offset_median_.median(), -k_calibrated_threshold, k_calibrated_threshold);
     }
 
-    // TODO: Make a difference between 'locked' and 'calibrated'
-    // Calibrated means that the clock has been adjusted enough times to be considered stable
-    // Locked means that the clock has been adjusted enough times to be considered stable and is locked to the master
+    /**
+     * @return True when the clock is locked, false otherwise. A clock is considered locked when it has received enough
+     * adjustments. When a clock steps, the adjustments are reset.
+     */
     [[nodiscard]] bool is_locked() const {
         return adjustments_since_last_step_ >= k_lock_threshold;
     }
 
+    /**
+     * Adjusts the speed of the clock based on the given measurement.
+     * @param measurement The measurement to adjust the clock with.
+     */
     void adjust(const ptp_measurement<double>& measurement) {
+        TRACY_ZONE_SCOPED;
+
         const auto system_now = system_clock_now();
         shift_ = now().total_seconds_double() - system_now.total_seconds_double();
         last_sync_ = system_now;
 
-        // Filter out outliers
-        if (is_calibrated() && offset_median_.is_outlier(measurement.offset_from_master, 0.0013)) {
+        // Filter out outliers, allowing a maximum per non-filtered outliers to avoid getting in a loop where all
+        // measurements are filtered out and no adjustment is made anymore.
+        if (is_calibrated() && filtered_outliers_ < 10
+            && offset_median_.is_outlier(measurement.offset_from_master, k_calibrated_threshold)) {
             RAV_WARNING("Ignoring outlier in offset from master: {}", measurement.offset_from_master * 1000.0);
             TRACY_MESSAGE("Ignoring outlier in offset from master");
+            filtered_outliers_++;
             return;
         }
+
+        filtered_outliers_ = std::max(filtered_outliers_ - 1, 0);
 
         const auto offset = offset_filter_.update(measurement.offset_from_master);
         offset_median_.add(offset);
         TRACY_PLOT("Filtered offset (ms)", offset * 1000.0);
         TRACY_PLOT("Offset from master (ms median)", offset_median_.median() * 1000.0);
         TRACY_PLOT("Adjustments since last step", static_cast<int64_t>(adjustments_since_last_step_));
+        TRACY_PLOT("Filtered outlier count", static_cast<int64_t>(filtered_outliers_));
 
         if (is_locked()) {
             constexpr double base = 1.5;        // The higher the value, the faster the clock will adjust (>= 1.0)
@@ -100,7 +130,13 @@ class ptp_local_ptp_clock {
         TRACY_PLOT("Frequency ratio", frequency_ratio_);
     }
 
+    /**
+     * Steps the clock to the given offset from the master clock.
+     * @param offset_from_master_seconds The offset from the master clock in seconds.
+     */
     void step_clock(const double offset_from_master_seconds) {
+        TRACY_ZONE_SCOPED;
+
         last_sync_ = system_clock_now();
         shift_ += -offset_from_master_seconds;
         offset_median_.reset();
@@ -108,14 +144,35 @@ class ptp_local_ptp_clock {
         adjustments_since_last_step_ = 0;
     }
 
+    /**
+     * Updates the local clock based on the given measurement. Depending on the offset from the master, the clock will
+     * either step or adjust.
+     * @param measurement The measurement to update the clock with.
+     * @return True if the clock stepped, false otherwise.
+     */
+    bool update(const ptp_measurement<double>& measurement) {
+        TRACY_ZONE_SCOPED;
+
+        if (std::fabs(measurement.offset_from_master) >= k_clock_step_threshold_seconds) {
+            step_clock(measurement.offset_from_master);
+            return true;
+        }
+        adjust(measurement);
+        return false;
+    }
+
   private:
     constexpr static size_t k_lock_threshold = 10;
+    constexpr static double k_calibrated_threshold = 0.0013;
+    constexpr static int64_t k_clock_step_threshold_seconds = 1;
+
     ptp_timestamp last_sync_ = system_clock_now();
     double shift_ {};
     double frequency_ratio_ = 1.0;
     sliding_median offset_median_ {101};
     size_t adjustments_since_last_step_ {};
-    ptp_basic_filter offset_filter_ {0.4};
+    ptp_basic_filter offset_filter_ {0.1};
+    int32_t filtered_outliers_ {};
 };
 
 }  // namespace rav

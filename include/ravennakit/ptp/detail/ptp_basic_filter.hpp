@@ -33,27 +33,26 @@ class ptp_basic_filter {
      * @param value The new value.
      * @return The filtered value.
      */
-    double update(const double value) {
-        auto clamped_offset = value;
-        if (std::fabs(value) > offset_confidence_) {
-            clamped_offset = std::clamp(value, -offset_confidence_, offset_confidence_);
-            offset_confidence_ *= 2;
+    double update(double value) {
+        const auto value_abs = std::fabs(value);
+        if (value_abs > confidence_range_) {
+            confidence_range_ *= 2.0;
+            value = std::clamp(value, -confidence_range_, confidence_range_);
         } else {
-            offset_confidence_ -= (offset_confidence_ - std::fabs(value)) * gain_;
+            confidence_range_ -= (confidence_range_ - value_abs) * gain_;
         }
-
-        return clamped_offset * gain_;
+        return value * gain_;
     }
 
     /**
      * Resets the filter.
      */
     void reset() {
-        offset_confidence_ = 1.0;
+        confidence_range_ = 1.0;
     }
 
   private:
-    double offset_confidence_ {1.0};  // In seconds
+    double confidence_range_ {1.0};  // In seconds
     double gain_ {1.0};
 };
 
