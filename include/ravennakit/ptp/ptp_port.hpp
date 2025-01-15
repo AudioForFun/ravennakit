@@ -101,7 +101,7 @@ class ptp_port {
     ptp_foreign_master_list foreign_master_list_;
     std::optional<ptp_announce_message> erbest_;
 
-    ring_buffer<ptp_request_response_delay_sequence> request_response_delay_sequences_ {32};
+    ring_buffer<ptp_request_response_delay_sequence> request_response_delay_sequences_ {8};
 
     void handle_recv_event(const udp_sender_receiver::recv_event& event);
     void handle_announce_message(const ptp_announce_message& announce_message, buffer_view<const uint8_t> tlvs);

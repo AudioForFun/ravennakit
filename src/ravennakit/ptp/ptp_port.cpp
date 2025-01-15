@@ -552,24 +552,26 @@ void rav::ptp_port::handle_delay_resp_message(
         return;
     }
 
+    if (delay_resp_message.requesting_port_identity != port_ds_.port_identity) {
+        return;  // This message is not for us
+    }
+
     for (auto& seq : request_response_delay_sequences_) {
-        if (delay_resp_message.requesting_port_identity == seq.get_requesting_port_identity()) {
-            if (delay_resp_message.header.sequence_id == seq.get_sequence_id()) {
-                // Message is associated with earlier delay request message
-                // Note: section 9.5.7 of IEEE 1588-2019 suggests that the Delay_Resp message should have a
-                // requestingSequenceId field, but 13.8.1 doesn't specify this field. We'll assume that the sequence ID
-                // in the header is the one to be used.
-                seq.update(delay_resp_message);
-                port_ds_.log_min_delay_req_interval = delay_resp_message.header.log_message_interval;
+        if (delay_resp_message.header.sequence_id == seq.get_sequence_id()) {
+            // Message is associated with earlier delay request message
+            // Note: section 9.5.7 of IEEE 1588-2019 suggests that the Delay_Resp message should have a
+            // requestingSequenceId field, but 13.8.1 doesn't specify this field. We'll assume that the sequence ID
+            // in the header is the one to be used.
+            seq.update(delay_resp_message);
+            port_ds_.log_min_delay_req_interval = delay_resp_message.header.log_message_interval;
 
-                const auto measurement = seq.calculate_offset_from_master();
+            const auto measurement = seq.calculate_offset_from_master();
 
-                TRACY_PLOT("Offset from master (ms)", measurement.offset_from_master * 1000.0);
-                RAV_TRACE("Offset from master (ms): {}", measurement.offset_from_master * 1000.0);
+            TRACY_PLOT("Offset from master (ms)", measurement.offset_from_master * 1000.0);
+            RAV_TRACE("Offset from master (ms): {}", measurement.offset_from_master * 1000.0);
 
-                parent_.adjust_ptp_clock(measurement);
-                return;  // Done here.
-            }
+            parent_.adjust_ptp_clock(measurement);
+            return;  // Done here.
         }
     }
 
