@@ -43,8 +43,7 @@ struct ptp_timestamp {
      * @param seconds The number of seconds.
      * @param nanoseconds The number of nanoseconds.
      */
-    ptp_timestamp(const uint64_t seconds, const uint32_t nanoseconds) :
-        seconds_(seconds), nanoseconds_(nanoseconds) {}
+    ptp_timestamp(const uint64_t seconds, const uint32_t nanoseconds) : seconds_(seconds), nanoseconds_(nanoseconds) {}
 
     /**
      * Adds two ptp_timestamps together.
@@ -72,7 +71,7 @@ struct ptp_timestamp {
         if (time_interval.seconds() < 0) {
             // Subtract the value
             const auto s_abs = static_cast<uint64_t>(std::abs(time_interval.seconds()));
-            nanoseconds_ += static_cast<uint64_t>(time_interval.nanos());
+            nanoseconds_ += static_cast<uint32_t>(time_interval.nanos());
             if (nanoseconds_ >= 1'000'000'000) {
                 seconds_ += 1;
                 nanoseconds_ -= 1'000'000'000;
@@ -87,7 +86,7 @@ struct ptp_timestamp {
         } else {
             // Add the value
             const auto seconds_delta = static_cast<uint64_t>(time_interval.seconds());
-            const auto nanoseconds_delta = static_cast<uint64_t>(time_interval.nanos());
+            const auto nanoseconds_delta = static_cast<uint32_t>(time_interval.nanos());
             seconds_ += seconds_delta;
             nanoseconds_ += nanoseconds_delta;
             if (nanoseconds_ >= 1'000'000'000) {
@@ -126,11 +125,11 @@ struct ptp_timestamp {
                 return;
             }
             seconds_ -= static_cast<uint64_t>(s_abs);
-            nanoseconds_ -= static_cast<uint64_t>(n_abs);
+            nanoseconds_ -= static_cast<uint32_t>(n_abs);
         } else {
             // Add the value
             seconds_ += static_cast<uint64_t>(seconds);
-            nanoseconds_ += static_cast<uint64_t>(nanos);
+            nanoseconds_ += static_cast<uint32_t>(nanos);
             if (nanoseconds_ >= 1'000'000'000) {
                 seconds_ += 1;
                 nanoseconds_ -= 1'000'000'000;
@@ -227,7 +226,7 @@ struct ptp_timestamp {
     [[nodiscard]] ptp_time_interval to_time_interval() const {
         RAV_ASSERT(nanoseconds_ < 1'000'000'000, "Nano seconds must be within [0, 1'000'000'000)");
 
-        if (seconds_ > std::numeric_limits<int64_t>::max()) {
+        if (static_cast<int64_t>(seconds_) > std::numeric_limits<int64_t>::max()) {
             RAV_WARNING("Time interval overflow");
             return {};
         }
@@ -241,6 +240,7 @@ struct ptp_timestamp {
     [[nodiscard]] bool valid() const {
         return seconds_ != 0 || nanoseconds_ != 0;
     }
+
   private:
     uint64_t seconds_ {};      // 6 bytes (48 bits) on the wire
     uint32_t nanoseconds_ {};  // 4 bytes (32 bits) on the wire, should be 1'000'000'000 or less.
