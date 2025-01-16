@@ -36,7 +36,7 @@ class high_resolution_clock {
     static uint64_t now() {
         static const high_resolution_clock clock;
 #if RAV_APPLE
-        const uint64_t raw = mach_absolute_time();
+        const uint64_t raw = mach_continuous_time();
         return raw * clock.timebase_.numerator / clock.timebase_.denominator;
 #elif RAV_WINDOWS
         LARGE_INTEGER counter;

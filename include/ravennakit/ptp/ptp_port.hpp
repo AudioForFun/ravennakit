@@ -14,6 +14,7 @@
 #include "bmca/ptp_foreign_master_list.hpp"
 #include "datasets/ptp_parent_ds.hpp"
 #include "datasets/ptp_port_ds.hpp"
+#include "detail/ptp_basic_filter.hpp"
 #include "detail/ptp_request_response_delay_sequence.hpp"
 #include "messages/ptp_announce_message.hpp"
 #include "messages/ptp_delay_req_message.hpp"
@@ -99,9 +100,10 @@ class ptp_port {
     std::vector<subscription> subscriptions_;
     ptp_foreign_master_list foreign_master_list_;
     std::optional<ptp_announce_message> erbest_;
+    sliding_stats mean_delay_stats_ {31};
     double mean_delay_ = 0.0;
-    sliding_stats mean_delay_stats_ {5};
-    int32_t syncs_until_delay_req_ = 0; // Number of syncs until the next delay_req message
+    ptp_basic_filter mean_delay_filter_ {0.1};
+    int32_t syncs_until_delay_req_ = 10;  // Number of syncs until the next delay_req message.
 
     ring_buffer<ptp_sync_message> sync_messages_ {8};
     ring_buffer<ptp_request_response_delay_sequence> request_response_delay_sequences_ {8};

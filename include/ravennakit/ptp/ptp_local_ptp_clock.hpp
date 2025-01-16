@@ -64,8 +64,7 @@ class ptp_local_ptp_clock {
      * @return True if the clock is locked and within a certain amount of error, false otherwise.
      */
     [[nodiscard]] bool is_calibrated() const {
-        return is_locked()
-            && util::is_between(offset_median_.median(), -k_calibrated_threshold, k_calibrated_threshold);
+        return is_locked() && util::is_between(offset_stats_.median(), -k_calibrated_threshold, k_calibrated_threshold);
     }
 
     /**
@@ -87,30 +86,29 @@ class ptp_local_ptp_clock {
         shift_ = now().total_seconds_double() - system_now.total_seconds_double();
         last_sync_ = system_now;
 
+        // Add the measurement to the offset statistics in any case to allow the outlier filtering to dynamically
+        // adjust.
+        offset_stats_.add(measurement.offset_from_master);
+        TRACY_PLOT("Offset from master median (ms)", offset_stats_.median() * 1000.0);
+
         // Filter out outliers, allowing a maximum per non-filtered outliers to avoid getting in a loop where all
         // measurements are filtered out and no adjustment is made anymore.
-        // if (is_calibrated() && filtered_outliers_ < 10
-        //     && offset_median_.is_outlier(measurement.offset_from_master, k_calibrated_threshold)) {
-        //     RAV_WARNING("Ignoring outlier in offset from master: {}", measurement.offset_from_master * 1000.0);
-        //     TRACY_MESSAGE("Ignoring outlier in offset from master");
-        //     filtered_outliers_++;
-        //     return;
-        // }
+        if (offset_stats_.count() > 10 && offset_stats_.is_outlier_zscore(measurement.offset_from_master, 1.5)) {
+            RAV_WARNING("Ignoring outlier in offset from master: {}", measurement.offset_from_master * 1000.0);
+            TRACY_PLOT("Offset from master outliers", measurement.offset_from_master * 1000.0);
+            TRACY_MESSAGE("Ignoring outlier in offset from master");
+            return;
+        }
+        TRACY_PLOT("Offset from master outliers", 0.0);
 
-        filtered_outliers_ = std::max(filtered_outliers_ - 1, 0);
-
-        const auto offset = offset_filter_.update(measurement.offset_from_master);
-        offset_median_.add(offset);
-        TRACY_PLOT("Filtered offset (ms)", offset * 1000.0);
-        TRACY_PLOT("Offset from master (ms median)", offset_median_.median() * 1000.0);
-        // TRACY_PLOT("Adjustments since last step", static_cast<int64_t>(adjustments_since_last_step_));
-        // TRACY_PLOT("Filtered outlier count", static_cast<int64_t>(filtered_outliers_));
+        const auto filtered_offset = offset_filter_.update(measurement.offset_from_master);
+        TRACY_PLOT("Filtered offset 1 (ms)", filtered_offset * 1000.0);
 
         if (is_locked()) {
-            constexpr double base = 1.5;        // The higher the value, the faster the clock will adjust (>= 1.0)
-            constexpr double max_ratio = 0.5;   // +/-
-            constexpr double max_step = 0.001;  // Maximum step size
-            const auto nominal_ratio = std::clamp(std::pow(base, -offset), 1.0 - max_ratio, 1 + max_ratio);
+            constexpr double base = 1.5;         // The higher the value, the faster the clock will adjust (>= 1.0)
+            constexpr double max_ratio = 0.5;    // +/-
+            constexpr double max_step = 0.0001;  // Maximum step size
+            const auto nominal_ratio = std::clamp(std::pow(base, -filtered_offset), 1.0 - max_ratio, 1 + max_ratio);
 
             if (std::fabs(nominal_ratio - frequency_ratio_) > max_step) {
                 if (frequency_ratio_ < nominal_ratio) {
@@ -127,6 +125,11 @@ class ptp_local_ptp_clock {
         }
 
         TRACY_PLOT("Frequency ratio", frequency_ratio_);
+
+        RAV_TRACE(
+            "Adjusting clock: offset_from_master={}, ratio={}", filtered_offset * 1000.0,
+            frequency_ratio_
+        );
     }
 
     /**
@@ -138,9 +141,11 @@ class ptp_local_ptp_clock {
 
         last_sync_ = system_clock_now();
         shift_ += -offset_from_master_seconds;
-        offset_median_.reset();
+        offset_stats_.reset();
         frequency_ratio_ = 1.0;
         adjustments_since_last_step_ = 0;
+
+        RAV_TRACE("Stepping clock: offset_from_master={}", offset_from_master_seconds);
     }
 
     /**
@@ -153,7 +158,6 @@ class ptp_local_ptp_clock {
         TRACY_ZONE_SCOPED;
 
         TRACY_PLOT("Offset from master (ms)", measurement.offset_from_master * 1000.0);
-        RAV_TRACE("Offset from master (ms): {}", measurement.offset_from_master * 1000.0);
 
         if (std::fabs(measurement.offset_from_master) >= k_clock_step_threshold_seconds) {
             step_clock(measurement.offset_from_master);
@@ -172,23 +176,22 @@ class ptp_local_ptp_clock {
 
         last_sync_ = system_clock_now();
         shift_ = timestamp_seconds.total_seconds_double() - last_sync_.total_seconds_double();
-        offset_median_.reset();
+        offset_stats_.reset();
         frequency_ratio_ = 1.0;
         adjustments_since_last_step_ = 0;
     }
 
   private:
     constexpr static size_t k_lock_threshold = 10;
-    constexpr static double k_calibrated_threshold = 0.0013;
+    constexpr static double k_calibrated_threshold = 0.0018;
     constexpr static int64_t k_clock_step_threshold_seconds = 1;
 
     ptp_timestamp last_sync_ = system_clock_now();
     double shift_ {};
     double frequency_ratio_ = 1.0;
-    sliding_stats offset_median_ {101};
+    sliding_stats offset_stats_ {51};
     size_t adjustments_since_last_step_ {};
     ptp_basic_filter offset_filter_ {0.1};
-    int32_t filtered_outliers_ {};
 };
 
 }  // namespace rav

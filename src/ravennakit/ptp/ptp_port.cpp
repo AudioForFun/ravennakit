@@ -207,8 +207,8 @@ rav::ptp_measurement<double> rav::ptp_port::calculate_offset_from_master(const p
             .total_seconds_double();  // TODO: Ignoring delay asymmetry for now
     const auto t1 = sync_message.origin_timestamp.total_seconds_double();
     const auto t2 = sync_message.receive_timestamp.total_seconds_double();
-    const auto offset = t2 - t1 - mean_delay_ - corrected_sync_correction_field;
-    return {t2, offset, mean_delay_, {}};
+    const auto offset = t2 - t1 - mean_delay_stats_.median() - corrected_sync_correction_field;
+    return {t2, offset, mean_delay_stats_.median(), {}};
 }
 
 rav::ptp_measurement<double> rav::ptp_port::calculate_offset_from_master(
@@ -222,8 +222,9 @@ rav::ptp_measurement<double> rav::ptp_port::calculate_offset_from_master(
         ptp_time_interval::from_wire_format(follow_up_message.header.correction_field).total_seconds_double();
     const auto t1 = follow_up_message.precise_origin_timestamp.total_seconds_double();
     const auto t2 = sync_message.receive_timestamp.total_seconds_double();
-    const auto offset = t2 - t1 - mean_delay_ - corrected_sync_correction_field - follow_up_correction_field;
-    return {t2, offset, mean_delay_, {}};
+    const auto offset =
+        t2 - t1 - mean_delay_stats_.median() - corrected_sync_correction_field - follow_up_correction_field;
+    return {t2, offset, mean_delay_stats_.median(), {}};
 }
 
 void rav::ptp_port::trigger_announce_receipt_timeout_expires_event() {
@@ -519,7 +520,6 @@ void rav::ptp_port::handle_sync_message(ptp_sync_message sync_message, buffer_vi
             syncs_until_delay_req_ = static_cast<int32_t>(
                 std::pow(2, port_ds_.log_min_delay_req_interval) / std::pow(2, sync_message.header.log_message_interval)
             );
-            RAV_TRACE("Initiate delay_req sequence");
         } else {
             syncs_until_delay_req_--;
         }
@@ -602,17 +602,28 @@ void rav::ptp_port::handle_delay_resp_message(
 
     for (auto& seq : request_response_delay_sequences_) {
         if (delay_resp_message.header.sequence_id == seq.get_sequence_id()) {
+            port_ds_.log_min_delay_req_interval = delay_resp_message.header.log_message_interval;
             // Message is associated with earlier delay request message
             // Note: section 9.5.7 of IEEE 1588-2019 suggests that the Delay_Resp message should have a
             // requestingSequenceId field, but 13.8.1 doesn't specify this field. We'll assume that the sequence ID
             // in the header is the one to be used.
             seq.update(delay_resp_message);
-            mean_delay_ = seq.calculate_mean_path_delay();
+            const auto mean_delay = seq.calculate_mean_path_delay();
+            TRACY_PLOT("Mean delay (ms)", mean_delay * 1000.0);
+
             mean_delay_stats_.add(mean_delay_);
-            TRACY_PLOT("Mean path delay (ms)", mean_delay_ * 1000.0);
-            TRACY_PLOT("Mean path delay median (ms)", mean_delay_stats_.median() * 1000.0);
-            TRACY_PLOT("Mean path delay avg (ms)", mean_delay_stats_.average() * 1000.0);
-            port_ds_.log_min_delay_req_interval = delay_resp_message.header.log_message_interval;
+            TRACY_PLOT("Mean delay median (ms)", mean_delay_stats_.median() * 1000.0);
+
+            if (mean_delay_stats_.count() > 10 && mean_delay_stats_.is_outlier_median(mean_delay, 0.001)) {
+                TRACY_PLOT("Mean delay outlier", mean_delay * 1000.0);
+                TRACY_MESSAGE("Ignoring outlier mean delay");
+                RAV_TRACE("Ignoring outlier mean delay: {}", mean_delay * 1000.0);
+                return;
+            }
+            TRACY_PLOT("Mean delay outlier", 0.0);
+
+            mean_delay_ = mean_delay_filter_.update(mean_delay);
+            TRACY_PLOT("Mean delay filtered (ms)", mean_delay_ * 1000.0);
             return;  // Done here.
         }
     }

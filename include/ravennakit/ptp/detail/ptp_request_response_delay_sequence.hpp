@@ -111,7 +111,6 @@ class ptp_request_response_delay_sequence {
         const auto max_interval_ms = std::pow(2, port_ds.log_min_delay_req_interval + 1) * 1000;
         const auto seconds =
             static_cast<double>(random().get_random_int(0, static_cast<int>(max_interval_ms))) / 1000.0;
-        TRACY_PLOT("Delay req random interval (ms)", seconds * 1000.0);
         scheduled_send_time_ = sync_message_.receive_timestamp;
         scheduled_send_time_.add_seconds(seconds);
         state_ = state::delay_req_send_scheduled;

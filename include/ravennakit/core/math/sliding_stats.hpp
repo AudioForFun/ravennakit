@@ -27,7 +27,7 @@ class sliding_stats {
      * Constructor.
      * @param size The amount of elements to hold.
      */
-    explicit sliding_stats(const size_t size) : window_(size), median_buffer_(size) {}
+    explicit sliding_stats(const size_t size) : window_(size), sorted_data_(size) {}
 
     /**
      * Adds a new value and recalculates the statistics.
@@ -54,10 +54,38 @@ class sliding_stats {
     }
 
     /**
+     * @return The variance of the values in the window.
+     */
+    [[nodiscard]] double variance() const {
+        if (window_.empty()) {
+            return 0.0;
+        }
+        double variance = 0.0;
+        for (auto& v : window_) {
+            variance += (v - average_) * (v - average_);
+        }
+        return variance / static_cast<double>(window_.size());
+    }
+
+    /**
+     * @return The standard deviation of the values in the window.
+     */
+    [[nodiscard]] double standard_deviation() const {
+        return std::sqrt(variance());
+    }
+
+    /**
      * @return The number of values added to the sliding window average.
      */
     [[nodiscard]] size_t count() const {
         return window_.size();
+    }
+
+    /**
+     * @return True if the window is full, or false otherwise.
+     */
+    [[nodiscard]] bool full() const {
+        return window_.full();
     }
 
     /**
@@ -66,8 +94,22 @@ class sliding_stats {
      * @param threshold The threshold for the outlier check.
      * @return True if the current value is an outlier.
      */
-    [[nodiscard]] bool is_outlier(const double value, const double threshold) const {
-        return std::abs(value - median_) > threshold;
+    [[nodiscard]] bool is_outlier_median(const double value, const double threshold) const {
+        return std::fabs(value - median_) > threshold;
+    }
+
+    /**
+     * Checks if the current value is an outlier compared to the average.
+     * @param value The value to check.
+     * @param threshold The threshold for the outlier check.
+     * @return True if the current value is an outlier.
+     */
+    [[nodiscard]] bool is_outlier_zscore(const double value, const double threshold) const {
+        const auto stddev = standard_deviation();
+        if (stddev == 0.0) {
+            return false;
+        }
+        return std::fabs((value - average_) / stddev) > threshold;
     }
 
     /**
@@ -75,16 +117,16 @@ class sliding_stats {
      */
     void reset() {
         window_.clear();
-        median_buffer_.clear();
+        sorted_data_.clear();
         median_ = {};
         average_ = {};
     }
 
   private:
     ring_buffer<double> window_;
-    std::vector<double> median_buffer_;  // Used for median calculations
-    double average_ {};                  // Last average value
-    double median_ {};                   // Last median value
+    std::vector<double> sorted_data_;
+    double average_ {};  // Last average value
+    double median_ {};   // Last median value
 
     void recalculate_average() {
         double sum = 0.0;
@@ -95,22 +137,22 @@ class sliding_stats {
     }
 
     void recalculate_median() {
-        median_buffer_.clear();
+        sorted_data_.clear();
         for (auto& e : window_) {
-            median_buffer_.push_back(e);
+            sorted_data_.push_back(e);
         }
-        if (median_buffer_.empty()) {
+        if (sorted_data_.empty()) {
             median_ = 0.0;
             return;
         }
-        std::sort(median_buffer_.begin(), median_buffer_.end());
-        const size_t n = median_buffer_.size();
+        std::sort(sorted_data_.begin(), sorted_data_.end());
+        const size_t n = sorted_data_.size();
         if (n % 2 == 1) {
-            median_ = median_buffer_[n / 2];  // Odd: return the middle element
+            median_ = sorted_data_[n / 2];  // Odd: return the middle element
             return;
         }
         // Even: return the average of the two middle elements
-        median_ = (median_buffer_[n / 2 - 1] + median_buffer_[n / 2]) / 2.0;
+        median_ = (sorted_data_[n / 2 - 1] + sorted_data_[n / 2]) / 2.0;
     }
 };
 

@@ -25,6 +25,7 @@ END_IGNORE_WARNINGS
     #define TRACY_ZONE_SCOPED ZoneScoped  // NOLINT(bugprone-reserved-identifier)
     #define TRACY_PLOT(name, value) TracyPlot(name, value)
     #define TRACY_MESSAGE(message) TracyMessageL(message)
+    #define TRACY_MESSAGE_COLOR(message, color) TracyMessageLC(message, color)
 
 #else
     #define TRACY_ZONE_SCOPED
