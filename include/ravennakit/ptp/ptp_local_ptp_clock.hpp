@@ -93,7 +93,7 @@ class ptp_local_ptp_clock {
 
         // Filter out outliers, allowing a maximum per non-filtered outliers to avoid getting in a loop where all
         // measurements are filtered out and no adjustment is made anymore.
-        if (offset_stats_.count() > 10 && offset_stats_.is_outlier_zscore(measurement.offset_from_master, 1.5)) {
+        if (offset_stats_.count() > 10 && offset_stats_.is_outlier_zscore(measurement.offset_from_master, 2.0)) {
             RAV_WARNING("Ignoring outlier in offset from master: {}", measurement.offset_from_master * 1000.0);
             TRACY_PLOT("Offset from master outliers", measurement.offset_from_master * 1000.0);
             TRACY_MESSAGE("Ignoring outlier in offset from master");
