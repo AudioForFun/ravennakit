@@ -207,8 +207,8 @@ rav::ptp_measurement<double> rav::ptp_port::calculate_offset_from_master(const p
             .total_seconds_double();  // TODO: Ignoring delay asymmetry for now
     const auto t1 = sync_message.origin_timestamp.total_seconds_double();
     const auto t2 = sync_message.receive_timestamp.total_seconds_double();
-    const auto offset = t2 - t1 - mean_delay_stats_.median() - corrected_sync_correction_field;
-    return {t2, offset, mean_delay_stats_.median(), {}};
+    const auto offset = t2 - t1 - mean_delay_ - corrected_sync_correction_field;
+    return {t2, offset, mean_delay_, {}};
 }
 
 rav::ptp_measurement<double> rav::ptp_port::calculate_offset_from_master(
@@ -223,8 +223,8 @@ rav::ptp_measurement<double> rav::ptp_port::calculate_offset_from_master(
     const auto t1 = follow_up_message.precise_origin_timestamp.total_seconds_double();
     const auto t2 = sync_message.receive_timestamp.total_seconds_double();
     const auto offset =
-        t2 - t1 - mean_delay_stats_.median() - corrected_sync_correction_field - follow_up_correction_field;
-    return {t2, offset, mean_delay_stats_.median(), {}};
+        t2 - t1 - mean_delay_ - corrected_sync_correction_field - follow_up_correction_field;
+    return {t2, offset, mean_delay_, {}};
 }
 
 void rav::ptp_port::trigger_announce_receipt_timeout_expires_event() {
@@ -615,12 +615,12 @@ void rav::ptp_port::handle_delay_resp_message(
             TRACY_PLOT("Mean delay median (ms)", mean_delay_stats_.median() * 1000.0);
 
             if (mean_delay_stats_.count() > 10 && mean_delay_stats_.is_outlier_median(mean_delay, 0.001)) {
-                TRACY_PLOT("Mean delay outlier", mean_delay * 1000.0);
+                TRACY_PLOT("Mean delay outliers", mean_delay * 1000.0);
                 TRACY_MESSAGE("Ignoring outlier mean delay");
                 RAV_TRACE("Ignoring outlier mean delay: {}", mean_delay * 1000.0);
                 return;
             }
-            TRACY_PLOT("Mean delay outlier", 0.0);
+            TRACY_PLOT("Mean delay outliers", 0.0);
 
             mean_delay_ = mean_delay_filter_.update(mean_delay);
             TRACY_PLOT("Mean delay filtered (ms)", mean_delay_ * 1000.0);
