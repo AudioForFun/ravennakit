@@ -41,9 +41,9 @@ class ravenna_player_example {
             throw std::runtime_error("File does not exist: " + file.path().string());
         }
         const auto file_session_name = file.path().filename().string();
-        for (const auto& source : sources_) {
+        for (const auto& s : sources_) {
             // Test if a source with the same session name already exists
-            if (source.transmitter->session_name() == file_session_name) {
+            if (s.transmitter->session_name() == file_session_name) {
                 throw std::runtime_error("A source with the same session name already exists: " + file_session_name);
             }
         }

@@ -94,8 +94,10 @@ class ravenna_transmitter {
                 return false;
             case audio_encoding::pcm_u8:
                 format_.encoding_name = "L8";  // https://datatracker.ietf.org/doc/html/rfc3551#section-4.5.10
+                break;
             case audio_encoding::pcm_s16:
                 format_.encoding_name = "L16";  // https://datatracker.ietf.org/doc/html/rfc3551#section-4.5.11
+                break;
             case audio_encoding::pcm_s24:
                 format_.encoding_name = "L24";  // https://datatracker.ietf.org/doc/html/rfc3190#section-4
                 break;

@@ -81,6 +81,7 @@ std::optional<rav::audio_format> rav::wav_audio_format::fmt_chunk::to_audio_form
             if (bits_per_sample == 24) {
                 return audio_format {audio_encoding::pcm_s24, sample_rate, num_channels};
             }
+            break;
         }
         case format_code::ieee_float: {
             if (bits_per_sample == 32) {
@@ -89,6 +90,7 @@ std::optional<rav::audio_format> rav::wav_audio_format::fmt_chunk::to_audio_form
             if (bits_per_sample == 64) {
                 return audio_format {audio_encoding::pcm_double, sample_rate, num_channels};
             }
+            break;
         }
         case format_code::alaw:
         case format_code::mulaw:
@@ -96,6 +98,7 @@ std::optional<rav::audio_format> rav::wav_audio_format::fmt_chunk::to_audio_form
         default:
             return std::nullopt;
     }
+    return std::nullopt;
 }
 
 bool rav::wav_audio_format::data_chunk::read(input_stream& istream, const uint32_t chunk_size) {

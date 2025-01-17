@@ -73,7 +73,7 @@ void rav::rtsp_server::on_request(rtsp_connection& connection, const rtsp_reques
     found->second({connection, request});
 }
 
-void rav::rtsp_server::on_response(rtsp_connection& connection, const rtsp_response& response) {
+void rav::rtsp_server::on_response([[maybe_unused]] rtsp_connection& connection, const rtsp_response& response) {
     RAV_TRACE("Received response: {}", response.to_debug_string(false));
 }
 
