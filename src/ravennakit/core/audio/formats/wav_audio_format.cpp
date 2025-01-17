@@ -73,31 +73,21 @@ std::optional<rav::audio_format> rav::wav_audio_format::fmt_chunk::to_audio_form
     switch (format) {
         case format_code::pcm: {
             if (bits_per_sample == 8) {
-                return audio_format {
-                    .encoding = audio_encoding::pcm_u8, .sample_rate = sample_rate, .num_channels = num_channels
-                };
+                return audio_format {audio_encoding::pcm_u8, sample_rate, num_channels};
             }
             if (bits_per_sample == 16) {
-                return audio_format {
-                    .encoding = audio_encoding::pcm_s16, .sample_rate = sample_rate, .num_channels = num_channels
-                };
+                return audio_format {audio_encoding::pcm_s16, sample_rate, num_channels};
             }
             if (bits_per_sample == 24) {
-                return audio_format {
-                    .encoding = audio_encoding::pcm_s24, .sample_rate = sample_rate, .num_channels = num_channels
-                };
+                return audio_format {audio_encoding::pcm_s24, sample_rate, num_channels};
             }
         }
         case format_code::ieee_float: {
             if (bits_per_sample == 32) {
-                return audio_format {
-                    .encoding = audio_encoding::pcm_float, .sample_rate = sample_rate, .num_channels = num_channels
-                };
+                return audio_format {audio_encoding::pcm_float, sample_rate, num_channels};
             }
             if (bits_per_sample == 64) {
-                return audio_format {
-                    .encoding = audio_encoding::pcm_double, .sample_rate = sample_rate, .num_channels = num_channels
-                };
+                return audio_format {audio_encoding::pcm_double, sample_rate, num_channels};
             }
         }
         case format_code::alaw:
