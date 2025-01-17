@@ -85,7 +85,8 @@ class udp_sender_receiver {
      * @param interface_address The address of the interface to use.
      * @return True if the operation was successful, false otherwise.
      */
-    [[nodiscard]] asio::error_code set_multicast_outbound_interface(const asio::ip::address_v4& interface_address) const;
+    [[nodiscard]] asio::error_code
+    set_multicast_outbound_interface(const asio::ip::address_v4& interface_address) const;
 
     /**
      * Set the multicast loopback option.
@@ -93,6 +94,12 @@ class udp_sender_receiver {
      * @return True if the operation was successful, false otherwise.
      */
     [[nodiscard]] asio::error_code set_multicast_loopback(bool enable) const;
+
+    /**
+     * Set the DSCP value for the socket. The value will be shifted 2 bits to the left, which sets the ECN bits to zero.
+     * @param value The DSCP value to set.
+     */
+    void set_dscp_value(int value) const;
 
   private:
     class impl;

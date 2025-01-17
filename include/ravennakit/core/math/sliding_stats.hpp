@@ -106,7 +106,7 @@ class sliding_stats {
      */
     [[nodiscard]] bool is_outlier_zscore(const double value, const double threshold) const {
         const auto stddev = standard_deviation();
-        if (stddev == 0.0) {
+        if (util::is_within(stddev,0.0, 0.0)) {
             return false;
         }
         return std::fabs((value - average_) / stddev) > threshold;

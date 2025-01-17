@@ -46,6 +46,6 @@ TEST_CASE("ptp_request_response_delay_sequence") {
         REQUIRE(seq.get_state() == rav::ptp_request_response_delay_sequence::state::delay_resp_received);
 
         auto mean_delay = seq.calculate_mean_path_delay();
-        REQUIRE(mean_delay == 1.5);
+        REQUIRE(rav::util::is_within(mean_delay,1.5, 0.0));
     }
 }

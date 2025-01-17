@@ -63,6 +63,9 @@ rav::ptp_port::ptp_port(
         RAV_WARNING("Interface address is not IPv4. Cannot set multicast outbound interface.");
     }
 
+    event_socket_.set_dscp_value(46);    // Default AES67 value
+    general_socket_.set_dscp_value(46);  // Default AES67 value
+
     auto handler = [this](const udp_sender_receiver::recv_event& event) {
         handle_recv_event(event);
     };

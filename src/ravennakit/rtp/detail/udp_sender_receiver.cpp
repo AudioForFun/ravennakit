@@ -11,6 +11,7 @@
 #include "ravennakit/rtp/detail/udp_sender_receiver.hpp"
 #include "ravennakit/core/tracy.hpp"
 #include "ravennakit/core/platform/windows/wsa_recv_msg_function.hpp"
+#include "ravennakit/core/platform/windows/qos_flow.hpp"
 
 #if RAV_APPLE
     #define IP_RECVDSTADDR_PKTINFO IP_RECVDSTADDR
@@ -153,13 +154,38 @@ class rav::udp_sender_receiver::impl: public std::enable_shared_from_this<impl> 
 
     asio::error_code set_multicast_loopback(bool enable);
 
+    void set_dscp_value(int value);
+
   private:
     asio::ip::udp::socket socket_;
     asio::ip::udp::endpoint sender_endpoint_ {};  // For receiving the senders address.
     std::array<uint8_t, 1500> recv_data_ {};
     handler_type handler_;
     std::vector<multicast_group> multicast_groups_;
+
+#if RAV_WINDOWS
+    qos_flow qos_flow_;
+#endif
 };
+
+void rav::udp_sender_receiver::impl::set_dscp_value(const int value) {
+#if RAV_WINDOWS
+    if (!qos_flow_.has_socket()) {
+        if (!qos_flow_.add_socket_to_flow(socket_)) {
+            RAV_ERROR("Failed to add socket to flow");
+            return;
+        }
+    }
+
+    if (!qos_flow_.set_dscp_value(value)) {
+        RAV_ERROR("Failed to set DSCP value on flow");
+        return;
+    }
+#else
+    // Note: this does not work on Windows, unfortunately. It's a whole other story to get this going on Windows...
+    socket_.set_option(asio::detail::socket_option::integer<IPPROTO_IP, IP_TOS>(value << 2));
+#endif
+}
 
 asio::error_code rav::udp_sender_receiver::impl::set_multicast_loopback(const bool enable) {
     asio::error_code ec;
@@ -225,44 +251,6 @@ void rav::udp_sender_receiver::impl::start(handler_type handler) {
     );
 }
 
-void rav::udp_sender_receiver::start(handler_type handler) const {
-    TRACY_ZONE_SCOPED;
-    impl_->start(std::move(handler));
-}
-
-void rav::udp_sender_receiver::send(
-    const uint8_t* data, const size_t size, const asio::ip::udp::endpoint& endpoint
-) const {
-    impl_->send(data, size, endpoint);
-}
-
-rav::subscription rav::udp_sender_receiver::join_multicast_group(
-    const asio::ip::address& multicast_address, const asio::ip::address& interface_address
-) const {
-    if (impl_ == nullptr) {
-        RAV_WARNING("No implementation available");
-        return {};
-    }
-    return impl_->join_multicast_group(multicast_address, interface_address);
-}
-
-asio::error_code
-rav::udp_sender_receiver::set_multicast_outbound_interface(const asio::ip::address_v4& interface_address) const {
-    if (impl_ == nullptr) {
-        RAV_WARNING("No implementation available");
-        return {};
-    }
-    return impl_->set_multicast_outbound_interface(interface_address);
-}
-
-asio::error_code rav::udp_sender_receiver::set_multicast_loopback(const bool enable) const {
-    if (impl_ == nullptr) {
-        RAV_WARNING("No implementation available");
-        return {};
-    }
-    return impl_->set_multicast_loopback(enable);
-}
-
 rav::udp_sender_receiver::impl::impl(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
     socket_(io_context) {
     socket_.open(endpoint.protocol());
@@ -270,21 +258,6 @@ rav::udp_sender_receiver::impl::impl(asio::io_context& io_context, const asio::i
     socket_.bind(endpoint);
     socket_.non_blocking(true);
     socket_.set_option(asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
-}
-
-rav::udp_sender_receiver::udp_sender_receiver(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
-    impl_(std::make_shared<impl>(io_context, endpoint)) {}
-
-rav::udp_sender_receiver::udp_sender_receiver(
-    asio::io_context& io_context, const asio::ip::address& interface_address, const uint16_t port
-) :
-    udp_sender_receiver(io_context, asio::ip::udp::endpoint(interface_address, port)) {}
-
-rav::udp_sender_receiver::~udp_sender_receiver() {
-    if (impl_) {
-        impl_->stop();
-        impl_.reset();
-    }
 }
 
 void rav::udp_sender_receiver::impl::async_receive() {
@@ -383,4 +356,63 @@ rav::subscription rav::udp_sender_receiver::impl::join_multicast_group(
     );
 
     return subscription(leave_group);
+}
+
+void rav::udp_sender_receiver::start(handler_type handler) const {
+    TRACY_ZONE_SCOPED;
+    impl_->start(std::move(handler));
+}
+
+void rav::udp_sender_receiver::send(
+    const uint8_t* data, const size_t size, const asio::ip::udp::endpoint& endpoint
+) const {
+    impl_->send(data, size, endpoint);
+}
+
+rav::subscription rav::udp_sender_receiver::join_multicast_group(
+    const asio::ip::address& multicast_address, const asio::ip::address& interface_address
+) const {
+    if (impl_ == nullptr) {
+        RAV_WARNING("No implementation available");
+        return {};
+    }
+    return impl_->join_multicast_group(multicast_address, interface_address);
+}
+
+asio::error_code
+rav::udp_sender_receiver::set_multicast_outbound_interface(const asio::ip::address_v4& interface_address) const {
+    if (impl_ == nullptr) {
+        RAV_WARNING("No implementation available");
+        return {};
+    }
+    return impl_->set_multicast_outbound_interface(interface_address);
+}
+
+asio::error_code rav::udp_sender_receiver::set_multicast_loopback(const bool enable) const {
+    if (impl_ == nullptr) {
+        RAV_WARNING("No implementation available");
+        return {};
+    }
+    return impl_->set_multicast_loopback(enable);
+}
+
+rav::udp_sender_receiver::udp_sender_receiver(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
+    impl_(std::make_shared<impl>(io_context, endpoint)) {}
+
+rav::udp_sender_receiver::udp_sender_receiver(
+    asio::io_context& io_context, const asio::ip::address& interface_address, const uint16_t port
+) :
+    udp_sender_receiver(io_context, asio::ip::udp::endpoint(interface_address, port)) {}
+
+rav::udp_sender_receiver::~udp_sender_receiver() {
+    if (impl_) {
+        impl_->stop();
+        impl_.reset();
+    }
+}
+
+void rav::udp_sender_receiver::set_dscp_value(const int value) const {
+    if (impl_) {
+        impl_->set_dscp_value(value);
+    }
 }
