@@ -72,8 +72,8 @@ class file_input_stream final: public input_stream {
         return file_size_;
     }
 
-    [[nodiscard]] bool exhausted() const override {
-        return fstream_.eof();
+    [[nodiscard]] bool exhausted() override {
+        return fstream_.eof() || fstream_.peek() == std::ifstream::traits_type::eof();
     }
 
   private:

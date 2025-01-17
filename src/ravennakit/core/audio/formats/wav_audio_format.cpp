@@ -113,6 +113,15 @@ rav::wav_audio_format::reader::reader(std::unique_ptr<input_stream> istream) : i
 
     // Loop through chunks
     while (!istream_->exhausted()) {
+        if (istream_->get_read_position() % 2 == 1) {
+            if (!istream_->skip(1)) {
+                RAV_THROW_EXCEPTION("failed to skip padding byte");
+            }
+            if (istream_->exhausted()) {
+                break;
+            }
+        }
+
         auto chunk_id = istream_->read_as_string(4);
         if (chunk_id.value().size() != 4) {
             RAV_THROW_EXCEPTION("failed to read chunk id");

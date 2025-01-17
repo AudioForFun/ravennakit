@@ -68,7 +68,7 @@ class input_stream {
     /**
      * @return True if the stream has no more data to read.
      */
-    [[nodiscard]] virtual bool exhausted() const = 0;
+    [[nodiscard]] virtual bool exhausted() = 0;
 
     /**
      * Skips size amount of bytes in the stream.
