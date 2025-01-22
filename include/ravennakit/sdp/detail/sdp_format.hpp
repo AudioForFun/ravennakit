@@ -38,6 +38,11 @@ struct format {
     [[nodiscard]] std::optional<audio_format> to_audio_format() const;
 
     /**
+     * @return The format as audio_format, or nullopt if the format is not supported or cannot be converted.
+     */
+    [[nodiscard]] static std::optional<format> from_audio_format(const audio_format& input_format) ;
+
+    /**
      * Parses a format from a string.
      * @param line The string to parse.
      * @return A result indicating success or failure. When parsing fails, the error message will contain a

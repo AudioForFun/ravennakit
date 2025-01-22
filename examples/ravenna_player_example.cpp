@@ -29,13 +29,15 @@
 /**
  * This example shows how to send audio data from a wav file onto the network using RAVENNA.
  */
-class ravenna_player_example : public rav::ptp_instance::subscriber {
+class ravenna_player_example: public rav::ptp_instance::subscriber {
   public:
     explicit ravenna_player_example(
         asio::io_context& io_context, asio::ip::address_v4 interface_address, const uint16_t port_num
     ) :
+        io_context_(io_context),
         interface_address_(std::move(interface_address)),
         rtsp_server_(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), port_num)),
+        rtp_transmitter_(io_context, interface_address),
         ptp_instance_(io_context) {
         advertiser_ = rav::dnssd::dnssd_advertiser::create(io_context);
         ptp_instance_.add_subscriber(this);
@@ -60,7 +62,8 @@ class ravenna_player_example : public rav::ptp_instance::subscriber {
             }
         }
         auto transmitter = std::make_unique<rav::ravenna_transmitter>(
-            *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), file_session_name, interface_address_
+            io_context_, *advertiser_, rtsp_server_, ptp_instance_, rtp_transmitter_, id_generator_.next(),
+            file_session_name, interface_address_
         );
 
         auto file_input_stream = std::make_unique<rav::file_input_stream>(file);
@@ -81,7 +84,9 @@ class ravenna_player_example : public rav::ptp_instance::subscriber {
         if (port.state() == rav::ptp_state::slave) {
             // Start the transmitters when the port is in slave state (and thus synchronized)
             for (const auto& s : sources_) {
-                s.transmitter->start(ptp_instance_.get_local_ptp_time());
+                if (!s.transmitter->is_running()) {
+                    s.transmitter->start(ptp_instance_.get_local_ptp_time());
+                }
             }
         }
     }
@@ -92,9 +97,11 @@ class ravenna_player_example : public rav::ptp_instance::subscriber {
         std::unique_ptr<rav::ravenna_transmitter> transmitter;
     };
 
+    asio::io_context& io_context_;
     asio::ip::address_v4 interface_address_;
     std::unique_ptr<rav::dnssd::dnssd_advertiser> advertiser_;
     rav::rtsp_server rtsp_server_;
+    rav::rtp_transmitter rtp_transmitter_;
     rav::id::generator id_generator_ {};
     std::vector<source> sources_;
     rav::ptp_instance ptp_instance_;
