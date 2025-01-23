@@ -186,7 +186,7 @@ rav::wav_audio_format::reader::reader(std::unique_ptr<input_stream> istream) : i
 }
 
 tl::expected<size_t, rav::input_stream::error>
-rav::wav_audio_format::reader::read_audio_data(uint8_t* buffer, const size_t size) const {
+rav::wav_audio_format::reader::read_audio_data(uint8_t* buffer, const size_t size) {
     if (!data_chunk_.has_value()) {
         return 0;
     }
@@ -208,7 +208,18 @@ rav::wav_audio_format::reader::read_audio_data(uint8_t* buffer, const size_t siz
         return tl::unexpected(input_stream::error::insufficient_data);
     }
 
+    data_read_position_ += bytes_to_read;
+
     return bytes_to_read;
+}
+
+size_t rav::wav_audio_format::reader::remaining_audio_data() const {
+    RAV_ASSERT(data_read_position_ <= data_chunk_->data_size, "Invalid read position");
+    return data_chunk_->data_size - data_read_position_;
+}
+
+void rav::wav_audio_format::reader::set_read_position(const size_t position) {
+    data_read_position_ = position;
 }
 
 double rav::wav_audio_format::reader::sample_rate() const {

@@ -126,6 +126,20 @@ class input_stream {
             return byte_order::swap_if_be(value);
         });
     }
+
+    /**
+     * @param e The error to convert to a string.
+     * @return The string representation of the error.
+     */
+    static const char* error_string(const error e) {
+        switch (e) {
+            case error::insufficient_data:
+                return "insufficient data";
+            case error::failed_to_set_read_position:
+                return "failed to set read position";
+        }
+        return "unknown error";
+    }
 };
 
 }  // namespace rav

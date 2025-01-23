@@ -28,6 +28,12 @@ namespace rav {
 
 class ravenna_transmitter: public ptp_instance::subscriber {
   public:
+    struct on_data_requested_event {
+        buffer_view<uint8_t> buffer;
+    };
+
+    using events_type = events<on_data_requested_event>;
+
     ravenna_transmitter(
         asio::io_context& io_context, dnssd::dnssd_advertiser& advertiser, rtsp_server& rtsp_server,
         ptp_instance& ptp_instance, rtp_transmitter& rtp_transmitter, id id, std::string session_name,
@@ -57,7 +63,7 @@ class ravenna_transmitter: public ptp_instance::subscriber {
      * @param format The audio format to set.
      * @return True if the audio format is supported, false otherwise.
      */
-    bool set_audio_format(audio_format format);
+    [[nodiscard]] bool set_audio_format(audio_format format);
 
     /**
      * Sets the packet time.
@@ -69,7 +75,7 @@ class ravenna_transmitter: public ptp_instance::subscriber {
      * @return The packet time in milliseconds as signaled using SDP. If the packet time is 1ms and the sample
      * rat 44.1kHz, then the signaled packet time is 1.09.
      */
-    float get_signaled_ptime() const;
+    [[nodiscard]] float get_signaled_ptime() const;
 
     /**
      * Start the streaming.
@@ -88,23 +94,24 @@ class ravenna_transmitter: public ptp_instance::subscriber {
     [[nodiscard]] bool is_running() const;
 
     /**
-     * Feeds audio data to the transmitter.
-     * @param data The audio data.
-     * @param size The size of the audio data.
-     */
-    void feed_audio_date(const uint8_t* data, size_t size);
-
-    /**
      * @return The packet size in number of frames.
      */
-    uint32_t get_framecount() const;
+    [[nodiscard]] uint32_t get_framecount() const;
+
+    /**
+     * Registers a handler for a specific event.
+     * @tparam T The event type.
+     * @param handler The handler to register.
+     */
+    template<class T>
+    void on(events_type::handler<T> handler) {
+        events_.on(handler);
+    }
 
     // ptp_instance::subscriber overrides
     void on_parent_changed(const ptp_parent_ds& parent) override;
 
   private:
-    static constexpr auto k_fifo_buffer_multiplier_packet_times = 4;
-
     dnssd::dnssd_advertiser& advertiser_;
     rtsp_server& rtsp_server_;
     ptp_instance& ptp_instance_;
@@ -119,14 +126,14 @@ class ravenna_transmitter: public ptp_instance::subscriber {
     id advertisement_id_;
     int32_t clock_domain_ {};
     audio_format audio_format_;
-    sdp::format sdp_format_;
+    sdp::format sdp_format_; // I think we can compute this from audio_format_ each time we need it
     aes67_packet_time ptime_ {aes67_packet_time::ms_1()};
     bool running_ {false};
     ptp_clock_identity grandmaster_identity_;
     rtp_packet rtp_packet_;
-    fifo_buffer<uint8_t, fifo::spsc> fifo_buffer_;
     std::vector<uint8_t> packet_intermediate_buffer_;
     asio::high_resolution_timer timer_;
+    events_type events_;
 
     void on_request_event(rtsp_connection::request_event event) const;
 

@@ -111,13 +111,27 @@ class reader {
      */
     explicit reader(std::unique_ptr<input_stream> istream);
 
+    reader(reader&&) noexcept = default;
+    reader& operator=(reader&&) noexcept = default;
+
     /**
      * Reads audio data from the input stream.
      * @param buffer The buffer to read data into.
      * @param size The number of bytes to read.
      * @return The number of bytes read.
      */
-    [[nodiscard]] tl::expected<size_t, input_stream::error> read_audio_data(uint8_t* buffer, size_t size) const;
+    [[nodiscard]] tl::expected<size_t, input_stream::error> read_audio_data(uint8_t* buffer, size_t size);
+
+    /**
+     * @return The number of bytes of audio data remaining in the stream.
+     */
+    [[nodiscard]] size_t remaining_audio_data() const;
+
+    /**
+     * Sets the read position of the reader. This is the position in the audio data, not the entire file.
+     * @param position The position to set the read position to.
+     */
+    void set_read_position(size_t position);
 
     /**
      * @return The sample rate of the audio data.

@@ -26,85 +26,78 @@
 #include <asio/io_context.hpp>
 #include <utility>
 
-/**
- * This example shows how to send audio data from a wav file onto the network using RAVENNA.
- */
-class ravenna_player_example: public rav::ptp_instance::subscriber {
+class wav_file_player {
   public:
-    explicit ravenna_player_example(
-        asio::io_context& io_context, asio::ip::address_v4 interface_address, const uint16_t port_num
-    ) :
-        io_context_(io_context),
-        interface_address_(std::move(interface_address)),
-        rtsp_server_(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), port_num)),
-        rtp_transmitter_(io_context, interface_address),
-        ptp_instance_(io_context) {
-        advertiser_ = rav::dnssd::dnssd_advertiser::create(io_context);
-        ptp_instance_.add_subscriber(this);
-        if (const auto result = ptp_instance_.add_port(interface_address_); !result) {
-            RAV_ERROR("Failed to add PTP port: {}", to_string(result.error()));
+    explicit wav_file_player(
+        asio::io_context& io_context, rav::dnssd::dnssd_advertiser& advertiser, rav::rtsp_server& rtsp_server,
+        rav::ptp_instance& ptp_instance, rav::rtp_transmitter& rtp_transmitter, rav::id::generator& id_generator,
+        const asio::ip::address_v4& interface_address, const rav::file& file_to_play, const std::string& session_name
+    ) {
+        if (!file_to_play.exists()) {
+            throw std::runtime_error("File does not exist: " + file_to_play.path().string());
         }
-    }
 
-    ~ravenna_player_example() override {
-        ptp_instance_.remove_subscriber(this);
-    }
-
-    void add_source(const rav::file& file) {
-        if (!file.exists()) {
-            throw std::runtime_error("File does not exist: " + file.path().string());
-        }
-        const auto file_session_name = file.path().filename().string();
-        for (const auto& s : sources_) {
-            // Test if a source with the same session name already exists
-            if (s.transmitter->session_name() == file_session_name) {
-                throw std::runtime_error("A source with the same session name already exists: " + file_session_name);
-            }
-        }
         auto transmitter = std::make_unique<rav::ravenna_transmitter>(
-            io_context_, *advertiser_, rtsp_server_, ptp_instance_, rtp_transmitter_, id_generator_.next(),
-            file_session_name, interface_address_
+            io_context, advertiser, rtsp_server, ptp_instance, rtp_transmitter, id_generator.next(), session_name,
+            interface_address
         );
 
-        auto file_input_stream = std::make_unique<rav::file_input_stream>(file);
-        auto reader = rav::wav_audio_format::reader(std::move(file_input_stream));
+        auto file_input_stream = std::make_unique<rav::file_input_stream>(file_to_play);
+        auto reader = std::make_unique<rav::wav_audio_format::reader>(std::move(file_input_stream));
 
-        const auto format = reader.get_audio_format();
+        const auto format = reader->get_audio_format();
         if (!format) {
-            throw std::runtime_error("Failed to read audio format from file: " + file.path().string());
-        }
-        if (!transmitter->set_audio_format(*format)) {
-            throw std::runtime_error("Unsupported audio format for transmitter: " + file.path().string());
+            throw std::runtime_error("Failed to read audio format from file: " + file_to_play.path().string());
         }
 
-        sources_.push_back({std::move(reader), std::move(transmitter)});
+        if (!transmitter->set_audio_format(*format)) {
+            throw std::runtime_error("Unsupported audio format for transmitter: " + file_to_play.path().string());
+        }
+
+        reader_ = std::move(reader);
+        transmitter_ = std::move(transmitter);
+
+        transmitter_->on<rav::ravenna_transmitter::on_data_requested_event>([this](auto event) {
+            if (reader_->remaining_audio_data() == 0) {
+                reader_->set_read_position(0);
+            }
+
+            auto result = reader_->read_audio_data(event.buffer.data(), event.buffer.size_bytes());
+            if (!result) {
+                RAV_ERROR("Failed to read audio data: {}", rav::input_stream::error_string(result.error()));
+                return;
+            }
+            auto read = result.value();
+            if (read == 0) {
+                RAV_ERROR("No bytes read");
+            }
+            if (read < event.buffer.size_bytes()) {
+                // Clear the buffer where we didn't write any data
+                std::fill(event.buffer.data() + read, event.buffer.data() + event.buffer.size_bytes(), 0);
+            }
+        });
     }
 
-    void on_port_changed_state(const rav::ptp_port& port) override {
-        if (port.state() == rav::ptp_state::slave) {
-            // Start the transmitters when the port is in slave state (and thus synchronized)
-            for (const auto& s : sources_) {
-                if (!s.transmitter->is_running()) {
-                    s.transmitter->start(ptp_instance_.get_local_ptp_time());
-                }
-            }
-        }
+    void start(const rav::ptp_timestamp at) const {
+        transmitter_->start(at);
     }
 
   private:
-    struct source {
-        rav::wav_audio_format::reader reader;
-        std::unique_ptr<rav::ravenna_transmitter> transmitter;
+    std::unique_ptr<rav::wav_audio_format::reader> reader_;
+    std::unique_ptr<rav::ravenna_transmitter> transmitter_;
+};
+
+class ptp_instance_subscriber: public rav::ptp_instance::subscriber {
+  public:
+    struct ptp_port_changed_state_event {
+        const rav::ptp_port& port;
     };
 
-    asio::io_context& io_context_;
-    asio::ip::address_v4 interface_address_;
-    std::unique_ptr<rav::dnssd::dnssd_advertiser> advertiser_;
-    rav::rtsp_server rtsp_server_;
-    rav::rtp_transmitter rtp_transmitter_;
-    rav::id::generator id_generator_ {};
-    std::vector<source> sources_;
-    rav::ptp_instance ptp_instance_;
+    rav::events<ptp_port_changed_state_event> events;
+
+    void on_port_changed_state(const rav::ptp_port& port) override {
+        events.emit<ptp_port_changed_state_event>({port});
+    }
 };
 
 int main(int const argc, char* argv[]) {
@@ -125,12 +118,48 @@ int main(int const argc, char* argv[]) {
     const auto interface_address = asio::ip::make_address_v4(interface_address_string);
 
     asio::io_context io_context;
-    ravenna_player_example player_example(io_context, interface_address, 5005);
+
+    std::vector<std::unique_ptr<wav_file_player>> wav_file_players;
+
+    auto advertiser = rav::dnssd::dnssd_advertiser::create(io_context);
+    rav::rtsp_server rtsp_server(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
+    rav::rtp_transmitter rtp_transmitter(io_context, interface_address);
+
+    // PTP
+    rav::ptp_instance ptp_instance(io_context);
+    ptp_instance_subscriber ptp_subscriber;
+    ptp_subscriber.events.on<ptp_instance_subscriber::ptp_port_changed_state_event>([&wav_file_players,
+                                                                                     &ptp_instance](const auto event) {
+        if (event.port.state() == rav::ptp_state::slave) {
+            RAV_INFO("Port state changed to slave, start players");
+            auto start_at = ptp_instance.get_local_ptp_time();
+            start_at.add_seconds(0.5);
+            for (const auto& player : wav_file_players) {
+                player->start(start_at);
+            }
+        }
+    });
+    ptp_instance.add_subscriber(&ptp_subscriber);
+    if (const auto result = ptp_instance.add_port(interface_address); !result) {
+        RAV_THROW_EXCEPTION("Failed to add PTP port: {}", to_string(result.error()));
+    }
+
+    // ID generator
+    rav::id::generator id_generator;
 
     for (auto& file_path : file_paths) {
-        player_example.add_source(rav::file(file_path));
+        auto file = rav::file(file_path);
+        const auto file_session_name = file.path().filename().string();
+
+        wav_file_players.emplace_back(
+            std::make_unique<wav_file_player>(
+                io_context, *advertiser, rtsp_server, ptp_instance, rtp_transmitter, id_generator, interface_address,
+                file, file_session_name + " " + std::to_string(wav_file_players.size() + 1)
+            )
+        );
     }
 
     io_context.run();
+
     return 0;
 }

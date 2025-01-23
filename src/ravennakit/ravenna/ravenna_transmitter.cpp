@@ -10,6 +10,8 @@
 
 #include "ravennakit/ravenna/ravenna_transmitter.hpp"
 
+#include "ravennakit/rtp/rtp_packet_view.hpp"
+
 rav::ravenna_transmitter::ravenna_transmitter(
     asio::io_context& io_context, dnssd::dnssd_advertiser& advertiser, rtsp_server& rtsp_server,
     ptp_instance& ptp_instance, rtp_transmitter& rtp_transmitter, const id id, std::string session_name,
@@ -121,12 +123,6 @@ void rav::ravenna_transmitter::stop() {
 
 bool rav::ravenna_transmitter::is_running() const {
     return running_;
-}
-
-void rav::ravenna_transmitter::feed_audio_date(const uint8_t* data, const size_t size) {
-    RAV_ASSERT(data != nullptr, "Data is null");
-    RAV_ASSERT(size > 0, "Size is 0");
-    fifo_buffer_.write(data, size);
 }
 
 uint32_t rav::ravenna_transmitter::get_framecount() const {
@@ -266,24 +262,24 @@ void rav::ravenna_transmitter::send_data() {
 
     const auto required_amount_of_data = framecount * audio_format_.bytes_per_frame();
 
-    if (fifo_buffer_.size() < required_amount_of_data) {
-        // TODO: Callback asking for data
-        return;
-    }
-
     RAV_ASSERT(packet_intermediate_buffer_.size() == required_amount_of_data, "Buffer size mismatch");
-    fifo_buffer_.read(packet_intermediate_buffer_.data(), required_amount_of_data);
+
+    events_.emit(on_data_requested_event {buffer_view(packet_intermediate_buffer_)});
+
+    if (audio_format_.byte_order == audio_format::byte_order::le) {
+        byte_order::swap_bytes(
+            packet_intermediate_buffer_.data(), required_amount_of_data, audio_format_.bytes_per_sample()
+        );
+    }
 
     byte_buffer buffer;
     rtp_packet_.encode(packet_intermediate_buffer_.data(), required_amount_of_data, buffer);
     rtp_packet_.sequence_number_inc(1);
     rtp_packet_.timestamp_inc(framecount);
-
     rtp_transmitter_.send_to(buffer, {destination_address_, 5004});
 }
 
 void rav::ravenna_transmitter::resize_internal_buffers() {
     const auto bytes_per_packet = get_framecount() * audio_format_.bytes_per_frame();
-    fifo_buffer_.resize(bytes_per_packet * k_fifo_buffer_multiplier_packet_times);
     packet_intermediate_buffer_.resize(bytes_per_packet);
 }
