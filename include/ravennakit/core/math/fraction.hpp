@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <tuple>
+
 namespace rav {
 
 /**
