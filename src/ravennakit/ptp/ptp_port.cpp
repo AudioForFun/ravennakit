@@ -203,7 +203,7 @@ void rav::ptp_port::set_state(const ptp_state new_state) {
     RAV_INFO("Switching port {} to {}", port_ds_.port_identity.port_number, to_string(new_state));
 
     parent_.notify_subscribers([this](ptp_instance::subscriber& s) {
-        s.on_port_changed_state(*this);
+        s.on_port_changed_state({*this});
     });
 }
 
@@ -540,7 +540,7 @@ void rav::ptp_port::handle_sync_message(ptp_sync_message sync_message, buffer_vi
     }
 
     if (sync_message.header.flags.two_step_flag) {
-        sync_messages_.push_back(sync_message); // Wait for a follow-up message
+        sync_messages_.push_back(sync_message);  // Wait for a follow-up message
     } else {
         parent_.update_local_ptp_clock(calculate_offset_from_master(sync_message));
     }

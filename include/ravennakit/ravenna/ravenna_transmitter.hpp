@@ -109,7 +109,7 @@ class ravenna_transmitter: public ptp_instance::subscriber, public rtsp_server::
     }
 
     // ptp_instance::subscriber overrides
-    void on_parent_changed(const ptp_parent_ds& parent) override;
+    void on_parent_changed(const ptp_instance::parent_changed_event& parent) override;
 
     // rtsp_server::handler overrides
     void on_request(rtsp_connection::request_event event) const override;

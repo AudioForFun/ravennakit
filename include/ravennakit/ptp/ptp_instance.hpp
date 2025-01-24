@@ -17,6 +17,7 @@
 #include "datasets/ptp_default_ds.hpp"
 #include "datasets/ptp_parent_ds.hpp"
 #include "datasets/ptp_time_properties_ds.hpp"
+#include "ravennakit/core/events.hpp"
 #include "ravennakit/core/subscriber_list.hpp"
 #include "ravennakit/core/net/interfaces/network_interface_list.hpp"
 
@@ -30,21 +31,29 @@ namespace rav {
  */
 class ptp_instance {
   public:
+    struct parent_changed_event {
+        const ptp_parent_ds& parent;
+    };
+
+    struct port_changed_state_event {
+        const ptp_port& port;
+    };
+
     class subscriber {
       public:
         virtual ~subscriber() = default;
 
         /**
          * Called when the parent data set of the PTP instance changes.
-         * @param parent The new parent data set.
+         * @param event The event.
          */
-        virtual void on_parent_changed([[maybe_unused]] const ptp_parent_ds& parent) {}
+        virtual void on_parent_changed([[maybe_unused]] const parent_changed_event& event) {}
 
         /**
          * Called when a port in the PTP instance changes state.
-         * @param port The port that changed state.
+         * @param event The port changed state event.
          */
-        virtual void on_port_changed_state([[maybe_unused]] const ptp_port& port) {}
+        virtual void on_port_changed_state([[maybe_unused]] const port_changed_state_event& event) {}
     };
 
     /**
@@ -135,7 +144,7 @@ class ptp_instance {
     void add_subscriber(subscriber* sub) {
         subscribers_.add(sub);
         for (auto& p : ports_) {
-            sub->on_port_changed_state(*p);
+            sub->on_port_changed_state({*p});
         }
     }
 

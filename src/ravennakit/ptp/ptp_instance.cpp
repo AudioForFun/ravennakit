@@ -123,7 +123,7 @@ bool rav::ptp_instance::set_recommended_state(
         if (parent_changed || gm_changed) {
             RAV_INFO("{}", parent_ds_.to_string());
             notify_subscribers([this](subscriber& s) {
-                s.on_parent_changed(parent_ds_);
+                s.on_parent_changed({parent_ds_});
             });
         }
 

@@ -94,14 +94,10 @@ class wav_file_player {
 
 class ptp_instance_subscriber: public rav::ptp_instance::subscriber {
   public:
-    struct ptp_port_changed_state_event {
-        const rav::ptp_port& port;
-    };
+    rav::events<rav::ptp_instance::port_changed_state_event> events;
 
-    rav::events<ptp_port_changed_state_event> events;
-
-    void on_port_changed_state(const rav::ptp_port& port) override {
-        events.emit<ptp_port_changed_state_event>({port});
+    void on_port_changed_state(const rav::ptp_instance::port_changed_state_event& port) override {
+        events.emit<rav::ptp_instance::port_changed_state_event>({port});
     }
 };
 
@@ -133,8 +129,8 @@ int main(int const argc, char* argv[]) {
     // PTP
     rav::ptp_instance ptp_instance(io_context);
     ptp_instance_subscriber ptp_subscriber;
-    ptp_subscriber.events.on<ptp_instance_subscriber::ptp_port_changed_state_event>([&wav_file_players,
-                                                                                     &ptp_instance](const auto event) {
+    ptp_subscriber.events.on<rav::ptp_instance::port_changed_state_event>([&wav_file_players,
+                                                                           &ptp_instance](const auto event) {
         if (event.port.state() == rav::ptp_state::slave) {
             RAV_INFO("Port state changed to slave, start players");
             auto start_at = ptp_instance.get_local_ptp_time();

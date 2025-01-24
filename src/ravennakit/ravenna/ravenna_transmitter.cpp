@@ -138,11 +138,11 @@ uint32_t rav::ravenna_transmitter::get_framecount() const {
     return ptime_.framecount(audio_format_.sample_rate);
 }
 
-void rav::ravenna_transmitter::on_parent_changed(const ptp_parent_ds& parent) {
-    if (grandmaster_identity_ == parent.grandmaster_identity) {
+void rav::ravenna_transmitter::on_parent_changed(const ptp_instance::parent_changed_event& event) {
+    if (grandmaster_identity_ == event.parent.grandmaster_identity) {
         return;
     }
-    grandmaster_identity_ = parent.grandmaster_identity;
+    grandmaster_identity_ = event.parent.grandmaster_identity;
     send_announce();
 }
 
