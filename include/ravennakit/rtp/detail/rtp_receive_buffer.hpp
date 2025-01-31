@@ -32,7 +32,7 @@ class rtp_receive_buffer {
      * @param buffer_capacity_frames The total capacity of the buffer in frames.
      * @param bytes_per_frame The number of bytes per frame.
      */
-    void resize(const size_t buffer_capacity_frames, const size_t bytes_per_frame) {
+    void resize(const uint32_t buffer_capacity_frames, const uint32_t bytes_per_frame) {
         const auto new_capacity = buffer_capacity_frames * bytes_per_frame;
         if (new_capacity == buffer_.size() && bytes_per_frame == bytes_per_frame_) {
             return;  // Nothing to do here
@@ -63,7 +63,9 @@ class rtp_receive_buffer {
             return false;
         }
 
-        const fifo::position position(at_timestamp * bytes_per_frame_, buffer_.size(), payload.size());
+        const fifo::position position(
+            static_cast<size_t>(at_timestamp) * bytes_per_frame_, buffer_.size(), payload.size()
+        );
 
         std::memcpy(buffer_.data() + position.index1, payload.data(), position.size1);
 
@@ -71,7 +73,8 @@ class rtp_receive_buffer {
             std::memcpy(buffer_.data(), payload.data() + position.size1, position.size2);
         }
 
-        const auto end_ts = wrapping_uint32(at_timestamp) + payload.size_bytes() / bytes_per_frame_;
+        const auto end_ts =
+            wrapping_uint32(at_timestamp) + static_cast<uint32_t>(payload.size_bytes() / bytes_per_frame_);
         if (end_ts > next_ts_) {
             next_ts_ = end_ts;
         }
@@ -86,7 +89,7 @@ class rtp_receive_buffer {
      * @param buffer_size The size of the buffer in bytes.
      * @returns true if buffer_size bytes were read, or false if buffer_size bytes couldn't be read.
      */
-    bool read(const size_t at_timestamp, uint8_t* buffer, const size_t buffer_size) const {
+    bool read(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size) const {
         RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr.");
         RAV_ASSERT(buffer_size > 0, "Buffer size must be greater than 0.");
 
@@ -100,7 +103,9 @@ class rtp_receive_buffer {
             return false;
         }
 
-        const fifo::position position(at_timestamp * bytes_per_frame_, buffer_.size(), buffer_size);
+        const fifo::position position(
+            static_cast<size_t>(at_timestamp) * bytes_per_frame_, buffer_.size(), buffer_size
+        );
 
         std::memcpy(buffer, buffer_.data() + position.index1, position.size1);
 
@@ -124,7 +129,8 @@ class rtp_receive_buffer {
         const auto number_of_elements = (wrapping_uint32(at_timestamp) - next_ts_.value()).value() * bytes_per_frame_;
 
         const fifo::position position(
-            next_ts_.value() * bytes_per_frame_, buffer_.size(), std::min(number_of_elements, buffer_.size())
+            next_ts_.value() * bytes_per_frame_, buffer_.size(),
+            std::min(static_cast<size_t>(number_of_elements), buffer_.size())
         );
 
         std::memset(buffer_.data() + position.index1, clear_value_, position.size1);
@@ -142,6 +148,14 @@ class rtp_receive_buffer {
      */
     [[nodiscard]] wrapping_uint32 next_ts() const {
         return next_ts_;
+    }
+
+    /**
+     * Sets the next timestamp to the given value.
+     * @param next_ts The next timestamp.
+     */
+    void set_next_ts(const uint32_t next_ts) {
+        next_ts_ = next_ts;
     }
 
     /**
@@ -177,10 +191,10 @@ class rtp_receive_buffer {
   private:
     static constexpr size_t k_buffer_size_delay_factor = 2;  // The buffer size is twice the delay.
 
-    size_t bytes_per_frame_ = 0;   // Number of bytes (octets) per frame
-    wrapping_uint32 next_ts_;      // Producer ts
-    std::vector<uint8_t> buffer_;  // Stored the actual data
-    uint8_t clear_value_ = 0;      // Value to clear the buffer with
+    uint32_t bytes_per_frame_ = 0;  // Number of bytes (octets) per frame
+    wrapping_uint32 next_ts_;       // Producer ts
+    std::vector<uint8_t> buffer_;   // Stored the actual data
+    uint8_t clear_value_ = 0;       // Value to clear the buffer with
 };
 
 }  // namespace rav

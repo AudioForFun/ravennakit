@@ -89,7 +89,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
         }
     }
 
-    void on_data_available(const uint32_t timestamp) override {
+    void on_data_available(rav::wrapping_uint32 timestamp) override {
         if (!start_streaming_at_) {
             start_streaming_at_ = timestamp + ravenna_receiver_->get_delay();
             start_transmitter();

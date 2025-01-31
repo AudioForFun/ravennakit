@@ -220,10 +220,10 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
         timestamp_ = std::nullopt;
     }
 
-    void on_data_available(uint32_t timestamp) override {
-        if (!timestamp_.has_value()) {
+    void on_data_available(rav::wrapping_uint32 timestamp) override {
+        if (!timestamp_.load().has_value()) {
             timestamp_ = timestamp;
-            RAV_TRACE("First packet received with timestamp: {}", timestamp);
+            RAV_TRACE("First packet received with timestamp: {}", timestamp.value());
         }
     }
 
@@ -236,7 +236,9 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
     std::string audio_device_name_;
     portaudio_stream portaudio_stream_;
     rav::audio_format audio_format_;
-    std::optional<uint32_t> timestamp_ {};
+
+    std::atomic<std::optional<rav::wrapping_uint32>> timestamp_ {};
+    static_assert(decltype(timestamp_)::is_always_lock_free);
 
     int stream_callback(
         const void* input, void* output, const unsigned long frame_count, const PaStreamCallbackTimeInfo* time_info,
@@ -250,21 +252,25 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
 
         const auto buffer_size = frame_count * audio_format_.bytes_per_frame();
 
-        if (!timestamp_.has_value()) {
+        if (!timestamp_.load().has_value()) {
             std::memset(output, audio_format_.ground_value(), buffer_size);
             return paContinue;
         }
 
-        if (!ravenna_receiver_->read_data(*timestamp_, static_cast<uint8_t*>(output), buffer_size)) {
+        const auto timestamp = timestamp_.load().value();
+
+        TRACY_PLOT("Audio timestamp", static_cast<int64_t>(timestamp.value()));
+
+        if (!ravenna_receiver_->read_data(timestamp.value(), static_cast<uint8_t*>(output), buffer_size)) {
             std::memset(output, audio_format_.ground_value(), buffer_size);
+            RAV_WARNING("Not enough data available for timestamp: {}", timestamp.value());
         }
-        *timestamp_ += frame_count;
+
+        timestamp_.store(timestamp + static_cast<uint32_t>(frame_count));
 
         if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
             rav::byte_order::swap_bytes(static_cast<uint8_t*>(output), buffer_size, audio_format_.bytes_per_sample());
         }
-
-        TRACY_PLOT("Audio timestamp", static_cast<int64_t>(*timestamp_));
 
         return paContinue;
     }

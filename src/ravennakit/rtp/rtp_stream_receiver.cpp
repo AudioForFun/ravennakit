@@ -212,7 +212,7 @@ bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber_to_remov
     return subscribers_.remove(subscriber_to_remove);
 }
 
-bool rav::rtp_stream_receiver::read_data(const size_t at_timestamp, uint8_t* buffer, const size_t buffer_size) const {
+bool rav::rtp_stream_receiver::read_data(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size) const {
     return receiver_buffer_.read(at_timestamp, buffer, buffer_size);
 }
 
@@ -250,11 +250,22 @@ rav::rtp_stream_receiver::find_or_create_stream_info(const rtp_session& session)
 void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_view& packet, stream_info& stream) {
     TRACY_ZONE_SCOPED;
 
+    wrapping_uint32 packet_timestamp(packet.timestamp());
+
+    if (!stream.first_packet_timestamp.has_value()) {
+        receiver_buffer_.set_next_ts(packet.timestamp());
+        stream.seq = packet.sequence_number();
+        stream.first_packet_timestamp = packet.timestamp();
+    }
+
     receiver_buffer_.clear_until(packet.timestamp());
 
     // Discard packet if it's too old
-    if (wrapping_uint32(packet.timestamp()) + stream.packet_time_frames < receiver_buffer_.next_ts() - delay_) {
-        RAV_WARNING("Dropping packet because it's too old");
+    if (packet_timestamp + stream.packet_time_frames < receiver_buffer_.next_ts() - delay_) {
+        RAV_WARNING(
+            "Dropping packet because it's too old (ts: {}, next_ts: {})", packet.timestamp(),
+            receiver_buffer_.next_ts().value()
+        );
         return;
     }
 
@@ -262,24 +273,17 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
         RAV_ERROR("Packet not written to buffer");
     }
 
-    if (!stream.first_packet_timestamp.has_value()) {
-        stream.first_packet_timestamp = packet.timestamp();
-    }
-
     TRACY_PLOT("RTP Timestamp", static_cast<int64_t>(packet.timestamp()));
 
     const auto step = stream.seq.update(packet.sequence_number());
     if (step > 1) {
-        RAV_TRACE(
-            "Packets dropped: [{}, {}] total: {}", stream.seq.value(), packet.sequence_number() - 1,
-            step - 1
-        );
+        RAV_TRACE("Packets dropped: [{}, {}] total: {}", stream.seq.value(), packet.sequence_number() - 1, step - 1);
     }
 
     if (step >= 1) {
-        if (packet.timestamp() - delay_ >= *stream.first_packet_timestamp) {
+        if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
             for (const auto& s : subscribers_) {
-                s->on_data_available(packet.timestamp() - delay_);
+                s->on_data_available(packet_timestamp - delay_);
             }
         }
     }

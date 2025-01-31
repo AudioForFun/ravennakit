@@ -106,7 +106,7 @@ class wrapping_uint {
      * @param value The value to increment by.
      * @return A new sequence number instance.
      */
-    wrapping_uint operator+(const T value) {
+    wrapping_uint operator+(const T value) const {
         return wrapping_uint(value_ + value);
     }
 
@@ -115,7 +115,7 @@ class wrapping_uint {
      * @param value The value to decrement by.
      * @return A new sequence number instance.
      */
-    wrapping_uint operator-(const T value) {
+    wrapping_uint operator-(const T value) const {
         return wrapping_uint(value_ - value);
     }
 
