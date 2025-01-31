@@ -231,6 +231,7 @@ void rav::rtp_stream_receiver::restart() {
     for (auto& stream : streams_) {
         rtp_receiver_.subscribe(*this, stream.session, stream.filter);
         stream.first_packet_timestamp.reset();
+        stream.packet_stats = rtp_packet_stats(delay_);
     }
 
     RAV_TRACE("(Re)Started rtp_stream_receiver");
@@ -285,6 +286,7 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
             for (const auto& s : subscribers_) {
                 s->on_data_available(packet_timestamp - delay_);
             }
+            // TODO: Collect statistics
         }
     }
 }
