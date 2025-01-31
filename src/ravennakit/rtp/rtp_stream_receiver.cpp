@@ -231,7 +231,7 @@ void rav::rtp_stream_receiver::restart() {
     for (auto& stream : streams_) {
         rtp_receiver_.subscribe(*this, stream.session, stream.filter);
         stream.first_packet_timestamp.reset();
-        stream.packet_stats = rtp_packet_stats(delay_);
+        stream.packet_stats.reset();
     }
 
     RAV_TRACE("(Re)Started rtp_stream_receiver");

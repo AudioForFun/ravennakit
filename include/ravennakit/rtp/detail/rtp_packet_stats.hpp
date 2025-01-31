@@ -31,22 +31,26 @@ class rtp_packet_stats {
 
     /**
      * Updates the statistics with the given packet.
-     * @param packet
+     * @param sequence_number
      * @return True if packet should be processed, or false if it should be dropped because it is too old.
      */
-    void update(const rtp_packet_view& packet) {
-        const auto packet_sequence_number = wrapping_uint16(packet.sequence_number());
+    void update(const uint16_t sequence_number) {
+        const auto packet_sequence_number = wrapping_uint16(sequence_number);
+        if (first_packet_) {
+            last_collected_sequence_number_ = packet_sequence_number - 1;
+            first_packet_ = false;
+        }
         if (packet_sequence_number <= last_collected_sequence_number_) {
             num_too_old_++;
             return;
         }
 
-        packets_.at(packet.sequence_number() % packets_.size()).times_received++;
+        packets_.at(sequence_number % packets_.size()).times_received++;
 
-        const auto diff = most_recent_sequence_number_.update(packet.sequence_number());
+        const auto diff = most_recent_sequence_number_.update(sequence_number);
 
-        for (auto i = 1; i < diff; i++) {
-            packets_.at((packet.sequence_number() - i) % packets_.size()).out_of_order = true;
+        for (uint16_t i = 1; i < diff; i++) {
+            packets_.at((sequence_number - i) % packets_.size()).out_of_order = true;
         }
     }
 
@@ -81,12 +85,24 @@ class rtp_packet_stats {
         return result;
     }
 
+    /**
+     * Resets to the initial state.
+     */
+    void reset() {
+        first_packet_ = true;
+        std::fill(packets_.begin(), packets_.end(), packet {});
+        most_recent_sequence_number_ = {};
+        last_collected_sequence_number_ = {};
+        num_too_old_ = 0;
+    }
+
   private:
     struct packet {
         uint16_t times_received {};
         bool out_of_order {};
     };
 
+    bool first_packet_ {true};
     wrapping_uint16 most_recent_sequence_number_ {};
     wrapping_uint16 last_collected_sequence_number_ {};
     uint16_t num_too_old_ {};
