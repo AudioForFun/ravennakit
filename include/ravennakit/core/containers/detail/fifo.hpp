@@ -189,7 +189,7 @@ struct spsc {
     lock prepare_for_read(size_t number_of_elements);
 
     /**
-     * Thread safe: no
+     * Thread safe: yes
      * Realtime safe: yes
      * @return The number of elements in the buffer.
      */
@@ -280,7 +280,7 @@ struct mpsc {
     lock prepare_for_read(size_t number_of_elements);
 
     /**
-     * Thread safe: no
+     * Thread safe: yes
      * Realtime safe: yes
      * @return The number of elements in the buffer.
      */
@@ -372,7 +372,7 @@ struct spmc {
     lock prepare_for_read(size_t number_of_elements);
 
     /**
-     * Thread safe: no
+     * Thread safe: yes
      * Realtime safe: yes
      * @return The number of elements in the buffer.
      */
@@ -462,7 +462,7 @@ struct mpmc {
     lock prepare_for_read(size_t number_of_elements);
 
     /**
-     * Thread safe: no
+     * Thread safe: yes
      * Realtime safe: yes
      * @return The number of elements in the buffer.
      */
