@@ -14,7 +14,7 @@
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("rtp_packet_stats") {
-    rav::rtp_packet_stats stats;
+    rav::rtp_packet_stats stats(5);
 
     SECTION("Basic sequence") {
         stats.update(10);
@@ -22,151 +22,338 @@ TEST_CASE("rtp_packet_stats") {
         stats.update(12);
         stats.update(13);
         REQUIRE(stats.size() == 4);
-        const auto counts = stats.collect();
-        REQUIRE(counts.dropped == 0);
-        REQUIRE(counts.duplicates == 0);
-        REQUIRE(counts.out_of_order == 0);
-        REQUIRE(counts.too_old == 0);
+        const auto window = stats.get_window_counts();
+        REQUIRE(window.dropped == 0);
+        REQUIRE(window.duplicates == 0);
+        REQUIRE(window.out_of_order == 0);
+        REQUIRE(window.too_late == 0);
+        const auto total = stats.get_total_counts();
+        REQUIRE(window == total);
     }
 
     SECTION("Drop one packet") {
         stats.update(10);
         stats.update(12);
         REQUIRE(stats.size() == 3);
-        const auto counts = stats.collect();
-        REQUIRE(counts.dropped == 1);
-        REQUIRE(counts.duplicates == 0);
-        REQUIRE(counts.out_of_order == 0);
-        REQUIRE(counts.too_old == 0);
+        const auto window = stats.get_window_counts();
+        REQUIRE(window.dropped == 1);
+        REQUIRE(window.duplicates == 0);
+        REQUIRE(window.out_of_order == 0);
+        REQUIRE(window.too_late == 0);
+
+        // The window is not full yet, so total counters are still zero
+        auto total = stats.get_total_counts();
+        REQUIRE(total.dropped == 0);
+        REQUIRE(total.duplicates == 0);
+        REQUIRE(total.out_of_order == 0);
+        REQUIRE(total.too_late == 0);
+
+        stats.update(13);
+        stats.update(14);
+        stats.update(15);
+
+        // This packet moves the seconds packet (which was dropped) out of the window, adding to the total
+        stats.update(16);
+
+        total = stats.get_total_counts();
+        REQUIRE(total.dropped == 1);
+        REQUIRE(total.duplicates == 0);
+        REQUIRE(total.out_of_order == 0);
+        REQUIRE(total.too_late == 0);
     }
 
     SECTION("Drop two packets") {
         stats.update(10);
         stats.update(13);
         REQUIRE(stats.size() == 4);
-        const auto counts = stats.collect();
+        const auto counts = stats.get_window_counts();
         REQUIRE(counts.dropped == 2);
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.too_late == 0);
+
+        stats.update(14);
+        stats.update(15);
+        stats.update(16);
+        stats.update(17);
+
+        const auto total = stats.get_total_counts();
+        REQUIRE(total.dropped == 2);
+        REQUIRE(total.duplicates == 0);
+        REQUIRE(total.out_of_order == 0);
+        REQUIRE(total.too_late == 0);
     }
 
     SECTION("A packet older than the first packet is dropped") {
         stats.update(10);
         stats.update(9);
         REQUIRE(stats.size() == 1);
-        const auto counts = stats.collect();
+        const auto counts = stats.get_window_counts();
         REQUIRE(counts.dropped == 0);
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.too_late == 0);
     }
 
     SECTION("Too old") {
         stats.update(10);
-        stats.update(12);
         stats.update(11);
-        REQUIRE(stats.size() == 3);
-        const auto counts = stats.collect();
+        stats.update(12);
+        stats.update(13);
+        stats.update(14);
+        stats.update(15);
+        stats.update(10);
+        REQUIRE(stats.size() == 5);
+        const auto counts = stats.get_total_counts();
         REQUIRE(counts.dropped == 0);
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
+        REQUIRE(counts.too_late == 0);
         REQUIRE(counts.too_old == 1);
     }
 
-    SECTION("Too old after setting max age") {
-        stats.set_max_age(2);
+    SECTION("Drop, out of order, duplicates and too old") {
         stats.update(10);
         stats.update(14);
-        stats.update(11); // Too old
-        stats.update(13); // Out of order
-        stats.update(13); // Our of order and duplicate
+        stats.update(11);  // Too old
+        stats.update(13);  // Out of order
+        stats.update(13);  // Our of order and duplicate
         REQUIRE(stats.size() == 5);
-        const auto counts = stats.collect();
-        REQUIRE(counts.dropped == 1); // Seq 12 is dropped
+        const auto counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 1);  // Seq 12 is dropped
         REQUIRE(counts.duplicates == 1);
-        REQUIRE(counts.out_of_order == 2);
-        REQUIRE(counts.too_old == 1);
+        REQUIRE(counts.out_of_order == 3);
+        REQUIRE(counts.too_late == 0);
     }
 
     SECTION("Test the window") {
         stats.reset(4);
-        stats.set_max_age(2);
         stats.update(10);
         stats.update(14);
-        stats.update(11); // Too old
-        stats.update(13); // Out of order
-        stats.update(13); // Our of order and duplicate
+        stats.update(11);  // Too old
+        stats.update(13);  // Out of order
+        stats.update(13);  // Our of order and duplicate
         REQUIRE(stats.size() == 4);
-        auto counts = stats.collect();
-        REQUIRE(counts.dropped == 1); // Seq 12 is dropped
+        auto counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 1);  // Seq 12 is dropped
         REQUIRE(counts.duplicates == 1);
-        REQUIRE(counts.out_of_order == 2);
-        REQUIRE(counts.too_old == 1);
+        REQUIRE(counts.out_of_order == 3);
+        REQUIRE(counts.too_late == 0);
 
         // The window will slide one position, dropping seq 11 (which was marked too old).
         stats.update(15);
         REQUIRE(stats.size() == 4);
-        counts = stats.collect();
-        REQUIRE(counts.dropped == 1); // Seq 12 is dropped
+        counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 1);  // Seq 12 is dropped
         REQUIRE(counts.duplicates == 1);
         REQUIRE(counts.out_of_order == 2);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.too_late == 0);
 
         // The window will slide three positions, dropping previous packets except 15.
         stats.update(16);
         stats.update(17);
         stats.update(18);
         REQUIRE(stats.size() == 4);
-        counts = stats.collect();
+        counts = stats.get_window_counts();
         REQUIRE(counts.dropped == 0);
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.too_late == 0);
     }
 
     SECTION("Test wrap around") {
         stats.reset(4);
-        stats.set_max_age(2);
         stats.update(0xffff - 2);
         stats.update(0xffff - 1);
         stats.update(0xffff);
         stats.update(0x0);
         REQUIRE(stats.size() == 4);
-        auto counts = stats.collect();
+        auto counts = stats.get_window_counts();
         REQUIRE(counts.dropped == 0);
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.too_late == 0);
     }
 
     SECTION("Test wrap around with drop") {
         stats.reset(4);
-        stats.set_max_age(2);
         stats.update(0xffff - 2);
         stats.update(0xffff - 1);
         stats.update(0xffff);
         stats.update(0x1);
         REQUIRE(stats.size() == 4);
-        auto counts = stats.collect();
+        auto counts = stats.get_window_counts();
         REQUIRE(counts.dropped == 1);
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.too_late == 0);
     }
 
     SECTION("Test wrap around with drop, out of order, duplicates and too old") {
         stats.reset(4);
-        stats.set_max_age(2);
         stats.update(0xffff - 2);
         stats.update(0x1);
         stats.update(0x1);
         stats.update(0xffff - 1);
         stats.update(0xffff);
-        auto counts = stats.collect();
+        auto counts = stats.get_window_counts();
         REQUIRE(counts.dropped == 1);
         REQUIRE(counts.duplicates == 1);
-        REQUIRE(counts.out_of_order == 1);
-        REQUIRE(counts.too_old == 1);
+        REQUIRE(counts.out_of_order == 2);
+        REQUIRE(counts.too_late == 0);
+    }
+
+    SECTION("Mark too late") {
+        stats.reset(4);
+        stats.update(1);
+        stats.update(2);
+        stats.update(3);
+        stats.update(4);
+        stats.mark_packet_too_late(0);  // Too old
+        stats.mark_packet_too_late(3);
+        stats.mark_packet_too_late(5);  // Too new
+        auto counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 0);
+        REQUIRE(counts.duplicates == 0);
+        REQUIRE(counts.out_of_order == 0);
+        REQUIRE(counts.too_late == 1);
+        REQUIRE(counts.too_old == 0);
+
+        stats.update(5);
+        stats.update(6);
+        stats.update(7);
+        stats.update(8);
+
+        counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 0);
+        REQUIRE(counts.duplicates == 0);
+        REQUIRE(counts.out_of_order == 0);
+        REQUIRE(counts.too_late == 0);
+        REQUIRE(counts.too_old == 0);
+
+        auto totals = stats.get_total_counts();
+        REQUIRE(totals.dropped == 0);
+        REQUIRE(totals.duplicates == 0);
+        REQUIRE(totals.out_of_order == 0);
+        REQUIRE(totals.too_late == 1);
+        REQUIRE(totals.too_old == 0);
+    }
+
+    SECTION("Count 1 for every case, first the window, then the totals") {
+        stats.reset(4);
+        stats.update(1);
+        stats.update(4);
+        stats.update(3);
+        stats.update(5);
+        stats.update(5);
+        stats.mark_packet_too_late(3);
+
+        auto window = stats.get_window_counts();
+        REQUIRE(window.dropped == 1);
+        REQUIRE(window.duplicates == 1);
+        REQUIRE(window.out_of_order == 1);
+        REQUIRE(window.too_late == 1);
+        auto totals = stats.get_total_counts();
+        REQUIRE(totals.dropped == 0);
+        REQUIRE(totals.duplicates == 0);
+        REQUIRE(totals.out_of_order == 0);
+        REQUIRE(totals.too_late == 0);
+        REQUIRE(totals.too_old == 0);
+
+        // The window will have moved one position, dropping the first packet, so this one should be too old
+        stats.update(1);
+        totals = stats.get_total_counts();
+        REQUIRE(totals.dropped == 0);
+        REQUIRE(totals.duplicates == 0);
+        REQUIRE(totals.out_of_order == 0);
+        REQUIRE(totals.too_late == 0);
+        REQUIRE(totals.too_old == 1);
+
+        // Slide the window so all values from the current window are collected in the totals
+        totals = stats.collect_total_counts();
+        REQUIRE(totals.dropped == 1);
+        REQUIRE(totals.duplicates == 1);
+        REQUIRE(totals.out_of_order == 1);
+        REQUIRE(totals.too_late == 1);
+        REQUIRE(totals.too_old == 1);
+
+        window = stats.get_window_counts();
+        REQUIRE(window.dropped == 0);
+        REQUIRE(window.duplicates == 0);
+        REQUIRE(window.out_of_order == 0);
+        REQUIRE(window.too_late == 0);
+    }
+
+    SECTION("Handling duplicates across the window") {
+        stats.reset(5);
+        stats.update(100);
+        stats.update(101);
+        stats.update(101);
+        stats.update(102);
+        stats.update(102);
+        stats.update(102);
+        auto counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 0);
+        REQUIRE(counts.duplicates == 3);
+        REQUIRE(counts.out_of_order == 0);
+    }
+
+    SECTION("Extreme out-of-order packets") {
+        stats.reset(5);
+        stats.update(200);
+        stats.update(205);
+        stats.update(202);
+        stats.update(204);
+        stats.update(203);
+        auto counts = stats.get_window_counts();
+        REQUIRE(counts.out_of_order == 3);
+    }
+
+    SECTION("Reset behavior") {
+        stats.update(10);
+        stats.update(12);
+        stats.update(14);
+        stats.mark_packet_too_late(12);
+        stats.reset();
+        auto counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 0);
+        REQUIRE(counts.duplicates == 0);
+        REQUIRE(counts.out_of_order == 0);
+        REQUIRE(counts.too_late == 0);
+    }
+
+    SECTION("Reset with new window size") {
+        stats.reset(3);
+        stats.update(1);
+        stats.update(2);
+        stats.update(3);
+        stats.update(4);
+        REQUIRE(stats.size() == 3);
+    }
+
+    SECTION("Marking packets too late before arrival") {
+        stats.mark_packet_too_late(50);
+        stats.update(50);
+        stats.mark_packet_too_late(50);
+        auto counts = stats.get_window_counts();
+        REQUIRE(counts.too_late == 1);
+    }
+
+    SECTION("Continuous window updates with wraparound") {
+        stats.reset(4);
+        for (int i = 0; i < 10; i++) {
+            stats.update(0xfff0 + i * 2);
+        }
+        auto counts = stats.get_total_counts();
+        REQUIRE(counts.dropped > 0);
+    }
+
+    SECTION("Handling maximum window size") {
+        stats.reset(65535);
+        stats.update(1);
+        stats.update(2);
+        stats.update(65535);
+        auto counts = stats.get_window_counts();
+        REQUIRE(counts.dropped == 0);
     }
 }

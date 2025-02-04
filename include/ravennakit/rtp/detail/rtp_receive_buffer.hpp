@@ -193,7 +193,7 @@ class rtp_receive_buffer {
 
     uint32_t bytes_per_frame_ = 0;  // Number of bytes (octets) per frame
     wrapping_uint32 next_ts_;       // Producer ts
-    std::vector<uint8_t> buffer_;   // Stored the actual data
+    std::vector<uint8_t> buffer_;   // Stores the actual data
     uint8_t clear_value_ = 0;       // Value to clear the buffer with
 };
 

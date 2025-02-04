@@ -60,12 +60,6 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     void on_rtcp_packet(const rtp_receiver::rtcp_packet_event& rtcp_event) override;
 
   private:
-    struct packet_status {
-        bool out_of_order = false;
-        bool too_late = false;
-        bool duplicate = false;
-    };
-
     struct stream_info {
         explicit stream_info(rtp_session session_) : session(std::move(session_)) {}
 

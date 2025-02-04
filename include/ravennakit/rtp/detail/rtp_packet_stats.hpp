@@ -22,10 +22,28 @@ namespace rav {
 class rtp_packet_stats {
   public:
     struct counters {
-        uint16_t out_of_order {};
-        uint16_t too_old {};
-        uint16_t duplicates {};
-        uint16_t dropped {};
+        /// The number of packets which arrived out of order.
+        uint32_t out_of_order {};
+        /// The number of packets which were duplicates.
+        uint32_t duplicates {};
+        /// The number of packets which were dropped.
+        uint32_t dropped {};
+        /// The number of packets which were too late for consumer.
+        uint32_t too_late {};
+        /// The number of packets which were too old for the window.
+        uint32_t too_old {};
+
+        [[nodiscard]] auto tie() const {
+            return std::tie(out_of_order, too_late, duplicates, dropped);
+        }
+
+        friend bool operator==(const counters& lhs, const counters& rhs) {
+            return lhs.tie() == rhs.tie();
+        }
+
+        friend bool operator!=(const counters& lhs, const counters& rhs) {
+            return lhs.tie() != rhs.tie();
+        }
     };
 
     explicit rtp_packet_stats() = default;
@@ -51,30 +69,32 @@ class rtp_packet_stats {
 
         const auto diff = most_recent_sequence_number_->update(sequence_number);
         for (uint16_t i = 0; i < diff; ++i) {
+            if (window_.full()) {
+                collect_packet_counts();
+            }
             window_.push_back({});
         }
 
-        const auto offset = (*most_recent_sequence_number_ - sequence_number).value();
+        const auto idx = window_.size() - 1 - (*most_recent_sequence_number_ - sequence_number).value();
 
-        if (offset >= window_.size()) {
+        if (idx >= window_.size()) {
+            total_counts_.too_old++;
             return;  // Too old for the window
         }
 
-        auto& packet = window_[window_.size() - 1 - offset];
+        auto& packet = window_[idx];
         packet.times_received++;
-        if (packet_sequence_number < *most_recent_sequence_number_ - max_age_) {
-            packet.times_too_old++;  // Packet older than max_age_
-        } else if (packet_sequence_number < *most_recent_sequence_number_) {
+
+        if (packet_sequence_number < *most_recent_sequence_number_) {
             packet.times_out_of_order++;  // Packet out of order
         }
     }
 
     /**
-     * Collects the statistics, counting the number of dropped, out of order, too old, and duplicate packets for the
-     * current window.
+     * Collects the statistics for the current window.
      * @return The collected statistics.
      */
-    counters collect() {
+    [[nodiscard]] counters get_window_counts() const {
         if (window_.empty()) {
             return {};
         }
@@ -84,20 +104,46 @@ class rtp_packet_stats {
             if (packet.times_received == 0) {
                 result.dropped++;
             } else if (packet.times_received > 1) {
-                result.duplicates = packet.times_received - 1;
+                result.duplicates += packet.times_received - 1;
             }
             result.out_of_order += packet.times_out_of_order;
-            result.too_old += packet.times_too_old;
+            result.too_late += packet.times_too_late;
         }
         return result;
     }
 
     /**
-     * Sets the maximum age of a packet. When the packet is older than max age it will be marked as expired.
-     * @param max_age The maximum age in number of packets.
+     * @return The total counts. This will only contain the numbers of packets which are moved out of the window.
      */
-    void set_max_age(const uint16_t max_age) {
-        max_age_ = max_age;
+    [[nodiscard]] counters get_total_counts() const {
+        return total_counts_;
+    }
+
+    /**
+     * Collects the statistics for the current window, resets the window and returns the collected statistics. After
+     * calling this function you probably want to call reset() because subsequent updates will result in wrong numbers.
+     * @return The collected statistics.
+     */
+    counters collect_total_counts() {
+        while (collect_packet_counts()) {}
+        return total_counts_;
+    }
+
+    /**
+     * Marks a packet as too late which means it didn't arrive in time for the consumer.
+     */
+    void mark_packet_too_late(const uint16_t sequence_number) {
+        if (!most_recent_sequence_number_) {
+            return;  // Can't mark a packet too late which never arrived
+        }
+        if (sequence_number > most_recent_sequence_number_->value()) {
+            return;  // Can't mark a packet too late which is newer than the most recent packet
+        }
+        const auto offset = (*most_recent_sequence_number_ - sequence_number).value();
+        if (offset >= window_.size()) {
+            return;  // Too old for the window
+        }
+        window_[window_.size() - 1 - offset].times_too_late++;
     }
 
     /**
@@ -117,18 +163,39 @@ class rtp_packet_stats {
         }
         window_.reset(window_size);
         most_recent_sequence_number_ = {};
+        total_counts_ = {};
     }
 
   private:
     struct packet {
         uint16_t times_received {};
         uint16_t times_out_of_order {};
-        uint16_t times_too_old {};
+        uint16_t times_too_late {};
     };
 
     std::optional<wrapping_uint16> most_recent_sequence_number_ {};
-    uint16_t max_age_ {};
+    counters total_counts_ {};
     ring_buffer<packet> window_ {32};
+
+    bool collect_packet_counts() {
+        const auto pkt = window_.pop_front();
+        if (!pkt.has_value()) {
+            return false;
+        }
+        if (pkt->times_received == 0) {
+            total_counts_.dropped++;
+        }
+        if (pkt->times_received > 1) {
+            total_counts_.duplicates += pkt->times_received - 1;
+        }
+        if (pkt->times_out_of_order > 0) {
+            total_counts_.out_of_order += pkt->times_out_of_order;
+        }
+        if (pkt->times_too_late > 0) {
+            total_counts_.too_late += pkt->times_too_late;
+        }
+        return true;
+    }
 };
 
 }  // namespace rav
