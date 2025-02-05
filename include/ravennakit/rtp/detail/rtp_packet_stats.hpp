@@ -44,6 +44,13 @@ class rtp_packet_stats {
         friend bool operator!=(const counters& lhs, const counters& rhs) {
             return lhs.tie() != rhs.tie();
         }
+
+        std::string to_string() {
+            return fmt::format(
+                "out_of_order: {}, duplicates: {}, dropped: {}, too_late: {}, too_old: {}", out_of_order, duplicates,
+                dropped, too_late, too_old
+            );
+        }
     };
 
     explicit rtp_packet_stats() = default;
@@ -67,27 +74,29 @@ class rtp_packet_stats {
             most_recent_sequence_number_ = packet_sequence_number - 1;
         }
 
-        if (packet_sequence_number <= *most_recent_sequence_number_ - static_cast<uint16_t>(window2_.size())) {
+        if (packet_sequence_number <= *most_recent_sequence_number_ - static_cast<uint16_t>(window_.size())) {
             total_counts_.too_old++;
             return;  // Too old for the window
         }
 
-        auto& packet = window2_[sequence_number % window2_.size()];
-
-        if (const auto diff = most_recent_sequence_number_->update(sequence_number)) {
-            if (count_ + *diff > window2_.size()) {
-                for (size_t i = 0; i < count_ + *diff - window2_.size(); i++) {
-                    collect_packet((*most_recent_sequence_number_ - static_cast<uint16_t>(i) - static_cast<uint16_t>(window2_.size())).value()
-                    );
-                    count_--;
-                }
-            }
-            count_ += *diff;
-        } else {
-            packet.times_out_of_order++;  // Packet out of order
+        if (window_.capacity() == 0) {
+            RAV_ASSERT_FALSE("Window is has zero capacity");
+            return;
         }
 
-        packet.times_received++;
+        if (const auto diff = most_recent_sequence_number_->update(sequence_number)) {
+            for (uint16_t i = 0; i < *diff; i++) {
+                if (window_.full()) {
+                    collect_packet();
+                }
+                std::ignore = window_.push_back({});
+            }
+            window_.back().times_received++;
+        } else {
+            auto& packet = window_[window_.size() - 1 - (*most_recent_sequence_number_ - sequence_number).value()];
+            packet.times_out_of_order++;  // Packet out of order
+            packet.times_received++;
+        }
     }
 
     /**
@@ -95,7 +104,7 @@ class rtp_packet_stats {
      * @return The collected statistics.
      */
     [[nodiscard]] counters get_window_counts() const {
-        if (count_ == 0) {
+        if (window_.empty()) {
             return {};
         }
 
@@ -104,8 +113,7 @@ class rtp_packet_stats {
         }
 
         counters result {};
-        for (auto i = *most_recent_sequence_number_ - count_ + 1; i <= *most_recent_sequence_number_; i += 1) {
-            const auto& packet = window2_[i.value() % window2_.size()];
+        for (auto& packet : window_) {
             if (packet.times_received == 0) {
                 result.dropped++;
             } else if (packet.times_received > 1) {
@@ -135,33 +143,32 @@ class rtp_packet_stats {
         if (packet_sequence_number > *most_recent_sequence_number_) {
             return;  // Can't mark a packet too late which is newer than the most recent packet
         }
-        if (packet_sequence_number <= *most_recent_sequence_number_ - count_) {
+        if (packet_sequence_number <= *most_recent_sequence_number_ - static_cast<uint16_t>(window_.size())) {
             return;  // Too old for the window
         }
-        window2_[sequence_number % window2_.size()].times_too_late++;
+        auto& packet = window_[window_.size() - 1 - (*most_recent_sequence_number_ - sequence_number).value()];
+        packet.times_too_late++;
     }
 
     /**
      * @return The number of packets in the window.
      */
     [[nodiscard]] size_t count() const {
-        return count_;
+        return window_.size();
     }
 
     /**
      * Resets to the initial state.
      * @param window_size The window size in number of packets. Max value is 65535 (0xffff).
      */
-    void reset(const std::optional<uint16_t> window_size = {}) {
+    void reset(const std::optional<size_t> window_size = {}) {
         if (window_size.has_value()) {
             RAV_ASSERT(
                 window_size <= std::numeric_limits<uint16_t>::max(),
                 "Since a sequence number will wrap around at 0xffff, the window size can't be larger than that"
             );
-            window2_.resize(*window_size);
+            window_.reset(*window_size);
         }
-        std::fill(window2_.begin(), window2_.end(), packet {});
-        count_ = 0;
         most_recent_sequence_number_ = {};
         total_counts_ = {};
     }
@@ -174,26 +181,25 @@ class rtp_packet_stats {
     };
 
     std::optional<wrapping_uint16> most_recent_sequence_number_ {};
-    std::vector<packet> window2_ {};
-    uint16_t count_ {};  // Number of values currently in the window
+    ring_buffer<packet> window_ {};
     counters total_counts_ {};
 
-    bool collect_packet(const uint16_t sequence_number) {
-        auto& pkt = window2_[sequence_number % window2_.size()];
-        if (pkt.times_received == 0) {
+    void collect_packet() {
+        const auto pkt = window_.pop_front();
+        RAV_ASSERT(pkt.has_value(), "No packet to collect");
+
+        if (pkt->times_received == 0) {
             total_counts_.dropped++;
         }
-        if (pkt.times_received > 1) {
-            total_counts_.duplicates += pkt.times_received - 1;
+        if (pkt->times_received > 1) {
+            total_counts_.duplicates += pkt->times_received - 1;
         }
-        if (pkt.times_out_of_order > 0) {
-            total_counts_.out_of_order += pkt.times_out_of_order;
+        if (pkt->times_out_of_order > 0) {
+            total_counts_.out_of_order += pkt->times_out_of_order;
         }
-        if (pkt.times_too_late > 0) {
-            total_counts_.too_late += pkt.times_too_late;
+        if (pkt->times_too_late > 0) {
+            total_counts_.too_late += pkt->times_too_late;
         }
-        pkt = {};
-        return true;
     }
 };
 

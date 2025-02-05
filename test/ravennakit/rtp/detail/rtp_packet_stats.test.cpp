@@ -124,15 +124,15 @@ TEST_CASE("rtp_packet_stats") {
     SECTION("Drop, out of order, duplicates and too old") {
         rav::rtp_packet_stats stats(5);
         stats.update(10);
-        stats.update(14);
-        stats.update(11);  // Too old
+        stats.update(15);
+        stats.update(10);  // Too old
         stats.update(13);  // Out of order
         stats.update(13);  // Our of order and duplicate
         REQUIRE(stats.count() == 5);
         const auto counts = stats.get_window_counts();
-        REQUIRE(counts.dropped == 1);  // Seq 12 is dropped
+        REQUIRE(counts.dropped == 3);  // Seq 11, 12 and 14 are dropped
         REQUIRE(counts.duplicates == 1);
-        REQUIRE(counts.out_of_order == 3);
+        REQUIRE(counts.out_of_order == 2);
         REQUIRE(counts.too_late == 0);
         REQUIRE(counts.too_old == 0);
     }
@@ -151,7 +151,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 1);  // Seq 13 is duplicate
         REQUIRE(counts.out_of_order == 2);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0); // Window counts don't include too old packets
+        REQUIRE(counts.too_old == 0);  // Window counts don't include too old packets
 
         // The window will slide one position, dropping seq 11
         stats.update(16);
@@ -389,10 +389,58 @@ TEST_CASE("rtp_packet_stats") {
     }
 
     SECTION("Handling maximum window size") {
-        rav::rtp_packet_stats stats(65535);
+        rav::rtp_packet_stats stats(0xffff);
         stats.update(0);
-        stats.update(0xffff / 2);
-        auto counts = stats.get_window_counts();
-        REQUIRE(counts.dropped == 0x7fff);
+        stats.update(0xffff / 2 - 1);
+        REQUIRE(stats.count() == 0x7fff);
+        auto window = stats.get_window_counts();
+        // auto totals = stats.get_total_counts();
+        REQUIRE(window.dropped == 0x7ffd);
+    }
+
+    SECTION("Window + totals") {
+        rav::rtp_packet_stats stats(0xf0);
+        stats.update(0);
+        stats.update(0xffff / 2 - 1);
+        REQUIRE(stats.count() == 0xf0);
+        auto window = stats.get_window_counts();
+        auto totals = stats.get_total_counts();
+        REQUIRE(window.dropped + totals.dropped == 0x7ffd);
+    }
+
+    SECTION("Test specific bug where the amount duplicates drops would suddenly jump to weird numbers") {
+        rav::rtp_packet_stats stats(9);
+
+        for (uint16_t i = 0; i < 0xffff; i++) {
+            stats.update(i);
+            INFO("i: " << i);
+            REQUIRE(stats.get_total_counts() == rav::rtp_packet_stats::counters {});
+        }
+
+        stats.reset(0xffff);
+
+        for (uint16_t i = 0; i < 0xffff; i++) {
+            stats.update(i);
+            INFO("i: " << i);
+            REQUIRE(stats.get_total_counts() == rav::rtp_packet_stats::counters {});
+        }
+    }
+
+    SECTION("Run couple of sequences, count drops") {
+        rav::rtp_packet_stats stats(9);
+
+        size_t dropped = 0;
+        for (size_t i = 0; i < 3 * 0x10000; i++) {
+            const auto seq = static_cast<uint16_t>(i);
+            if (seq == 0x1) {
+                dropped++;
+                continue;  // Drop packet
+            }
+            stats.update(seq);
+        }
+
+        const auto window = stats.get_window_counts();
+        const auto totals = stats.get_total_counts();
+        REQUIRE(totals.dropped + window.dropped == dropped);
     }
 }

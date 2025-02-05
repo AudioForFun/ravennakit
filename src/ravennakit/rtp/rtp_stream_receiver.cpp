@@ -129,6 +129,8 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
         packet_time_frames = *framecount;
     }
 
+    RAV_ASSERT(packet_time_frames > 0, "packet_time_frames must be greater than 0");
+
     rtp_session session;
     session.connection_address = asio::ip::make_address(selected_connection_info->address);
     session.rtp_port = selected_media_description->port();
@@ -162,6 +164,12 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     stream.session = session;
     stream.filter = filter;
     stream.packet_time_frames = packet_time_frames;
+    stream.packet_stats.reset(
+        std::ceil(
+            k_stats_window_size_ms * static_cast<float>(selected_audio_format->sample_rate) / 1000.0
+            / packet_time_frames
+        )
+    );
 
     if (selected_format_ != *selected_audio_format) {
         should_restart = true;
@@ -258,6 +266,7 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
         receiver_buffer_.set_next_ts(packet.timestamp());
         stream.seq = packet.sequence_number();
         stream.first_packet_timestamp = packet.timestamp();
+        stream.last_stats_dump_ = packet.sequence_number();
     }
 
     receiver_buffer_.clear_until(packet.timestamp());
@@ -277,19 +286,26 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
 
     TRACY_PLOT("RTP Timestamp", static_cast<int64_t>(packet.timestamp()));
 
-    if (const auto step = stream.seq.update(packet.sequence_number())) {
-        if (*step > 1) {
-            RAV_TRACE(
-                "Packets dropped: [{}, {}] total: {}", stream.seq.value(), packet.sequence_number() - 1, *step - 1
-            );
-        }
+    stream.packet_stats.update(packet.sequence_number());
 
+    const auto packet_sequence_number = wrapping_uint16(packet.sequence_number());
+    const auto dump_interval_packets = static_cast<uint16_t>(
+        k_dump_stats_interval_ms * selected_format_.sample_rate / stream.packet_time_frames / 1000
+    );
+
+    if (stream.last_stats_dump_ + dump_interval_packets < packet_sequence_number) {
+        RAV_TRACE(
+            "Stats for stream {}: {}", stream.session.to_string(), stream.packet_stats.get_total_counts().to_string()
+        );
+        stream.last_stats_dump_ = packet_sequence_number;
+    }
+
+    if (const auto step = stream.seq.update(packet.sequence_number())) {
         if (step >= 1) {
             if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
                 for (const auto& s : subscribers_) {
                     s->on_data_available(packet_timestamp - delay_);
                 }
-                // TODO: Collect statistics
             }
         }
     }

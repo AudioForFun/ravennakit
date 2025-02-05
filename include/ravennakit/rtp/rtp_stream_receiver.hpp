@@ -69,9 +69,12 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         uint32_t packet_time_frames = 0;
         std::optional<wrapping_uint32> first_packet_timestamp;
         rtp_packet_stats packet_stats;
+        wrapping_uint16 last_stats_dump_;
     };
 
-    static constexpr uint32_t k_delay_multiplier = 2;  // The buffer size is at least twice the delay.
+    static constexpr uint32_t k_delay_multiplier = 2;        // The buffer size is at least twice the delay.
+    static constexpr float k_stats_window_size_ms = 1000.f;  // 1 second time for packets to arrive
+    static constexpr uint16_t k_dump_stats_interval_ms = 2000;
 
     rtp_receiver& rtp_receiver_;
     audio_format selected_format_;

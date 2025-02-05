@@ -57,7 +57,7 @@ class ring_buffer {
     /**
      * @return The oldest element in the buffer. No bounds checking is performed - be warned!
      */
-    T& front() {
+    [[nodiscard]] T& front() {
         RAV_ASSERT(!empty(), "Cannot access front of empty ring buffer");
         return data_[read_index_];
     }
@@ -65,7 +65,7 @@ class ring_buffer {
     /**
      * @return The newest element in the buffer. No bounds checking is performed - be warned!
      */
-    T& back() {
+    [[nodiscard]] T& back() {
         RAV_ASSERT(!empty(), "Cannot access back of empty ring buffer");
         return data_[(write_index_ + data_.size() - 1) % data_.size()];
     }
@@ -90,7 +90,7 @@ class ring_buffer {
     /**
      * @return The oldest element in the buffer, or std::nullopt if the buffer is empty.
      */
-    std::optional<T> pop_front() {
+    [[nodiscard]] std::optional<T> pop_front() {
         if (empty()) {
             return std::nullopt;
         }
@@ -105,7 +105,7 @@ class ring_buffer {
      * @param index The logical index of the element to access. The index will wrap around if too high.
      * @return The element at the given index.
      */
-    T& operator[](const size_t index) {
+    [[nodiscard]] T& operator[](const size_t index) {
         return data_[(read_index_ + index) % data_.size()];
     }
 
@@ -114,7 +114,7 @@ class ring_buffer {
      * @param index The logical index of the element to access. The index will wrap around if too high.
      * @return The element at the given index.
      */
-    const T& operator[](const size_t index) const {
+    [[nodiscard]] const T& operator[](const size_t index) const {
         return data_[(read_index_ + index) % data_.size()];
     }
 
@@ -168,7 +168,7 @@ class ring_buffer {
         clear();
     }
 
-    auto tie() {
+    [[nodiscard]] auto tie() {
         return std::tie(data_, read_index_, write_index_, count_);
     }
 
