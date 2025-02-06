@@ -98,9 +98,9 @@ class rtp_packet_stats {
             }
             window_.back().times_received++;
         } else {
-            auto& packet = window_[window_.size() - 1 - (*most_recent_sequence_number_ - sequence_number).value()];
-            packet.times_out_of_order++;  // Packet out of order
-            packet.times_received++;
+            auto& p = window_[window_.size() - 1 - (*most_recent_sequence_number_ - sequence_number).value()];
+            p.times_out_of_order++;  // Packet out of order
+            p.times_received++;
         }
 
         return should_return_total_counts ? std::make_optional(total_counts_) : std::nullopt;
@@ -120,14 +120,14 @@ class rtp_packet_stats {
         }
 
         counters result {};
-        for (auto& packet : window_) {
-            if (packet.times_received == 0) {
+        for (auto& p : window_) {
+            if (p.times_received == 0) {
                 result.dropped++;
-            } else if (packet.times_received > 1) {
-                result.duplicates += packet.times_received - 1;
+            } else if (p.times_received > 1) {
+                result.duplicates += p.times_received - 1;
             }
-            result.out_of_order += packet.times_out_of_order;
-            result.too_late += packet.times_too_late;
+            result.out_of_order += p.times_out_of_order;
+            result.too_late += p.times_too_late;
         }
         return result;
     }
@@ -153,8 +153,8 @@ class rtp_packet_stats {
         if (packet_sequence_number <= *most_recent_sequence_number_ - static_cast<uint16_t>(window_.size())) {
             return;  // Too old for the window
         }
-        auto& packet = window_[window_.size() - 1 - (*most_recent_sequence_number_ - sequence_number).value()];
-        packet.times_too_late++;
+        auto& p = window_[window_.size() - 1 - (*most_recent_sequence_number_ - sequence_number).value()];
+        p.times_too_late++;
     }
 
     /**
@@ -205,7 +205,7 @@ class rtp_packet_stats {
         }
         if (pkt->times_received > 1) {
             changed = true;
-            total_counts_.duplicates += pkt->times_received - 1;
+            total_counts_.duplicates += pkt->times_received - 1u;
         }
         if (pkt->times_out_of_order > 0) {
             changed = true;
