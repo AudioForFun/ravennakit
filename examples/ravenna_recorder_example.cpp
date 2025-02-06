@@ -75,8 +75,8 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
         audio_data_.resize(packet_time_frames * new_format.bytes_per_frame());
     }
 
-    void on_data_available(const uint32_t timestamp) override {
-        if (!sink_->read_data(timestamp, audio_data_.data(), audio_data_.size())) {
+    void on_data_available(const rav::wrapping_uint32 timestamp) override {
+        if (!sink_->read_data(timestamp.value(), audio_data_.data(), audio_data_.size())) {
             RAV_ERROR("Failed to read audio data");
             return;
         }

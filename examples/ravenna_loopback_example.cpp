@@ -89,7 +89,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
         }
     }
 
-    void on_data_available(const uint32_t timestamp) override {
+    void on_data_available(const rav::wrapping_uint32 timestamp) override {
         if (!start_streaming_at_) {
             start_streaming_at_ = timestamp + ravenna_receiver_->get_delay();
             start_transmitter();
@@ -104,7 +104,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
     std::string stream_name_;
     asio::io_context io_context_;
     std::vector<uint8_t> buffer_;
-    std::optional<uint32_t> start_streaming_at_;
+    std::optional<rav::wrapping_uint32> start_streaming_at_;
     bool ptp_clock_stable_ = false;
 
     // Receiver components
@@ -123,7 +123,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
 
     void start_transmitter() {
         if (ptp_clock_stable_ && start_streaming_at_) {
-            transmitter_->start(*start_streaming_at_);
+            transmitter_->start(start_streaming_at_->value());
         }
     }
 };

@@ -234,7 +234,8 @@ rav::fifo::mpmc::lock rav::fifo::mpmc::prepare_for_read(const size_t number_of_e
     return read_lock;
 }
 
-size_t rav::fifo::mpmc::size() const {
+size_t rav::fifo::mpmc::size() {
+    std::unique_lock guard(mutex_);
     return size_;
 }
 

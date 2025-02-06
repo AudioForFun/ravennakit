@@ -14,7 +14,7 @@
 
 #include <vector>
 #include <optional>
-#include  <tuple>
+#include <tuple>
 
 namespace rav {
 
@@ -55,6 +55,22 @@ class ring_buffer {
     }
 
     /**
+     * @return The oldest element in the buffer. No bounds checking is performed - be warned!
+     */
+    [[nodiscard]] T& front() {
+        RAV_ASSERT(!empty(), "Cannot access front of empty ring buffer");
+        return data_[read_index_];
+    }
+
+    /**
+     * @return The newest element in the buffer. No bounds checking is performed - be warned!
+     */
+    [[nodiscard]] T& back() {
+        RAV_ASSERT(!empty(), "Cannot access back of empty ring buffer");
+        return data_[(write_index_ + data_.size() - 1) % data_.size()];
+    }
+
+    /**
      * Add an element to the buffer. If the buffer is full, the oldest element will be overwritten.
      * @param value The value to add to the buffer.
      * @returns True if the buffer was full and the oldest element was overwritten, false otherwise.
@@ -74,7 +90,7 @@ class ring_buffer {
     /**
      * @return The oldest element in the buffer, or std::nullopt if the buffer is empty.
      */
-    std::optional<T> pop_front() {
+    [[nodiscard]] std::optional<T> pop_front() {
         if (empty()) {
             return std::nullopt;
         }
@@ -89,7 +105,7 @@ class ring_buffer {
      * @param index The logical index of the element to access. The index will wrap around if too high.
      * @return The element at the given index.
      */
-    T& operator[](const size_t index) {
+    [[nodiscard]] T& operator[](const size_t index) {
         return data_[(read_index_ + index) % data_.size()];
     }
 
@@ -98,7 +114,7 @@ class ring_buffer {
      * @param index The logical index of the element to access. The index will wrap around if too high.
      * @return The element at the given index.
      */
-    const T& operator[](const size_t index) const {
+    [[nodiscard]] const T& operator[](const size_t index) const {
         return data_[(read_index_ + index) % data_.size()];
     }
 
@@ -108,6 +124,14 @@ class ring_buffer {
      */
     [[nodiscard]] size_t size() const {
         return count_;
+    }
+
+    /**
+     * Get the capacity of the buffer. This is the maximum number of elements that can be stored in the buffer.
+     * @return The capacity of the buffer.
+     */
+    [[nodiscard]] size_t capacity() const {
+        return data_.size();
     }
 
     /**
@@ -125,7 +149,7 @@ class ring_buffer {
     }
 
     /**
-     * Clears the contents of the buffer.
+     * Sets the counters to zero, effectively clearing the buffer. The capacity remains the same.
      */
     void clear() {
         read_index_ = 0;
@@ -133,7 +157,18 @@ class ring_buffer {
         count_ = 0;
     }
 
-    auto tie() {
+    /**
+     * Resets the buffer, discarding existing contents.
+     * @param new_capacity The new capacity of the buffer. If not provided, the capacity remains the same.
+     */
+    void reset(std::optional<size_t> new_capacity = std::nullopt) {
+        if (new_capacity.has_value()) {
+            data_.resize(*new_capacity);
+        }
+        clear();
+    }
+
+    [[nodiscard]] auto tie() {
         return std::tie(data_, read_index_, write_index_, count_);
     }
 

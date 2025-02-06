@@ -11,7 +11,7 @@
 #pragma once
 
 #include "ptp_comparison_data_set.hpp"
-#include "ravennakit/core/util/sequence_number.hpp"
+#include "ravennakit/core/util/wrapping_uint.hpp"
 #include "ravennakit/ptp/messages/ptp_announce_message.hpp"
 #include "ravennakit/ptp/types/ptp_port_identity.hpp"
 

@@ -11,13 +11,18 @@
 #pragma once
 
 #include "detail/rtp_filter.hpp"
+#include "detail/rtp_packet_stats.hpp"
 #include "detail/rtp_receive_buffer.hpp"
 #include "detail/rtp_receiver.hpp"
-#include "ravennakit/core/util/sequence_number.hpp"
+#include "ravennakit/core/util/throttle.hpp"
+#include "ravennakit/core/util/wrapping_uint.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
 
 namespace rav {
 
+/**
+ * A class that receives RTP packets and buffers them for playback.
+ */
 class rtp_stream_receiver: public rtp_receiver::subscriber {
   public:
     class subscriber {
@@ -28,7 +33,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
             [[maybe_unused]] const audio_format& new_format, [[maybe_unused]] uint32_t packet_time_frames
         ) {}
 
-        virtual void on_data_available([[maybe_unused]] uint32_t timestamp) {}
+        virtual void on_data_available([[maybe_unused]] wrapping_uint32 timestamp) {}
     };
 
     explicit rtp_stream_receiver(rtp_receiver& receiver);
@@ -49,7 +54,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      * @param buffer_size The size of the buffer in bytes.
      * @return true if buffer_size bytes were read, or false if buffer_size bytes couldn't be read.
      */
-    bool read_data(size_t at_timestamp, uint8_t* buffer, size_t buffer_size) const;
+    bool read_data(uint32_t at_timestamp, uint8_t* buffer, size_t buffer_size) const;
 
     // rtp_receiver::subscriber overrides
     void on_rtp_packet(const rtp_receiver::rtp_packet_event& rtp_event) override;
@@ -61,12 +66,15 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
 
         rtp_session session;
         rtp_filter filter;
-        sequence_number<uint16_t> seq;
+        wrapping_uint16 seq;
         uint32_t packet_time_frames = 0;
-        std::optional<uint32_t> first_packet_timestamp;
+        std::optional<wrapping_uint32> first_packet_timestamp;
+        rtp_packet_stats packet_stats;
+        throttle<rtp_packet_stats::counters> packet_stats_throttle {std::chrono::seconds(2)};
     };
 
-    static constexpr uint32_t k_delay_multiplier = 2;  // The buffer size is twice the delay.
+    static constexpr uint32_t k_delay_multiplier = 2;        // The buffer size is at least twice the delay.
+    static constexpr float k_stats_window_size_ms = 1000.f;  // 1 second time for packets to arrive
 
     rtp_receiver& rtp_receiver_;
     audio_format selected_format_;

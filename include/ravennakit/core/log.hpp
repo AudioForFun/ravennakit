@@ -142,7 +142,7 @@ inline void set_level_from_env(const char* env_var = "RAV_LOG_LEVEL") {
             spdlog::set_level(spdlog::level::err);
         } else if (string_compare_case_insensitive(*env_value, "CRITICAL")) {
             spdlog::set_level(spdlog::level::critical);
-        } else if (string_compare_case_insensitive(*env_value, "CRITICAL")) {
+        } else if (string_compare_case_insensitive(*env_value, "OFF")) {
             spdlog::set_level(spdlog::level::off);
         } else {
             fmt::println("Invalid value for {}: {}. Setting log level to info.", env_var, *env_value);

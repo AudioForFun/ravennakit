@@ -154,7 +154,7 @@ class ptp_request_response_delay_sequence {
     /**
      * @return The sequence id of the sync message.
      */
-    [[nodiscard]] sequence_number<uint16_t> get_sequence_id() const {
+    [[nodiscard]] wrapping_uint<uint16_t> get_sequence_id() const {
         return sync_message_.header.sequence_id;
     }
 

@@ -129,25 +129,25 @@ class media_description {
      * @returns The value of the "ptime" attribute, or an empty optional if the attribute does not exist or the
      * value is invalid.
      */
-    [[nodiscard]] std::optional<double> ptime() const;
+    [[nodiscard]] std::optional<float> ptime() const;
 
     /**
      * Sets the ptime attribute.
      * @param ptime The ptime to set.
      */
-    void set_ptime(std::optional<double> ptime);
+    void set_ptime(std::optional<float> ptime);
 
     /**
      * @return The value of the "maxptime" attribute, or an empty optional if the attribute does not exist or the
      * value is invalid.
      */
-    [[nodiscard]] std::optional<double> max_ptime() const;
+    [[nodiscard]] std::optional<float> max_ptime() const;
 
     /**
      * Sets the maxptime attribute.
      * @param max_ptime The maxptime to set.
      */
-    void set_max_ptime(std::optional<double> max_ptime);
+    void set_max_ptime(std::optional<float> max_ptime);
 
     /**
      * @return The direction of the media description.
@@ -278,8 +278,8 @@ class media_description {
     std::string protocol_;
     std::vector<format> formats_;
     std::vector<connection_info_field> connection_infos_;
-    std::optional<double> ptime_;
-    std::optional<double> max_ptime_;
+    std::optional<float> ptime_;
+    std::optional<float> max_ptime_;
     std::optional<media_direction> media_direction_;
     std::optional<reference_clock> reference_clock_;
     std::optional<media_clock_source> media_clock_;

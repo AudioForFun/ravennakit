@@ -10,6 +10,7 @@
 
 #include "ravennakit/rtp/rtp_stream_receiver.hpp"
 
+#include "ravennakit/aes67/aes67_packet_time.hpp"
 #include "ravennakit/core/tracy.hpp"
 
 namespace {
@@ -61,7 +62,7 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
         // The first acceptable payload format from the beginning of the list SHOULD be used for the session.
         // https://datatracker.ietf.org/doc/html/rfc8866#name-media-descriptions-m
         // TODO: Query subclass for supported formats (by looping the available formats)
-        selected_audio_format.reset();  // Prevent format from previous iteration from being used
+        selected_audio_format.reset();  // Reset format from previous iteration
         for (auto& format : media_description.formats()) {
             selected_audio_format = format.to_audio_format();
             if (!selected_audio_format) {
@@ -115,7 +116,7 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     uint32_t packet_time_frames = 0;
     const auto ptime = selected_media_description->ptime();
     if (ptime.has_value()) {
-        packet_time_frames = static_cast<uint32_t>(std::round(*ptime * selected_audio_format->sample_rate)) / 1000;
+        packet_time_frames = aes67_packet_time::framecount(*ptime, selected_audio_format->sample_rate);
     }
 
     if (packet_time_frames == 0) {
@@ -127,6 +128,8 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
         }
         packet_time_frames = *framecount;
     }
+
+    RAV_ASSERT(packet_time_frames > 0, "packet_time_frames must be greater than 0");
 
     rtp_session session;
     session.connection_address = asio::ip::make_address(selected_connection_info->address);
@@ -161,6 +164,12 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     stream.session = session;
     stream.filter = filter;
     stream.packet_time_frames = packet_time_frames;
+    stream.packet_stats.reset(
+        std::ceil(
+            k_stats_window_size_ms * static_cast<float>(selected_audio_format->sample_rate) / 1000.0
+            / packet_time_frames
+        )
+    );
 
     if (selected_format_ != *selected_audio_format) {
         should_restart = true;
@@ -212,7 +221,7 @@ bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber_to_remov
     return subscribers_.remove(subscriber_to_remove);
 }
 
-bool rav::rtp_stream_receiver::read_data(const size_t at_timestamp, uint8_t* buffer, const size_t buffer_size) const {
+bool rav::rtp_stream_receiver::read_data(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size) const {
     return receiver_buffer_.read(at_timestamp, buffer, buffer_size);
 }
 
@@ -226,11 +235,12 @@ void rav::rtp_stream_receiver::restart() {
     const auto bytes_per_frame = selected_format_.bytes_per_frame();
     RAV_ASSERT(bytes_per_frame > 0, "bytes_per_frame must be greater than 0");
 
-    receiver_buffer_.resize(delay_ * k_delay_multiplier, bytes_per_frame);
+    receiver_buffer_.resize(std::max(1024u, delay_ * k_delay_multiplier), bytes_per_frame);
 
     for (auto& stream : streams_) {
         rtp_receiver_.subscribe(*this, stream.session, stream.filter);
         stream.first_packet_timestamp.reset();
+        stream.packet_stats.reset();
     }
 
     RAV_TRACE("(Re)Started rtp_stream_receiver");
@@ -250,11 +260,23 @@ rav::rtp_stream_receiver::find_or_create_stream_info(const rtp_session& session)
 void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_view& packet, stream_info& stream) {
     TRACY_ZONE_SCOPED;
 
+    const wrapping_uint32 packet_timestamp(packet.timestamp());
+
+    if (!stream.first_packet_timestamp.has_value()) {
+        receiver_buffer_.set_next_ts(packet.timestamp());
+        stream.seq = packet.sequence_number();
+        stream.first_packet_timestamp = packet.timestamp();
+    }
+
     receiver_buffer_.clear_until(packet.timestamp());
 
     // Discard packet if it's too old
-    if (packet.timestamp() + stream.packet_time_frames < receiver_buffer_.next_ts() - delay_) {
-        RAV_WARNING("Dropping packet because it's too old");
+    if (packet_timestamp + stream.packet_time_frames < receiver_buffer_.next_ts() - delay_) {
+        // TODO: The age should be determined by the consuming side, not the producing side
+        RAV_WARNING(
+            "Dropping packet because it's too old (ts: {}, next_ts: {})", packet.timestamp(),
+            receiver_buffer_.next_ts().value()
+        );
         return;
     }
 
@@ -262,24 +284,20 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
         RAV_ERROR("Packet not written to buffer");
     }
 
-    if (!stream.first_packet_timestamp.has_value()) {
-        stream.first_packet_timestamp = packet.timestamp();
-    }
-
     TRACY_PLOT("RTP Timestamp", static_cast<int64_t>(packet.timestamp()));
 
-    const auto step = stream.seq.set_next(packet.sequence_number());
-    if (step > 1) {
-        RAV_TRACE(
-            "Packets dropped: [{}, {}] total: {}", stream.seq.value(), packet.sequence_number() - 1,
-            step - 1
-        );
+    if (const auto counters = stream.packet_stats.update(packet.sequence_number())) {
+        if (auto v = stream.packet_stats_throttle.update(*counters)) {
+            RAV_TRACE("Stats for stream {}: {}", stream.session.to_string(), v->to_string());
+        }
     }
 
-    if (step >= 1) {
-        if (packet.timestamp() - delay_ >= *stream.first_packet_timestamp) {
-            for (const auto& s : subscribers_) {
-                s->on_data_available(packet.timestamp() - delay_);
+    if (const auto step = stream.seq.update(packet.sequence_number())) {
+        if (step >= 1) {
+            if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
+                for (const auto& s : subscribers_) {
+                    s->on_data_available(packet_timestamp - delay_);
+                }
             }
         }
     }

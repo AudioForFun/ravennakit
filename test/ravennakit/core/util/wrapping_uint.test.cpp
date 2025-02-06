@@ -8,15 +8,15 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/core/util/sequence_number.hpp"
+#include "ravennakit/core/util/wrapping_uint.hpp"
 
 #include <catch2/catch_all.hpp>
 
 template<class T>
-void test_sequence_number() {
+void test_wrapping_uint() {
     SECTION("Equality") {
-        rav::sequence_number<T> lhs(1);
-        rav::sequence_number<T> rhs(1);
+        rav::wrapping_uint<T> lhs(1);
+        rav::wrapping_uint<T> rhs(1);
 
         REQUIRE(lhs == rhs);
         REQUIRE_FALSE(lhs != rhs);
@@ -31,8 +31,8 @@ void test_sequence_number() {
     }
 
     SECTION("Relational") {
-        rav::sequence_number<T> lhs(0);
-        rav::sequence_number<T> rhs(1);
+        rav::wrapping_uint<T> lhs(0);
+        rav::wrapping_uint<T> rhs(1);
 
         REQUIRE(rhs > lhs);
         REQUIRE(rhs >= lhs);
@@ -113,7 +113,7 @@ void test_sequence_number() {
     }
 
     SECTION("Add") {
-        rav::sequence_number<T> seq(0);
+        rav::wrapping_uint<T> seq(0);
         seq += 1;
         REQUIRE(seq == 1);
 
@@ -130,7 +130,7 @@ void test_sequence_number() {
     }
 
     SECTION("Sub") {
-        rav::sequence_number<T> seq(1);
+        rav::wrapping_uint<T> seq(1);
         seq -= 1;
         REQUIRE(seq == 0);
 
@@ -146,54 +146,57 @@ void test_sequence_number() {
         REQUIRE(seq == std::numeric_limits<T>::max() - 1);
     }
 
-    SECTION("Set next") {
-        rav::sequence_number<T> seq(0);
-        REQUIRE(seq.set_next(1) == 1);
+    SECTION("Update") {
+        rav::wrapping_uint<T> seq(0);
+        REQUIRE(seq.update(1) == 1);
         REQUIRE(seq == 1);
 
-        REQUIRE(seq.set_next(1) == 0);
+        REQUIRE(seq.update(1) == 0);
         REQUIRE(seq == 1);
 
-        REQUIRE(seq.set_next(3) == 2);
+        REQUIRE(seq.update(3) == 2);
+        REQUIRE(seq == 3);
+
+        REQUIRE(seq.update(2) == std::nullopt);  // Value is older than current
         REQUIRE(seq == 3);
 
         seq = std::numeric_limits<T>::max();
-        REQUIRE(seq.set_next(0) == 1);
+        REQUIRE(seq.update(0) == 1);
         REQUIRE(seq == 0);
 
         seq = std::numeric_limits<T>::max() - 1;
-        REQUIRE(seq.set_next(1) == 3);
+        REQUIRE(seq.update(1) == 3);
         REQUIRE(seq == 1);
 
         seq = std::numeric_limits<T>::max() / 2;
-        REQUIRE(seq.set_next(std::numeric_limits<T>::max() / 2) == 0);
+        REQUIRE(seq.update(std::numeric_limits<T>::max() / 2) == 0);
         REQUIRE(seq == std::numeric_limits<T>::max() / 2);
 
         seq = std::numeric_limits<T>::max() / 2;
-        REQUIRE(seq.set_next(0) == 0);  // Value is too old
+        REQUIRE(seq.update(0) == std::nullopt);  // Value is older than current
         REQUIRE(seq == std::numeric_limits<T>::max() / 2);
 
         seq = std::numeric_limits<T>::max() / 2;
-        REQUIRE(seq.set_next(std::numeric_limits<T>::max() / 2 - 1) == 0);  // Value is too old.
+        REQUIRE(seq.update(std::numeric_limits<T>::max() / 2 - 1) == std::nullopt);  // Value is older than current.
         REQUIRE(seq == std::numeric_limits<T>::max() / 2);
 
         seq = std::numeric_limits<T>::max() / 2 + 1;
-        REQUIRE(seq.set_next(0) == std::numeric_limits<T>::max() / 2 + 1);
+        REQUIRE(seq.update(0).value() == std::numeric_limits<T>::max() / 2 + 1);
         REQUIRE(seq == 0);
 
         seq = std::numeric_limits<T>::max() / 2 + 2;
-        REQUIRE(seq.set_next(0) == std::numeric_limits<T>::max() / 2);
+        REQUIRE(seq.update(0) == std::numeric_limits<T>::max() / 2);
         REQUIRE(seq == 0);
 
         seq = std::numeric_limits<T>::max() / 2 + 100;
-        REQUIRE(seq.set_next(0) == std::numeric_limits<T>::max() / 2 - 98);
+        REQUIRE(seq.update(0) == std::numeric_limits<T>::max() / 2 - 98);
         REQUIRE(seq == 0);
     }
 }
 
-TEST_CASE("sequence_number") {
-    test_sequence_number<uint8_t>();
-    test_sequence_number<uint16_t>();
-    test_sequence_number<uint32_t>();
-    test_sequence_number<uint64_t>();
+TEST_CASE("wrapping_uint") {
+    test_wrapping_uint<uint8_t>();
+    test_wrapping_uint<uint16_t>();
+    test_wrapping_uint<uint32_t>();
+    test_wrapping_uint<uint64_t>();
 }

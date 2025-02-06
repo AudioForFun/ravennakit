@@ -278,7 +278,7 @@ void rav::ravenna_transmitter::send_data() {
 
     for (auto i = 0; i < 100; i++) {
         const auto now_samples = ptp_instance_.get_local_ptp_time().to_samples(audio_format_.sample_rate);
-        if (sequence_number(static_cast<uint32_t>(now_samples)) < rtp_packet_.timestamp()) {
+        if (wrapping_uint(static_cast<uint32_t>(now_samples)) < rtp_packet_.timestamp()) {
             break;
         }
 

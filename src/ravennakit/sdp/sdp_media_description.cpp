@@ -109,7 +109,7 @@ rav::sdp::media_description::parse_attribute(const std::string_view line) {
         }
     } else if (key == k_sdp_ptime) {
         if (const auto value = parser.read_until_end()) {
-            if (const auto ptime = rav::stod(value->data())) {
+            if (const auto ptime = stof(value->data())) {
                 if (*ptime < 0) {
                     return parse_result<void>::err("media: ptime must be a positive number");
                 }
@@ -122,7 +122,7 @@ rav::sdp::media_description::parse_attribute(const std::string_view line) {
         }
     } else if (key == k_sdp_max_ptime) {
         if (const auto value = parser.read_until_end()) {
-            if (const auto maxptime = rav::stod(value->data())) {
+            if (const auto maxptime = stof(value->data())) {
                 if (*maxptime < 0) {
                     return parse_result<void>::err("media: maxptime must be a positive number");
                 }
@@ -281,19 +281,19 @@ void rav::sdp::media_description::set_session_information(std::string session_in
     session_information_ = std::move(session_information);
 }
 
-std::optional<double> rav::sdp::media_description::ptime() const {
+std::optional<float> rav::sdp::media_description::ptime() const {
     return ptime_;
 }
 
-void rav::sdp::media_description::set_ptime(const std::optional<double> ptime) {
+void rav::sdp::media_description::set_ptime(const std::optional<float> ptime) {
     ptime_ = ptime;
 }
 
-std::optional<double> rav::sdp::media_description::max_ptime() const {
+std::optional<float> rav::sdp::media_description::max_ptime() const {
     return max_ptime_;
 }
 
-void rav::sdp::media_description::set_max_ptime(const std::optional<double> max_ptime) {
+void rav::sdp::media_description::set_max_ptime(const std::optional<float> max_ptime) {
     max_ptime_ = max_ptime;
 }
 

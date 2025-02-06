@@ -19,12 +19,14 @@ TEST_CASE("ring_buffer") {
         REQUIRE(buffer.empty() == true);
         REQUIRE(buffer.full() == false);
         REQUIRE(buffer.size() == 0);  // NOLINT
+        REQUIRE(buffer.capacity() == 3);
 
         buffer.push_back(1);
 
         REQUIRE(buffer.empty() == false);
         REQUIRE(buffer.full() == false);
         REQUIRE(buffer.size() == 1);
+        REQUIRE(buffer.capacity() == 3);
 
         buffer.push_back(2);
         buffer.push_back(3);
@@ -32,6 +34,7 @@ TEST_CASE("ring_buffer") {
         REQUIRE(buffer.empty() == false);
         REQUIRE(buffer.full() == true);
         REQUIRE(buffer.size() == 3);
+        REQUIRE(buffer.capacity() == 3);
 
         REQUIRE(buffer[0] == 1);
         REQUIRE(buffer[1] == 2);
@@ -46,6 +49,7 @@ TEST_CASE("ring_buffer") {
         REQUIRE(buffer.empty() == true);
         REQUIRE(buffer.full() == false);
         REQUIRE(buffer.size() == 0);  // NOLINT
+        REQUIRE(buffer.capacity() == 3);
 
         buffer.push_back(1);
         buffer.push_back(2);
@@ -55,6 +59,7 @@ TEST_CASE("ring_buffer") {
         REQUIRE(buffer.empty() == false);
         REQUIRE(buffer.full() == true);
         REQUIRE(buffer.size() == 3);  // NOLINT
+        REQUIRE(buffer.capacity() == 3);
 
         REQUIRE(buffer[0] == 2);
         REQUIRE(buffer[1] == 3);
@@ -73,9 +78,15 @@ TEST_CASE("ring_buffer") {
         REQUIRE(buffer[3] == 2);
     }
 
+    SECTION("Front and back") {
+        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        REQUIRE(buffer.front() == 1);
+        REQUIRE(buffer.back() == 3);
+    }
+
     SECTION("Copy construct") {
-        rav::ring_buffer<uint8_t> buffer({1,2,3});
-        auto buffer2(buffer); // NOLINT
+        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        auto buffer2(buffer);  // NOLINT
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
         REQUIRE(buffer2[1] == 2);
@@ -83,8 +94,8 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Copy assign") {
-        rav::ring_buffer<uint8_t> buffer({1,2,3});
-        auto buffer2 = buffer; // NOLINT
+        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        auto buffer2 = buffer;  // NOLINT
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
         REQUIRE(buffer2[1] == 2);
@@ -92,7 +103,7 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Move construct") {
-        rav::ring_buffer<uint8_t> buffer({1,2,3});
+        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
         auto buffer2(std::move(buffer));
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
@@ -101,9 +112,9 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Move assign") {
-        rav::ring_buffer<uint8_t> buffer({1,2,3});
-        rav::ring_buffer<uint8_t> buffer2({4,5,6});
-        buffer2 = std::move(buffer); // NOLINT
+        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        rav::ring_buffer<uint8_t> buffer2({4, 5, 6});
+        buffer2 = std::move(buffer);  // NOLINT
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
         REQUIRE(buffer2[1] == 2);
