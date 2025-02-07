@@ -233,7 +233,7 @@ class media_description {
      * available.
      * @return The frame count of the media description.
      */
-    [[nodiscard]] std::optional<uint32_t> framecount() const;
+    [[nodiscard]] std::optional<uint16_t> framecount() const;
 
     /**
      * Sets the frame count of the media description. This is a legacy RAVENNA attribute, replaced by ptime.

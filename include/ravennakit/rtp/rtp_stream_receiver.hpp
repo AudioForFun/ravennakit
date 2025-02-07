@@ -76,7 +76,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         rtp_session session;
         rtp_filter filter;
         wrapping_uint16 seq;
-        uint32_t packet_time_frames = 0;
+        uint16_t packet_time_frames = 0;
         std::optional<wrapping_uint32> first_packet_timestamp;
         rtp_packet_stats packet_stats;
         throttle<rtp_packet_stats::counters> packet_stats_throttle {std::chrono::seconds(2)};
@@ -98,6 +98,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         uint32_t timestamp;
         uint16_t seq;
         uint16_t len;
+        uint16_t packet_time_frames;
         std::array<uint8_t, 1500> data;  // MTU
     };
 

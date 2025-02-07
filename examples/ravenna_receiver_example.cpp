@@ -259,8 +259,6 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
 
         const auto timestamp = timestamp_.load().value();
 
-        TRACY_PLOT("Audio timestamp", static_cast<int64_t>(timestamp.value()));
-
         if (!ravenna_receiver_->read_data(timestamp.value(), static_cast<uint8_t*>(output), buffer_size)) {
             std::memset(output, audio_format_.ground_value(), buffer_size);
             RAV_WARNING("Not enough data available for timestamp: {}", timestamp.value());

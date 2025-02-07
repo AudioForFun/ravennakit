@@ -54,8 +54,8 @@ class aes67_packet_time {
      * @param sample_rate The sample rate of the audio.
      * @return The number of frames in a packet.
      */
-    static uint32_t framecount(const float signaled_ptime, const uint32_t sample_rate) {
-        return static_cast<uint32_t>(std::round(signaled_ptime * static_cast<float>(sample_rate) / 1000.0f));
+    static uint16_t framecount(const float signaled_ptime, const uint32_t sample_rate) {
+        return static_cast<uint16_t>(std::round(signaled_ptime * static_cast<float>(sample_rate) / 1000.0f));
     }
 
     /**

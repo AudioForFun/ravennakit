@@ -113,7 +113,7 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
 
     RAV_ASSERT(selected_connection_info != nullptr, "Expecting found_connection_info to be set");
 
-    uint32_t packet_time_frames = 0;
+    uint16_t packet_time_frames = 0;
     const auto ptime = selected_media_description->ptime();
     if (ptime.has_value()) {
         packet_time_frames = aes67_packet_time::framecount(*ptime, selected_audio_format->sample_rate);
@@ -220,6 +220,8 @@ bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber_to_remov
 }
 
 bool rav::rtp_stream_receiver::read_data(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size) {
+    TRACY_ZONE_SCOPED;
+
     RAV_ASSERT(buffer_size != 0, "Buffer size must be greater than 0");
     RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr");
 
@@ -227,21 +229,32 @@ bool rav::rtp_stream_receiver::read_data(const uint32_t at_timestamp, uint8_t* b
         static_cast<uint32_t>(buffer_size) / realtime_context_.selected_audio_format.bytes_per_frame();
 
     while (const auto packet = realtime_context_.fifo.pop()) {
+        wrapping_uint32 packet_timestamp(packet->timestamp);
         if (!realtime_context_.first_packet_timestamp) {
             realtime_context_.receiver_buffer.set_next_ts(packet->timestamp);
-            realtime_context_.first_packet_timestamp = packet->timestamp;
-            realtime_context_.next_ts = packet->timestamp;
+            realtime_context_.first_packet_timestamp = packet_timestamp;
+            realtime_context_.next_ts = packet_timestamp;
+        }
+
+        if (packet_timestamp >= realtime_context_.next_ts) {
+            TRACY_PLOT(
+                "packet_timestamp", static_cast<double>((packet_timestamp - realtime_context_.next_ts.value()).value())
+            );
+        } else {
+            TRACY_PLOT(
+                "packet_timestamp", static_cast<double>((realtime_context_.next_ts - packet->timestamp).value() * -1u)
+            );
         }
 
         // Determine whether whole packet is too old
-        if (wrapping_uint32(packet->timestamp) + num_frames <= realtime_context_.next_ts) {
+        if (packet_timestamp + packet->packet_time_frames <= realtime_context_.next_ts) {
             RAV_WARNING("Packet too old: seq={}, ts={}", packet->seq, packet->timestamp);
             // TODO: Report back to receive thread
             continue;
         }
 
         // Determine whether packet contains outdated data
-        if (wrapping_uint32(packet->timestamp) < realtime_context_.next_ts) {
+        if (packet_timestamp < realtime_context_.next_ts) {
             RAV_WARNING("Packet party too old: seq={}, ts={}", packet->seq, packet->timestamp);
             // TODO: Report back to receive thread
             // Still process the packet since it contains data that is not outdated
@@ -268,7 +281,7 @@ void rav::rtp_stream_receiver::restart() {
     RAV_ASSERT(bytes_per_frame > 0, "bytes_per_frame must be greater than 0");
 
     realtime_context_.receiver_buffer.resize(std::max(1024u, delay_ * k_delay_multiplier), bytes_per_frame);
-    realtime_context_.fifo.resize(delay_ * k_delay_multiplier * bytes_per_frame);
+    realtime_context_.fifo.resize(delay_);  // TODO: Determine sensible size
     realtime_context_.selected_audio_format = selected_format_;
 
     for (auto& stream : streams_) {
@@ -312,12 +325,14 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
         return;
     }
 
-    intermediate_packet pkt {
-        packet.timestamp(), packet.sequence_number(), static_cast<uint16_t>(packet.payload_data().size_bytes()), {}
-    };
-    std::memcpy(pkt.data.data(), payload.data(), pkt.len);
+    intermediate_packet intermediate {};
+    intermediate.timestamp = packet.timestamp();
+    intermediate.seq = packet.sequence_number();
+    intermediate.len = static_cast<uint16_t>(payload.size_bytes());
+    intermediate.packet_time_frames = stream.packet_time_frames;
+    std::memcpy(intermediate.data.data(), payload.data(), intermediate.len);
 
-    if (!realtime_context_.fifo.push(pkt)) {
+    if (!realtime_context_.fifo.push(intermediate)) {
         RAV_WARNING("Failed to push packet info FIFO");
         return;
     }
