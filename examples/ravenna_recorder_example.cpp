@@ -32,17 +32,17 @@
  */
 class stream_recorder: public rav::rtp_stream_receiver::subscriber {
   public:
-    explicit stream_recorder(std::unique_ptr<rav::ravenna_receiver> sink) : sink_(std::move(sink)) {
-        if (sink_) {
-            sink_->start();
-            sink_->add_subscriber(this);
+    explicit stream_recorder(std::unique_ptr<rav::ravenna_receiver> sink) : receiver_(std::move(sink)) {
+        if (receiver_) {
+            receiver_->start();
+            receiver_->add_subscriber(this);
         }
     }
 
     ~stream_recorder() override {
-        if (sink_) {
-            sink_->remove_subscriber(this);
-            sink_->stop();
+        if (receiver_) {
+            receiver_->remove_subscriber(this);
+            receiver_->stop();
         }
         close();
     }
@@ -61,13 +61,13 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
 
     void on_audio_format_changed(const rav::audio_format& new_format, const uint32_t packet_time_frames) override {
         close();
-        if (sink_ == nullptr) {
+        if (receiver_ == nullptr) {
             RAV_ERROR("No sink available");
             return;
         }
 
         audio_format_ = new_format;
-        file_output_stream_ = std::make_unique<rav::file_output_stream>(rav::file(sink_->get_session_name() + ".wav"));
+        file_output_stream_ = std::make_unique<rav::file_output_stream>(rav::file(receiver_->get_session_name() + ".wav"));
         wav_writer_ = std::make_unique<rav::wav_audio_format::writer>(
             *file_output_stream_, rav::wav_audio_format::format_code::pcm, new_format.sample_rate,
             new_format.num_channels, new_format.bytes_per_sample() * 8
@@ -75,8 +75,8 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
         audio_data_.resize(packet_time_frames * new_format.bytes_per_frame());
     }
 
-    void on_data_available(const rav::wrapping_uint32 timestamp) override {
-        if (!sink_->read_data(timestamp.value(), audio_data_.data(), audio_data_.size())) {
+    void on_data_ready(const rav::wrapping_uint32 timestamp) override {
+        if (!receiver_->read_data(timestamp.value(), audio_data_.data(), audio_data_.size())) {
             RAV_ERROR("Failed to read audio data");
             return;
         }
@@ -89,11 +89,12 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
     }
 
   private:
-    std::unique_ptr<rav::ravenna_receiver> sink_;
+    std::unique_ptr<rav::ravenna_receiver> receiver_;
     std::unique_ptr<rav::file_output_stream> file_output_stream_;
     std::unique_ptr<rav::wav_audio_format::writer> wav_writer_;
     std::vector<uint8_t> audio_data_;
     rav::audio_format audio_format_;
+    std::optional<rav::wrapping_uint32> stream_ts_;
 };
 
 class ravenna_recorder_example {

@@ -276,7 +276,7 @@ void rav::ravenna_transmitter::send_data() {
     const auto required_amount_of_data = framecount * audio_format_.bytes_per_frame();
     RAV_ASSERT(packet_intermediate_buffer_.size() == required_amount_of_data, "Buffer size mismatch");
 
-    for (auto i = 0; i < 100; i++) {
+    for (auto i = 0; i < 1000; i++) {
         const auto now_samples = ptp_instance_.get_local_ptp_time().to_samples(audio_format_.sample_rate);
         if (wrapping_uint(static_cast<uint32_t>(now_samples)) < rtp_packet_.timestamp()) {
             break;

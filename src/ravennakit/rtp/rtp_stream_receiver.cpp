@@ -41,6 +41,46 @@ rav::rtp_stream_receiver::~rtp_stream_receiver() {
     rtp_receiver_.unsubscribe(*this);
 }
 
+void rav::rtp_stream_receiver::start() {
+    if (is_running_) {
+        RAV_WARNING("rtp_stream_receiver is already running");
+        return;
+    }
+
+    stop();
+
+    if (!selected_format_.is_valid()) {
+        RAV_ERROR("No audio format selected");
+        return;
+    }
+
+    const auto bytes_per_frame = selected_format_.bytes_per_frame();
+    RAV_ASSERT(bytes_per_frame > 0, "bytes_per_frame must be greater than 0");
+
+    realtime_context_.receiver_buffer.resize(std::max(1024u, delay_ * k_delay_multiplier), bytes_per_frame);
+    realtime_context_.fifo.resize(delay_);  // TODO: Determine sensible size
+    realtime_context_.selected_audio_format = selected_format_;
+
+    for (auto& stream : streams_) {
+        rtp_receiver_.subscribe(*this, stream.session, stream.filter);
+        stream.first_packet_timestamp.reset();
+        stream.packet_stats.reset();
+    }
+
+    is_running_ = true;
+
+    RAV_TRACE("Started rtp_stream_receiver");
+}
+
+void rav::rtp_stream_receiver::stop() {
+    rtp_receiver_.unsubscribe(*this);  // This unsubscribes `this` from all sessions
+    is_running_ = false;
+}
+
+bool rav::rtp_stream_receiver::is_running() const {
+    return is_running_;
+}
+
 void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     const sdp::media_description* selected_media_description = nullptr;
     const sdp::connection_info_field* selected_connection_info = nullptr;
@@ -260,36 +300,19 @@ bool rav::rtp_stream_receiver::read_data(const uint32_t at_timestamp, uint8_t* b
         }
     }
 
-    realtime_context_.next_ts = at_timestamp + num_frames;
-
     const auto in = realtime_context_.receiver_buffer.next_ts();
     const auto out = realtime_context_.next_ts;
     TRACY_PLOT("available_frames", static_cast<int64_t>(out.diff(in)));
 
+    realtime_context_.next_ts = at_timestamp + num_frames;
     return realtime_context_.receiver_buffer.read(at_timestamp, buffer, buffer_size);
 }
 
 void rav::rtp_stream_receiver::restart() {
-    if (!selected_format_.is_valid()) {
-        return;
+    if (is_running_) {
+        stop();
+        start();
     }
-
-    rtp_receiver_.unsubscribe(*this);  // This unsubscribes `this` from all sessions
-
-    const auto bytes_per_frame = selected_format_.bytes_per_frame();
-    RAV_ASSERT(bytes_per_frame > 0, "bytes_per_frame must be greater than 0");
-
-    realtime_context_.receiver_buffer.resize(std::max(1024u, delay_ * k_delay_multiplier), bytes_per_frame);
-    realtime_context_.fifo.resize(delay_);  // TODO: Determine sensible size
-    realtime_context_.selected_audio_format = selected_format_;
-
-    for (auto& stream : streams_) {
-        rtp_receiver_.subscribe(*this, stream.session, stream.filter);
-        stream.first_packet_timestamp.reset();
-        stream.packet_stats.reset();
-    }
-
-    RAV_TRACE("(Re)Started rtp_stream_receiver");
 }
 
 rav::rtp_stream_receiver::stream_info&
@@ -332,7 +355,9 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
     std::memcpy(intermediate.data.data(), payload.data(), intermediate.data_len);
 
     if (!realtime_context_.fifo.push(intermediate)) {
-        RAV_WARNING("Failed to push packet info FIFO");
+        RAV_TRACE("Failed to push packet info FIFO");
+        // TODO: This is not really an error, it just means the consuming side is not calling read_data (or hasn't even
+        // started yet). We should probably just ignore this.
         return;
     }
 
@@ -344,9 +369,17 @@ void rav::rtp_stream_receiver::handle_rtp_packet_for_stream(const rtp_packet_vie
 
     if (const auto diff = stream.seq.update(packet.sequence_number())) {
         if (diff >= 1) {
-            if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
+            // Only call back with monotonically increasing sequence numbers
+            for (const auto& s : subscribers_) {
+                s->on_data_received(packet_timestamp);
+            }
+        }
+
+        if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
+            // Make sure to call with the correct timestamps for the missing packets
+            for (uint16_t i = 0; i < *diff; ++i) {
                 for (const auto& s : subscribers_) {
-                    s->on_data_available(packet_timestamp - delay_);
+                    s->on_data_ready(packet_timestamp - delay_ - (*diff - 1 - i) * stream.packet_time_frames);
                 }
             }
         }

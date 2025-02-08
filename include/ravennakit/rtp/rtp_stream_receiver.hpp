@@ -33,13 +33,55 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
             [[maybe_unused]] const audio_format& new_format, [[maybe_unused]] uint32_t packet_time_frames
         ) {}
 
-        virtual void on_data_available([[maybe_unused]] wrapping_uint32 timestamp) {}
+        /**
+         * Called when new data is available.
+         *
+         * The timestamp will monotonically increase, but might have gaps because out-of-order and dropped packets will
+         * not trigger a callback.
+         *
+         * Note: this is called from the network receive thread. You might have to synchronize access to shared data.
+         *
+         * @param timestamp The timestamp of newly received the data.
+         */
+        virtual void on_data_received([[maybe_unused]] wrapping_uint32 timestamp) {}
+
+        /**
+         * Called when data is ready to be consumed.
+         *
+         * The timestamp will be the timestamp of the packet which triggered this event, minus the delay. This makes it
+         * convenient for consumers to read data from the buffer when the delay has passed.
+         *
+         * Note: this is called from the network receive thread. You might have to synchronize access to shared data.
+         *
+         * @param timestamp The timestamp of the packet which triggered this event, ** minus the delay **.
+         */
+        virtual void on_data_ready([[maybe_unused]] wrapping_uint32 timestamp) {}
     };
 
     explicit rtp_stream_receiver(rtp_receiver& receiver);
 
     ~rtp_stream_receiver() override;
 
+    /**
+     * Starts receiving the stream. If the stream is already started, it will be restarted.
+     */
+    virtual void start();
+
+    /**
+     * Stops receiving the stream.
+     */
+    virtual void stop();
+
+    /**
+     * @return true if the stream is running, or false if it is stopped.
+     */
+    bool is_running() const;
+
+    /**
+     * Update the stream information with given SDP. Might result in a restart of the streaming if the parameters have
+     * changed.
+     * @param sdp The SDP to update with.
+     */
     void update_sdp(const sdp::session_description& sdp);
 
     /**
@@ -53,7 +95,18 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      */
     [[nodiscard]] uint32_t get_delay() const;
 
+    /**
+     * Adds a subscriber to the receiver.
+     * @param subscriber_to_add The subscriber to add.
+     * @return true if the subscriber was added, or false if it was already added.
+     */
     bool add_subscriber(subscriber* subscriber_to_add);
+
+    /**
+     * Removes a subscriber from the receiver.
+     * @param subscriber_to_remove The subscriber to remove.
+     * @return true if the subscriber was removed, or false if it wasn't found.
+     */
     bool remove_subscriber(subscriber* subscriber_to_remove);
 
     /**
@@ -70,6 +123,9 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     void on_rtcp_packet(const rtp_receiver::rtcp_packet_event& rtcp_event) override;
 
   private:
+    /**
+     * Context for a stream identified by the session.
+     */
     struct stream_info {
         explicit stream_info(rtp_session session_) : session(std::move(session_)) {}
 
@@ -90,6 +146,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     std::vector<stream_info> streams_;
     uint32_t delay_ = 480;  // 100ms at 48KHz
     subscriber_list<subscriber> subscribers_;
+    bool is_running_ = false;
 
     /**
      * Used for copying received packets to the realtime context.
@@ -102,6 +159,10 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         std::array<uint8_t, 1500> data;  // MTU
     };
 
+    /**
+     * A struct to hold the realtime context which are variables which may be only be accesses by the consuming thread
+     * (except for members which synchronize, like the fifo).
+     */
     struct {
         rtp_receive_buffer receiver_buffer;
         fifo_buffer<intermediate_packet, fifo::spsc> fifo;
@@ -110,7 +171,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         audio_format selected_audio_format;
     } realtime_context_;
 
-    /// Restarts the streaming
+    /// Restarts the stream if it is running, otherwise does nothing.
     void restart();
 
     stream_info& find_or_create_stream_info(const rtp_session& session);

@@ -35,19 +35,17 @@ void rav::ravenna_receiver::on_announced(const ravenna_rtsp_client::announced_ev
 }
 
 void rav::ravenna_receiver::start() {
-    if (started_) {
+    if (is_running()) {
         RAV_WARNING("ravenna_sink already started");
         return;
     }
-
+    rtp_stream_receiver::start();
     subscribe_to_ravenna_rtsp_client(rtsp_client_, session_name_);
-
-    started_ = true;
 }
 
 void rav::ravenna_receiver::stop() {
     unsubscribe_from_ravenna_rtsp_client();
-    started_ = false;
+    rtp_stream_receiver::stop();
 }
 
 void rav::ravenna_receiver::set_session_name(std::string session_name) {
