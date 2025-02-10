@@ -41,46 +41,6 @@ rav::rtp_stream_receiver::~rtp_stream_receiver() {
     rtp_receiver_.unsubscribe(*this);
 }
 
-void rav::rtp_stream_receiver::start() {
-    if (is_running_) {
-        RAV_WARNING("rtp_stream_receiver is already running");
-        return;
-    }
-
-    stop();
-
-    if (!selected_format_.is_valid()) {
-        RAV_ERROR("No audio format selected");
-        return;
-    }
-
-    const auto bytes_per_frame = selected_format_.bytes_per_frame();
-    RAV_ASSERT(bytes_per_frame > 0, "bytes_per_frame must be greater than 0");
-
-    realtime_context_.receiver_buffer.resize(std::max(1024u, delay_ * k_delay_multiplier), bytes_per_frame);
-    realtime_context_.fifo.resize(delay_);  // TODO: Determine sensible size
-    realtime_context_.selected_audio_format = selected_format_;
-
-    for (auto& stream : streams_) {
-        rtp_receiver_.subscribe(*this, stream.session, stream.filter);
-        stream.first_packet_timestamp.reset();
-        stream.packet_stats.reset();
-    }
-
-    is_running_ = true;
-
-    RAV_TRACE("Started rtp_stream_receiver");
-}
-
-void rav::rtp_stream_receiver::stop() {
-    rtp_receiver_.unsubscribe(*this);  // This unsubscribes `this` from all sessions
-    is_running_ = false;
-}
-
-bool rav::rtp_stream_receiver::is_running() const {
-    return is_running_;
-}
-
 void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     const sdp::media_description* selected_media_description = nullptr;
     const sdp::connection_info_field* selected_connection_info = nullptr;
@@ -309,10 +269,26 @@ bool rav::rtp_stream_receiver::read_data(const uint32_t at_timestamp, uint8_t* b
 }
 
 void rav::rtp_stream_receiver::restart() {
-    if (is_running_) {
-        stop();
-        start();
+    if (!selected_format_.is_valid()) {
+        return;
     }
+
+    rtp_receiver_.unsubscribe(*this);  // This unsubscribes `this` from all sessions
+
+    const auto bytes_per_frame = selected_format_.bytes_per_frame();
+    RAV_ASSERT(bytes_per_frame > 0, "bytes_per_frame must be greater than 0");
+
+    realtime_context_.receiver_buffer.resize(std::max(1024u, delay_ * k_delay_multiplier), bytes_per_frame);
+    realtime_context_.fifo.resize(delay_);  // TODO: Determine sensible size
+    realtime_context_.selected_audio_format = selected_format_;
+
+    for (auto& stream : streams_) {
+        rtp_receiver_.subscribe(*this, stream.session, stream.filter);
+        stream.first_packet_timestamp.reset();
+        stream.packet_stats.reset();
+    }
+
+    RAV_TRACE("(Re)Started rtp_stream_receiver");
 }
 
 rav::rtp_stream_receiver::stream_info&

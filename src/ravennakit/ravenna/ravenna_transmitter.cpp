@@ -126,6 +126,7 @@ void rav::ravenna_transmitter::start(const uint32_t timestamp_samples) {
     rtp_packet_.timestamp(timestamp_samples);
     resize_internal_buffers();
     start_timer();
+    RAV_TRACE("Start transmitting at timestamp: {}", timestamp_samples);
 }
 
 void rav::ravenna_transmitter::start(const ptp_timestamp timestamp) {

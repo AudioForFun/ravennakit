@@ -39,9 +39,10 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
         auto config = rav::rtp_receiver::configuration {interface_addr};
         rtp_receiver_ = std::make_unique<rav::rtp_receiver>(io_context_, config);
 
-        ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_, stream_name_);
+        ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);  // 10ms @ 48kHz
         ravenna_receiver_->add_subscriber(this);
+        ravenna_receiver_->set_session_name(stream_name_);
 
         advertiser_ = rav::dnssd::dnssd_advertiser::create(io_context_);
         if (advertiser_ == nullptr) {
@@ -86,14 +87,13 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
         buffer_.resize(new_format.bytes_per_frame() * packet_time_frames);
         if (!transmitter_->set_audio_format(new_format)) {
             RAV_ERROR("Format not supported by transmitter");
+            return;
         }
+        start_transmitting();
     }
 
-    void on_data_received(const rav::wrapping_uint32 timestamp) override {
-        if (!start_streaming_at_) {
-            start_streaming_at_ = timestamp;
-            start_transmitting();  // Also called then PTP becomes stable
-        }
+    void on_data_ready(rav::wrapping_uint32 timestamp) override {
+        most_recent_timestamp_ = timestamp;
     }
 
     void run() {
@@ -104,7 +104,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
     std::string stream_name_;
     asio::io_context io_context_;
     std::vector<uint8_t> buffer_;
-    std::optional<rav::wrapping_uint32> start_streaming_at_;
+    std::optional<rav::wrapping_uint32> most_recent_timestamp_;
     bool ptp_clock_stable_ = false;
 
     // Receiver components
@@ -121,15 +121,13 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
     std::unique_ptr<rav::ravenna_transmitter> transmitter_;
     rav::event_slot<rav::ptp_instance::port_changed_state_event> ptp_port_changed_event_slot_;
 
+    /**
+     * Starts transmitting if the PTP clock is stable and a timestamp is available and transmitter is not already
+     * running.
+     */
     void start_transmitting() const {
-        if (ptp_clock_stable_ && start_streaming_at_) {
-            RAV_TRACE("Start transmitter");
-            // Ruurd: I think we can take a timestamp from the PTP clock and use that as starting point.
-            transmitter_->start(start_streaming_at_->value());
-        }
-        if (!ravenna_receiver_->is_running()) {
-            RAV_TRACE("Start receiver");
-            ravenna_receiver_->start();
+        if (ptp_clock_stable_ && most_recent_timestamp_) {
+            transmitter_->start(most_recent_timestamp_->value());
         }
     }
 };

@@ -63,21 +63,6 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     ~rtp_stream_receiver() override;
 
     /**
-     * Starts receiving the stream. If the stream is already started, it will be restarted.
-     */
-    virtual void start();
-
-    /**
-     * Stops receiving the stream.
-     */
-    virtual void stop();
-
-    /**
-     * @return true if the stream is running, or false if it is stopped.
-     */
-    bool is_running() const;
-
-    /**
      * Update the stream information with given SDP. Might result in a restart of the streaming if the parameters have
      * changed.
      * @param sdp The SDP to update with.
@@ -146,7 +131,6 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     std::vector<stream_info> streams_;
     uint32_t delay_ = 480;  // 100ms at 48KHz
     subscriber_list<subscriber> subscribers_;
-    bool is_running_ = false;
 
     /**
      * Used for copying received packets to the realtime context.

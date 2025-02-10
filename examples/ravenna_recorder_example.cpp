@@ -34,7 +34,6 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
   public:
     explicit stream_recorder(std::unique_ptr<rav::ravenna_receiver> sink) : receiver_(std::move(sink)) {
         if (receiver_) {
-            receiver_->start();
             receiver_->add_subscriber(this);
         }
     }
@@ -67,7 +66,8 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
         }
 
         audio_format_ = new_format;
-        file_output_stream_ = std::make_unique<rav::file_output_stream>(rav::file(receiver_->get_session_name() + ".wav"));
+        file_output_stream_ =
+            std::make_unique<rav::file_output_stream>(rav::file(receiver_->get_session_name() + ".wav"));
         wav_writer_ = std::make_unique<rav::wav_audio_format::writer>(
             *file_output_stream_, rav::wav_audio_format::format_code::pcm, new_format.sample_rate,
             new_format.num_channels, new_format.bytes_per_sample() * 8
@@ -118,11 +118,10 @@ class ravenna_recorder_example {
     ~ravenna_recorder_example() = default;
 
     void add_stream(const std::string& stream_name) {
-        recorders_.emplace_back(
-            std::make_unique<stream_recorder>(
-                std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_, stream_name)
-            )
-        );
+        auto receiver = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
+        receiver->set_delay(480);  // 10ms @ 48kHz
+        receiver->set_session_name(stream_name);
+        recorders_.emplace_back(std::make_unique<stream_recorder>(std::move(receiver)));
     }
 
     void start() {

@@ -13,12 +13,8 @@
 #include "ravennakit/ravenna/ravenna_constants.hpp"
 #include "ravennakit/rtp/detail/rtp_filter.hpp"
 
-rav::ravenna_receiver::ravenna_receiver(
-    ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver, std::string session_name
-) :
-    rtp_stream_receiver(rtp_receiver), rtsp_client_(rtsp_client) {
-    set_session_name(std::move(session_name));
-}
+rav::ravenna_receiver::ravenna_receiver(ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver) :
+    rtp_stream_receiver(rtp_receiver), rtsp_client_(rtsp_client) {}
 
 rav::ravenna_receiver::~ravenna_receiver() {
     stop();
@@ -34,18 +30,8 @@ void rav::ravenna_receiver::on_announced(const ravenna_rtsp_client::announced_ev
     }
 }
 
-void rav::ravenna_receiver::start() {
-    if (is_running()) {
-        RAV_WARNING("ravenna_sink already started");
-        return;
-    }
-    rtp_stream_receiver::start();
-    subscribe_to_ravenna_rtsp_client(rtsp_client_, session_name_);
-}
-
 void rav::ravenna_receiver::stop() {
     unsubscribe_from_ravenna_rtsp_client();
-    rtp_stream_receiver::stop();
 }
 
 void rav::ravenna_receiver::set_session_name(std::string session_name) {
