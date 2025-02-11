@@ -14,7 +14,9 @@ rav::ravenna_rtsp_client::subscriber::~subscriber() {
     unsubscribe_from_ravenna_rtsp_client();
 }
 
-void rav::ravenna_rtsp_client::subscriber::subscribe_to_ravenna_rtsp_client(ravenna_rtsp_client& client, const std::string& session_name) {
+void rav::ravenna_rtsp_client::subscriber::subscribe_to_ravenna_rtsp_client(
+    ravenna_rtsp_client& client, const std::string& session_name
+) {
     if (session_name.empty()) {
         RAV_THROW_EXCEPTION("session_name cannot be empty");
     }
@@ -86,7 +88,8 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
     new_connection.client.on<rtsp_connection::connect_event>([=](const auto&) {
         RAV_TRACE("Connected to: rtsp://{}:{}", host_target, port);
     });
-    new_connection.client.on<rtsp_connection::request_event>([this, &client = new_connection.client](const auto& event) {
+    new_connection.client.on<rtsp_connection::request_event>([this,
+                                                              &client = new_connection.client](const auto& event) {
         RAV_TRACE("{}", event.request.to_debug_string(true));
 
         if (event.request.method == "ANNOUNCE") {
@@ -120,20 +123,24 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
         RAV_TRACE("{}", event.response.to_debug_string(true));
 
         if (event.response.status_code != 200) {
-            RAV_ERROR("RTSP request failed with status: {} {}", event.response.status_code, event.response.reason_phrase);
+            RAV_ERROR(
+                "RTSP request failed with status: {} {}", event.response.status_code, event.response.reason_phrase
+            );
             return;
         }
 
-        if (auto* content_type = event.response.headers.get("content-type")) {
-            if (!rav::string_starts_with(content_type->value, "application/sdp")) {
-                RAV_ERROR("RTSP response has unexpected Content-Type: {}", content_type->value);
+        if (!event.response.data.empty()) {
+            if (auto* content_type = event.response.headers.get("content-type")) {
+                if (!rav::string_starts_with(content_type->value, "application/sdp")) {
+                    RAV_ERROR("RTSP response has unexpected Content-Type: {}", content_type->value);
+                    return;
+                }
+                handle_incoming_sdp(event.response.data);
                 return;
             }
-            handle_incoming_sdp(event.response.data);
-            return;
-        }
 
-        RAV_ERROR("RTSP response missing Content-Type header");
+            RAV_ERROR("RTSP response missing Content-Type header");
+        }
     });
     new_connection.client.async_connect(host_target, port);
     return new_connection;

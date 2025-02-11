@@ -24,6 +24,8 @@
  * This examples demonstrates how to receive audio streams from a RAVENNA device. It sets up a RAVENNA sink that listens
  * for announcements from a RAVENNA device and starts receiving audio data. It will play the audio to the selected audio
  * device using portaudio.
+ * Warning! No drift correction is done between the sender and receiver. At some point buffers will overflow or
+ * underflow.
  */
 
 constexpr int k_block_size = 256;
@@ -184,9 +186,10 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
         config.interface_address = asio::ip::make_address(interface_address);
         rtp_receiver_ = std::make_unique<rav::rtp_receiver>(io_context_, config);
 
-        ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_, stream_name);
-        ravenna_receiver_->set_delay(960);
+        ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
+        ravenna_receiver_->set_delay(480);
         ravenna_receiver_->add_subscriber(this);
+        ravenna_receiver_->set_session_name(stream_name);
     }
 
     ~ravenna_receiver_example() override {
@@ -195,7 +198,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
         }
     }
 
-    void start() {
+    void run() {
         io_context_.run();
     }
 
@@ -217,14 +220,11 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
             audio_device_name_, new_format.sample_rate, static_cast<int>(new_format.num_channels), *sample_format,
             &ravenna_receiver_example::stream_callback, this
         );
-        timestamp_ = std::nullopt;
+        most_recent_ready_timestamp_ = std::nullopt;
     }
 
-    void on_data_available(rav::wrapping_uint32 timestamp) override {
-        if (!timestamp_.load().has_value()) {
-            timestamp_ = timestamp;
-            RAV_TRACE("First packet received with timestamp: {}", timestamp.value());
-        }
+    void on_data_ready(rav::wrapping_uint32 timestamp) override {
+        most_recent_ready_timestamp_ = timestamp;
     }
 
   private:
@@ -237,8 +237,12 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
     portaudio_stream portaudio_stream_;
     rav::audio_format audio_format_;
 
-    std::atomic<std::optional<rav::wrapping_uint32>> timestamp_ {};
-    static_assert(decltype(timestamp_)::is_always_lock_free);
+    std::atomic<std::optional<rav::wrapping_uint32>> most_recent_ready_timestamp_ {};
+    static_assert(decltype(most_recent_ready_timestamp_)::is_always_lock_free);
+
+    struct {
+        std::optional<rav::wrapping_uint32> stream_ts_;
+    } realtime_context_;
 
     int stream_callback(
         const void* input, void* output, const unsigned long frame_count, const PaStreamCallbackTimeInfo* time_info,
@@ -252,21 +256,24 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
 
         const auto buffer_size = frame_count * audio_format_.bytes_per_frame();
 
-        if (!timestamp_.load().has_value()) {
-            std::memset(output, audio_format_.ground_value(), buffer_size);
-            return paContinue;
+        if (!realtime_context_.stream_ts_.has_value()) {
+            const auto most_recent_ready = most_recent_ready_timestamp_.load();
+            if (most_recent_ready.has_value()) {
+                realtime_context_.stream_ts_ = *most_recent_ready - k_block_size * 4 / 5;
+            } else {
+                std::memset(output, audio_format_.ground_value(), buffer_size);
+                return paContinue;
+            }
         }
 
-        const auto timestamp = timestamp_.load().value();
-
-        TRACY_PLOT("Audio timestamp", static_cast<int64_t>(timestamp.value()));
+        const auto timestamp = realtime_context_.stream_ts_.value();
 
         if (!ravenna_receiver_->read_data(timestamp.value(), static_cast<uint8_t*>(output), buffer_size)) {
             std::memset(output, audio_format_.ground_value(), buffer_size);
-            RAV_WARNING("Not enough data available for timestamp: {}", timestamp.value());
+            RAV_WARNING("Failed to read data for timestamp: {}", timestamp.value());
         }
 
-        timestamp_.store(timestamp + static_cast<uint32_t>(frame_count));
+        realtime_context_.stream_ts_ = timestamp + static_cast<uint32_t>(frame_count);
 
         if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
             rav::byte_order::swap_bytes(static_cast<uint8_t*>(output), buffer_size, audio_format_.bytes_per_sample());
@@ -329,7 +336,7 @@ int main(int const argc, char* argv[]) {
         receiver_example.stop();
     });
 
-    receiver_example.start();
+    receiver_example.run();
     cin_thread.join();
 
     return 0;

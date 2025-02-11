@@ -221,7 +221,7 @@ class ring_buffer {
         }
 
         bool operator!=(const iterator_base& other) const {
-            return !(*this == other);
+            return remaining_ != other.remaining_;
         }
 
       private:

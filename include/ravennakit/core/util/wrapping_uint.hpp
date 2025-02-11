@@ -41,7 +41,7 @@ class wrapping_uint {
     explicit wrapping_uint(const T value) : value_(value) {}
 
     /**
-     * Updates the value in the sequence. The number of steps taken from the previous value to the next value
+     * Updates the value in the sequence. The number of steps taken from the previous value to given value
      * will be returned, taking into account wraparound. The current (internal) value will only progress forward, if the
      * value is older than the current value, it will return std::nullopt. The returned value can be used to detect
      * gaps (when value > 1).
@@ -198,6 +198,19 @@ class wrapping_uint {
      */
     friend bool operator>=(const wrapping_uint& lhs, const wrapping_uint& rhs) {
         return lhs > rhs || lhs == rhs;
+    }
+
+    /**
+     * Calculates the difference between two sequence numbers, taking into account wraparound.
+     * @param other The other sequence number.
+     * @return The difference between the two sequence numbers.
+     */
+    std::make_signed_t<T> diff(const wrapping_uint& other) const {
+        // 1 -> 0
+        if (is_older_than(other.value_, value_)) {
+            return static_cast<std::make_signed_t<T>>(value_ - other.value_) * -1;
+        }
+        return static_cast<std::make_signed_t<T>>(other.value_ - value_);
     }
 
   private:

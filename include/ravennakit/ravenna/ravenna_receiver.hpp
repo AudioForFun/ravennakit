@@ -20,7 +20,7 @@ namespace rav {
 
 class ravenna_receiver: public rtp_stream_receiver, ravenna_rtsp_client::subscriber {
   public:
-    explicit ravenna_receiver(ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver, std::string session_name);
+    explicit ravenna_receiver(ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver);
     ~ravenna_receiver() override;
 
     ravenna_receiver(const ravenna_receiver&) = delete;
@@ -29,16 +29,18 @@ class ravenna_receiver: public rtp_stream_receiver, ravenna_rtsp_client::subscri
     ravenna_receiver(ravenna_receiver&&) noexcept = delete;
     ravenna_receiver& operator=(ravenna_receiver&&) noexcept = delete;
 
-    void start();
     void stop();
+
+    /**
+     * Sets the name of the RAVENNA session to receive.
+     * @param session_name
+     */
     void set_session_name(std::string session_name);
     [[nodiscard]] std::string get_session_name() const;
 
   private:
     ravenna_rtsp_client& rtsp_client_;
     std::string session_name_;
-
-    bool started_ = false;
 
     void on_announced(const ravenna_rtsp_client::announced_event& event) override;
 };

@@ -192,6 +192,78 @@ void test_wrapping_uint() {
         REQUIRE(seq.update(0) == std::numeric_limits<T>::max() / 2 - 98);
         REQUIRE(seq == 0);
     }
+
+    SECTION("Difference one") {
+        rav::wrapping_uint<T> a(0);
+        rav::wrapping_uint<T> b(1);
+        REQUIRE(a.diff(b) == 1);
+    }
+
+    SECTION("Difference two") {
+        rav::wrapping_uint<T> a(0);
+        rav::wrapping_uint<T> b(2);
+        REQUIRE(a.diff(b) == 2);
+    }
+
+    SECTION("Difference one wrapped") {
+        rav::wrapping_uint<T> a(std::numeric_limits<T>::max());
+        rav::wrapping_uint<T> b(0);
+        REQUIRE(a.diff(b) == 1);
+    }
+
+    SECTION("Difference two wrapped") {
+        rav::wrapping_uint<T> a(std::numeric_limits<T>::max() - 1);
+        rav::wrapping_uint<T> b(0);
+        REQUIRE(a.diff(b) == 2);
+    }
+
+    SECTION("Difference three wrapped") {
+        rav::wrapping_uint<T> a(std::numeric_limits<T>::max() - 1);
+        rav::wrapping_uint<T> b(1);
+        REQUIRE(a.diff(b) == 3);
+    }
+
+    SECTION("Difference one negative") {
+        rav::wrapping_uint<T> a(1);
+        rav::wrapping_uint<T> b(0);
+        REQUIRE(a.diff(b) == -1);
+    }
+
+    SECTION("Difference big negative") {
+        rav::wrapping_uint<T> a(std::numeric_limits<T>::max() / 2);
+        rav::wrapping_uint<T> b(0);
+        REQUIRE(a.diff(b) == -static_cast<std::make_signed_t<T>>(std::numeric_limits<T>::max() / 2));
+    }
+
+    SECTION("Difference big negative") {
+        rav::wrapping_uint<T> a(std::numeric_limits<T>::max() / 2 + 1);
+        rav::wrapping_uint<T> b(0);
+        REQUIRE(a.diff(b) == std::numeric_limits<std::make_signed_t<T>>::min());
+    }
+
+    SECTION("Difference two negative") {
+        rav::wrapping_uint<T> a(2);
+        rav::wrapping_uint<T> b(0);
+        REQUIRE(a.diff(b) == -2);
+    }
+
+    SECTION("Difference one wrapped negative") {
+        rav::wrapping_uint<T> a(0);
+        rav::wrapping_uint<T> b(std::numeric_limits<T>::max());
+        REQUIRE(a.diff(b) == -1);
+    }
+
+    SECTION("Difference two wrapped negative") {
+        rav::wrapping_uint<T> a(0);
+        rav::wrapping_uint<T> b(std::numeric_limits<T>::max() - 1);
+        REQUIRE(a.diff(b) == -2);
+    }
+
+    SECTION("Difference three wrapped negative") {
+        rav::wrapping_uint<T> a(1);
+        rav::wrapping_uint<T> b(std::numeric_limits<T>::max() - 1);
+        REQUIRE(a.diff(b) == -3);
+    }
 }
 
 TEST_CASE("wrapping_uint") {

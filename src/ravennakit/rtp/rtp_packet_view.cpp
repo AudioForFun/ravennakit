@@ -166,6 +166,14 @@ rav::buffer_view<const uint8_t> rav::rtp_packet_view::payload_data() const {
     return {data_ + header_length, size_bytes_ - header_length};
 }
 
+size_t rav::rtp_packet_view::size() const {
+    return size_bytes_;
+}
+
+const uint8_t* rav::rtp_packet_view::data() const {
+    return data_;
+}
+
 std::string rav::rtp_packet_view::to_string() const {
     return fmt::format(
         "RTP Header: valid={} version={} padding={} extension={} csrc_count={} market_bit={} payload_type={} sequence_number={} timestamp={} ssrc={} payload_start_index={}",

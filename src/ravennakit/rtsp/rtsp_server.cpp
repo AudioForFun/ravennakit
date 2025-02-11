@@ -106,9 +106,9 @@ void rav::rtsp_server::on_request(rtsp_connection& connection, const rtsp_reques
     RAV_TRACE("Received request: {}", request.to_debug_string(false));
     const auto uri = uri::parse(request.uri);
 
-    const auto path_context = paths_[uri.path];
-    if (path_context.handler) {
-        path_context.handler->on_request({connection, request});
+    const auto pc = paths_[uri.path];
+    if (pc.handler) {
+        pc.handler->on_request({connection, request});
     } else {
         RAV_WARNING("No handler registered for uri: {}", uri.to_string());
         connection.async_send_response(rtsp_response(404, "Not Found", "No handler registered for URI"));

@@ -19,6 +19,7 @@ definitions:
           - 'linux'
         image: atlassian/default-image:4
         name: 'Build for Linux'
+        size: 4x # https://support.atlassian.com/bitbucket-cloud/docs/step-options/#Size
         script:
           - git submodule update --recursive --init
           - apt-get update -y

@@ -75,6 +75,7 @@ class rtp_receive_buffer {
 
         const auto end_ts =
             wrapping_uint32(at_timestamp) + static_cast<uint32_t>(payload.size_bytes() / bytes_per_frame_);
+
         if (end_ts > next_ts_) {
             next_ts_ = end_ts;
         }
@@ -117,7 +118,8 @@ class rtp_receive_buffer {
     }
 
     /**
-     * Fills the buffer with a value until (but not including) the given timestamp.
+     * Fills the buffer with a value until (but not including) the given timestamp. If given timestamp is older than the
+     * existing data nothing will happen - i.e. an older packet will not overwrite a newer packet.
      * @param at_timestamp The timestamp to fill until.
      * @returns true if any data was cleared, false if no data was cleared.
      */

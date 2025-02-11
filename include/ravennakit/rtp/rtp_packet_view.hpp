@@ -111,6 +111,16 @@ class rtp_packet_view {
     [[nodiscard]] buffer_view<const uint8_t> payload_data() const;
 
     /**
+     * @return Returns the size of the RTP header in bytes.
+     */
+    [[nodiscard]] size_t size() const;
+
+    /**
+     * @return Returns the data of the RTP packet.
+     */
+    [[nodiscard]] const uint8_t* data() const;
+
+    /**
      * @returns A string representation of the RTP header.
      */
     [[nodiscard]] std::string to_string() const;

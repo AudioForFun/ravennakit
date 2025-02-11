@@ -27,7 +27,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(window.duplicates == 0);
         REQUIRE(window.out_of_order == 0);
         REQUIRE(window.too_late == 0);
-        REQUIRE(window.too_old == 0);
+        REQUIRE(window.outside_window == 0);
         const auto total = stats.get_total_counts();
         REQUIRE(window == total);
     }
@@ -42,15 +42,15 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(window.duplicates == 0);
         REQUIRE(window.out_of_order == 0);
         REQUIRE(window.too_late == 0);
-        REQUIRE(window.too_old == 0);
+        REQUIRE(window.outside_window == 0);
 
-        // The window is not full yet, so total counters are still zero
+        // Counters include the window
         auto total = stats.get_total_counts();
-        REQUIRE(total.dropped == 0);
+        REQUIRE(total.dropped == 1);
         REQUIRE(total.duplicates == 0);
         REQUIRE(total.out_of_order == 0);
         REQUIRE(total.too_late == 0);
-        REQUIRE(total.too_old == 0);
+        REQUIRE(total.outside_window == 0);
 
         // Move all previous packets out of the window
         stats.update(13);
@@ -62,7 +62,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(total.duplicates == 0);
         REQUIRE(total.out_of_order == 0);
         REQUIRE(total.too_late == 0);
-        REQUIRE(total.too_old == 0);
+        REQUIRE(total.outside_window == 0);
     }
 
     SECTION("Drop two packets") {
@@ -75,7 +75,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
 
         stats.update(14);
         stats.update(15);
@@ -87,7 +87,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(total.duplicates == 0);
         REQUIRE(total.out_of_order == 0);
         REQUIRE(total.too_late == 0);
-        REQUIRE(total.too_old == 0);
+        REQUIRE(total.outside_window == 0);
     }
 
     SECTION("A packet older than the first packet is dropped") {
@@ -100,7 +100,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
     }
 
     SECTION("Too old") {
@@ -118,7 +118,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 1);
+        REQUIRE(counts.outside_window == 1);
     }
 
     SECTION("Drop, out of order, duplicates and too old") {
@@ -134,7 +134,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 1);
         REQUIRE(counts.out_of_order == 2);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
     }
 
     SECTION("Test the window") {
@@ -151,7 +151,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 1);  // Seq 13 is duplicate
         REQUIRE(counts.out_of_order == 2);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);  // Window counts don't include too old packets
+        REQUIRE(counts.outside_window == 0);  // Window counts don't include too old packets
 
         // The window will slide one position, dropping seq 11
         stats.update(16);
@@ -161,7 +161,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 1);
         REQUIRE(counts.out_of_order == 2);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
 
         // The window will slide three positions, dropping previous packets except 15.
         stats.update(17);
@@ -174,14 +174,14 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
 
         auto totals = stats.get_total_counts();
         REQUIRE(totals.dropped == 3);
         REQUIRE(totals.duplicates == 1);
         REQUIRE(totals.out_of_order == 2);
         REQUIRE(totals.too_late == 0);
-        REQUIRE(totals.too_old == 1);
+        REQUIRE(totals.outside_window == 1);
     }
 
     SECTION("Test wrap around") {
@@ -197,7 +197,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
     }
 
     SECTION("Test wrap around with drop") {
@@ -213,7 +213,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
     }
 
     SECTION("Test wrap around with drop, out of order, duplicates and too old") {
@@ -229,7 +229,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 1);
         REQUIRE(counts.out_of_order == 2);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
     }
 
     SECTION("Mark too late") {
@@ -243,7 +243,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 1);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
 
         stats.update(2);
         stats.update(3);
@@ -256,14 +256,14 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
 
         auto totals = stats.get_total_counts();
         REQUIRE(totals.dropped == 0);
         REQUIRE(totals.duplicates == 0);
         REQUIRE(totals.out_of_order == 0);
         REQUIRE(totals.too_late == 1);
-        REQUIRE(totals.too_old == 0);
+        REQUIRE(totals.outside_window == 0);
     }
 
     SECTION("Count 1 for every case, first the window, then the totals") {
@@ -281,23 +281,23 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(window.duplicates == 1);
         REQUIRE(window.out_of_order == 1);
         REQUIRE(window.too_late == 1);
-        REQUIRE(window.too_old == 0);
+        REQUIRE(window.outside_window == 0);
 
         auto totals = stats.get_total_counts();
-        REQUIRE(totals.dropped == 0);
-        REQUIRE(totals.duplicates == 0);
-        REQUIRE(totals.out_of_order == 0);
-        REQUIRE(totals.too_late == 0);
-        REQUIRE(totals.too_old == 0);
+        REQUIRE(totals.dropped == 1);
+        REQUIRE(totals.duplicates == 1);
+        REQUIRE(totals.out_of_order == 1);
+        REQUIRE(totals.too_late == 1);
+        REQUIRE(totals.outside_window == 0);
 
         // The window will have moved one position, dropping the first packet, so this one should be too old
         stats.update(1);
         totals = stats.get_total_counts();
-        REQUIRE(totals.dropped == 0);
-        REQUIRE(totals.duplicates == 0);
-        REQUIRE(totals.out_of_order == 0);
-        REQUIRE(totals.too_late == 0);
-        REQUIRE(totals.too_old == 1);
+        REQUIRE(totals.dropped == 1);
+        REQUIRE(totals.duplicates == 1);
+        REQUIRE(totals.out_of_order == 1);
+        REQUIRE(totals.too_late == 1);
+        REQUIRE(totals.outside_window == 1);
 
         // Slide the window so all values from the current window are collected in the totals
         stats.update(6);
@@ -309,7 +309,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(totals.duplicates == 1);
         REQUIRE(totals.out_of_order == 1);
         REQUIRE(totals.too_late == 1);
-        REQUIRE(totals.too_old == 1);
+        REQUIRE(totals.outside_window == 1);
 
         window = stats.get_window_counts();
         REQUIRE(window == rav::rtp_packet_stats::counters {});
@@ -329,7 +329,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 3);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
     }
 
     SECTION("Extreme out-of-order packets") {
@@ -356,7 +356,7 @@ TEST_CASE("rtp_packet_stats") {
         REQUIRE(counts.duplicates == 0);
         REQUIRE(counts.out_of_order == 0);
         REQUIRE(counts.too_late == 0);
-        REQUIRE(counts.too_old == 0);
+        REQUIRE(counts.outside_window == 0);
     }
 
     SECTION("Reset with new window size") {
@@ -403,9 +403,8 @@ TEST_CASE("rtp_packet_stats") {
         stats.update(0);
         stats.update(0xffff / 2 - 1);
         REQUIRE(stats.count() == 0xf0);
-        auto window = stats.get_window_counts();
         auto totals = stats.get_total_counts();
-        REQUIRE(window.dropped + totals.dropped == 0x7ffd);
+        REQUIRE(totals.dropped == 0x7ffd);
     }
 
     SECTION("Test specific bug where the amount duplicates drops would suddenly jump to weird numbers") {
@@ -442,5 +441,16 @@ TEST_CASE("rtp_packet_stats") {
         const auto window = stats.get_window_counts();
         const auto totals = stats.get_total_counts();
         REQUIRE(totals.dropped + window.dropped == dropped);
+    }
+
+    SECTION("Add counters") {
+        rav::rtp_packet_stats::counters a {1, 2, 3, 4, 5};
+        rav::rtp_packet_stats::counters b {1, 2, 3, 4, 5};
+        auto c = a + b;
+        REQUIRE(c.out_of_order == 2);
+        REQUIRE(c.duplicates == 4);
+        REQUIRE(c.dropped == 6);
+        REQUIRE(c.too_late == 8);
+        REQUIRE(c.outside_window == 10);
     }
 }

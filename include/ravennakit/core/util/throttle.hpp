@@ -37,9 +37,10 @@ class throttle {
     }
 
     /**
-     * Updates the value and if the interval has passed since the last update returns the new value.
+     * Updates the value and if the interval has passed since the last update returns the new value. If the value is
+     * equal to the current value, nothing will happen and the function will return an empty optional.
      * @param value The new value.
-     * @return The value if the interval was passed, otherwise an empty optional.
+     * @return The value if changed and the interval was passed, otherwise an empty optional.
      */
     std::optional<T> update(T value) {
         value_ = value;
