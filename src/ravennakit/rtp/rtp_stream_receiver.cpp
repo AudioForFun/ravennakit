@@ -311,7 +311,7 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_stream(
     if (!stream.first_packet_timestamp.has_value()) {
         stream.seq = event.packet.sequence_number();
         stream.first_packet_timestamp = event.packet.timestamp();
-        stream.last_packet_time_ns = event.recv_time;
+        stream.packet_interval.last_time = event.recv_time;
     }
 
     const auto payload = event.packet.payload_data();
@@ -325,13 +325,13 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_stream(
         return;
     }
 
-    if (const auto interval = stream.last_packet_time_ns.update(event.recv_time)) {
+    if (const auto interval = stream.packet_interval.last_time.update(event.recv_time)) {
         TRACY_PLOT("packet interval (ms)", static_cast<double>(*interval) / 1'000'000.0);
-        stream.packet_interval_stats.add(static_cast<double>(*interval) / 1'000'000.0);
+        stream.packet_interval.stats.add(static_cast<double>(*interval) / 1'000'000.0);
     }
 
-    if (stream.packet_interval_throttle.update()) {
-        RAV_TRACE("Packet interval stats: {}", stream.packet_interval_stats.to_string());
+    if (stream.packet_interval.throttle.update()) {
+        RAV_TRACE("Packet interval stats: {}", stream.packet_interval.stats.to_string());
     }
 
     if (consumer_active_) {

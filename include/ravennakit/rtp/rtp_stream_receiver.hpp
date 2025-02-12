@@ -122,9 +122,12 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         std::optional<wrapping_uint32> first_packet_timestamp;
         rtp_packet_stats packet_stats;
         throttle<rtp_packet_stats::counters> packet_stats_throttle {std::chrono::seconds(5)};
-        wrapping_uint64 last_packet_time_ns;
-        sliding_stats packet_interval_stats {1000};
-        throttle<void> packet_interval_throttle {std::chrono::seconds(10)};
+
+        struct {
+            wrapping_uint64 last_time;
+            sliding_stats stats {1000};
+            throttle<void> throttle {std::chrono::seconds(10)};
+        } packet_interval;
     };
 
     static constexpr uint32_t k_delay_multiplier = 2;        // The buffer size is at least twice the delay.
