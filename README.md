@@ -113,11 +113,11 @@ Note: change the triplet to match your cpu architecture.
 
 ## CMake options
 
-| CMake option                    | Description                                          |
-|---------------------------------|------------------------------------------------------|
-| -DWITH_ADDRESS_SANITIZER=ON/OFF | When enabled, the address sanitizer will be engaged. |
-| -DWITH_THREAD_SANITIZER=ON/OFF  | When enabled, the thread sanitizer will be engaged.  |
-| -DBUILD_EXAMPLES=ON/OFF         | When ON (default), examples will be build            |
+| CMake option                        | Description                                          |
+|-------------------------------------|------------------------------------------------------|
+| -DRAV_WITH_ADDRESS_SANITIZER=ON/OFF | When enabled, the address sanitizer will be engaged. |
+| -DRAV_WITH_THREAD_SANITIZER=ON/OFF  | When enabled, the thread sanitizer will be engaged.  |
+| -DBUILD_EXAMPLES=ON/OFF             | When ON (default), examples will be build            |
 
 ## Build and CMake options
 

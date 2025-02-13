@@ -13,14 +13,15 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/helper_targets.cmake)
 option(RAV_ENABLE_SPDLOG "Enable spdlog for logging" OFF)
 option(RAV_ABORT_ON_ASSERT "Abort the program when an assertion is hit" OFF)
 option(RAV_TRACY_ENABLE "Enable Tracy as profiler" OFF)
-option(WITH_ADDRESS_SANITIZER "Enable Address Sanitizer" OFF)
-option(WITH_THREAD_SANITIZER "Enable Thread Sanitizer" OFF)
-option(BUILD_EXAMPLES "Build the examples" ON)
+option(RAV_WITH_ADDRESS_SANITIZER "Enable Address Sanitizer" OFF)
+option(RAV_WITH_THREAD_SANITIZER "Enable Thread Sanitizer" OFF)
+option(RAV_EXAMPLES "Build the examples" ON)
+option(RAV_TESTS "Build the tests" ON)
 
 set(RAV_TRACY_PATH "C:/tracy-0.11.1" CACHE STRING "Path to Tracy")
 
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-    set(BUILD_EXAMPLES OFF)
+    set(RAV_EXAMPLES OFF)
 endif ()
 
 ##########################
@@ -40,13 +41,13 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE INTERNAL "")
 endif ()
 
-if (WITH_ADDRESS_SANITIZER)
+if (RAV_WITH_ADDRESS_SANITIZER)
     message("-- -DWITH_ADDRESS_SANITIZER=ON argument was specified: Enabling Clang's Address Sanitizer")
     add_compile_options(-fsanitize=address,undefined -g)
     link_libraries(-fsanitize=address,undefined)
 endif ()
 
-if (WITH_THREAD_SANITIZER)
+if (RAV_WITH_THREAD_SANITIZER)
     message("-- -DWITH_THREAD_SANITIZER=ON argument was specified: Enabling Clang's Thread Sanitizer")
     add_compile_options(-fsanitize=thread -g)
     link_libraries(-fsanitize=thread)
@@ -176,7 +177,7 @@ endif ()
 # Examples #
 ############
 
-if (${BUILD_EXAMPLES})
+if (${RAV_EXAMPLES})
     file(GLOB_RECURSE RAVENNAKIT_EXAMPLES "examples/*.cpp")
 
     # Build example targets based on the .cpp files in the examples subfolder
@@ -202,15 +203,17 @@ endif ()
 # Unit Tests #
 ##############
 
-file(GLOB_RECURSE TEST_SOURCE_FILES test/*.test.cpp)
+if (${RAV_TESTS})
+    file(GLOB_RECURSE TEST_SOURCE_FILES test/*.test.cpp)
 
-add_executable(ravennakit_tests ${TEST_SOURCE_FILES})
+    add_executable(ravennakit_tests ${TEST_SOURCE_FILES})
 
-target_link_libraries(ravennakit_tests
-        PUBLIC
-        rav_recommended_warning_flags
-        rav_recommended_lto_flags
-        ravennakit
-        PRIVATE
-        Catch2::Catch2
-)
+    target_link_libraries(ravennakit_tests
+            PUBLIC
+            rav_recommended_warning_flags
+            rav_recommended_lto_flags
+            ravennakit
+            PRIVATE
+            Catch2::Catch2
+    )
+endif ()
