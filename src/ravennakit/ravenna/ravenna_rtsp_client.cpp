@@ -41,9 +41,11 @@ void rav::ravenna_rtsp_client::subscriber::subscribe_to_ravenna_rtsp_client(
     new_session.session_name = session_name;
     new_session.subscribers.push_back(node_);
 
-    // Get things going if a service is already available
-    if (auto* service = client.browser_.find_service(session_name)) {
-        client.update_session_with_service(new_session, *service);
+    // Get things going if a session is already available
+    if (auto* service = client.browser_.find_session(session_name)) {
+        if (service->resolved()) {
+            client.update_session_with_service(new_session, *service);
+        }
     }
 }
 
@@ -55,24 +57,27 @@ void rav::ravenna_rtsp_client::subscriber::unsubscribe_from_ravenna_rtsp_client(
     node_.reset_value();
 }
 
-rav::ravenna_rtsp_client::ravenna_rtsp_client(asio::io_context& io_context, dnssd::dnssd_browser& browser) :
+rav::ravenna_rtsp_client::ravenna_rtsp_client(asio::io_context& io_context, ravenna_browser& browser) :
     io_context_(io_context), browser_(browser) {
-    browser_subscriber_->on<dnssd::dnssd_browser::service_resolved>([this](const auto& event) {
-        RAV_TRACE("RAVENNA Stream resolved: {}", event.description.name);
-        for (auto& session : sessions_) {
-            if (event.description.name == session.session_name) {
-                update_session_with_service(session, event.description);
-            }
-        }
-    });
-    browser.subscribe(browser_subscriber_);
+    browser_.subscribe(this);
 }
 
 rav::ravenna_rtsp_client::~ravenna_rtsp_client() {
+    browser_.unsubscribe(this);
+
     for (auto& session : sessions_) {
         session.subscribers.foreach ([](auto& node) {
             node.reset();
         });
+    }
+}
+
+void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) {
+    RAV_TRACE("RAVENNA Stream resolved: {}", event.description.name);
+    for (auto& session : sessions_) {
+        if (event.description.name == session.session_name) {
+            update_session_with_service(session, event.description);
+        }
     }
 }
 

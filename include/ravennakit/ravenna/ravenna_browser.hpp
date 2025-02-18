@@ -74,6 +74,20 @@ class ravenna_browser {
      */
     void unsubscribe(subscriber* subscriber);
 
+    /**
+     * Finds a node by its name.
+     * @param session_name The name of the node to find.
+     * @return The service description of the node, or nullptr if not found.
+     */
+    [[nodiscard]] const dnssd::service_description* find_session(const std::string& session_name) const;
+
+    /**
+     * Finds a node by its name.
+     * @param node_name The name of the node to find.
+     * @return The service description of the node, or nullptr if not found.
+     */
+    [[nodiscard]] const dnssd::service_description* find_node(const std::string& node_name) const;
+
   private:
     std::unique_ptr<dnssd::dnssd_browser> node_browser_;
     dnssd::dnssd_browser::subscriber node_browser_subscriber_;

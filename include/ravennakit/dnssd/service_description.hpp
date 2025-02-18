@@ -40,6 +40,12 @@ struct service_description
     /// The resolved addresses of this service.
     std::map<uint32_t, std::set<std::string>> interfaces; // interfaceIndex, addresses
 
+    /**
+     * Returns whether this service has been resolved.
+     * @return True if the service has been resolved, false otherwise.
+     */
+    [[nodiscard]] bool resolved() const;
+
     /// Returns a description of this struct, which might be handy for debugging or logging purposes.
     [[nodiscard]] std::string to_string() const noexcept;
 };

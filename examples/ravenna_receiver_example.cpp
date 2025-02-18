@@ -172,15 +172,8 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
         const std::string& stream_name, std::string audio_device_name, const std::string& interface_address
     ) :
         audio_device_name_(std::move(audio_device_name)) {
-        node_browser_ = rav::dnssd::dnssd_browser::create(io_context_);
 
-        if (node_browser_ == nullptr) {
-            RAV_THROW_EXCEPTION("No dnssd browser available");
-        }
-
-        node_browser_->browse_for("_rtsp._tcp,_ravenna_session");
-
-        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, *node_browser_);
+        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, browser_);
 
         rav::rtp_receiver::configuration config;
         config.interface_address = asio::ip::make_address(interface_address);
@@ -229,7 +222,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
 
   private:
     asio::io_context io_context_;
-    std::unique_ptr<rav::dnssd::dnssd_browser> node_browser_;
+    rav::ravenna_browser browser_{io_context_};
     std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
     std::unique_ptr<rav::rtp_receiver> rtp_receiver_;
     std::unique_ptr<rav::ravenna_receiver> ravenna_receiver_;

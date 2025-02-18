@@ -12,6 +12,10 @@
 
 #include <sstream>
 
+bool rav::dnssd::service_description::resolved() const {
+    return host_target.empty() == false && port != 0;
+}
+
 std::string rav::dnssd::service_description::to_string() const noexcept {
     std::string txtRecordDescription;
 

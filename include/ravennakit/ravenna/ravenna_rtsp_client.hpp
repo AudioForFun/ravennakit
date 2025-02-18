@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "ravenna_browser.hpp"
 #include "ravennakit/core/events.hpp"
 #include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
@@ -21,7 +22,7 @@ namespace rav {
 /**
  * Maintains connections to one or more RAVENNA RTSP servers, upon request.
  */
-class ravenna_rtsp_client {
+class ravenna_rtsp_client: public ravenna_browser::subscriber {
   public:
     struct announced_event {
         const std::string& session_name;
@@ -62,8 +63,10 @@ class ravenna_rtsp_client {
         linked_node<std::pair<subscriber*, ravenna_rtsp_client*>> node_;
     };
 
-    explicit ravenna_rtsp_client(asio::io_context& io_context, dnssd::dnssd_browser& browser);
-    ~ravenna_rtsp_client();
+    explicit ravenna_rtsp_client(asio::io_context& io_context, ravenna_browser& browser);
+    ~ravenna_rtsp_client() override;
+
+    void ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) override;
 
   private:
     struct session_context {
@@ -81,7 +84,7 @@ class ravenna_rtsp_client {
     };
 
     asio::io_context& io_context_;
-    dnssd::dnssd_browser& browser_;
+    ravenna_browser& browser_;
     dnssd::dnssd_browser::subscriber browser_subscriber_;
     std::vector<session_context> sessions_;
     std::vector<connection_context> connections_;

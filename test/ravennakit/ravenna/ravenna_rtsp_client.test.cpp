@@ -15,7 +15,6 @@
 
 TEST_CASE("ravenna_rtsp_client | Subscribe, discover and announce") {
     asio::io_context io_context;
-    rav::dnssd::mock_browser browser(io_context);
-    rav::ravenna_rtsp_client client(io_context, browser);
-
+    rav::ravenna_browser ravenna_browser(io_context);
+    rav::ravenna_rtsp_client client(io_context, ravenna_browser);
 }

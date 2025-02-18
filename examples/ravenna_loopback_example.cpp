@@ -29,13 +29,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
   public:
     explicit loopback_example(std::string stream_name, const asio::ip::address_v4& interface_addr) :
         stream_name_(std::move(stream_name)) {
-        browser_ = rav::dnssd::dnssd_browser::create(io_context_);
-        if (browser_ == nullptr) {
-            RAV_THROW_EXCEPTION("No dnssd browser available");
-        }
-        browser_->browse_for("_rtsp._tcp,_ravenna_session");
-
-        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, *browser_);
+        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, browser_);
         auto config = rav::rtp_receiver::configuration {interface_addr};
         rtp_receiver_ = std::make_unique<rav::rtp_receiver>(io_context_, config);
 
@@ -108,7 +102,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
     bool ptp_clock_stable_ = false;
 
     // Receiver components
-    std::unique_ptr<rav::dnssd::dnssd_browser> browser_;
+    rav::ravenna_browser browser_{io_context_};
     std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
     std::unique_ptr<rav::rtp_receiver> rtp_receiver_;
     std::unique_ptr<rav::ravenna_receiver> ravenna_receiver_;

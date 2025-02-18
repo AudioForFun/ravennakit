@@ -87,3 +87,15 @@ void rav::ravenna_browser::unsubscribe(subscriber* subscriber) {
         RAV_WARNING("Subscriber not found");
     }
 }
+
+const rav::dnssd::service_description* rav::ravenna_browser::find_session(const std::string& session_name) const {
+    RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
+    RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
+    return session_browser_->find_service(session_name);
+}
+
+const rav::dnssd::service_description* rav::ravenna_browser::find_node(const std::string& node_name) const {
+    RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
+    RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
+    return node_browser_->find_service(node_name);
+}

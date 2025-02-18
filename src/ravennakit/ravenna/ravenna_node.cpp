@@ -28,25 +28,27 @@ void rav::ravenna_node::create_receiver(const std::string& ravenna_session_name)
 }
 
 void rav::ravenna_node::subscribe_to_browser(ravenna_browser::subscriber* subscriber) {
+    dispatch_wait([this, subscriber] {
+        browser_.subscribe(subscriber);
+    });
+}
+
+void rav::ravenna_node::unsubscribe_from_browser(ravenna_browser::subscriber* subscriber) {
+    dispatch_wait([this, subscriber] {
+        browser_.unsubscribe(subscriber);
+    });
+}
+
+void rav::ravenna_node::dispatch_wait(std::function<void()>&& work) {
+    RAV_ASSERT(work, "Invalid work");
+
     std::promise<void> promise;
     const auto future = promise.get_future();
 
-    asio::dispatch(io_context_, [this, subscriber, p = std::move(promise)]() mutable {
-        browser_.subscribe(subscriber);
+    asio::dispatch(io_context_, [p = std::move(promise), f = std::move(work)]() mutable {
+        f();
         p.set_value();
     });
 
     future.wait();
-}
-
-void rav::ravenna_node::unsubscribe_from_browser(ravenna_browser::subscriber* subscriber) {
-    std::promise<void> promise;
-    auto future = promise.get_future();
-
-    asio::dispatch(io_context_, [this, subscriber, p = std::move(promise)]() mutable {
-        browser_.unsubscribe(subscriber);
-        p.set_value();
-    });
-
-    return future.get();
 }

@@ -50,6 +50,8 @@ class ravenna_node {
     ravenna_browser browser_ {io_context_};
 
     std::vector<ravenna_receiver> receivers_;
+
+    void dispatch_wait(std::function<void()>&& work);
 };
 
 }  // namespace rav
