@@ -10,9 +10,9 @@
 
 #pragma once
 
+#include "ravenna_browser.hpp"
 #include "ravenna_rtsp_client.hpp"
 #include "ravenna_receiver.hpp"
-#include "ravennakit/core/events/event_emitter.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 
 #include <string>
@@ -20,43 +20,36 @@
 namespace rav {
 
 /**
- * Represents a RAVENNA node as specified in the RAVENNA operating principles document.
+ * This class contains all the components to act like a RAVENNA node as specified in the RAVENNA protocol.
  */
 class ravenna_node {
   public:
-    class subscriber {
-      public:
-        virtual ~subscriber() = default;
-
-        virtual void ravenna_node_discovered([[maybe_unused]] const dnssd::dnssd_browser::service_resolved& event) {}
-
-        virtual void ravenna_node_removed([[maybe_unused]] const dnssd::dnssd_browser::service_removed& event) {}
-
-        virtual void ravenna_session_discovered([[maybe_unused]] const dnssd::dnssd_browser::service_resolved& event) {}
-
-        virtual void ravenna_session_removed([[maybe_unused]] const dnssd::dnssd_browser::service_removed& event) {}
-    };
-
     ravenna_node();
     ~ravenna_node();
 
     void create_receiver(const std::string& ravenna_session_name);
 
-    bool subscribe(subscriber* s);
-    bool unsubscribe(subscriber* s);
+    /**
+     * Adds a subscriber to the browser.
+     * This method can be called from any thread, and will wait until the operation is complete.
+     * @param subscriber The subscriber to add.
+     */
+    void subscribe_to_browser(ravenna_browser::subscriber* subscriber);
+
+    /**
+     * Removes a subscriber from the browser.
+     * This method can be called from any thread, and will wait until the operation is complete.
+     * @param subscriber The subscriber to remove.
+     */
+    void unsubscribe_from_browser(ravenna_browser::subscriber* subscriber);
 
   private:
     asio::io_context io_context_;
     std::thread maintenance_thread_;
 
-    std::unique_ptr<dnssd::dnssd_browser> node_browser_;
-    dnssd::dnssd_browser::subscriber node_browser_subscriber_;
-
-    std::unique_ptr<dnssd::dnssd_browser> session_browser_;
-    dnssd::dnssd_browser::subscriber session_browser_subscriber_;
+    ravenna_browser browser_ {io_context_};
 
     std::vector<ravenna_receiver> receivers_;
-    subscriber_list<subscriber> subscribers_;
 };
 
 }  // namespace rav

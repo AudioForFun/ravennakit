@@ -39,8 +39,9 @@ class events {
      * @param f A valid handler to be registered.
      */
     template<class Type>
-    void on(handler<Type> f) {
+    auto& on(handler<Type> f) {
         get<Type>() = std::move(f);
+        return *this;
     }
 
     /**
