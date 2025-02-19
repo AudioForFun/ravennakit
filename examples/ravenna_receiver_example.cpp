@@ -166,7 +166,7 @@ class portaudio_stream {
     }
 };
 
-class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
+class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav::rtp_stream_receiver::data_callback {
   public:
     explicit ravenna_receiver_example(
         const std::string& stream_name, std::string audio_device_name, const std::string& interface_address
@@ -181,6 +181,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
 
         ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);
+        ravenna_receiver_->add_data_callback(this);
         ravenna_receiver_->add_subscriber(this);
         ravenna_receiver_->set_session_name(stream_name);
     }
@@ -188,6 +189,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
     ~ravenna_receiver_example() override {
         if (ravenna_receiver_) {
             ravenna_receiver_->remove_subscriber(this);
+            ravenna_receiver_->remove_data_callback(this);
         }
     }
 

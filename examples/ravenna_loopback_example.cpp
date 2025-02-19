@@ -25,7 +25,7 @@
 
 #include <CLI/App.hpp>
 
-class loopback_example: public rav::rtp_stream_receiver::subscriber {
+class loopback_example: public rav::rtp_stream_receiver::subscriber, public rav::rtp_stream_receiver::data_callback {
   public:
     explicit loopback_example(std::string stream_name, const asio::ip::address_v4& interface_addr) :
         stream_name_(std::move(stream_name)) {
@@ -35,6 +35,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
 
         ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);  // 10ms @ 48kHz
+        ravenna_receiver_->add_data_callback(this);
         ravenna_receiver_->add_subscriber(this);
         ravenna_receiver_->set_session_name(stream_name_);
 
@@ -75,6 +76,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber {
 
     ~loopback_example() override {
         ravenna_receiver_->remove_subscriber(this);
+        ravenna_receiver_->remove_data_callback(this);
     }
 
     void on_audio_format_changed(const rav::audio_format& new_format, const uint32_t packet_time_frames) override {

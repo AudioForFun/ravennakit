@@ -35,6 +35,19 @@ bool is_connection_info_valid(const rav::sdp::connection_info_field& conn) {
 
 }  // namespace
 
+bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber_to_add) {
+    if (subscriber_to_add == nullptr) {
+        RAV_ERROR("Subscriber is nullptr");
+        return false;
+    }
+    // TODO: Call back with current state
+    return subscribers_.add(subscriber_to_add);
+}
+
+bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber_to_remove) {
+    return subscribers_.remove(subscriber_to_remove);
+}
+
 rav::rtp_stream_receiver::rtp_stream_receiver(rtp_receiver& receiver) : rtp_receiver_(receiver) {}
 
 rav::rtp_stream_receiver::~rtp_stream_receiver() {
@@ -207,16 +220,12 @@ uint32_t rav::rtp_stream_receiver::get_delay() const {
     return delay_;
 }
 
-bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber_to_add) {
-    // TODO: call subscriber with current state
-    if (!subscribers_.add(subscriber_to_add)) {
-        return false;
-    }
-    return true;
+bool rav::rtp_stream_receiver::add_data_callback(data_callback* callback) {
+    return data_callbacks_.add(callback);
 }
 
-bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber_to_remove) {
-    return subscribers_.remove(subscriber_to_remove);
+bool rav::rtp_stream_receiver::remove_data_callback(data_callback* callback) {
+    return data_callbacks_.remove(callback);
 }
 
 bool rav::rtp_stream_receiver::read_data(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size) {
@@ -394,16 +403,16 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_stream(
     if (const auto diff = stream.seq.update(event.packet.sequence_number())) {
         if (diff >= 1) {
             // Only call back with monotonically increasing sequence numbers
-            for (const auto& s : subscribers_) {
-                s->on_data_received(packet_timestamp);
+            for (const auto& c : data_callbacks_) {
+                c->on_data_received(packet_timestamp);
             }
         }
 
         if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
             // Make sure to call with the correct timestamps for the missing packets
             for (uint16_t i = 0; i < *diff; ++i) {
-                for (const auto& s : subscribers_) {
-                    s->on_data_ready(packet_timestamp - delay_ - (*diff - 1u - i) * stream.packet_time_frames);
+                for (const auto& c : data_callbacks_) {
+                    c->on_data_ready(packet_timestamp - delay_ - (*diff - 1u - i) * stream.packet_time_frames);
                 }
             }
         }

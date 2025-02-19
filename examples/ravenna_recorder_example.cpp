@@ -30,10 +30,11 @@
 /**
  * A class that is a subscriber to a rtp_stream_receiver and writes the audio data to a wav file.
  */
-class stream_recorder: public rav::rtp_stream_receiver::subscriber {
+class stream_recorder: public rav::rtp_stream_receiver::subscriber, public rav::rtp_stream_receiver::data_callback {
   public:
     explicit stream_recorder(std::unique_ptr<rav::ravenna_receiver> sink) : receiver_(std::move(sink)) {
         if (receiver_) {
+            receiver_->add_data_callback(this);
             receiver_->add_subscriber(this);
         }
     }
@@ -41,6 +42,7 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
     ~stream_recorder() override {
         if (receiver_) {
             receiver_->remove_subscriber(this);
+            receiver_->remove_data_callback(this);
             receiver_->stop();
         }
         close();

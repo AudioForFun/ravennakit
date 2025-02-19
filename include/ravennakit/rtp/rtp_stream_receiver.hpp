@@ -27,8 +27,11 @@ namespace rav {
  */
 class rtp_stream_receiver: public rtp_receiver::subscriber {
   public:
+    /**
+     * Baseclass for other classes which want to receive changes to the stream.
+     */
     class subscriber {
-      public:
+    public:
         virtual ~subscriber() = default;
 
         /**
@@ -39,11 +42,20 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         virtual void on_audio_format_changed(
             [[maybe_unused]] const audio_format& new_format, [[maybe_unused]] uint32_t packet_time_frames
         ) {}
+    };
+
+    /**
+     * Baseclass for other classes which want to receive data from the stream receiver.
+     * Callbacks are called from the network receive thread, which might need to be synchronized.
+     */
+    class data_callback {
+      public:
+        virtual ~data_callback() = default;
 
         /**
-         * Called when new data is available.
+         * Called when new data has been received.
          *
-         * The timestamp will monotonically increase, but might have gaps because out-of-order and dropped packets will
+         * The timestamp will monotonically increase, and might have gaps because out-of-order and dropped packets will
          * not trigger a callback.
          *
          * Note: this is called from the network receive thread. You might have to synchronize access to shared data.
@@ -117,6 +129,20 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     bool remove_subscriber(subscriber* subscriber_to_remove);
 
     /**
+     * Adds a callback to the receiver.
+     * @param callback The callback to add.
+     * @return true if the callback was added, or false if it was already added.
+     */
+    bool add_data_callback(data_callback* callback);
+
+    /**
+     * Removes a data callback from the receiver.
+     * @param callback The callback to remove.
+     * @return true if the callback was removed, or false if it wasn't found.
+     */
+    bool remove_data_callback(data_callback* callback);
+
+    /**
      * Reads data from the buffer at the given timestamp.
      * @param at_timestamp The timestamp to read from.
      * @param buffer The destination to write the data to.
@@ -171,6 +197,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     std::vector<stream_state> streams_;
     uint32_t delay_ = 480;  // 100ms at 48KHz
     subscriber_list<subscriber> subscribers_;
+    subscriber_list<data_callback> data_callbacks_;
 
     /// When active data is being consumed. When the FIFO is full, this will be set to false.
     std::atomic_bool consumer_active_ = true;
