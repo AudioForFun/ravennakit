@@ -15,6 +15,7 @@
 #include "detail/rtp_receive_buffer.hpp"
 #include "detail/rtp_receiver.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
+#include "ravennakit/core/util/id.hpp"
 #include "ravennakit/core/util/throttle.hpp"
 #include "ravennakit/core/util/wrapping_uint.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
@@ -30,6 +31,11 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
       public:
         virtual ~subscriber() = default;
 
+        /**
+         * Called when the audio format changed, in response to receiving an updated SDP.
+         * @param new_format The new audio format.
+         * @param packet_time_frames The number of frames per packet.
+         */
         virtual void on_audio_format_changed(
             [[maybe_unused]] const audio_format& new_format, [[maybe_unused]] uint32_t packet_time_frames
         ) {}
@@ -62,6 +68,11 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     explicit rtp_stream_receiver(rtp_receiver& receiver);
 
     ~rtp_stream_receiver() override;
+
+    /**
+     * @returns The unique ID of this stream receiver. The id is unique across the process.
+     */
+    [[nodiscard]] id get_id() const;
 
     /**
      * Update the stream information with given SDP. Might result in a restart of the streaming if the parameters have
@@ -127,9 +138,10 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         throttle<void> packet_interval_throttle {std::chrono::seconds(10)};
     };
 
-    static constexpr uint32_t k_delay_multiplier = 2;        // The buffer size is at least twice the delay.
+    static constexpr uint32_t k_delay_multiplier = 2;  // The buffer size is at least twice the delay.
 
     rtp_receiver& rtp_receiver_;
+    id id_ {id::next_process_wide_unique_id()};
     audio_format selected_format_;
     std::vector<stream_info> streams_;
     uint32_t delay_ = 480;  // 100ms at 48KHz

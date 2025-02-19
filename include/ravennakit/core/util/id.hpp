@@ -26,16 +26,17 @@ class id {
         generator() = default;
 
         /**
+         * This function is thread safe and can be safely called from any thread at any time.
          * @return The next unique ID
          */
         [[nodiscard]] id next() {
             RAV_ASSERT(next_id_ != 0, "Next ID is 0, which is reserved for invalid IDs");
             RAV_ASSERT(next_id_ != std::numeric_limits<uint64_t>::max(), "The next ID is at the maximum value");
-            return id(next_id_++);
+            return id(next_id_.fetch_add(1));
         }
 
       private:
-        uint64_t next_id_ {1};
+        std::atomic<uint64_t> next_id_ {1};
     };
 
     id() = default;
@@ -87,6 +88,7 @@ class id {
 
     /**
      * Returns the next id from a process-wide, global generator.
+     * This function is thread safe and can be safely called from any thread at any time.
      * @return The next id.
      */
     static id next_process_wide_unique_id() noexcept {

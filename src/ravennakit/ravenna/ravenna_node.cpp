@@ -23,32 +23,27 @@ rav::ravenna_node::~ravenna_node() {
     }
 }
 
-void rav::ravenna_node::create_receiver(const std::string& ravenna_session_name) {
-    std::ignore = ravenna_session_name;
+std::future<rav::id> rav::ravenna_node::create_receiver(const std::string& session_name) {
+    return asio::dispatch(
+        io_context_, std::packaged_task([this, session_name]() mutable {
+            const auto& it = receivers_.emplace_back(std::make_unique<ravenna_receiver>(rtsp_client_, rtp_receiver_));
+            it->set_session_name(session_name);
+            for (const auto& s : subscribers_) {
+                s->on_receiver_updated(it->get_id());
+            }
+            return it->get_id();
+        })
+    );
 }
 
-void rav::ravenna_node::subscribe_to_browser(ravenna_browser::subscriber* subscriber) {
-    dispatch_wait([this, subscriber] {
-        browser_.subscribe(subscriber);
-    });
+std::future<void> rav::ravenna_node::subscribe_to_browser(ravenna_browser::subscriber* subscriber) {
+    return asio::dispatch(io_context_, std::packaged_task([this, subscriber] {
+                              browser_.subscribe(subscriber);
+                          }));
 }
 
-void rav::ravenna_node::unsubscribe_from_browser(ravenna_browser::subscriber* subscriber) {
-    dispatch_wait([this, subscriber] {
-        browser_.unsubscribe(subscriber);
-    });
-}
-
-void rav::ravenna_node::dispatch_wait(std::function<void()>&& work) {
-    RAV_ASSERT(work, "Invalid work");
-
-    std::promise<void> promise;
-    const auto future = promise.get_future();
-
-    asio::dispatch(io_context_, [p = std::move(promise), f = std::move(work)]() mutable {
-        f();
-        p.set_value();
-    });
-
-    future.wait();
+std::future<void> rav::ravenna_node::unsubscribe_from_browser(ravenna_browser::subscriber* subscriber) {
+    return asio::dispatch(io_context_, std::packaged_task([this, subscriber] {
+                              browser_.unsubscribe(subscriber);
+                          }));
 }

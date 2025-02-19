@@ -41,6 +41,10 @@ rav::rtp_stream_receiver::~rtp_stream_receiver() {
     rtp_receiver_.unsubscribe(*this);
 }
 
+rav::id rav::rtp_stream_receiver::get_id() const {
+    return id_;
+}
+
 void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     const sdp::media_description* selected_media_description = nullptr;
     const sdp::connection_info_field* selected_connection_info = nullptr;

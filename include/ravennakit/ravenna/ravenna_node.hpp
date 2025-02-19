@@ -13,6 +13,7 @@
 #include "ravenna_browser.hpp"
 #include "ravenna_rtsp_client.hpp"
 #include "ravenna_receiver.hpp"
+#include "ravennakit/core/util/id.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 
 #include <string>
@@ -24,34 +25,54 @@ namespace rav {
  */
 class ravenna_node {
   public:
+    /**
+     * Base class for classes which want to receive updates from the ravenna node.
+     */
+    class subscriber {
+      public:
+        virtual ~subscriber() = default;
+
+        /**
+         * Calles when received with id was updated.
+         * @param receiver_id The id of the receiver.
+         */
+        virtual void on_receiver_updated([[maybe_unused]] id receiver_id) {}
+    };
+
     ravenna_node();
     ~ravenna_node();
 
-    void create_receiver(const std::string& ravenna_session_name);
+    /**
+     * Creates a new receiver for the given session.
+     * @param session_name The name of the session to create a receiver for.
+     * @return The ID of the created receiver, which might be invalid if the receiver couldn't be created.
+     */
+    [[nodiscard]] std::future<id> create_receiver(const std::string& session_name);
 
     /**
      * Adds a subscriber to the browser.
      * This method can be called from any thread, and will wait until the operation is complete.
      * @param subscriber The subscriber to add.
      */
-    void subscribe_to_browser(ravenna_browser::subscriber* subscriber);
+    [[nodiscard]] std::future<void> subscribe_to_browser(ravenna_browser::subscriber* subscriber);
 
     /**
      * Removes a subscriber from the browser.
      * This method can be called from any thread, and will wait until the operation is complete.
      * @param subscriber The subscriber to remove.
      */
-    void unsubscribe_from_browser(ravenna_browser::subscriber* subscriber);
+    [[nodiscard]] std::future<void> unsubscribe_from_browser(ravenna_browser::subscriber* subscriber);
 
   private:
     asio::io_context io_context_;
     std::thread maintenance_thread_;
 
     ravenna_browser browser_ {io_context_};
+    ravenna_rtsp_client rtsp_client_ {io_context_, browser_};
+    rtp_receiver rtp_receiver_ {io_context_, rtp_receiver::configuration {}};  // TODO: Make configuration configurable.
 
-    std::vector<ravenna_receiver> receivers_;
-
-    void dispatch_wait(std::function<void()>&& work);
+    std::vector<std::unique_ptr<ravenna_receiver>> receivers_;
+    subscriber_list<subscriber> subscribers_;
 };
 
 }  // namespace rav
