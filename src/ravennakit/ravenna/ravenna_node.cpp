@@ -64,8 +64,8 @@ rav::ravenna_node::add_receiver_subscriber(id stream_id, rtp_stream_receiver::su
                                       }
                                       return;
                                   }
-                                  RAV_WARNING("Stream not found");
                               }
+                              RAV_WARNING("Stream not found");
                           }));
 }
 
@@ -79,8 +79,8 @@ rav::ravenna_node::remove_stream_subscriber(id stream_id, rtp_stream_receiver::s
                                       }
                                       return;
                                   }
-                                  RAV_WARNING("Stream not found");
                               }
+                              RAV_WARNING("Stream not found");
                           }));
 }
 
