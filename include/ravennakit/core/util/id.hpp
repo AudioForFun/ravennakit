@@ -9,9 +9,11 @@
  */
 
 #pragma once
+
 #include "ravennakit/core/assert.hpp"
 
 #include <cstdint>
+#include <atomic>
 
 namespace rav {
 
