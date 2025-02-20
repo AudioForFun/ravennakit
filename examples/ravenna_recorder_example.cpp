@@ -60,21 +60,22 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber, public rav::
         }
     }
 
-    void audio_format_changed(const rav::audio_format& new_format, const uint32_t packet_time_frames) override {
+    void stream_changed(const rav::rtp_stream_receiver::stream_changed_event& event) override {
         close();
+
         if (receiver_ == nullptr) {
-            RAV_ERROR("No sink available");
+            RAV_ERROR("No receiver available");
             return;
         }
 
-        audio_format_ = new_format;
+        audio_format_ = event.audio_format;
         file_output_stream_ =
             std::make_unique<rav::file_output_stream>(rav::file(receiver_->get_session_name() + ".wav"));
         wav_writer_ = std::make_unique<rav::wav_audio_format::writer>(
-            *file_output_stream_, rav::wav_audio_format::format_code::pcm, new_format.sample_rate,
-            new_format.num_channels, new_format.bytes_per_sample() * 8
+            *file_output_stream_, rav::wav_audio_format::format_code::pcm, audio_format_.sample_rate,
+            audio_format_.num_channels, audio_format_.bytes_per_sample() * 8
         );
-        audio_data_.resize(packet_time_frames * new_format.bytes_per_frame());
+        audio_data_.resize(event.packet_time_frames * audio_format_.bytes_per_frame());
     }
 
     void on_data_ready(const rav::wrapping_uint32 timestamp) override {
@@ -128,7 +129,7 @@ class ravenna_recorder_example {
 
   private:
     asio::io_context io_context_;
-    rav::ravenna_browser browser_{io_context_};
+    rav::ravenna_browser browser_ {io_context_};
     std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
     std::unique_ptr<rav::rtp_receiver> rtp_receiver_;
     std::vector<std::unique_ptr<stream_recorder>> recorders_;

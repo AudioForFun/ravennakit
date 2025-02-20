@@ -40,7 +40,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         id stream_id;
         rtp_session session;
         rtp_filter filter;
-        audio_format selected_format;
+        audio_format audio_format;
         uint16_t packet_time_frames = 0;
         uint32_t delay = 0;
         receiver_state state = receiver_state::idle;
@@ -63,15 +63,6 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
          * @param event The event.
          */
         virtual void stream_changed([[maybe_unused]] const stream_changed_event& event) {}
-
-        /**
-         * Called when the audio format changed, in response to receiving an updated SDP.
-         * @param new_format The new audio format.
-         * @param packet_time_frames The number of frames per packet.
-         */
-        virtual void audio_format_changed(
-            [[maybe_unused]] const audio_format& new_format, [[maybe_unused]] uint32_t packet_time_frames
-        ) {}
 
         /**
          * Called when the RTP session has changed.

@@ -44,7 +44,6 @@ bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber_to_add) {
         subscriber_to_add->state_changed(state_);
         subscriber_to_add->stream_changed(make_changed_event());
         for (auto& stream : media_streams_) {
-            subscriber_to_add->audio_format_changed(stream.selected_format, stream.packet_time_frames);
             subscriber_to_add->rtp_session_changed(stream.session, stream.filter);
         }
         return true;
@@ -222,9 +221,6 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
             "Audio format changed from {} to {}", stream->selected_format.to_string(),
             selected_audio_format->to_string()
         );
-        for (const auto& s : subscribers_) {
-            s->audio_format_changed(*selected_audio_format, stream->packet_time_frames);
-        }
         stream->selected_format = *selected_audio_format;
     }
 
@@ -510,7 +506,7 @@ rav::rtp_stream_receiver::stream_changed_event rav::rtp_stream_receiver::make_ch
     auto& stream = media_streams_.front();
     event.session = stream.session;
     event.filter = stream.filter;
-    event.selected_format = stream.selected_format;
+    event.audio_format = stream.selected_format;
     event.packet_time_frames = stream.packet_time_frames;
     return event;
 }

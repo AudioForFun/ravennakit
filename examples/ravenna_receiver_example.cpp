@@ -172,7 +172,6 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
         const std::string& stream_name, std::string audio_device_name, const std::string& interface_address
     ) :
         audio_device_name_(std::move(audio_device_name)) {
-
         rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, browser_);
 
         rav::rtp_receiver::configuration config;
@@ -202,17 +201,15 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
         portaudio_stream_.stop();
     }
 
-    void audio_format_changed(
-        const rav::audio_format& new_format, [[maybe_unused]] uint32_t packet_time_frames
-    ) override {
-        audio_format_ = new_format;
-        const auto sample_format = get_sample_format_for_audio_format(new_format);
+    void stream_changed(const rav::rtp_stream_receiver::stream_changed_event& event) override {
+        audio_format_ = event.audio_format;
+        const auto sample_format = get_sample_format_for_audio_format(audio_format_);
         if (!sample_format.has_value()) {
-            RAV_ERROR("Unsupported audio format: {}", new_format.to_string());
+            RAV_ERROR("Unsupported audio format: {}", audio_format_.to_string());
             return;
         }
         portaudio_stream_.open_output_stream(
-            audio_device_name_, new_format.sample_rate, static_cast<int>(new_format.num_channels), *sample_format,
+            audio_device_name_, audio_format_.sample_rate, static_cast<int>(audio_format_.num_channels), *sample_format,
             &ravenna_receiver_example::stream_callback, this
         );
         most_recent_ready_timestamp_ = std::nullopt;
@@ -224,7 +221,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
 
   private:
     asio::io_context io_context_;
-    rav::ravenna_browser browser_{io_context_};
+    rav::ravenna_browser browser_ {io_context_};
     std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
     std::unique_ptr<rav::rtp_receiver> rtp_receiver_;
     std::unique_ptr<rav::ravenna_receiver> ravenna_receiver_;
