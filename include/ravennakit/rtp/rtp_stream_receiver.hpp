@@ -37,12 +37,12 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     };
 
     struct stream_changed_event {
-        id stream_id;
+        id receiver_id;
         rtp_session session;
         rtp_filter filter;
         audio_format selected_audio_format;
         uint16_t packet_time_frames = 0;
-        uint32_t delay = 0;
+        uint32_t delay_samples = 0;
         receiver_state state = receiver_state::idle;
     };
 

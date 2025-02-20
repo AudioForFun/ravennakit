@@ -246,7 +246,10 @@ void rav::rtp_stream_receiver::set_delay(const uint32_t delay) {
         return;
     }
     delay_ = delay;
-    restart();
+    const auto event = make_changed_event();
+    for (auto* s : subscribers_) {
+        s->stream_changed(event);
+    }
 }
 
 uint32_t rav::rtp_stream_receiver::get_delay() const {
@@ -487,9 +490,9 @@ void rav::rtp_stream_receiver::set_state(const receiver_state new_state) {
 
 rav::rtp_stream_receiver::stream_changed_event rav::rtp_stream_receiver::make_changed_event() const {
     stream_changed_event event;
-    event.stream_id = id_;
+    event.receiver_id = id_;
     event.state = state_;
-    event.delay = delay_;
+    event.delay_samples = delay_;
 
     if (media_streams_.empty()) {
         return event;

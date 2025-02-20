@@ -28,7 +28,7 @@ class ravenna_node {
     /**
      * Base class for classes which want to receive updates from the ravenna node.
      */
-    class subscriber : public ravenna_browser::subscriber {
+    class subscriber: public ravenna_browser::subscriber {
       public:
         ~subscriber() override = default;
 
@@ -65,26 +65,34 @@ class ravenna_node {
 
     /**
      * Adds a subscriber to the receiver with the given id.
-     * @param stream_id The id of the stream to add the subscriber to.
+     * @param receiver_id The id of the stream to add the subscriber to.
      * @param subscriber The subscriber to add.
      * @return A future that will be set when the operation is complete.
      */
-    std::future<void> add_receiver_subscriber(id stream_id, rtp_stream_receiver::subscriber* subscriber);
+    std::future<void> add_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber);
 
     /**
      * Removes a subscriber from the receiver with the given id.
-     * @param stream_id The id of the stream to remove the subscriber from.
+     * @param receiver_id The id of the stream to remove the subscriber from.
      * @param subscriber The subscriber to remove.
      * @return A future that will be set when the operation is complete.
      */
-    std::future<void> remove_stream_subscriber(id stream_id, rtp_stream_receiver::subscriber* subscriber);
+    std::future<void> remove_stream_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber);
 
     /**
      * Get the packet statistics for the given stream, if the stream for the given ID exists.
-     * @param stream_id The ID of the stream to get the packet statistics for.
+     * @param receiver_id The ID of the stream to get the packet statistics for.
      * @return The packet statistics for the stream, or an empty structure if the stream doesn't exist.
      */
-    std::future<rtp_stream_receiver::stream_stats> get_stats_for_stream(id stream_id);
+    std::future<rtp_stream_receiver::stream_stats> get_stats_for_receiver(id receiver_id);
+
+    /**
+     * Calls back with the ravenna receiver for the given receiver id. If the stream is not found, the callback will not
+     * be called and the future will be set to false.
+     * @param receiver_id The id of the receiver to get the receiver for.
+     * @param update_function The function to call with the receiver.
+     */
+    std::future<bool> get_receiver(id receiver_id, std::function<void(ravenna_receiver&)> update_function);
 
   private:
     asio::io_context io_context_;
