@@ -41,11 +41,7 @@ bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber_to_add) {
         return false;
     }
     if (subscribers_.add(subscriber_to_add)) {
-        subscriber_to_add->state_changed(state_);
         subscriber_to_add->stream_changed(make_changed_event());
-        for (auto& stream : media_streams_) {
-            subscriber_to_add->rtp_session_changed(stream.session, stream.filter);
-        }
         return true;
     }
     return false;
@@ -199,22 +195,21 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     if (stream->session != session || was_created) {
         should_restart = true;
         stream->session = session;
-
-        for (const auto& s : subscribers_) {
-            s->rtp_session_changed(session, filter);
-        }
     }
 
+    // Filter
     if (stream->filter != filter) {
         was_changed = true;
         stream->filter = filter;
     }
 
+    // Packet time
     if (stream->packet_time_frames != packet_time_frames) {
         was_changed = true;
         stream->packet_time_frames = packet_time_frames;
     }
 
+    // Audio format
     if (stream->selected_format != *selected_audio_format) {
         should_restart = true;
         RAV_TRACE(
@@ -488,9 +483,6 @@ void rav::rtp_stream_receiver::set_state(const receiver_state new_state) {
         return;
     }
     state_ = new_state;
-    for (const auto& s : subscribers_) {
-        s->state_changed(state_);
-    }
 }
 
 rav::rtp_stream_receiver::stream_changed_event rav::rtp_stream_receiver::make_changed_event() const {
@@ -506,7 +498,7 @@ rav::rtp_stream_receiver::stream_changed_event rav::rtp_stream_receiver::make_ch
     auto& stream = media_streams_.front();
     event.session = stream.session;
     event.filter = stream.filter;
-    event.audio_format = stream.selected_format;
+    event.selected_audio_format = stream.selected_format;
     event.packet_time_frames = stream.packet_time_frames;
     return event;
 }

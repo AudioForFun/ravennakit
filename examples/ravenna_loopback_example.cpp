@@ -80,8 +80,8 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber, public rav:
     }
 
     void stream_changed(const rav::rtp_stream_receiver::stream_changed_event& event) override {
-        buffer_.resize(event.audio_format.bytes_per_frame() * event.packet_time_frames);
-        if (!transmitter_->set_audio_format(event.audio_format)) {
+        buffer_.resize(event.selected_audio_format.bytes_per_frame() * event.packet_time_frames);
+        if (!transmitter_->set_audio_format(event.selected_audio_format)) {
             RAV_ERROR("Format not supported by transmitter");
             return;
         }

@@ -40,7 +40,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         id stream_id;
         rtp_session session;
         rtp_filter filter;
-        audio_format audio_format;
+        audio_format selected_audio_format;
         uint16_t packet_time_frames = 0;
         uint32_t delay = 0;
         receiver_state state = receiver_state::idle;
@@ -63,21 +63,6 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
          * @param event The event.
          */
         virtual void stream_changed([[maybe_unused]] const stream_changed_event& event) {}
-
-        /**
-         * Called when the RTP session has changed.
-         * @param new_session The new session.
-         * @param filter The filter to use for the session.
-         */
-        virtual void rtp_session_changed(
-            [[maybe_unused]] const rtp_session& new_session, [[maybe_unused]] const rtp_filter& filter
-        ) {}
-
-        /**
-         * Called when the state of the stream has changed.
-         * @param new_state The new state.
-         */
-        virtual void state_changed([[maybe_unused]] receiver_state new_state) {}
     };
 
     /**

@@ -202,7 +202,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
     }
 
     void stream_changed(const rav::rtp_stream_receiver::stream_changed_event& event) override {
-        audio_format_ = event.audio_format;
+        audio_format_ = event.selected_audio_format;
         const auto sample_format = get_sample_format_for_audio_format(audio_format_);
         if (!sample_format.has_value()) {
             RAV_ERROR("Unsupported audio format: {}", audio_format_.to_string());
