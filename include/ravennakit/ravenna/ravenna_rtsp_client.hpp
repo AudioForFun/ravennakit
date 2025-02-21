@@ -68,6 +68,11 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
 
     void ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) override;
 
+    /**
+     * @return The io_context used by this client.
+     */
+    [[nodiscard]] asio::io_context& get_io_context() const;
+
   private:
     struct session_context {
         std::string session_name;

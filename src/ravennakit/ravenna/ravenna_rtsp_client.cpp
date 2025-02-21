@@ -81,6 +81,10 @@ void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::dnssd_bro
     }
 }
 
+asio::io_context& rav::ravenna_rtsp_client::get_io_context() const {
+    return io_context_;
+}
+
 rav::ravenna_rtsp_client::connection_context&
 rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_target, const uint16_t port) {
     if (const auto connection = find_connection(host_target, port)) {

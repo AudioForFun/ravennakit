@@ -61,6 +61,10 @@ void rav::rtp_receiver::unsubscribe(const subscriber& subscriber_to_remove) {
     }
 }
 
+asio::io_context& rav::rtp_receiver::get_io_context() const {
+    return io_context_;
+}
+
 rav::rtp_receiver::session_context* rav::rtp_receiver::find_session_context(const rtp_session& session) {
     for (auto& context : sessions_contexts_) {
         if (context.session == session) {

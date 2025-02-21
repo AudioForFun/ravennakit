@@ -105,6 +105,11 @@ class rtp_receiver {
      */
     void unsubscribe(const subscriber& subscriber_to_remove);
 
+    /**
+     * @return The io_context used by this receiver.
+     */
+    [[nodiscard]] asio::io_context& get_io_context() const;
+
   private:
     struct subscriber_context {
         rtp_filter filter;

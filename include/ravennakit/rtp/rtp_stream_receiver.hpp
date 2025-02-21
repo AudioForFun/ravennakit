@@ -27,15 +27,33 @@ namespace rav {
  */
 class rtp_stream_receiver: public rtp_receiver::subscriber {
   public:
+    /// The number of milliseconds after which a stream is considered inactive.
+    static constexpr uint64_t k_receive_timeout_ms = 1000;
+
     /**
      * The state of the stream.
      */
     enum class receiver_state {
+        /// The stream is idle and is expected to because no SDP has been set.
         idle,
-        running,
+        /// An SDP has been set and the stream is waiting for the first data.
+        waiting_for_data,
+        /// The stream is running, packets are being received and consumed.
+        ok,
+        /// The stream is running, packets are being received but not consumed.
+        ok_no_consumer,
+        /// The stream is inactive because no packets are being received.
         inactive,
     };
 
+    /**
+     * @return A string representation of the state.
+     */
+    [[nodiscard]] static const char* to_string(receiver_state state);
+
+    /**
+     * Event for when this receiver changed in some way, containing the updated parameters.
+     */
     struct stream_changed_event {
         id receiver_id;
         rtp_session session;
@@ -45,11 +63,6 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         uint32_t delay_samples = 0;
         receiver_state state = receiver_state::idle;
     };
-
-    /**
-     * @return A string representation of the state.
-     */
-    [[nodiscard]] static const char* to_string(receiver_state state);
 
     /**
      * Baseclass for other classes which want to receive changes to the stream.
@@ -222,6 +235,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     std::vector<media_stream> media_streams_;
     subscriber_list<subscriber> subscribers_;
     subscriber_list<data_callback> data_callbacks_;
+    asio::steady_timer maintenance_timer_;
 
     /**
      * Used for copying received packets to the realtime context.
@@ -244,8 +258,8 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         std::optional<wrapping_uint32> first_packet_timestamp;
         wrapping_uint32 next_ts;
         audio_format selected_audio_format;
-        /// When active data is being consumed. When the FIFO is full, this will be set to false.
-        std::atomic_bool consumer_active_ = true;
+        /// Whether data is being consumed. When the FIFO is full, this will be set to false.
+        std::atomic_bool consumer_active_ = false;
     } realtime_context_;
 
     /**
@@ -255,8 +269,9 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
 
     std::pair<media_stream*, bool> find_or_create_media_stream(const rtp_session& session);
     void handle_rtp_packet_event_for_session(const rtp_receiver::rtp_packet_event& event, media_stream& stream);
-    void set_state(receiver_state new_state);
+    void set_state(receiver_state new_state, bool notify_subscribers);
     stream_changed_event make_changed_event() const;
+    void do_maintenance();
 };
 
 }  // namespace rav

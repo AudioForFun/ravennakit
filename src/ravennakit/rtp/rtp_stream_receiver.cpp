@@ -12,6 +12,7 @@
 
 #include "ravennakit/aes67/aes67_packet_time.hpp"
 #include "ravennakit/core/tracy.hpp"
+#include "ravennakit/core/chrono/high_resolution_clock.hpp"
 
 namespace {
 
@@ -55,8 +56,12 @@ const char* rav::rtp_stream_receiver::to_string(const receiver_state state) {
     switch (state) {
         case receiver_state::idle:
             return "idle";
-        case receiver_state::running:
-            return "running";
+        case receiver_state::waiting_for_data:
+            return "waiting_for_data";
+        case receiver_state::ok:
+            return "ok";
+        case receiver_state::ok_no_consumer:
+            return "ok_no_consumer";
         case receiver_state::inactive:
             return "inactive";
         default:
@@ -64,10 +69,12 @@ const char* rav::rtp_stream_receiver::to_string(const receiver_state state) {
     }
 }
 
-rav::rtp_stream_receiver::rtp_stream_receiver(rtp_receiver& receiver) : rtp_receiver_(receiver) {}
+rav::rtp_stream_receiver::rtp_stream_receiver(rtp_receiver& receiver) :
+    rtp_receiver_(receiver), maintenance_timer_(receiver.get_io_context()) {}
 
 rav::rtp_stream_receiver::~rtp_stream_receiver() {
     rtp_receiver_.unsubscribe(*this);
+    maintenance_timer_.cancel();
 }
 
 rav::id rav::rtp_stream_receiver::get_id() const {
@@ -231,6 +238,7 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
 
     if (should_restart) {
         restart();
+        set_state(receiver_state::waiting_for_data, false);
     }
 
     if (should_restart || was_changed) {
@@ -351,7 +359,7 @@ void rav::rtp_stream_receiver::restart() {
     rtp_receiver_.unsubscribe(*this);  // This unsubscribes `this` from all sessions
 
     if (media_streams_.empty()) {
-        set_state(receiver_state::idle);
+        set_state(receiver_state::idle, true);
         return;
     }
 
@@ -388,6 +396,8 @@ void rav::rtp_stream_receiver::restart() {
         stream.packet_stats.reset();
         rtp_receiver_.subscribe(*this, stream.session, stream.filter);
     }
+
+    do_maintenance();
 
     RAV_TRACE("(Re)Started rtp_stream_receiver");
 }
@@ -447,8 +457,12 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_session(
         if (!realtime_context_.fifo.push(intermediate)) {
             RAV_TRACE("Failed to push packet info FIFO, make receiver inactive");
             realtime_context_.consumer_active_ = false;
-            set_state(receiver_state::inactive);
+            set_state(receiver_state::ok_no_consumer, true);
+        } else {
+            set_state(receiver_state::ok, true);
         }
+    } else {
+        set_state(receiver_state::ok_no_consumer, true);
     }
 
     while (auto seq = realtime_context_.packets_too_old.pop()) {
@@ -480,11 +494,17 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_session(
     }
 }
 
-void rav::rtp_stream_receiver::set_state(const receiver_state new_state) {
+void rav::rtp_stream_receiver::set_state(const receiver_state new_state, const bool notify_subscribers) {
     if (state_ == new_state) {
         return;
     }
     state_ = new_state;
+    if (notify_subscribers) {
+        const auto event = make_changed_event();
+        for (auto* s : subscribers_) {
+            s->stream_changed(event);
+        }
+    }
 }
 
 rav::rtp_stream_receiver::stream_changed_event rav::rtp_stream_receiver::make_changed_event() const {
@@ -503,6 +523,27 @@ rav::rtp_stream_receiver::stream_changed_event rav::rtp_stream_receiver::make_ch
     event.selected_audio_format = stream.selected_format;
     event.packet_time_frames = stream.packet_time_frames;
     return event;
+}
+
+void rav::rtp_stream_receiver::do_maintenance() {
+    // Check if streams became are no longer receiving data
+    if (state_ == receiver_state::ok || state_ == receiver_state::ok_no_consumer) {
+        const auto now = high_resolution_clock::now();
+        for (const auto& stream : media_streams_) {
+            if ((stream.last_packet_time_ns + k_receive_timeout_ms * 1'000'000).value() < now) {
+                set_state(receiver_state::inactive, true);
+            }
+        }
+    }
+
+    maintenance_timer_.expires_after(std::chrono::seconds(1));
+    maintenance_timer_.async_wait([this](const asio::error_code ec) {
+        if (ec) {
+            RAV_ERROR("Timer error: {}", ec.message());
+            return;
+        }
+        do_maintenance();
+    });
 }
 
 void rav::rtp_stream_receiver::on_rtp_packet(const rtp_receiver::rtp_packet_event& rtp_event) {
