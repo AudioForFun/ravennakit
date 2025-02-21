@@ -43,6 +43,12 @@ class ravenna_node {
          * @param receiver The id of the receiver.
          */
         virtual void ravenna_receiver_added([[maybe_unused]] const ravenna_receiver& receiver) {}
+
+        /**
+         * Called when a receiver is removed from the node.
+         * @param receiver_id The id of the receiver.
+         */
+        virtual void ravenna_receiver_removed([[maybe_unused]] id receiver_id) {}
     };
 
     explicit ravenna_node(rtp_receiver::configuration config);
@@ -54,6 +60,13 @@ class ravenna_node {
      * @return The ID of the created receiver, which might be invalid if the receiver couldn't be created.
      */
     [[nodiscard]] std::future<id> create_receiver(const std::string& session_name);
+
+    /**
+     * Removes the receiver with the given id.
+     * @param receiver_id The id of the receiver to remove.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> remove_receiver(id receiver_id);
 
     /**
      * Adds a subscriber to the node.

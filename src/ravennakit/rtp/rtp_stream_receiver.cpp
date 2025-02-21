@@ -547,6 +547,9 @@ void rav::rtp_stream_receiver::do_maintenance() {
     maintenance_timer_.expires_after(std::chrono::seconds(1));
     maintenance_timer_.async_wait([this](const asio::error_code ec) {
         if (ec) {
+            if (ec == asio::error::operation_aborted) {
+                return;
+            }
             RAV_ERROR("Timer error: {}", ec.message());
             return;
         }

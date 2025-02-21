@@ -37,6 +37,21 @@ std::future<rav::id> rav::ravenna_node::create_receiver(const std::string& sessi
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
+std::future<void> rav::ravenna_node::remove_receiver(id receiver_id) {
+    auto work = [this, receiver_id]() mutable {
+        for (auto it = receivers_.begin(); it != receivers_.end(); ++it) {
+            if ((*it)->get_id() == receiver_id) {
+                for (const auto& s : subscribers_) {
+                    s->ravenna_receiver_removed(receiver_id);
+                }
+                receivers_.erase(it);
+                return;
+            }
+        }
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
 std::future<void> rav::ravenna_node::add_subscriber(subscriber* subscriber) {
     auto work = [this, subscriber] {
         if (!subscribers_.add(subscriber)) {
@@ -87,7 +102,7 @@ rav::ravenna_node::remove_stream_subscriber(id receiver_id, rtp_stream_receiver:
                 return;
             }
         }
-        RAV_WARNING("Stream not found");
+        // Don't warn about not finding the stream, as the stream might have already been removed.
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
