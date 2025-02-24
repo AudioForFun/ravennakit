@@ -99,9 +99,8 @@ bool rav::ravenna_transmitter::set_audio_format(const audio_format format) {
     sdp_format_ = *sdp_format;
 
     rtp_packet_.payload_type(sdp_format_.payload_type);
-    rtp_packet_.ssrc(
-        random().get_random_int(0, std::numeric_limits<int>::max())  // TODO: Implement SSRC generation
-    );
+    // TODO: Implement proper SSRC generation
+    rtp_packet_.ssrc(static_cast<uint32_t>(random().get_random_int(0, std::numeric_limits<int>::max())));
 
     return true;
 }
