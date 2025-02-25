@@ -4,6 +4,7 @@ import json
 import multiprocessing
 import os
 import platform
+import re
 import shutil
 import subprocess
 from datetime import datetime
@@ -206,13 +207,14 @@ def build_dist(args):
 
     # Manually choose the files to copy to prevent accidental leaking of files when the repo changes or is not clean.
 
+    shutil.copytree('cmake', path_to_dist / 'cmake', dirs_exist_ok=True)
+    shutil.copytree('docs', path_to_dist / 'docs', dirs_exist_ok=True)
+    shutil.copytree('examples', path_to_dist / 'examples', dirs_exist_ok=True)
     shutil.copytree('include', path_to_dist / 'include', dirs_exist_ok=True)
     shutil.copytree('src', path_to_dist / 'src', dirs_exist_ok=True)
     shutil.copytree('test', path_to_dist / 'test', dirs_exist_ok=True)
-    shutil.copytree('docs', path_to_dist / 'docs', dirs_exist_ok=True)
-    shutil.copytree('examples', path_to_dist / 'examples', dirs_exist_ok=True)
     shutil.copytree('triplets', path_to_dist / 'triplets', dirs_exist_ok=True)
-    shutil.copytree('submodules', path_to_dist / 'submodules', dirs_exist_ok=True)
+    shutil.copytree('submodules/vcpkg', path_to_dist / 'submodules/vcpkg', dirs_exist_ok=True)
     shutil.copy2('.clang-format', path_to_dist)
     shutil.copy2('.gitignore', path_to_dist)
     shutil.copy2('CMakeLists.txt', path_to_dist)
@@ -229,6 +231,18 @@ def build_dist(args):
 
     with open(path_to_dist / 'version.json', 'w') as file:
         json.dump(version_data, file, indent=4)
+
+    match = re.match(r"^v([0-9]+)\.([0-9]+)\.([0-9]+)(.*)$", git_version)
+
+    if not match:
+        raise ValueError(f'Invalid version {git_version}')
+
+    with open(path_to_dist / 'cmake/version.cmake', 'w') as file:
+        file.write(f'set(GIT_DESCRIBE_VERSION "{git_version}")\n')
+        file.write(f'set(GIT_VERSION_MAJOR {match.group(1)})\n')
+        file.write(f'set(GIT_VERSION_MINOR {match.group(2)})\n')
+        file.write(f'set(GIT_VERSION_PATCH {match.group(3)})\n')
+        file.write(f'set(BUILD_NUMBER {args.build_number})\n')
 
     # Create ZIP from archive
     archive_path = args.path_to_build + '/ravennakit-' + git_version + '-' + args.build_number + '-dist'
