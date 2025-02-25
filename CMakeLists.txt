@@ -62,15 +62,6 @@ find_package(portaudio CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
 target_compile_definitions(asio::asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
 
-#######################
-# Set Windows version #
-#######################
-
-if (WIN32)
-    add_compile_definitions(WINVER=${RAV_WINDOWS_VERSION})
-    add_compile_definitions(_WIN32_WINNT=${RAV_WINDOWS_VERSION})
-endif ()
-
 #########
 # Tracy #
 #########
@@ -129,6 +120,11 @@ target_compile_definitions(ravennakit
 
 if (RAV_TRACY_ENABLE)
     target_link_libraries(ravennakit PUBLIC tracy)
+endif ()
+
+# Set Windows version define
+if (WIN32)
+    target_compile_definitions(ravennakit PUBLIC WINVER=${RAV_WINDOWS_VERSION} _WIN32_WINNT=${RAV_WINDOWS_VERSION})
 endif ()
 
 #################
