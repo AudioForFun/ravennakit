@@ -13,7 +13,7 @@ from pathlib import Path
 import boto3
 import pygit2
 
-from ravennakit.docs import generate
+from docs import generate
 from submodules.build_tools.cmake import Config, CMake
 
 test_report_folder = Path('test-reports')
