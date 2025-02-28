@@ -301,16 +301,6 @@ bool rav::rtp_stream_receiver::realtime_read_data(
     return realtime_context_.receiver_buffer.read(at_timestamp, buffer, buffer_size);
 }
 
-bool rav::rtp_stream_receiver::realtime_read_data(
-    uint32_t at_timestamp, float* const* output_channel_data, const int num_output_channels, const int num_samples
-) {
-    RAV_ASSERT(output_channel_data != nullptr, "Buffer must not be nullptr");
-    RAV_ASSERT(num_output_channels > 0, "Number of output channels must be greater than 0");
-    RAV_ASSERT(num_samples > 0, "Number of samples must be greater than 0");
-
-
-}
-
 rav::rtp_stream_receiver::stream_stats rav::rtp_stream_receiver::get_session_stats() const {
     if (media_streams_.empty()) {
         return {};
