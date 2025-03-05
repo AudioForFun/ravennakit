@@ -84,7 +84,7 @@ rav::rtp_stream_receiver::rtp_stream_receiver(rtp_receiver& receiver) :
     rtp_receiver_(receiver), maintenance_timer_(receiver.get_io_context()) {}
 
 rav::rtp_stream_receiver::~rtp_stream_receiver() {
-    rtp_receiver_.remove_subscriber(*this);
+    set_rtp_receiver(nullptr, {}, {});
     maintenance_timer_.cancel();
 }
 
@@ -330,7 +330,7 @@ rav::sliding_stats::stats rav::rtp_stream_receiver::get_packet_interval_stats() 
 void rav::rtp_stream_receiver::restart() {
     // TODO: Synchronize with read_data()
 
-    rtp_receiver_.remove_subscriber(*this);  // This unsubscribes `this` from all sessions
+    set_rtp_receiver(nullptr, {}, {});  // This unsubscribes from all sessions
 
     if (media_streams_.empty()) {
         set_state(receiver_state::idle, true);
@@ -368,7 +368,7 @@ void rav::rtp_stream_receiver::restart() {
     for (auto& stream : media_streams_) {
         stream.first_packet_timestamp.reset();
         stream.packet_stats.reset();
-        rtp_receiver_.add_subscriber(*this, stream.session, stream.filter);
+        set_rtp_receiver(&rtp_receiver_, stream.session, stream.filter);
     }
 
     do_maintenance();

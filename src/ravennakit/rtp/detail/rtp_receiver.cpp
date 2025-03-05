@@ -35,33 +35,49 @@ typedef BOOL(PASCAL* LPFN_WSARECVMSG)(
 );
 #endif
 
-rav::rtp_receiver::rtp_receiver(asio::io_context& io_context, configuration config) :
-    io_context_(io_context), config_(std::move(config)) {}
+rav::rtp_receiver::subscriber::~subscriber() {
+    RAV_ASSERT(
+        rtp_receiver_ == nullptr, "Please call set_rtp_receiver(nullptr, {}, {}) before destroying the subscriber"
+    );
+}
 
-void rav::rtp_receiver::add_subscriber(
-    subscriber& subscriber_to_add, const rtp_session& session, const rtp_filter& filter
+void rav::rtp_receiver::subscriber::set_rtp_receiver(
+    rtp_receiver* rtp_receiver, const rtp_session& session, const rtp_filter& filter
 ) {
-    auto* context = find_or_create_session_context(session);
+    if (rtp_receiver_ == rtp_receiver) {
+        return;
+    }
+
+    if (rtp_receiver_) {
+        for (auto it = rtp_receiver_->sessions_contexts_.begin(); it != rtp_receiver_->sessions_contexts_.end();) {
+            if (it->subscribers.remove(this) && it->subscribers.empty()) {
+                it = rtp_receiver_->sessions_contexts_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    rtp_receiver_ = rtp_receiver;
+
+    if (rtp_receiver_ == nullptr) {
+        return;
+    }
+
+    auto* context = rtp_receiver_->find_or_create_session_context(session);
 
     if (context == nullptr) {
-        RAV_WARNING("Failed to find or create new session");
+        RAV_WARNING("Failed to find or create new session context");
         return;
     }
 
     RAV_ASSERT(context != nullptr, "Expecting valid session at this point");
 
-    context->subscribers.add_or_update_context(&subscriber_to_add, subscriber_context {filter});
+    context->subscribers.add_or_update_context(this, subscriber_context {filter});
 }
 
-void rav::rtp_receiver::remove_subscriber(const subscriber& subscriber_to_remove) {
-    for (auto it = sessions_contexts_.begin(); it != sessions_contexts_.end();) {
-        if (it->subscribers.remove(&subscriber_to_remove) && it->subscribers.empty()) {
-            it = sessions_contexts_.erase(it);
-        } else {
-            ++it;
-        }
-    }
-}
+rav::rtp_receiver::rtp_receiver(asio::io_context& io_context, configuration config) :
+    io_context_(io_context), config_(std::move(config)) {}
 
 asio::io_context& rav::rtp_receiver::get_io_context() const {
     return io_context_;

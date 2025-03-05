@@ -54,7 +54,7 @@ class rtp_receiver {
     class subscriber {
       public:
         subscriber() = default;
-        virtual ~subscriber() = default;
+        virtual ~subscriber();
 
         subscriber(const subscriber&) = delete;
         subscriber& operator=(const subscriber&) = delete;
@@ -73,6 +73,18 @@ class rtp_receiver {
          * @param rtcp_event The RTCP packet event.
          */
         virtual void on_rtcp_packet([[maybe_unused]] const rtcp_packet_event& rtcp_event) {}
+
+        /**
+         * Sets the RTP receiver for this subscriber, unsubscribing from the current one if it exists, and subscribing
+         * to the new one. Pass nullptr to unsubscribe.
+         * @param rtp_receiver The RTP receiver to subscribe to.
+         * @param session The session to subscribe to.
+         * @param filter The filter to use.
+         */
+        void set_rtp_receiver(rtp_receiver* rtp_receiver, const rtp_session& session, const rtp_filter& filter);
+
+      private:
+        rtp_receiver* rtp_receiver_ {};
     };
 
     rtp_receiver() = delete;
@@ -90,20 +102,6 @@ class rtp_receiver {
 
     rtp_receiver(rtp_receiver&&) = delete;
     rtp_receiver& operator=(rtp_receiver&&) = delete;
-
-    /**
-     * Subscribes to the given session.
-     * @param subscriber_to_add The subscriber to add.
-     * @param session The session to subscribe to.
-     * @param filter
-     */
-    void add_subscriber(subscriber& subscriber_to_add, const rtp_session& session, const rtp_filter& filter);
-
-    /**
-     * Unsubscribes given subscriber from all sessions it's subscribed to.
-     * @param subscriber_to_remove The subscriber to remove.
-     */
-    void remove_subscriber(const subscriber& subscriber_to_remove);
 
     /**
      * @return The io_context used by this receiver.
