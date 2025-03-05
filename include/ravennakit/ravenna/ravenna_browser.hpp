@@ -31,33 +31,25 @@ class ravenna_browser {
          * Called when a node is discovered.
          * @param event The event containing the service description.
          */
-        virtual void ravenna_node_discovered(const dnssd::dnssd_browser::service_resolved& event) {
-            std::ignore = event;
-        }
+        virtual void ravenna_node_discovered([[maybe_unused]] const dnssd::dnssd_browser::service_resolved& event) {}
 
         /**
          * Called when a node is removed.
          * @param event The event containing the service description.
          */
-        virtual void ravenna_node_removed(const dnssd::dnssd_browser::service_removed& event) {
-            std::ignore = event;
-        }
+        virtual void ravenna_node_removed([[maybe_unused]] const dnssd::dnssd_browser::service_removed& event) {}
 
         /**
          * Called when a session is discovered.
          * @param event The event containing the service description.
          */
-        virtual void ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) {
-            std::ignore = event;
-        }
+        virtual void ravenna_session_discovered([[maybe_unused]] const dnssd::dnssd_browser::service_resolved& event) {}
 
         /**
          * Called when a session is removed.
          * @param event The event containing the service description.
          */
-        virtual void ravenna_session_removed(const dnssd::dnssd_browser::service_removed& event) {
-            std::ignore = event;
-        }
+        virtual void ravenna_session_removed([[maybe_unused]] const dnssd::dnssd_browser::service_removed& event) {}
     };
 
     explicit ravenna_browser(asio::io_context& io_context);
@@ -66,13 +58,13 @@ class ravenna_browser {
      * Subscribes a subscriber to the browser.
      * @param subscriber The subscriber to subscribe.
      */
-    void subscribe(subscriber* subscriber);
+    void add_subscriber(subscriber* subscriber);
 
     /**
      * Unsubscribes a subscriber from the browser.
      * @param subscriber The subscriber to unsubscribe.
      */
-    void unsubscribe(subscriber* subscriber);
+    void remove_subscriber(subscriber* subscriber);
 
     /**
      * Finds a node by its name.

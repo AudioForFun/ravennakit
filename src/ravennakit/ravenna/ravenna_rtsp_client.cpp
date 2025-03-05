@@ -59,11 +59,11 @@ void rav::ravenna_rtsp_client::subscriber::unsubscribe_from_ravenna_rtsp_client(
 
 rav::ravenna_rtsp_client::ravenna_rtsp_client(asio::io_context& io_context, ravenna_browser& browser) :
     io_context_(io_context), browser_(browser) {
-    browser_.subscribe(this);
+    browser_.add_subscriber(this);
 }
 
 rav::ravenna_rtsp_client::~ravenna_rtsp_client() {
-    browser_.unsubscribe(this);
+    browser_.remove_subscriber(this);
 
     for (auto& session : sessions_) {
         session.subscribers.foreach ([](auto& node) {

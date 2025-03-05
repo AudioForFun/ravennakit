@@ -53,7 +53,7 @@ rav::ravenna_browser::ravenna_browser(asio::io_context& io_context) {
     session_browser_->browse_for("_rtsp._tcp,_ravenna_session");
 }
 
-void rav::ravenna_browser::subscribe(subscriber* subscriber) {
+void rav::ravenna_browser::add_subscriber(subscriber* subscriber) {
     RAV_ASSERT(subscriber != nullptr, "Invalid subscriber");
     RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
     RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
@@ -78,7 +78,7 @@ void rav::ravenna_browser::subscribe(subscriber* subscriber) {
     }
 }
 
-void rav::ravenna_browser::unsubscribe(subscriber* subscriber) {
+void rav::ravenna_browser::remove_subscriber(subscriber* subscriber) {
     RAV_ASSERT(subscriber != nullptr, "Invalid subscriber");
     RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
     RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
