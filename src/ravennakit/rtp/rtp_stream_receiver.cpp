@@ -72,7 +72,9 @@ void rav::rtp_stream_receiver::subscriber::set_rtp_stream_receiver(rtp_stream_re
         return;
     }
     if (receiver_ != nullptr) {
-        receiver_->subscribers_.remove(this);
+        if (!receiver_->subscribers_.remove(this)) {
+            RAV_WARNING("Subscriber not found in receiver");
+        }
     }
     receiver_ = receiver;
     if (receiver_ != nullptr && receiver_->subscribers_.add(this)) {
