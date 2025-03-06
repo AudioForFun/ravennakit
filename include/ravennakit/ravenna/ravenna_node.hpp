@@ -165,6 +165,44 @@ class ravenna_node {
      */
     void assert_maintenance_thread() const;
 
+    /**
+     * Schedules some work on the maintenance thread using asio::dispatch. This is useful for synchronizing with
+     * callbacks from the node and to offload work from the main (UI) thread. If passing using asio::use_future, the
+     * future will be set when the work is complete.
+     *
+     * Example:
+     *     node.dispatch(asio::use_future([] {
+     *         return 1;
+     *     })).get();
+     *
+     * @tparam CompletionToken The type of the completion token.
+     * @param token The completion token.
+     * @return The result of the dispatch operation, depending on the completion token.
+     */
+    template<typename CompletionToken>
+    auto dispatch(CompletionToken&& token) {
+        return asio::dispatch(io_context_, token);
+    }
+
+    /**
+     * Schedules some work on the maintenance thread using asio::post. This is useful for synchronizing with
+     * callbacks from the node and to offload work from the main (UI) thread. If passing using asio::use_future, the
+     * future will be set when the work is complete.
+     *
+     * Example:
+     *     node.post(asio::use_future([] {
+     *         return 1;
+     *     })).get();
+     *
+     * @tparam CompletionToken The type of the completion token.
+     * @param token The completion token.
+     * @return The result of the dispatch operation, depending on the completion token.
+     */
+    template<typename CompletionToken>
+    auto post(CompletionToken&& token) {
+        return asio::post(io_context_, token);
+    }
+
   private:
     asio::io_context io_context_;
     std::thread maintenance_thread_;
