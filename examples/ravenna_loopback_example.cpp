@@ -68,8 +68,8 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber, public rav:
         );
 
         transmitter_->on<rav::ravenna_transmitter::on_data_requested_event>([this](auto event) {
-            ravenna_receiver_->realtime_read_data(
-                event.timestamp - ravenna_receiver_->get_delay(), event.buffer.data(), event.buffer.size()
+            ravenna_receiver_->read_data_realtime(
+                event.buffer.data(), event.buffer.size(), event.timestamp - ravenna_receiver_->get_delay()
             );
         });
     }
@@ -104,7 +104,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber, public rav:
     bool ptp_clock_stable_ = false;
 
     // Receiver components
-    rav::ravenna_browser browser_{io_context_};
+    rav::ravenna_browser browser_ {io_context_};
     std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
     std::unique_ptr<rav::rtp_receiver> rtp_receiver_;
     std::unique_ptr<rav::ravenna_receiver> ravenna_receiver_;

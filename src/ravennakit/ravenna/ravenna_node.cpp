@@ -224,34 +224,31 @@ std::future<std::optional<std::string>> rav::ravenna_node::get_sdp_text_for_rece
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-bool rav::ravenna_node::realtime_read_data(
-    const id receiver_id, const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size
-) {
+std::optional<uint32_t> rav::ravenna_node::read_data_realtime(
+    const id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+) const {
     // TODO: Synchronize with maintenance_thread_
 
     for (const auto& receiver : receivers_) {
         if (receiver->get_id() == receiver_id) {
-            return receiver->realtime_read_data(at_timestamp, buffer, buffer_size);
+            return receiver->read_data_realtime(buffer, buffer_size, at_timestamp);
         }
     }
-    return false;
+    return std::nullopt;
 }
 
-bool rav::ravenna_node::realtime_read_audio_data(
-    const id receiver_id, const std::optional<uint32_t> at_timestamp, const audio_buffer_view<float>& output_buffer
-) {
+std::optional<uint32_t> rav::ravenna_node::read_audio_data_realtime(
+    const id receiver_id, const audio_buffer_view<float>& output_buffer, const std::optional<uint32_t> at_timestamp
+) const {
     // TODO: Synchronize with maintenance_thread_
-
-    if (!at_timestamp.has_value()) {
-        // TODO: Try to fill the timestamp with the current PTP time
-    }
 
     for (const auto& receiver : receivers_) {
         if (receiver->get_id() == receiver_id) {
-            return receiver->realtime_read_audio_data(at_timestamp, output_buffer);
+            return receiver->read_audio_data_realtime(output_buffer, at_timestamp);
         }
     }
-    return false;
+
+    return std::nullopt;
 }
 
 bool rav::ravenna_node::is_maintenance_thread() const {

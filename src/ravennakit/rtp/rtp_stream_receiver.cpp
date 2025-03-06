@@ -267,6 +267,9 @@ void rav::rtp_stream_receiver::set_delay(const uint32_t delay) {
         return;
     }
     delay_ = delay;
+
+    // TODO: Update realtime_context_.next_ts with the difference between the old and new delay. Or call restart()?
+
     const auto event = make_updated_event();
     for (auto* s : subscribers_) {
         s->stream_updated(event);
@@ -285,8 +288,8 @@ bool rav::rtp_stream_receiver::remove_data_callback(data_callback* callback) {
     return data_callbacks_.remove(callback);
 }
 
-bool rav::rtp_stream_receiver::realtime_read_data(
-    const std::optional<uint32_t> at_timestamp, uint8_t* buffer, const size_t buffer_size
+std::optional<uint32_t> rav::rtp_stream_receiver::read_data_realtime(
+    uint8_t* buffer, const size_t buffer_size, std::optional<uint32_t> at_timestamp
 ) {
     // TODO: Synchronize with restart()
 
@@ -299,24 +302,32 @@ bool rav::rtp_stream_receiver::realtime_read_data(
 
     if (buffer_size > realtime_context_.read_buffer.size()) {
         RAV_WARNING("Buffer size is larger than the read buffer size");
-        return false;
+        return std::nullopt;
     }
 
-    if (!at_timestamp.has_value()) {
-        // In the future we might consider reading from the most recent timestamp minus the delay
-        RAV_WARNING("No timestamp provided");
-        return false;
+    if (!realtime_context_.first_packet_timestamp.has_value()) {
+        return std::nullopt;
+    }
+
+    if (at_timestamp.has_value()) {
+        realtime_context_.next_ts = *at_timestamp;
     }
 
     const auto num_frames =
         static_cast<uint32_t>(buffer_size) / realtime_context_.selected_audio_format.bytes_per_frame();
 
-    realtime_context_.next_ts = *at_timestamp + num_frames;
-    return realtime_context_.receiver_buffer.read(*at_timestamp, buffer, buffer_size);
+    const auto read_at = realtime_context_.next_ts.value();
+    if (!realtime_context_.receiver_buffer.read(read_at, buffer, buffer_size)) {
+        return std::nullopt;
+    }
+
+    realtime_context_.next_ts += num_frames;
+
+    return read_at;
 }
 
-bool rav::rtp_stream_receiver::realtime_read_audio_data(
-    const std::optional<uint32_t> at_timestamp, audio_buffer_view<float> output_buffer
+std::optional<uint32_t> rav::rtp_stream_receiver::read_audio_data_realtime(
+    audio_buffer_view<float> output_buffer, const std::optional<uint32_t> at_timestamp
 ) {
     // TODO: Synchronize with restart()
 
@@ -328,22 +339,25 @@ bool rav::rtp_stream_receiver::realtime_read_audio_data(
 
     if (format.byte_order != audio_format::byte_order::be) {
         RAV_ERROR("Unexpected byte order");
-        return false;
+        return std::nullopt;
     }
 
     if (format.ordering != audio_format::channel_ordering::interleaved) {
         RAV_ERROR("Unexpected channel ordering");
-        return false;
+        return std::nullopt;
     }
 
     if (format.num_channels != output_buffer.num_channels()) {
         RAV_ERROR("Channel mismatch");
-        return false;
+        return std::nullopt;
     }
 
     auto& buffer = realtime_context_.read_buffer;
-    if (!realtime_read_data(*at_timestamp, buffer.data(), output_buffer.num_frames() * format.bytes_per_frame())) {
-        return false;
+    const auto read_at =
+        read_data_realtime(buffer.data(), output_buffer.num_frames() * format.bytes_per_frame(), at_timestamp);
+
+    if (!read_at.has_value()) {
+        return std::nullopt;
     }
 
     if (format.encoding == audio_encoding::pcm_s16) {
@@ -368,10 +382,10 @@ bool rav::rtp_stream_receiver::realtime_read_audio_data(
         }
     } else {
         RAV_ERROR("Unsupported encoding");
-        return false;
+        return std::nullopt;
     }
 
-    return true;
+    return read_at;
 }
 
 rav::rtp_stream_receiver::stream_stats rav::rtp_stream_receiver::get_session_stats() const {
@@ -611,7 +625,7 @@ void rav::rtp_stream_receiver::do_realtime_maintenance() {
             RAV_TRACE("First packet timestamp: {}", packet->timestamp);
             realtime_context_.first_packet_timestamp = packet_timestamp;
             realtime_context_.receiver_buffer.set_next_ts(packet->timestamp);
-            realtime_context_.next_ts = packet_timestamp;
+            realtime_context_.next_ts = packet_timestamp - delay_.load();
         }
 
         // Determine whether whole packet is too old

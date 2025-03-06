@@ -186,25 +186,27 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      *
      * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
      *
-     * @param at_timestamp The timestamp to read at.
      * @param buffer The destination to write the data to.
      * @param buffer_size The size of the buffer in bytes.
-     * @return true if buffer_size bytes were read, or false if buffer_size bytes couldn't be read.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    bool realtime_read_data(std::optional<uint32_t> at_timestamp, uint8_t* buffer, size_t buffer_size);
+    std::optional<uint32_t>
+    read_data_realtime(uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
 
     /**
      * Reads the data from the receiver with the given id.
      *
      * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
      *
-     * @param at_timestamp The timestamp to read at, or nullopt to read from the most recent timestamp.
      * @param output_buffer The buffer to read the data into.
-     * @return The timestamp at which the data was read, or an error code.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    bool realtime_read_audio_data(
-        std::optional<uint32_t> at_timestamp, audio_buffer_view<float> output_buffer
-    );
+    std::optional<uint32_t>
+    read_audio_data_realtime(audio_buffer_view<float> output_buffer, std::optional<uint32_t> at_timestamp);
 
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
@@ -247,7 +249,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
 
     rtp_receiver& rtp_receiver_;
     id id_ {id::next_process_wide_unique_id()};
-    uint32_t delay_ = 480;  // 100ms at 48KHz
+    std::atomic<uint32_t> delay_ = 480;  // 100ms at 48KHz
     receiver_state state_ {receiver_state::idle};
     std::vector<media_stream> media_streams_;
     subscriber_list<subscriber> subscribers_;

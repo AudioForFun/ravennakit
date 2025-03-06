@@ -173,23 +173,26 @@ class ravenna_node {
     /**
      * Reads the data from the receiver with the given id.
      * @param receiver_id The id of the receiver to read data from.
-     * @param at_timestamp The timestamp to read at.
      * @param buffer The buffer to read the data into.
      * @param buffer_size The size of the buffer.
-     * @return True if the data was read, or false if the data couldn't be read.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    bool realtime_read_data(id receiver_id, uint32_t at_timestamp, uint8_t* buffer, size_t buffer_size);
+    [[nodiscard]] std::optional<uint32_t>
+    read_data_realtime(id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp) const;
 
     /**
      * Reads the data from the receiver with the given id.
      * @param receiver_id The id of the receiver to read data from.
-     * @param at_timestamp The timestamp to read at.
      * @param output_buffer The buffer to read the data into.
-     * @return The number of frames read, or an error code.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    bool realtime_read_audio_data(
-        id receiver_id, std::optional<uint32_t> at_timestamp, const audio_buffer_view<float>& output_buffer
-    );
+    [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
+        id receiver_id, const audio_buffer_view<float>& output_buffer, std::optional<uint32_t> at_timestamp
+    ) const;
 
     /**
      * @return True if this method is called on the maintenance thread, false otherwise.
