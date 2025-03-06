@@ -88,30 +88,6 @@ std::future<void> rav::ravenna_node::remove_subscriber(subscriber* subscriber) {
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<bool> rav::ravenna_node::add_receiver(ravenna_receiver* receiver) {
-    RAV_ASSERT(receiver != nullptr, "Receiver must be valid");
-    auto work = [this, receiver] {
-        if (receivers_list_.add(receiver)) {
-            receiver->set_ravenna_rtsp_client(&rtsp_client_);
-            return true;
-        }
-        return false;
-    };
-    return asio::dispatch(io_context_, asio::use_future(work));
-}
-
-std::future<bool> rav::ravenna_node::remove_receiver(ravenna_receiver* receiver) {
-    RAV_ASSERT(receiver != nullptr, "Receiver must be valid");
-    auto work = [this, receiver] {
-        if (receivers_list_.remove(receiver)) {
-            receiver->set_ravenna_rtsp_client(nullptr);
-            return true;
-        }
-        return false;
-    };
-    return asio::dispatch(io_context_, asio::use_future(work));
-}
-
 std::future<void>
 rav::ravenna_node::add_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber) {
     auto work = [this, receiver_id, subscriber] {

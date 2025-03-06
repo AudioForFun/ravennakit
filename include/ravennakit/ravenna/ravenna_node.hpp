@@ -91,22 +91,6 @@ class ravenna_node {
     [[nodiscard]] std::future<void> remove_subscriber(subscriber* subscriber);
 
     /**
-     * Adds a receiver to the node.
-     * @param receiver The receiver to add. Must not be nullptr.
-     * @return A future that will be set when the operation is complete.
-     */
-    std::future<bool> add_receiver(ravenna_receiver* receiver);
-
-    /**
-     * Removes a receiver from the node.
-     * @param receiver The receiver to remove. Must not be nullptr.
-     * @return A future that will be set when the operation is complete.
-     */
-    std::future<bool> remove_receiver(ravenna_receiver* receiver);
-
-    //==================================================================================================================
-
-    /**
      * Adds a subscriber to the receiver with the given id.
      * @param receiver_id The id of the stream to add the subscriber to.
      * @param subscriber The subscriber to add.
@@ -137,8 +121,6 @@ class ravenna_node {
      * @return A future that will be set when the operation is complete.
      */
     std::future<void> remove_receiver_data_callback(id receiver_id, rtp_stream_receiver::data_callback* callback);
-
-    //==================================================================================================================
 
     /**
      * Get the packet statistics for the given stream, if the stream for the given ID exists.
@@ -248,7 +230,6 @@ class ravenna_node {
     std::unique_ptr<rtp_receiver> rtp_receiver_;
 
     std::vector<std::unique_ptr<ravenna_receiver>> receivers_;
-    subscriber_list<ravenna_receiver> receivers_list_;
     subscriber_list<subscriber> subscribers_;
 };
 
