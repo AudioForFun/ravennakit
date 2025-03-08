@@ -289,7 +289,7 @@ bool rav::rtp_stream_receiver::remove_data_callback(data_callback* callback) {
 }
 
 std::optional<uint32_t> rav::rtp_stream_receiver::read_data_realtime(
-    uint8_t* buffer, const size_t buffer_size, std::optional<uint32_t> at_timestamp
+    uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
 ) {
     // TODO: Synchronize with restart()
 

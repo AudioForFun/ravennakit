@@ -216,6 +216,8 @@ std::optional<uint32_t> rav::ravenna_node::read_data_realtime(
 std::optional<uint32_t> rav::ravenna_node::read_audio_data_realtime(
     const id receiver_id, const audio_buffer_view<float>& output_buffer, const std::optional<uint32_t> at_timestamp
 ) const {
+    TRACY_ZONE_SCOPED;
+
     // TODO: Synchronize with maintenance_thread_
 
     for (const auto& receiver : receivers_) {
