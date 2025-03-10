@@ -12,6 +12,7 @@
 #include "ravennakit/core/assert.hpp"
 
 #include <mutex>
+#include <atomic>
 
 namespace rav {
 
