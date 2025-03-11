@@ -181,13 +181,13 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
         ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);
         ravenna_receiver_->add_data_callback(this);
-        ravenna_receiver_->add_subscriber(this);
-        ravenna_receiver_->set_session_name(stream_name);
+        set_rtp_stream_receiver(ravenna_receiver_.get());
+        ravenna_receiver_->subscribe_to_session(stream_name);
     }
 
     ~ravenna_receiver_example() override {
+        set_rtp_stream_receiver(nullptr);
         if (ravenna_receiver_) {
-            ravenna_receiver_->remove_subscriber(this);
             ravenna_receiver_->remove_data_callback(this);
         }
     }
@@ -202,22 +202,23 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
     }
 
     void stream_updated(const rav::rtp_stream_receiver::stream_updated_event& event) override {
+        if (!event.selected_audio_format.is_valid() || audio_format_ == event.selected_audio_format) {
+            return;
+        }
+
         audio_format_ = event.selected_audio_format;
         const auto sample_format = get_sample_format_for_audio_format(audio_format_);
         if (!sample_format.has_value()) {
-            RAV_ERROR("Unsupported audio format: {}", audio_format_.to_string());
+            RAV_TRACE("Skipping stream update because audio format is invalid: {}", audio_format_.to_string());
             return;
         }
         portaudio_stream_.open_output_stream(
             audio_device_name_, audio_format_.sample_rate, static_cast<int>(audio_format_.num_channels), *sample_format,
             &ravenna_receiver_example::stream_callback, this
         );
-        most_recent_ready_timestamp_ = std::nullopt;
     }
 
-    void on_data_ready(rav::wrapping_uint32 timestamp) override {
-        most_recent_ready_timestamp_ = timestamp;
-    }
+    void on_data_ready([[maybe_unused]] rav::wrapping_uint32 timestamp) override {}
 
   private:
     asio::io_context io_context_;
@@ -228,13 +229,6 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
     std::string audio_device_name_;
     portaudio_stream portaudio_stream_;
     rav::audio_format audio_format_;
-
-    std::atomic<std::optional<rav::wrapping_uint32>> most_recent_ready_timestamp_ {};
-    static_assert(decltype(most_recent_ready_timestamp_)::is_always_lock_free);
-
-    struct {
-        std::optional<rav::wrapping_uint32> stream_ts_;
-    } realtime_context_;
 
     int stream_callback(
         const void* input, void* output, const unsigned long frame_count, const PaStreamCallbackTimeInfo* time_info,
@@ -248,24 +242,11 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
 
         const auto buffer_size = frame_count * audio_format_.bytes_per_frame();
 
-        if (!realtime_context_.stream_ts_.has_value()) {
-            const auto most_recent_ready = most_recent_ready_timestamp_.load();
-            if (most_recent_ready.has_value()) {
-                realtime_context_.stream_ts_ = *most_recent_ready - k_block_size * 4 / 5;
-            } else {
-                std::memset(output, audio_format_.ground_value(), buffer_size);
-                return paContinue;
-            }
-        }
-
-        const auto timestamp = realtime_context_.stream_ts_.value();
-
-        if (!ravenna_receiver_->read_data(timestamp.value(), static_cast<uint8_t*>(output), buffer_size)) {
+        if (!ravenna_receiver_->read_data_realtime(static_cast<uint8_t*>(output), buffer_size, {})) {
             std::memset(output, audio_format_.ground_value(), buffer_size);
-            RAV_WARNING("Failed to read data for timestamp: {}", timestamp.value());
+            RAV_WARNING("Failed to read data");
+            return paContinue;
         }
-
-        realtime_context_.stream_ts_ = timestamp + static_cast<uint32_t>(frame_count);
 
         if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
             rav::byte_order::swap_bytes(static_cast<uint8_t*>(output), buffer_size, audio_format_.bytes_per_sample());

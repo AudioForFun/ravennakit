@@ -35,15 +35,15 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber, public rav::
     explicit stream_recorder(std::unique_ptr<rav::ravenna_receiver> sink) : receiver_(std::move(sink)) {
         if (receiver_) {
             receiver_->add_data_callback(this);
-            receiver_->add_subscriber(this);
+            set_rtp_stream_receiver(receiver_.get());
         }
     }
 
     ~stream_recorder() override {
+        set_rtp_stream_receiver(nullptr);
         if (receiver_) {
-            receiver_->remove_subscriber(this);
             receiver_->remove_data_callback(this);
-            receiver_->stop();
+            receiver_->set_ravenna_rtsp_client(nullptr);
         }
         close();
     }
@@ -79,7 +79,7 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber, public rav::
     }
 
     void on_data_ready(const rav::wrapping_uint32 timestamp) override {
-        if (!receiver_->read_data(timestamp.value(), audio_data_.data(), audio_data_.size())) {
+        if (!receiver_->read_data_realtime(audio_data_.data(), audio_data_.size(), timestamp.value())) {
             RAV_ERROR("Failed to read audio data");
             return;
         }
@@ -115,7 +115,7 @@ class ravenna_recorder_example {
     void add_stream(const std::string& stream_name) {
         auto receiver = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         receiver->set_delay(480);  // 10ms @ 48kHz
-        receiver->set_session_name(stream_name);
+        receiver->subscribe_to_session(stream_name);
         recorders_.emplace_back(std::make_unique<stream_recorder>(std::move(receiver)));
     }
 

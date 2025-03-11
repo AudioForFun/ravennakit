@@ -12,6 +12,52 @@
 #include "ravennakit/core/exception.hpp"
 #include "ravennakit/core/log.hpp"
 
+rav::ravenna_browser::subscriber::~subscriber() {
+    RAV_ASSERT_NO_THROW(browser_ == nullptr, "Please call set_ravenna_browser(nullptr) before destruction");
+}
+
+void rav::ravenna_browser::subscriber::set_ravenna_browser(ravenna_browser* browser) {
+    if (browser == browser_) {
+        return;
+    }
+
+    if (browser_ != nullptr) {
+        RAV_ASSERT(browser_->node_browser_ != nullptr, "Invalid node browser");
+        RAV_ASSERT(browser_->session_browser_ != nullptr, "Invalid session browser");
+
+        if (!browser_->subscribers_.remove(this)) {
+            RAV_WARNING("Not subscribed");
+        }
+    }
+
+    browser_ = browser;
+
+    if (browser_ == nullptr) {
+        return;
+    }
+
+    RAV_ASSERT(browser_->node_browser_ != nullptr, "Invalid node browser");
+    RAV_ASSERT(browser_->session_browser_ != nullptr, "Invalid session browser");
+
+    if (!browser_->subscribers_.add(this)) {
+        RAV_WARNING("Already subscribed");
+    }
+
+    for (auto& s : browser_->node_browser_->get_services()) {
+        if (s.host_target.empty()) {
+            continue;  // Only consider resolved services
+        }
+        ravenna_node_discovered({s});
+    }
+
+    for (auto& s : browser_->session_browser_->get_services()) {
+        if (s.host_target.empty()) {
+            continue;  // Only consider resolved services
+        }
+        ravenna_session_discovered({s});
+    }
+}
+
 rav::ravenna_browser::ravenna_browser(asio::io_context& io_context) {
     node_browser_ = dnssd::dnssd_browser::create(io_context);
 
@@ -51,41 +97,6 @@ rav::ravenna_browser::ravenna_browser(asio::io_context& io_context) {
 
     node_browser_->browse_for("_rtsp._tcp,_ravenna");
     session_browser_->browse_for("_rtsp._tcp,_ravenna_session");
-}
-
-void rav::ravenna_browser::subscribe(subscriber* subscriber) {
-    RAV_ASSERT(subscriber != nullptr, "Invalid subscriber");
-    RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
-    RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
-
-    if (!subscribers_.add(subscriber)) {
-        RAV_WARNING("Subscriber already exists");
-        return;
-    }
-
-    for (auto& s : node_browser_->get_services()) {
-        if (s.host_target.empty()) {
-            continue; // Only consider resolved services
-        }
-        subscriber->ravenna_node_discovered({s});
-    }
-
-    for (auto& s : session_browser_->get_services()) {
-        if (s.host_target.empty()) {
-            continue; // Only consider resolved services
-        }
-        subscriber->ravenna_session_discovered({s});
-    }
-}
-
-void rav::ravenna_browser::unsubscribe(subscriber* subscriber) {
-    RAV_ASSERT(subscriber != nullptr, "Invalid subscriber");
-    RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
-    RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
-
-    if (!subscribers_.remove(subscriber)) {
-        RAV_WARNING("Subscriber not found");
-    }
 }
 
 const rav::dnssd::service_description* rav::ravenna_browser::find_session(const std::string& session_name) const {

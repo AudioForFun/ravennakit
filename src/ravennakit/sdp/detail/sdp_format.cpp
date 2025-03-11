@@ -19,13 +19,22 @@ std::string rav::sdp::format::to_string() const {
 
 std::optional<rav::audio_format> rav::sdp::format::to_audio_format() const {
     if (encoding_name == "L16") {
-        return audio_format {audio_format::byte_order::be, audio_encoding::pcm_s16, clock_rate, num_channels};
+        return audio_format {
+            audio_format::byte_order::be, audio_encoding::pcm_s16, audio_format::channel_ordering::interleaved,
+            clock_rate, num_channels
+        };
     }
     if (encoding_name == "L24") {
-        return audio_format {audio_format::byte_order::be, audio_encoding::pcm_s24, clock_rate, num_channels};
+        return audio_format {
+            audio_format::byte_order::be, audio_encoding::pcm_s24, audio_format::channel_ordering::interleaved,
+            clock_rate, num_channels
+        };
     }
     if (encoding_name == "L32") {
-        return audio_format {audio_format::byte_order::be, audio_encoding::pcm_s32, clock_rate, num_channels};
+        return audio_format {
+            audio_format::byte_order::be, audio_encoding::pcm_s32, audio_format::channel_ordering::interleaved,
+            clock_rate, num_channels
+        };
     }
     return std::nullopt;
 }
@@ -37,8 +46,8 @@ std::optional<rav::sdp::format> rav::sdp::format::from_audio_format(const audio_
         case audio_encoding::undefined:
         case audio_encoding::pcm_s8:
         case audio_encoding::pcm_s32:
-        case audio_encoding::pcm_float:
-        case audio_encoding::pcm_double:
+        case audio_encoding::pcm_f32:
+        case audio_encoding::pcm_f64:
             return std::nullopt;
         case audio_encoding::pcm_u8:
             output_format.encoding_name = "L8";  // https://datatracker.ietf.org/doc/html/rfc3551#section-4.5.10

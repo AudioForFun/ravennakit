@@ -19,10 +19,18 @@
 #include "ravenna_browser.hpp"
 #include "ravenna_rtsp_client.hpp"
 #include "ravenna_receiver.hpp"
+#include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 
 #include <string>
+
+/**
+ * Little helper macro to assert that the current thread is the maintenance thread of given node.
+ * Done as macro to keep the location information.
+ * @param node The node to check the maintenance thread for.
+ */
+#define RAV_ASSERT_NODE_MAINTENANCE_THREAD(node) RAV_ASSERT(node.is_maintenance_thread(), "Not on maintenance thread")
 
 namespace rav {
 
@@ -71,32 +79,48 @@ class ravenna_node {
     /**
      * Adds a subscriber to the node.
      * This method can be called from any thread, and will wait until the operation is complete.
-     * @param subscriber The subscriber to add.
+     * @param subscriber_to_add The subscriber to add.
      */
-    [[nodiscard]] std::future<void> add_subscriber(subscriber* subscriber);
+    [[nodiscard]] std::future<void> add_subscriber(subscriber* subscriber_to_add);
 
     /**
      * Removes a subscriber from the node.
      * This method can be called from any thread, and will wait until the operation is complete.
-     * @param subscriber The subscriber to remove.
+     * @param subscriber_to_remove The subscriber to remove.
      */
-    [[nodiscard]] std::future<void> remove_subscriber(subscriber* subscriber);
+    [[nodiscard]] std::future<void> remove_subscriber(subscriber* subscriber_to_remove);
 
     /**
      * Adds a subscriber to the receiver with the given id.
      * @param receiver_id The id of the stream to add the subscriber to.
-     * @param subscriber The subscriber to add.
+     * @param subscriber_to_add The subscriber to add.
      * @return A future that will be set when the operation is complete.
      */
-    std::future<void> add_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber);
+    std::future<void> add_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber_to_add);
 
     /**
      * Removes a subscriber from the receiver with the given id.
      * @param receiver_id The id of the stream to remove the subscriber from.
-     * @param subscriber The subscriber to remove.
+     * @param subscriber_to_remove The subscriber to remove.
      * @return A future that will be set when the operation is complete.
      */
-    std::future<void> remove_stream_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber);
+    std::future<void> remove_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber_to_remove);
+
+    /**
+     * Adds a data callback to the receiver with the given id.
+     * @param receiver_id The id of the receiver to add the callback to.
+     * @param callback The callback to add.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> add_receiver_data_callback(id receiver_id, rtp_stream_receiver::data_callback* callback);
+
+    /**
+     * Removes a data callback from the receiver with the given id.
+     * @param receiver_id The id of the receiver to remove the callback from.
+     * @param callback The callback to remove.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> remove_receiver_data_callback(id receiver_id, rtp_stream_receiver::data_callback* callback);
 
     /**
      * Get the packet statistics for the given stream, if the stream for the given ID exists.
@@ -113,9 +137,92 @@ class ravenna_node {
      */
     std::future<bool> get_receiver(id receiver_id, std::function<void(ravenna_receiver&)> update_function);
 
+    /**
+     * Get the SDP for the receiver with the given id.
+     * @param receiver_id The id of the receiver to get the SDP for.
+     * @return The SDP for the receiver.
+     */
+    std::future<std::optional<sdp::session_description>> get_sdp_for_receiver(id receiver_id);
+
+    /**
+     * Get the SDP text for the receiver with the given id. This is the original SDP text as received from the server,
+     * and might contain things which haven't been parsed into the session_description.
+     * @param receiver_id The id of the receiver to get the SDP text for.
+     * @return The SDP text for the receiver.
+     */
+    std::future<std::optional<std::string>> get_sdp_text_for_receiver(id receiver_id);
+
+    /**
+     * Reads the data from the receiver with the given id.
+     * @param receiver_id The id of the receiver to read data from.
+     * @param buffer The buffer to read the data into.
+     * @param buffer_size The size of the buffer.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
+     */
+    [[nodiscard]] std::optional<uint32_t>
+    read_data_realtime(id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp) const;
+
+    /**
+     * Reads the data from the receiver with the given id.
+     * @param receiver_id The id of the receiver to read data from.
+     * @param output_buffer The buffer to read the data into.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
+     */
+    [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
+        id receiver_id, const audio_buffer_view<float>& output_buffer, std::optional<uint32_t> at_timestamp
+    ) const;
+
+    /**
+     * @return True if this method is called on the maintenance thread, false otherwise.
+     */
+    [[nodiscard]] bool is_maintenance_thread() const;
+
+    /**
+     * Schedules some work on the maintenance thread using asio::dispatch. This is useful for synchronizing with
+     * callbacks from the node and to offload work from the main (UI) thread. If passing using asio::use_future, the
+     * future will be set when the work is complete.
+     *
+     * Example:
+     *     node.dispatch(asio::use_future([] {
+     *         return 1;
+     *     })).get();
+     *
+     * @tparam CompletionToken The type of the completion token.
+     * @param token The completion token.
+     * @return The result of the dispatch operation, depending on the completion token.
+     */
+    template<typename CompletionToken>
+    auto dispatch(CompletionToken&& token) {
+        return asio::dispatch(io_context_, token);
+    }
+
+    /**
+     * Schedules some work on the maintenance thread using asio::post. This is useful for synchronizing with
+     * callbacks from the node and to offload work from the main (UI) thread. If passing using asio::use_future, the
+     * future will be set when the work is complete.
+     *
+     * Example:
+     *     node.post(asio::use_future([] {
+     *         return 1;
+     *     })).get();
+     *
+     * @tparam CompletionToken The type of the completion token.
+     * @param token The completion token.
+     * @return The result of the dispatch operation, depending on the completion token.
+     */
+    template<typename CompletionToken>
+    auto post(CompletionToken&& token) {
+        return asio::post(io_context_, token);
+    }
+
   private:
     asio::io_context io_context_;
     std::thread maintenance_thread_;
+    std::thread::id maintenance_thread_id_;
     asio::ip::address interface_address;
 
     ravenna_browser browser_ {io_context_};

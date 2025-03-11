@@ -13,9 +13,20 @@
 rav::ravenna_node::ravenna_node(rtp_receiver::configuration config) {
     rtp_receiver_ = std::make_unique<rtp_receiver>(io_context_, std::move(config));
 
-    maintenance_thread_ = std::thread([this] {
-        io_context_.run();
+    std::promise<std::thread::id> promise;
+    auto f = promise.get_future();
+    maintenance_thread_ = std::thread([this, p = std::move(promise)]() mutable {
+        p.set_value(std::this_thread::get_id());
+#if RAV_APPLE
+        pthread_setname_np("ravenna_node_maintenance");
+#endif
+        try {
+            io_context_.run();
+        } catch (const std::exception& e) {
+            RAV_ERROR("Exception in maintenance thread: {}", e.what());
+        }
     });
+    maintenance_thread_id_ = f.get();
 }
 
 rav::ravenna_node::~ravenna_node() {
@@ -28,7 +39,7 @@ rav::ravenna_node::~ravenna_node() {
 std::future<rav::id> rav::ravenna_node::create_receiver(const std::string& session_name) {
     auto work = [this, session_name]() mutable {
         const auto& it = receivers_.emplace_back(std::make_unique<ravenna_receiver>(rtsp_client_, *rtp_receiver_));
-        it->set_session_name(session_name);
+        it->subscribe_to_session(session_name);
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
         }
@@ -41,10 +52,10 @@ std::future<void> rav::ravenna_node::remove_receiver(id receiver_id) {
     auto work = [this, receiver_id]() mutable {
         for (auto it = receivers_.begin(); it != receivers_.end(); ++it) {
             if ((*it)->get_id() == receiver_id) {
+                receivers_.erase(it);
                 for (const auto& s : subscribers_) {
                     s->ravenna_receiver_removed(receiver_id);
                 }
-                receivers_.erase(it);
                 return;
             }
         }
@@ -52,23 +63,25 @@ std::future<void> rav::ravenna_node::remove_receiver(id receiver_id) {
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void> rav::ravenna_node::add_subscriber(subscriber* subscriber) {
-    auto work = [this, subscriber] {
-        if (!subscribers_.add(subscriber)) {
+std::future<void> rav::ravenna_node::add_subscriber(subscriber* subscriber_to_add) {
+    RAV_ASSERT(subscriber_to_add != nullptr, "Subscriber must be valid");
+    auto work = [this, subscriber_to_add] {
+        if (!subscribers_.add(subscriber_to_add)) {
             RAV_WARNING("Already subscribed");
         }
-        browser_.subscribe(subscriber);
+        subscriber_to_add->set_ravenna_browser(&browser_);
         for (const auto& receiver : receivers_) {
-            subscriber->ravenna_receiver_added(*receiver);
+            subscriber_to_add->ravenna_receiver_added(*receiver);
         }
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void> rav::ravenna_node::remove_subscriber(subscriber* subscriber) {
-    auto work = [this, subscriber] {
-        browser_.unsubscribe(subscriber);
-        if (!subscribers_.remove(subscriber)) {
+std::future<void> rav::ravenna_node::remove_subscriber(subscriber* subscriber_to_remove) {
+    RAV_ASSERT(subscriber_to_remove != nullptr, "Subscriber must be valid");
+    auto work = [this, subscriber_to_remove] {
+        subscriber_to_remove->set_ravenna_browser(nullptr);
+        if (!subscribers_.remove(subscriber_to_remove)) {
             RAV_WARNING("Not subscribed");
         }
     };
@@ -76,11 +89,39 @@ std::future<void> rav::ravenna_node::remove_subscriber(subscriber* subscriber) {
 }
 
 std::future<void>
-rav::ravenna_node::add_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber) {
-    auto work = [this, receiver_id, subscriber] {
+rav::ravenna_node::add_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber_to_add) {
+    auto work = [this, receiver_id, subscriber_to_add] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                if (!receiver->add_subscriber(subscriber)) {
+                subscriber_to_add->set_rtp_stream_receiver(receiver.get());
+                return;
+            }
+        }
+        RAV_WARNING("Stream not found");
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<void>
+rav::ravenna_node::remove_receiver_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber_to_remove) {
+    auto work = [this, receiver_id, subscriber_to_remove] {
+        for (const auto& receiver : receivers_) {
+            if (receiver->get_id() == receiver_id) {
+                subscriber_to_remove->set_rtp_stream_receiver(nullptr);
+                return;
+            }
+        }
+        // Don't warn about not finding the stream, as the stream might have already been removed.
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<void>
+rav::ravenna_node::add_receiver_data_callback(id receiver_id, rtp_stream_receiver::data_callback* callback) {
+    auto work = [this, receiver_id, callback] {
+        for (const auto& receiver : receivers_) {
+            if (receiver->get_id() == receiver_id) {
+                if (!receiver->add_data_callback(callback)) {
                     RAV_WARNING("Already subscribed");
                 }
                 return;
@@ -92,11 +133,11 @@ rav::ravenna_node::add_receiver_subscriber(id receiver_id, rtp_stream_receiver::
 }
 
 std::future<void>
-rav::ravenna_node::remove_stream_subscriber(id receiver_id, rtp_stream_receiver::subscriber* subscriber) {
-    auto work = [this, receiver_id, subscriber] {
+rav::ravenna_node::remove_receiver_data_callback(id receiver_id, rtp_stream_receiver::data_callback* callback) {
+    auto work = [this, receiver_id, callback] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                if (!receiver->remove_subscriber(subscriber)) {
+                if (!receiver->remove_data_callback(callback)) {
                     RAV_WARNING("Not subscribed");
                 }
                 return;
@@ -132,4 +173,62 @@ rav::ravenna_node::get_receiver(id receiver_id, std::function<void(ravenna_recei
         return false;
     };
     return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<std::optional<rav::sdp::session_description>> rav::ravenna_node::get_sdp_for_receiver(id receiver_id) {
+    auto work = [this, receiver_id]() -> std::optional<sdp::session_description> {
+        for (const auto& receiver : receivers_) {
+            if (receiver->get_id() == receiver_id) {
+                return receiver->get_sdp();
+            }
+        }
+        return std::nullopt;
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<std::optional<std::string>> rav::ravenna_node::get_sdp_text_for_receiver(id receiver_id) {
+    TRACY_ZONE_SCOPED;
+    auto work = [this, receiver_id]() -> std::optional<std::string> {
+        for (const auto& receiver : receivers_) {
+            if (receiver->get_id() == receiver_id) {
+                return receiver->get_sdp_text();
+            }
+        }
+        return std::nullopt;
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::optional<uint32_t> rav::ravenna_node::read_data_realtime(
+    const id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+) const {
+    // TODO: Synchronize with maintenance_thread_
+
+    for (const auto& receiver : receivers_) {
+        if (receiver->get_id() == receiver_id) {
+            return receiver->read_data_realtime(buffer, buffer_size, at_timestamp);
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<uint32_t> rav::ravenna_node::read_audio_data_realtime(
+    const id receiver_id, const audio_buffer_view<float>& output_buffer, const std::optional<uint32_t> at_timestamp
+) const {
+    TRACY_ZONE_SCOPED;
+
+    // TODO: Synchronize with maintenance_thread_
+
+    for (const auto& receiver : receivers_) {
+        if (receiver->get_id() == receiver_id) {
+            return receiver->read_audio_data_realtime(output_buffer, at_timestamp);
+        }
+    }
+
+    return std::nullopt;
+}
+
+bool rav::ravenna_node::is_maintenance_thread() const {
+    return maintenance_thread_id_ == std::this_thread::get_id();
 }

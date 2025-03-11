@@ -13,6 +13,7 @@ from pathlib import Path
 import boto3
 import pygit2
 
+from docs import generate
 from submodules.build_tools.cmake import Config, CMake
 
 test_report_folder = Path('test-reports')
@@ -209,6 +210,8 @@ def build_dist(args):
     # Generate html docs
     subprocess.run(['doxygen', 'Doxyfile'], cwd=Path('docs'), check=True)
 
+    generate.doxygen_docs()
+
     # Manually choose the files to copy to prevent accidental leaking of files when the repo changes or is not clean.
 
     shutil.copytree('cmake', path_to_dist / 'cmake', dirs_exist_ok=True)
@@ -222,7 +225,6 @@ def build_dist(args):
     shutil.copy2('.clang-format', path_to_dist)
     shutil.copy2('.gitignore', path_to_dist)
     shutil.copy2('CMakeLists.txt', path_to_dist)
-    shutil.copy2('GLOSSARY.md', path_to_dist)
     shutil.copy2('LICENSE.md', path_to_dist)
     shutil.copy2('README.md', path_to_dist)
     shutil.copy2('vcpkg.json', path_to_dist)

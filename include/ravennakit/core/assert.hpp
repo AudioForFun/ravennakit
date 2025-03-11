@@ -41,7 +41,7 @@
 #define ABORT_IF_ENABLED(msg)                                    \
     if (RAV_ABORT_ON_ASSERT) {                                   \
         std::cerr << "Abort on assertion: " << msg << std::endl; \
-        abort();                                                 \
+        std::abort();                                            \
     }
 
 #define RAV_ASSERT(condition, message)                                \
@@ -51,6 +51,14 @@
             THROW_EXCEPTION_IF_ENABLED("Assertion failure: " message) \
             ABORT_IF_ENABLED(message)                                 \
         }                                                             \
+    } while (false)
+
+#define RAV_ASSERT_NO_THROW(condition, message)           \
+    do {                                                  \
+        if (!(condition)) {                               \
+            LOG_IF_ENABLED("Assertion failure: " message) \
+            ABORT_IF_ENABLED(message)                     \
+        }                                                 \
     } while (false)
 
 #define RAV_ASSERT_FALSE(message) RAV_ASSERT(false, message)

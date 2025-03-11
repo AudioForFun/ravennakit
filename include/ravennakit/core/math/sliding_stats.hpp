@@ -188,6 +188,8 @@ class sliding_stats {
         if (window_.empty()) {
             median_ = 0.0;
             average_ = 0.0;
+            min_ = 0.0;
+            max_ = 0.0;
             return;
         }
         min_ = window_.front();

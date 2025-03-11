@@ -11,6 +11,7 @@
 #pragma once
 
 #include "audio_encoding.hpp"
+#include "ravennakit/core/byte_order.hpp"
 
 #include <string>
 #include <tuple>
@@ -24,8 +25,14 @@ struct audio_format {
         be,
     };
 
+    enum class channel_ordering : uint8_t {
+        interleaved,
+        noninterleaved,
+    };
+
     byte_order byte_order {byte_order::le};
     audio_encoding encoding {};
+    channel_ordering ordering {channel_ordering::interleaved};
     uint32_t sample_rate {};
     uint32_t num_channels {};
 
@@ -42,20 +49,38 @@ struct audio_format {
     }
 
     [[nodiscard]] std::string to_string() const {
-        return fmt::format("{}/{}/{}", audio_encoding_to_string(encoding), sample_rate, num_channels);
+        return fmt::format(
+            "{}/{}/{}/{}/{}", audio_encoding_to_string(encoding), sample_rate, num_channels, to_string(ordering),
+            to_string(byte_order)
+        );
     }
 
     [[nodiscard]] bool is_valid() const {
         return encoding != audio_encoding::undefined && sample_rate != 0 && num_channels != 0;
     }
 
-    bool operator==(const audio_format& other) const {
-        return std::tie(encoding, sample_rate, num_channels, byte_order)
-            == std::tie(other.encoding, other.sample_rate, other.num_channels, byte_order);
+    [[nodiscard]] auto tie() const {
+        return std::tie(encoding, sample_rate, num_channels, byte_order, ordering);
     }
 
-    bool operator!=(const audio_format& rhs) const {
-        return !(*this == rhs);
+    bool operator==(const audio_format& other) const {
+        return tie() == other.tie();
+    }
+
+    bool operator!=(const audio_format& other) const {
+        return tie() != other.tie();
+    }
+
+    [[nodiscard]] bool is_native_byte_order() const {
+        return little_endian == (byte_order == byte_order::le);
+    }
+
+    static const char* to_string(const enum byte_order order) {
+        return order == byte_order::le ? "le" : "be";
+    }
+
+    static const char* to_string(const channel_ordering order) {
+        return order == channel_ordering::interleaved ? "interleaved" : "noninterleaved";
     }
 };
 

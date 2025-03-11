@@ -23,8 +23,10 @@ TEST_CASE("media_description | format") {
         REQUIRE(fmt.num_channels == 2);
         auto audio_format = fmt.to_audio_format();
         REQUIRE(audio_format.has_value());
-        auto expected_audio_format =
-            rav::audio_format {rav::audio_format::byte_order::le, rav::audio_encoding::pcm_s16, 48000, 2};
+        auto expected_audio_format = rav::audio_format {
+            rav::audio_format::byte_order::be, rav::audio_encoding::pcm_s16,
+            rav::audio_format::channel_ordering::interleaved, 48000, 2
+        };
         REQUIRE(*audio_format == expected_audio_format);
     }
 
@@ -38,8 +40,10 @@ TEST_CASE("media_description | format") {
         REQUIRE(fmt.num_channels == 4);
         auto audio_format = fmt.to_audio_format();
         REQUIRE(audio_format.has_value());
-        auto expected_audio_format =
-            rav::audio_format {rav::audio_format::byte_order::be, rav::audio_encoding::pcm_s16, 48000, 4};
+        auto expected_audio_format = rav::audio_format {
+            rav::audio_format::byte_order::be, rav::audio_encoding::pcm_s16,
+            rav::audio_format::channel_ordering::interleaved, 48000, 4
+        };
         REQUIRE(*audio_format == expected_audio_format);
     }
 
@@ -53,8 +57,10 @@ TEST_CASE("media_description | format") {
         REQUIRE(fmt.num_channels == 2);
         auto audio_format = fmt.to_audio_format();
         REQUIRE(audio_format.has_value());
-        auto expected_audio_format =
-            rav::audio_format {rav::audio_format::byte_order::be, rav::audio_encoding::pcm_s24, 48000, 2};
+        auto expected_audio_format = rav::audio_format {
+            rav::audio_format::byte_order::be, rav::audio_encoding::pcm_s24,
+            rav::audio_format::channel_ordering::interleaved, 48000, 2
+        };
         REQUIRE(*audio_format == expected_audio_format);
     }
 
@@ -68,8 +74,10 @@ TEST_CASE("media_description | format") {
         REQUIRE(fmt.num_channels == 2);
         auto audio_format = fmt.to_audio_format();
         REQUIRE(audio_format.has_value());
-        auto expected_audio_format =
-            rav::audio_format {rav::audio_format::byte_order::be, rav::audio_encoding::pcm_s32, 48000, 2};
+        auto expected_audio_format = rav::audio_format {
+            rav::audio_format::byte_order::be, rav::audio_encoding::pcm_s32,
+            rav::audio_format::channel_ordering::interleaved, 48000, 2
+        };
         REQUIRE(*audio_format == expected_audio_format);
     }
 

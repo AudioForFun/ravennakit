@@ -14,31 +14,28 @@
 #include "ravennakit/rtp/detail/rtp_filter.hpp"
 
 rav::ravenna_receiver::ravenna_receiver(ravenna_rtsp_client& rtsp_client, rtp_receiver& rtp_receiver) :
-    rtp_stream_receiver(rtp_receiver), rtsp_client_(rtsp_client) {}
+    rtp_stream_receiver(rtp_receiver), rtsp_client_(rtsp_client) {
+    set_ravenna_rtsp_client(&rtsp_client_);
+}
 
 rav::ravenna_receiver::~ravenna_receiver() {
-    stop();
+    set_ravenna_rtsp_client(nullptr);
 }
 
 void rav::ravenna_receiver::on_announced(const ravenna_rtsp_client::announced_event& event) {
     try {
-        RAV_ASSERT(event.session_name == session_name_, "Expecting session_name to match");
+        RAV_ASSERT(event.session_name == get_session_name(), "Expecting session_name to match");
         update_sdp(event.sdp);
-        RAV_TRACE("SDP updated for session '{}'", session_name_);
+        RAV_TRACE("SDP updated for session '{}'", get_session_name());
     } catch (const std::exception& e) {
-        RAV_ERROR("Failed to process SDP for session '{}': {}", session_name_, e.what());
+        RAV_ERROR("Failed to process SDP for session '{}': {}", get_session_name(), e.what());
     }
 }
 
-void rav::ravenna_receiver::stop() {
-    unsubscribe_from_ravenna_rtsp_client();
+std::optional<rav::sdp::session_description> rav::ravenna_receiver::get_sdp() const {
+    return rtsp_client_.get_sdp_for_session(get_session_name());
 }
 
-void rav::ravenna_receiver::set_session_name(std::string session_name) {
-    session_name_ = std::move(session_name);
-    subscribe_to_ravenna_rtsp_client(rtsp_client_, session_name_);
-}
-
-std::string rav::ravenna_receiver::get_session_name() const {
-    return session_name_;
+std::optional<std::string> rav::ravenna_receiver::get_sdp_text() const {
+    return rtsp_client_.get_sdp_text_for_session(get_session_name());
 }

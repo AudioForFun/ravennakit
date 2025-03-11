@@ -14,6 +14,8 @@
 #include "detail/rtp_packet_stats.hpp"
 #include "detail/rtp_receive_buffer.hpp"
 #include "detail/rtp_receiver.hpp"
+#include "ravennakit/core/exclusive_access_guard.hpp"
+#include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/core/util/throttle.hpp"
@@ -29,6 +31,11 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
   public:
     /// The number of milliseconds after which a stream is considered inactive.
     static constexpr uint64_t k_receive_timeout_ms = 1000;
+
+    /// The length of the receiver buffer in milliseconds.
+    /// AES67 specifies at least 20 ms or 20 times the packet time, whichever is smaller, but since we're on desktop
+    /// systems we go a bit higher. Note that this number is not the same as the delay or added latency.
+    static constexpr uint32_t k_buffer_size_ms = 200;
 
     /**
      * The state of the stream.
@@ -71,13 +78,22 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      */
     class subscriber {
       public:
-        virtual ~subscriber() = default;
+        virtual ~subscriber();
 
         /**
          * Called when the stream has changed.
          * @param event The event.
          */
         virtual void stream_updated([[maybe_unused]] const stream_updated_event& event) {}
+
+        /**
+         * Set the rtp stream receiver, subscribing to the receiver.
+         * @param receiver The receiver to set.
+         */
+        void set_rtp_stream_receiver(rtp_stream_receiver* receiver);
+
+      private:
+        rtp_stream_receiver* receiver_ {nullptr};
     };
 
     /**
@@ -153,20 +169,6 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     [[nodiscard]] uint32_t get_delay() const;
 
     /**
-     * Adds a subscriber to the receiver.
-     * @param subscriber_to_add The subscriber to add.
-     * @return true if the subscriber was added, or false if it was already added.
-     */
-    bool add_subscriber(subscriber* subscriber_to_add);
-
-    /**
-     * Removes a subscriber from the receiver.
-     * @param subscriber_to_remove The subscriber to remove.
-     * @return true if the subscriber was removed, or false if it wasn't found.
-     */
-    bool remove_subscriber(subscriber* subscriber_to_remove);
-
-    /**
      * Adds a callback to the receiver.
      * @param callback The callback to add.
      * @return true if the callback was added, or false if it was already added.
@@ -182,12 +184,30 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
 
     /**
      * Reads data from the buffer at the given timestamp.
-     * @param at_timestamp The timestamp to read from.
+     *
+     * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
+     *
      * @param buffer The destination to write the data to.
      * @param buffer_size The size of the buffer in bytes.
-     * @return true if buffer_size bytes were read, or false if buffer_size bytes couldn't be read.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    bool read_data(uint32_t at_timestamp, uint8_t* buffer, size_t buffer_size);
+    std::optional<uint32_t>
+    read_data_realtime(uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
+
+    /**
+     * Reads the data from the receiver with the given id.
+     *
+     * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
+     *
+     * @param output_buffer The buffer to read the data into.
+     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
+     * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
+     */
+    std::optional<uint32_t>
+    read_audio_data_realtime(audio_buffer_view<float> output_buffer, std::optional<uint32_t> at_timestamp);
 
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
@@ -228,16 +248,15 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         throttle<void> packet_interval_throttle {std::chrono::seconds(10)};
     };
 
-    static constexpr uint32_t k_delay_multiplier = 2;  // The buffer size is at least twice the delay.
-
     rtp_receiver& rtp_receiver_;
     id id_ {id::next_process_wide_unique_id()};
-    uint32_t delay_ = 480;  // 100ms at 48KHz
+    std::atomic<uint32_t> delay_ = 480;  // 100ms at 48KHz
     receiver_state state_ {receiver_state::idle};
     std::vector<media_stream> media_streams_;
     subscriber_list<subscriber> subscribers_;
     subscriber_list<data_callback> data_callbacks_;
     asio::steady_timer maintenance_timer_;
+    exclusive_access_guard realtime_access_guard_;
 
     /**
      * Used for copying received packets to the realtime context.
@@ -255,6 +274,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      */
     struct {
         rtp_receive_buffer receiver_buffer;
+        std::vector<uint8_t> read_buffer;
         fifo_buffer<intermediate_packet, fifo::spsc> fifo;
         fifo_buffer<uint16_t, fifo::spsc> packets_too_old;
         std::optional<wrapping_uint32> first_packet_timestamp;
@@ -272,8 +292,9 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     std::pair<media_stream*, bool> find_or_create_media_stream(const rtp_session& session);
     void handle_rtp_packet_event_for_session(const rtp_receiver::rtp_packet_event& event, media_stream& stream);
     void set_state(receiver_state new_state, bool notify_subscribers);
-    stream_updated_event make_changed_event() const;
+    stream_updated_event make_updated_event() const;
     void do_maintenance();
+    void do_realtime_maintenance();
 };
 
 }  // namespace rav

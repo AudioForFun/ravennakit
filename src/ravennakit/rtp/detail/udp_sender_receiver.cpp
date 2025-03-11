@@ -275,7 +275,7 @@ void rav::udp_sender_receiver::impl::async_receive() {
         }
 
         if (self->handler_ == nullptr) {
-            RAV_ERROR("No handler. Closing connection.");
+            RAV_TRACE("No handler. Closing connection.");
             return;
         }
 

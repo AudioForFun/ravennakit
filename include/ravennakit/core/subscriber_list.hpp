@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include "assert.hpp"
+
 #include <functional>
 #include <vector>
 
@@ -25,6 +27,13 @@ template<class T, class C = void>
 class subscriber_list {
   public:
     subscriber_list() = default;
+
+    ~subscriber_list() {
+        RAV_ASSERT_NO_THROW(
+            subscribers_.empty(),
+            "Subscriber list is not empty, this is a strong indication that the lifetime of the subscriber is longer than the list"
+        );
+    }
 
     subscriber_list(const subscriber_list&) = delete;
     subscriber_list& operator=(const subscriber_list&) = delete;
@@ -67,7 +76,7 @@ class subscriber_list {
      * @param context The context to add.
      * @return true if the subscriber was added, or false if it was already in the list.
      */
-    bool add(T* subscriber, C context) {
+    [[nodiscard]] bool add(T* subscriber, C context) {
         if (contains(subscriber)) {
             return false;
         }
@@ -83,7 +92,7 @@ class subscriber_list {
      * @return true if the subscriber was added, or false if it was already in the list. In both cases the context will
      * be updated.
      */
-    bool add_or_update_context(T* subscriber, C context) {
+    [[nodiscard]] bool add_or_update_context(T* subscriber, C context) {
         for (auto& [sub, ctx] : subscribers_) {
             if (sub == subscriber) {
                 ctx = std::move(context);
@@ -100,7 +109,7 @@ class subscriber_list {
      * @param context The new context.
      * @return true if the subscriber was updated, or false if it was not in the list.
      */
-    bool update_context(T* subscriber, C context) {
+    [[nodiscard]] bool update_context(T* subscriber, C context) {
         for (auto& [sub, ctx] : subscribers_) {
             if (sub == subscriber) {
                 ctx = std::move(context);
@@ -115,7 +124,7 @@ class subscriber_list {
      * @param subscriber The subscriber to remove.
      * @returns true if the subscriber was removed, or false if it was not in the list.
      */
-    bool remove(const T* subscriber) {
+    [[nodiscard]] bool remove(const T* subscriber) {
         for (auto it = subscribers_.begin(); it != subscribers_.end(); ++it) {
             if (it->first == subscriber) {
                 subscribers_.erase(it);
@@ -177,7 +186,7 @@ class subscriber_list {
      * @param subscriber The subscriber to check.
      * @return true if the list contains the subscriber, or false if not.
      */
-    bool contains(T* subscriber) const {
+    [[nodiscard]] bool contains(T* subscriber) const {
         for (auto& [sub, ctx] : subscribers_) {
             if (sub == subscriber) {
                 return true;
@@ -195,6 +204,14 @@ template<class T>
 class subscriber_list<T, void> {
   public:
     subscriber_list() = default;
+
+    ~subscriber_list() {
+        if (!subscribers_.empty()) {
+            // Is the subscriber list is not empty at time of destruction, it's a strong indication that the lifetime of
+            // a subscriber is longer than this list which might indicate a bug.
+            RAV_WARNING("Subscriber list not empty");
+        }
+    }
 
     subscriber_list(const subscriber_list&) = delete;
     subscriber_list& operator=(const subscriber_list&) = delete;
@@ -235,7 +252,7 @@ class subscriber_list<T, void> {
      * @param subscriber The subscriber to add.
      * @return true if the subscriber was added, or false if it was already in the list.
      */
-    bool add(T* subscriber) {
+    [[nodiscard]] bool add(T* subscriber) {
         if (subscriber == nullptr) {
             return false;
         }
@@ -251,7 +268,7 @@ class subscriber_list<T, void> {
      * @param subscriber The subscriber to remove.
      * @returns true if the subscriber was removed, or false if it was not in the list.
      */
-    bool remove(T* subscriber) {
+    [[nodiscard]] bool remove(T* subscriber) {
         auto it = std::find(subscribers_.begin(), subscribers_.end(), subscriber);
         if (it == subscribers_.end()) {
             return false;
@@ -299,7 +316,7 @@ class subscriber_list<T, void> {
      * @param subscriber The subscriber to check.
      * @return true if the list contains the subscriber, or false if not.
      */
-    bool contains(T* subscriber) const {
+    [[nodiscard]] bool contains(T* subscriber) const {
         return std::find(subscribers_.begin(), subscribers_.end(), subscriber) != subscribers_.end();
     }
 

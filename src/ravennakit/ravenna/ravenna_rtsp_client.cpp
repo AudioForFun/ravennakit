@@ -11,65 +11,86 @@
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 
 rav::ravenna_rtsp_client::subscriber::~subscriber() {
-    unsubscribe_from_ravenna_rtsp_client();
+    RAV_ASSERT_NO_THROW(rtsp_client_ == nullptr, "Please call set_ravenna_rtsp_client(nullptr) before destruction");
 }
 
-void rav::ravenna_rtsp_client::subscriber::subscribe_to_ravenna_rtsp_client(
-    ravenna_rtsp_client& client, const std::string& session_name
-) {
-    if (session_name.empty()) {
-        RAV_THROW_EXCEPTION("session_name cannot be empty");
+void rav::ravenna_rtsp_client::subscriber::set_ravenna_rtsp_client(ravenna_rtsp_client* rtsp_client) {
+    if (rtsp_client_ == rtsp_client) {
+        return;
     }
 
-    unsubscribe_from_ravenna_rtsp_client();
+    unsubscribe_from_session();
+    rtsp_client_ = rtsp_client;
+    subscribe_to_session();
+}
 
-    node_ = {this, &client};
+void rav::ravenna_rtsp_client::subscriber::subscribe_to_session(std::string session_name) {
+    if (session_name_ == session_name) {
+        return;
+    }
+
+    unsubscribe_from_session();
+    session_name_ = std::move(session_name);
+    subscribe_to_session();
+}
+
+const std::string& rav::ravenna_rtsp_client::subscriber::get_session_name() const {
+    return session_name_;
+}
+
+void rav::ravenna_rtsp_client::subscriber::subscribe_to_session() {
+    if (rtsp_client_ == nullptr || session_name_.empty()) {
+        return;
+    }
 
     // Subscribe to existing session
-    for (auto& session : client.sessions_) {
-        if (session.session_name == session_name) {
-            session.subscribers.push_back(node_);
+    for (auto& session : rtsp_client_->sessions_) {
+        if (session.session_name == session_name_) {
+            if (!session.subscribers.add(this)) {
+                RAV_WARNING("Already subscribed");
+            }
             if (session.sdp_.has_value()) {
-                on_announced(announced_event {session_name, *session.sdp_});
+                on_announced(announced_event {session_name_, *session.sdp_});
             }
             return;
         }
     }
 
     // Create new session
-    auto& new_session = client.sessions_.emplace_back();
-    new_session.session_name = session_name;
-    new_session.subscribers.push_back(node_);
+    auto& new_session = rtsp_client_->sessions_.emplace_back();
+    new_session.session_name = session_name_;
+    if (!new_session.subscribers.add(this)) {
+        RAV_WARNING("Already subscribed");
+    }
 
     // Get things going if a session is already available
-    if (auto* service = client.browser_.find_session(session_name)) {
+    if (auto* service = rtsp_client_->browser_.find_session(session_name_)) {
         if (service->resolved()) {
-            client.update_session_with_service(new_session, *service);
+            rtsp_client_->update_session_with_service(new_session, *service);
         }
     }
 }
 
-void rav::ravenna_rtsp_client::subscriber::unsubscribe_from_ravenna_rtsp_client() {
-    node_.unlink();
-    if (auto* owner = node_->second) {
-        owner->do_maintenance();
+void rav::ravenna_rtsp_client::subscriber::unsubscribe_from_session() {
+    if (rtsp_client_ == nullptr || session_name_.empty()) {
+        return;
     }
-    node_.reset_value();
+
+    for (auto& session : rtsp_client_->sessions_) {
+        if (!session.subscribers.remove(this)) {
+            RAV_WARNING("Not subscribed");
+        }
+    }
+    rtsp_client_->do_maintenance();
 }
 
 rav::ravenna_rtsp_client::ravenna_rtsp_client(asio::io_context& io_context, ravenna_browser& browser) :
     io_context_(io_context), browser_(browser) {
-    browser_.subscribe(this);
+    set_ravenna_browser(&browser_);
 }
 
 rav::ravenna_rtsp_client::~ravenna_rtsp_client() {
-    browser_.unsubscribe(this);
-
-    for (auto& session : sessions_) {
-        session.subscribers.foreach ([](auto& node) {
-            node.reset();
-        });
-    }
+    set_ravenna_browser(nullptr);
 }
 
 void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) {
@@ -79,6 +100,25 @@ void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::dnssd_bro
             update_session_with_service(session, event.description);
         }
     }
+}
+
+std::optional<rav::sdp::session_description>
+rav::ravenna_rtsp_client::get_sdp_for_session(const std::string& session_name) const {
+    for (auto& session : sessions_) {
+        if (session.session_name == session_name) {
+            return session.sdp_;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> rav::ravenna_rtsp_client::get_sdp_text_for_session(const std::string& session_name) const {
+    for (auto& session : sessions_) {
+        if (session.session_name == session_name) {
+            return session.sdp_text_;
+        }
+    }
+    return std::nullopt;
 }
 
 asio::io_context& rav::ravenna_rtsp_client::get_io_context() const {
@@ -177,7 +217,7 @@ void rav::ravenna_rtsp_client::update_session_with_service(
 
 void rav::ravenna_rtsp_client::do_maintenance() {
     for (auto& session : sessions_) {
-        if (!session.subscribers.is_linked()) {
+        if (session.subscribers.empty()) {
             if (!session.host_target.empty() && session.port != 0) {
                 if (const auto* connection = find_connection(session.host_target, session.port)) {
                     connection->client.async_teardown(fmt::format("/by-name/{}", session.session_name));
@@ -190,7 +230,7 @@ void rav::ravenna_rtsp_client::do_maintenance() {
         std::remove_if(
             sessions_.begin(), sessions_.end(),
             [](const auto& session) {
-                return !session.subscribers.is_linked();
+                return session.subscribers.empty();
             }
         ),
         sessions_.end()
@@ -209,10 +249,10 @@ void rav::ravenna_rtsp_client::handle_incoming_sdp(const std::string& sdp_text) 
     for (auto& session : sessions_) {
         if (session.session_name == sdp.session_name()) {
             session.sdp_ = sdp;
-            session.subscribers.foreach ([&](auto& node) {
-                if (auto* s = node->first) {
-                    s->on_announced(announced_event {session.session_name, sdp});
-                }
+            session.sdp_text_ = sdp_text;
+
+            session.subscribers.foreach ([&](auto s) {
+                s->on_announced(announced_event {session.session_name, sdp});
             });
         }
     }
