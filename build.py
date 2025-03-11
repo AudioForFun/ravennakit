@@ -225,7 +225,6 @@ def build_dist(args):
     shutil.copy2('.clang-format', path_to_dist)
     shutil.copy2('.gitignore', path_to_dist)
     shutil.copy2('CMakeLists.txt', path_to_dist)
-    shutil.copy2('GLOSSARY.md', path_to_dist)
     shutil.copy2('LICENSE.md', path_to_dist)
     shutil.copy2('README.md', path_to_dist)
     shutil.copy2('vcpkg.json', path_to_dist)
