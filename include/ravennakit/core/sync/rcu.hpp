@@ -9,6 +9,7 @@
  */
 
 #pragma once
+
 #include "ravennakit/core/assert.hpp"
 
 #include <mutex>
@@ -58,12 +59,12 @@ class rcu {
              */
             explicit read_lock(reader& parent_reader) : reader_(&parent_reader) {
                 if (reader_->num_locks_ >= 1) {
-                    value_ = reader_->reader_value_;
+                    value_ = reader_->owner_.most_recent_value_.load();
                 } else {
-                    RAV_ASSERT(reader_->reader_value_ == nullptr, "Reader value should be nullptr");
-                    auto most_recent = reader_->owner_.most_recent_value_.load();
-                    value_ = most_recent;
-                    reader_->reader_value_.store(most_recent);
+                    reader_->epoch_.store(reader_->owner_.epoch_.load());
+                    // The value we load might belong to a newer epoch than the one we loaded, but this is no problem
+                    // because newer values than the oldest used value are never deleted.
+                    value_ = reader_->owner_.most_recent_value_.load();
                 }
                 ++reader_->num_locks_;
             }
@@ -111,12 +112,12 @@ class rcu {
              * Resets this lock, releasing the value.
              */
             void reset() {
+                value_ = nullptr;
                 if (reader_ == nullptr) {
                     return;
                 }
-                if (value_ && reader_->num_locks_ == 1) {
-                    reader_->reader_value_.store(nullptr);
-                    value_ = nullptr;
+                if (reader_->num_locks_ == 1) {
+                    reader_->epoch_.store(0);
                 }
                 reader_->num_locks_ -= 1;
                 RAV_ASSERT_NO_THROW(reader_->num_locks_ >= 0, "Number of locks should be non-negative");
@@ -159,7 +160,7 @@ class rcu {
       private:
         friend class rcu;
         rcu& owner_;
-        std::atomic<T*> reader_value_ {nullptr};
+        std::atomic<uint64_t> epoch_ {0};
         int64_t num_locks_ {0};
     };
 
@@ -200,8 +201,11 @@ class rcu {
      */
     void update(std::unique_ptr<T> new_value) {
         std::lock_guard lock(values_mutex_);
-        auto* added = values_.emplace_back(std::move(new_value)).get();
-        most_recent_value_.store(added);
+        most_recent_value_.store(new_value.get());
+        // At this point a reader takes most_recent_value_ with current epoch, which is not a problem because newer
+        // values than the oldest used value are never deleted.
+        auto epoch = epoch_.fetch_add(1) + 1;
+        values_.emplace_back(epoch_and_value {epoch, std::move(new_value)});
     }
 
     /**
@@ -221,8 +225,7 @@ class rcu {
         RAV_ASSERT(!values_.empty(), "The last value should have never been reclaimed");
 
         for (auto it = values_.begin(); it != values_.end() - 1;) {
-            if (has_reader_using_object(it->get())) {
-                ++it;
+            if (has_reader_using_epoch(it->epoch)) {
                 break;  // Don't delete values newer than the oldest used value.
             }
             it = values_.erase(it);
@@ -230,14 +233,16 @@ class rcu {
     }
 
   private:
+    struct epoch_and_value {
+        uint64_t epoch;
+        std::unique_ptr<T> value;
+    };
+
     // Protects the values_ vector.
     std::mutex values_mutex_;
 
     // Holds the current and previous values.
-    std::vector<std::unique_ptr<T>> values_;
-
-    // Stores the most recent value.
-    std::atomic<T*> most_recent_value_ {nullptr};
+    std::vector<epoch_and_value> values_;
 
     // Protects the readers_ vector.
     std::mutex readers_mutex_;
@@ -245,10 +250,16 @@ class rcu {
     // Holds the readers.
     std::vector<reader*> readers_;
 
-    bool has_reader_using_object(const T* object) {
+    // Stores the most recent value.
+    std::atomic<T*> most_recent_value_ {nullptr};
+
+    // Holds the current epoch.
+    std::atomic<uint64_t> epoch_ {};
+
+    bool has_reader_using_epoch(uint64_t epoch) {
         std::lock_guard lock(readers_mutex_);
         for (const auto* r : readers_) {
-            if (r->reader_value_.load() == object) {
+            if (r->epoch_ == epoch) {
                 return true;
             }
         }

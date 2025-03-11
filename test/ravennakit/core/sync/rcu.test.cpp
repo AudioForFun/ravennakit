@@ -287,10 +287,10 @@ TEST_CASE("rcu") {
     }
 
     SECTION("Concurrent reads and writes and reclaims should be thread safe") {
-        static constexpr size_t num_values = 10'000;
-        static constexpr size_t num_writer_threads = 2;
-        static constexpr size_t num_reader_threads = 2;
-        static constexpr size_t num_reclaim_thread = 2;
+        static constexpr size_t num_values = 100'0000;
+        static constexpr size_t num_writer_threads = 3;
+        static constexpr size_t num_reader_threads = 3;
+        static constexpr size_t num_reclaim_thread = 3;
 
         // Assign the values we're going to give the rcu object
         rav::rcu<std::pair<size_t, std::string>> rcu;
@@ -324,6 +324,9 @@ TEST_CASE("rcu") {
 
                 while (num_values_read < num_values) {
                     const auto lock = reader.lock();
+                    if (lock.get() == nullptr) {
+                        continue;
+                    }
                     auto& it = output_values.at(lock->first);
                     if (it.empty()) {
                         it = lock->second;
