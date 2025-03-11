@@ -49,7 +49,8 @@ TEST_CASE("rcu") {
             rcu.update("Hello, World!");
 
             // As long as the first lock is alive, the value won't be updated for subsequent locks of the same
-            reader. const auto lock2 = reader.lock(); REQUIRE(lock2.get() == nullptr);
+            const auto lock2 = reader.lock();
+            REQUIRE(lock2.get() == nullptr);
         }
 
         // Once the previous locks are destroyed, the value will be updated for new locks.
@@ -190,8 +191,7 @@ TEST_CASE("rcu") {
 
         rcu.reclaim();
 
-        // Because reader1_lock is still active, no values should be deleted. Not even the 2nd one (which is not in
-        use
+        // Because reader1_lock is still active, no values should be deleted. Not even the 2nd one (which is not in use
         // currently).
         REQUIRE(counter.instances_created == 3);
         REQUIRE(counter.instances_alive == 3);
