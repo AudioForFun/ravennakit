@@ -13,26 +13,26 @@
 namespace rav {
 
 /**
+ * Holds the number of instances created and destroyed. Useful for tracking object creation and destruction in tests.
+ */
+class object_counter {
+  public:
+    size_t instances_created = 0;
+    size_t instances_alive = 0;
+};
+
+/**
  * Little helper class which keeps track of how many instances of this class have been created and how many are still
  * alive. Useful to track object creation and destruction in tests.
  */
 class counted_object {
   public:
-    inline static size_t global_instances_created {};
-    inline static size_t global_instances_alive {};
-    size_t index {};
-
-    counted_object() : index(global_instances_created++) {
-        global_instances_alive++;
+    explicit counted_object(object_counter& counter) : counter_(counter), index_(counter.instances_created++) {
+        ++counter_.instances_alive;
     }
 
     ~counted_object() {
-        global_instances_alive--;
-    }
-
-    static void reset() {
-        global_instances_created = 0;
-        global_instances_alive = 0;
+        --counter_.instances_alive;
     }
 
     counted_object(const counted_object&) = delete;
@@ -40,6 +40,18 @@ class counted_object {
 
     counted_object(counted_object&&) = delete;
     counted_object& operator=(counted_object&&) = delete;
+
+    /**
+     *
+     * @return The index of the object, which is based on given counter.
+     */
+    [[nodiscard]] size_t index() const {
+        return index_;
+    }
+
+  private:
+    object_counter& counter_;
+    size_t index_ {};
 };
 
 }  // namespace rav
