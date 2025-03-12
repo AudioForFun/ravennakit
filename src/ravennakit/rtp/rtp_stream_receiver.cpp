@@ -291,102 +291,105 @@ bool rav::rtp_stream_receiver::remove_data_callback(data_callback* callback) {
 std::optional<uint32_t> rav::rtp_stream_receiver::read_data_realtime(
     uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
 ) {
-    // TODO: Synchronize with restart()
-
     TRACY_ZONE_SCOPED;
 
-    RAV_ASSERT_EXCLUSIVE_ACCESS(realtime_access_guard_);
-    RAV_ASSERT(buffer_size != 0, "Buffer size must be greater than 0");
-    RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr");
+    if (auto state = audio_thread_reader_.lock_realtime()) {
+        RAV_ASSERT_EXCLUSIVE_ACCESS(realtime_access_guard_);
+        RAV_ASSERT(buffer_size != 0, "Buffer size must be greater than 0");
+        RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr");
 
-    do_realtime_maintenance();
+        do_realtime_maintenance();
 
-    if (buffer_size > realtime_context_.read_buffer.size()) {
-        RAV_WARNING("Buffer size is larger than the read buffer size");
-        return std::nullopt;
+        if (buffer_size > state->read_buffer.size()) {
+            RAV_WARNING("Buffer size is larger than the read buffer size");
+            return std::nullopt;
+        }
+
+        if (!state->first_packet_timestamp.has_value()) {
+            return std::nullopt;
+        }
+
+        if (at_timestamp.has_value()) {
+            state->next_ts = *at_timestamp;
+        }
+
+        const auto num_frames = static_cast<uint32_t>(buffer_size) / state->selected_audio_format.bytes_per_frame();
+
+        const auto read_at = state->next_ts.value();
+        if (!state->receiver_buffer.read(read_at, buffer, buffer_size)) {
+            return std::nullopt;
+        }
+
+        state->next_ts += num_frames;
+
+        return read_at;
     }
 
-    if (!realtime_context_.first_packet_timestamp.has_value()) {
-        return std::nullopt;
-    }
-
-    if (at_timestamp.has_value()) {
-        realtime_context_.next_ts = *at_timestamp;
-    }
-
-    const auto num_frames =
-        static_cast<uint32_t>(buffer_size) / realtime_context_.selected_audio_format.bytes_per_frame();
-
-    const auto read_at = realtime_context_.next_ts.value();
-    if (!realtime_context_.receiver_buffer.read(read_at, buffer, buffer_size)) {
-        return std::nullopt;
-    }
-
-    realtime_context_.next_ts += num_frames;
-
-    return read_at;
+    return std::nullopt;
 }
 
 std::optional<uint32_t> rav::rtp_stream_receiver::read_audio_data_realtime(
     audio_buffer_view<float> output_buffer, const std::optional<uint32_t> at_timestamp
 ) {
-    // TODO: Synchronize with restart()
-
     TRACY_ZONE_SCOPED;
 
     RAV_ASSERT(output_buffer.is_valid(), "Buffer must be valid");
 
-    const auto format = realtime_context_.selected_audio_format;
+    if (auto state = audio_thread_reader_.lock_realtime()) {
+        const auto format = state->selected_audio_format;
 
-    if (format.byte_order != audio_format::byte_order::be) {
-        RAV_ERROR("Unexpected byte order");
-        return std::nullopt;
-    }
-
-    if (format.ordering != audio_format::channel_ordering::interleaved) {
-        RAV_ERROR("Unexpected channel ordering");
-        return std::nullopt;
-    }
-
-    if (format.num_channels != output_buffer.num_channels()) {
-        RAV_ERROR("Channel mismatch");
-        return std::nullopt;
-    }
-
-    auto& buffer = realtime_context_.read_buffer;
-    const auto read_at =
-        read_data_realtime(buffer.data(), output_buffer.num_frames() * format.bytes_per_frame(), at_timestamp);
-
-    if (!read_at.has_value()) {
-        return std::nullopt;
-    }
-
-    if (format.encoding == audio_encoding::pcm_s16) {
-        const auto ok = audio_data::convert<
-            int16_t, audio_data::byte_order::be, audio_data::interleaving::interleaved, float,
-            audio_data::byte_order::ne>(
-            reinterpret_cast<int16_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(),
-            output_buffer.data()
-        );
-        if (!ok) {
-            RAV_WARNING("Failed to convert audio data");
+        if (format.byte_order != audio_format::byte_order::be) {
+            RAV_ERROR("Unexpected byte order");
+            return std::nullopt;
         }
-    } else if (format.encoding == audio_encoding::pcm_s24) {
-        const auto ok = audio_data::convert<
-            int24_t, audio_data::byte_order::be, audio_data::interleaving::interleaved, float,
-            audio_data::byte_order::ne>(
-            reinterpret_cast<int24_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(),
-            output_buffer.data()
-        );
-        if (!ok) {
-            RAV_WARNING("Failed to convert audio data");
+
+        if (format.ordering != audio_format::channel_ordering::interleaved) {
+            RAV_ERROR("Unexpected channel ordering");
+            return std::nullopt;
         }
-    } else {
-        RAV_ERROR("Unsupported encoding");
-        return std::nullopt;
+
+        if (format.num_channels != output_buffer.num_channels()) {
+            RAV_ERROR("Channel mismatch");
+            return std::nullopt;
+        }
+
+        auto& buffer = state->read_buffer;
+        const auto read_at =
+            read_data_realtime(buffer.data(), output_buffer.num_frames() * format.bytes_per_frame(), at_timestamp);
+
+        if (!read_at.has_value()) {
+            return std::nullopt;
+        }
+
+        if (format.encoding == audio_encoding::pcm_s16) {
+            const auto ok = audio_data::convert<
+                int16_t, audio_data::byte_order::be, audio_data::interleaving::interleaved, float,
+                audio_data::byte_order::ne>(
+                reinterpret_cast<int16_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(),
+                output_buffer.data()
+            );
+            if (!ok) {
+                RAV_WARNING("Failed to convert audio data");
+            }
+        } else if (format.encoding == audio_encoding::pcm_s24) {
+            const auto ok = audio_data::convert<
+                int24_t, audio_data::byte_order::be, audio_data::interleaving::interleaved, float,
+                audio_data::byte_order::ne>(
+                reinterpret_cast<int24_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(),
+                output_buffer.data()
+            );
+            if (!ok) {
+                RAV_WARNING("Failed to convert audio data");
+            }
+        } else {
+            RAV_ERROR("Unsupported encoding");
+            return std::nullopt;
+        }
+
+        return read_at;
     }
 
-    return read_at;
+    return std::nullopt;
 }
 
 rav::rtp_stream_receiver::stream_stats rav::rtp_stream_receiver::get_session_stats() const {
@@ -415,8 +418,6 @@ rav::sliding_stats::stats rav::rtp_stream_receiver::get_packet_interval_stats() 
 }
 
 void rav::rtp_stream_receiver::restart() {
-    // TODO: Synchronize with read_data()
-
     set_rtp_receiver(nullptr, {}, {});  // This unsubscribes from all sessions
 
     if (media_streams_.empty()) {
@@ -449,14 +450,19 @@ void rav::rtp_stream_receiver::restart() {
     const auto bytes_per_frame = selected_format->bytes_per_frame();
     RAV_ASSERT(bytes_per_frame > 0, "bytes_per_frame must be greater than 0");
 
-    const auto buffer_size_frames = std::max(selected_format->sample_rate * k_buffer_size_ms / 1000, 1024u);
-    realtime_context_.receiver_buffer.resize(selected_format->sample_rate * k_buffer_size_ms / 1000, bytes_per_frame);
-    realtime_context_.read_buffer.resize(buffer_size_frames * bytes_per_frame);
-    const auto buffer_size_packets = buffer_size_frames / packet_time_frames;
-    realtime_context_.fifo.resize(buffer_size_packets);
-    realtime_context_.packets_too_old.resize(buffer_size_packets);
-    realtime_context_.selected_audio_format = *selected_format;
+    auto new_state = std::make_unique<shared_state>();
 
+    const auto buffer_size_frames = std::max(selected_format->sample_rate * k_buffer_size_ms / 1000, 1024u);
+    new_state->receiver_buffer.resize(selected_format->sample_rate * k_buffer_size_ms / 1000, bytes_per_frame);
+    new_state->read_buffer.resize(buffer_size_frames * bytes_per_frame);
+    const auto buffer_size_packets = buffer_size_frames / packet_time_frames;
+    new_state->fifo.resize(buffer_size_packets);
+    new_state->packets_too_old.resize(buffer_size_packets);
+    new_state->selected_audio_format = *selected_format;
+
+    shared_state_.update(std::move(new_state));
+
+    // TODO: Synchronize with the network thread
     for (auto& stream : media_streams_) {
         stream.first_packet_timestamp.reset();
         stream.packet_stats.reset();
@@ -486,6 +492,8 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_session(
 
     const wrapping_uint32 packet_timestamp(event.packet.timestamp());
 
+    TRACY_PLOT("packet timestamp", static_cast<double>(packet_timestamp.value()));
+
     if (!stream.first_packet_timestamp.has_value()) {
         stream.seq = event.packet.sequence_number();
         stream.first_packet_timestamp = event.packet.timestamp();
@@ -512,27 +520,29 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_session(
         RAV_TRACE("Packet interval stats: {}", stream.packet_interval_stats.to_string());
     }
 
-    if (realtime_context_.consumer_active_) {
-        intermediate_packet intermediate {};
-        intermediate.timestamp = event.packet.timestamp();
-        intermediate.seq = event.packet.sequence_number();
-        intermediate.data_len = static_cast<uint16_t>(payload.size_bytes());
-        intermediate.packet_time_frames = stream.packet_time_frames;
-        std::memcpy(intermediate.data.data(), payload.data(), intermediate.data_len);
+    if (auto shared_state = network_thread_reader_.lock_realtime()) {
+        if (shared_state->consumer_active) {
+            intermediate_packet intermediate {};
+            intermediate.timestamp = event.packet.timestamp();
+            intermediate.seq = event.packet.sequence_number();
+            intermediate.data_len = static_cast<uint16_t>(payload.size_bytes());
+            intermediate.packet_time_frames = stream.packet_time_frames;
+            std::memcpy(intermediate.data.data(), payload.data(), intermediate.data_len);
 
-        if (!realtime_context_.fifo.push(intermediate)) {
-            RAV_TRACE("Failed to push packet info FIFO, make receiver inactive");
-            realtime_context_.consumer_active_ = false;
-            set_state(receiver_state::ok_no_consumer, true);
+            if (!shared_state->fifo.push(intermediate)) {
+                RAV_TRACE("Failed to push packet info FIFO, make receiver inactive");
+                shared_state->consumer_active = false;
+                set_state(receiver_state::ok_no_consumer, true);
+            } else {
+                set_state(receiver_state::ok, true);
+            }
         } else {
-            set_state(receiver_state::ok, true);
+            set_state(receiver_state::ok_no_consumer, true);
         }
-    } else {
-        set_state(receiver_state::ok_no_consumer, true);
-    }
 
-    while (auto seq = realtime_context_.packets_too_old.pop()) {
-        stream.packet_stats.mark_packet_too_late(*seq);
+        while (auto seq = shared_state->packets_too_old.pop()) {
+            stream.packet_stats.mark_packet_too_late(*seq);
+        }
     }
 
     if (const auto stats = stream.packet_stats.update(event.packet.sequence_number())) {
@@ -561,6 +571,7 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_session(
 }
 
 void rav::rtp_stream_receiver::set_state(const receiver_state new_state, const bool notify_subscribers) {
+    // TODO: Schedule this on the maintenance thread
     if (state_ == new_state) {
         return;
     }
@@ -602,6 +613,10 @@ void rav::rtp_stream_receiver::do_maintenance() {
         }
     }
 
+    std::ignore = shared_state_.reclaim();
+
+    TRACY_PLOT("Num shared states", static_cast<double>(shared_state_.get_num_values()));
+
     maintenance_timer_.expires_after(std::chrono::seconds(1));
     maintenance_timer_.async_wait([this](const asio::error_code ec) {
         if (ec) {
@@ -616,50 +631,52 @@ void rav::rtp_stream_receiver::do_maintenance() {
 }
 
 void rav::rtp_stream_receiver::do_realtime_maintenance() {
-    if (realtime_context_.consumer_active_.exchange(true) == false) {
-        realtime_context_.fifo.pop_all();
-    }
-
-    while (const auto packet = realtime_context_.fifo.pop()) {
-        wrapping_uint32 packet_timestamp(packet->timestamp);
-        if (!realtime_context_.first_packet_timestamp) {
-            RAV_TRACE("First packet timestamp: {}", packet->timestamp);
-            realtime_context_.first_packet_timestamp = packet_timestamp;
-            realtime_context_.receiver_buffer.set_next_ts(packet->timestamp);
-            realtime_context_.next_ts = packet_timestamp - delay_.load();
+    if (auto shared_state = audio_thread_reader_.lock_realtime()) {
+        if (shared_state->consumer_active.exchange(true) == false) {
+            shared_state->fifo.pop_all();
         }
 
-        // Determine whether whole packet is too old
-        if (packet_timestamp + packet->packet_time_frames <= realtime_context_.next_ts) {
-            RAV_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
-            TRACY_MESSAGE("Packet too late - skipping");
-            if (!realtime_context_.packets_too_old.push(packet->seq)) {
-                RAV_ERROR("Packet not enqueued to packets_too_old");
+        while (const auto packet = shared_state->fifo.pop()) {
+            wrapping_uint32 packet_timestamp(packet->timestamp);
+            if (!shared_state->first_packet_timestamp) {
+                RAV_TRACE("First packet timestamp: {}", packet->timestamp);
+                shared_state->first_packet_timestamp = packet_timestamp;
+                shared_state->receiver_buffer.set_next_ts(packet->timestamp);
+                shared_state->next_ts = packet_timestamp - delay_.load();
             }
-            continue;
-        }
 
-        // Determine whether packet contains outdated data
-        if (packet_timestamp < realtime_context_.next_ts) {
-            RAV_WARNING("Packet partly too late: seq={}, ts={}", packet->seq, packet->timestamp);
-            TRACY_MESSAGE("Packet partly too late - not skipping");
-            if (!realtime_context_.packets_too_old.push(packet->seq)) {
-                RAV_ERROR("Packet not enqueued to packets_too_old");
+            // Determine whether whole packet is too old
+            if (packet_timestamp + packet->packet_time_frames <= shared_state->next_ts) {
+                // RAV_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
+                TRACY_MESSAGE("Packet too late - skipping");
+                if (!shared_state->packets_too_old.push(packet->seq)) {
+                    RAV_ERROR("Packet not enqueued to packets_too_old");
+                }
+                continue;
             }
-            // Still process the packet since it contains data that is not outdated
+
+            // Determine whether packet contains outdated data
+            if (packet_timestamp < shared_state->next_ts) {
+                RAV_WARNING("Packet partly too late: seq={}, ts={}", packet->seq, packet->timestamp);
+                TRACY_MESSAGE("Packet partly too late - not skipping");
+                if (!shared_state->packets_too_old.push(packet->seq)) {
+                    RAV_ERROR("Packet not enqueued to packets_too_old");
+                }
+                // Still process the packet since it contains data that is not outdated
+            }
+
+            shared_state->receiver_buffer.clear_until(packet->timestamp);
+
+            if (!shared_state->receiver_buffer.write(packet->timestamp, {packet->data.data(), packet->data_len})) {
+                RAV_ERROR("Packet not written to buffer");
+            }
         }
 
-        realtime_context_.receiver_buffer.clear_until(packet->timestamp);
-
-        if (!realtime_context_.receiver_buffer.write(packet->timestamp, {packet->data.data(), packet->data_len})) {
-            RAV_ERROR("Packet not written to buffer");
-        }
+        TRACY_PLOT(
+            "available_frames",
+            static_cast<int64_t>(shared_state->next_ts.diff(shared_state->receiver_buffer.next_ts()))
+        );
     }
-
-    TRACY_PLOT(
-        "available_frames",
-        static_cast<int64_t>(realtime_context_.next_ts.diff(realtime_context_.receiver_buffer.next_ts()))
-    );
 }
 
 void rav::rtp_stream_receiver::on_rtp_packet(const rtp_receiver::rtp_packet_event& rtp_event) {

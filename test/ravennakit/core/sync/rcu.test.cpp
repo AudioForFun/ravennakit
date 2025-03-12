@@ -53,13 +53,18 @@ TEST_CASE("rcu") {
 
             rcu.update("Hello, World!");
 
-            // Even when the first lock is still active, the value should be updated for new locks.
+            // As long as the first lock is alive, the value won't be updated for subsequent locks of the same reader.
             const auto lock2 = reader.lock_realtime();
-            REQUIRE(*lock2 == "Hello, World!");
+            REQUIRE(lock.get() == nullptr);
         }
 
+        // Once the previous locks are destroyed, new locks will get the updated value.
         const auto lock3 = reader.lock_realtime();
         REQUIRE(*lock3 == "Hello, World!");
+
+        // Additional locks will get the same value.
+        const auto lock4 = reader.lock_realtime();
+        REQUIRE(lock3.get() == lock4.get());
     }
 
     SECTION("Track object lifetime") {

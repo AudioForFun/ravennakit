@@ -17,6 +17,7 @@
 #include "ravennakit/core/exclusive_access_guard.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
+#include "ravennakit/core/sync/rcu.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/core/util/throttle.hpp"
 #include "ravennakit/core/util/wrapping_uint.hpp"
@@ -269,10 +270,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         std::array<uint8_t, 1500> data;  // MTU
     };
 
-    /**
-     * Bundles variables which will be accessed by a call to read_data, potentially from a realtime thread.
-     */
-    struct {
+    struct shared_state {
         rtp_receive_buffer receiver_buffer;
         std::vector<uint8_t> read_buffer;
         fifo_buffer<intermediate_packet, fifo::spsc> fifo;
@@ -281,8 +279,12 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
         wrapping_uint32 next_ts;
         audio_format selected_audio_format;
         /// Whether data is being consumed. When the FIFO is full, this will be set to false.
-        std::atomic_bool consumer_active_ = false;
-    } realtime_context_;
+        std::atomic_bool consumer_active {false};
+    };
+
+    rcu<shared_state> shared_state_;
+    rcu<shared_state>::reader audio_thread_reader_ {shared_state_.create_reader()};
+    rcu<shared_state>::reader network_thread_reader_ {shared_state_.create_reader()};
 
     /**
      * Restarts the stream if it is running, otherwise does nothing.

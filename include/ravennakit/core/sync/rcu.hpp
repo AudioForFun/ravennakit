@@ -42,6 +42,7 @@ class rcu {
       public:
         /**
          * A lock object provides access to the value. Getting and using a lock is wait-free.
+         * Each lock will get the same value as long as there is at least one lock alive.
          */
         class realtime_lock {
           public:
@@ -54,16 +55,16 @@ class rcu {
              */
             explicit realtime_lock(reader& parent_reader) : reader_(&parent_reader) {
                 if (reader_->num_locks_.fetch_add(1) >= 1) {
-                    // In this case we're potentially loading a newer value than our the readers epoch, but this has no
-                    // negative side effects.
-                    value_ = reader_->owner_.most_recent_value_.load();
+                    // We load the existing value, which results in every lock getting the same value as long as there
+                    // is at least one lock alive. This is by design.
+                    value_ = reader_->value_;
                 } else {
                     // As long as we progress the epoch forward, there is no aba problem here. The only effect is that a
                     // value might be reclaimed later.
                     reader_->epoch_.store(reader_->owner_.current_epoch_.load());
                     // The value we load might belong to a newer epoch than the one we loaded, but this is no problem
                     // because newer values than the oldest used value are never deleted.
-                    value_ = reader_->owner_.most_recent_value_.load();
+                    value_ = reader_->value_ = reader_->owner_.most_recent_value_.load();
                 }
             }
 
@@ -77,6 +78,23 @@ class rcu {
             realtime_lock& operator=(realtime_lock&&) = delete;
 
             /**
+             * @returns True if the lock holds a value, false otherwise.
+             */
+            explicit operator bool() const {
+                return value_ != nullptr;
+            }
+
+            /**
+             * Real-time safe: yes, wait-free.
+             * Thread safe: no.
+             * @return A reference to the contained object. Reference is only valid if the value is not nullptr.
+             */
+            T& operator*() {
+                RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+                return *value_;
+            }
+
+            /**
              * Real-time safe: yes, wait-free.
              * Thread safe: no.
              * @return A reference to the contained object. Reference is only valid if the value is not nullptr.
@@ -84,6 +102,16 @@ class rcu {
             const T& operator*() const {
                 RAV_ASSERT(value_ != nullptr, "Value is nullptr");
                 return *value_;
+            }
+
+            /**
+             * Real-time safe: yes, wait-free.
+             * Thread safe: no.
+             * @return A pointer to the contained object, or nullptr if the value is nullptr.
+             */
+            T* operator->() {
+                RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+                return value_;
             }
 
             /**
@@ -159,6 +187,8 @@ class rcu {
 
         /**
          * Creates a lock object which provides access to the value.
+         * If there is another lock alive, the new lock will get the same value. Once all locks are destroyed, the value
+         * will be updated.
          * Real-time safe: yes, wait-free.
          * Thread safe: no.
          * @return The lock object.
@@ -170,6 +200,7 @@ class rcu {
       private:
         friend class rcu;
         rcu& owner_;
+        T* value_ {};
         std::atomic<uint64_t> epoch_ {0};
         std::atomic<int64_t> num_locks_ {0};
     };
@@ -238,7 +269,7 @@ class rcu {
      * Thread safe: yes.
      */
     void clear() {
-        update(std::unique_ptr<T>());
+        update({});
     }
 
     /**
@@ -269,6 +300,14 @@ class rcu {
             ++num_reclaimed;
         }
         return num_reclaimed;
+    }
+
+    /**
+     * @return The number of values currently stored.
+     */
+    size_t get_num_values() {
+        std::lock_guard lock(values_mutex_);
+        return values_.size();
     }
 
   private:
