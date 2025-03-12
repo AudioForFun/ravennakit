@@ -12,6 +12,7 @@
 #include "ravennakit/core/util/object_counter.hpp"
 
 #include <future>
+#include <thread>
 #include <catch2/catch_all.hpp>
 
 static_assert(!std::is_copy_constructible_v<rav::rcu<int>>);
