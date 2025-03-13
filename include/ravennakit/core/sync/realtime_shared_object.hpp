@@ -154,6 +154,7 @@ class realtime_shared_object {
      */
     [[nodiscard]] bool update(std::unique_ptr<T> new_value) {
         if (new_value == nullptr) {
+            RAV_ASSERT_FALSE("New value must not be nullptr");
             return false;
         }
 

@@ -43,6 +43,9 @@ std::future<rav::id> rav::ravenna_node::create_receiver(const std::string& sessi
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
         }
+        if (!update_realtime_shared_context()) {
+            RAV_ERROR("Failed to update realtime shared context");
+        }
         return it->get_id();
     };
     return asio::dispatch(io_context_, asio::use_future(work));
@@ -52,9 +55,16 @@ std::future<void> rav::ravenna_node::remove_receiver(id receiver_id) {
     auto work = [this, receiver_id]() mutable {
         for (auto it = receivers_.begin(); it != receivers_.end(); ++it) {
             if ((*it)->get_id() == receiver_id) {
+                // Extend the lifetime until after the realtime context is updated:
+                const std::unique_ptr<ravenna_receiver> tmp = std::move(*it);
+                RAV_ASSERT(tmp != nullptr, "Receiver expected to be valid");
                 receivers_.erase(it);
                 for (const auto& s : subscribers_) {
                     s->ravenna_receiver_removed(receiver_id);
+                }
+                if (!update_realtime_shared_context()) {
+                    // If this happens we're out of luck, because the object will be deleted.
+                    RAV_ERROR("Failed to update realtime shared context");
                 }
                 return;
             }
@@ -202,25 +212,28 @@ std::future<std::optional<std::string>> rav::ravenna_node::get_sdp_text_for_rece
 
 std::optional<uint32_t> rav::ravenna_node::read_data_realtime(
     const id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
-) const {
-    // TODO: Synchronize with maintenance_thread_
+) {
+    TRACY_ZONE_SCOPED;
 
-    for (const auto& receiver : receivers_) {
+    const auto lock = realtime_shared_context_.lock_realtime();
+
+    for (auto* receiver : lock->receivers) {
         if (receiver->get_id() == receiver_id) {
             return receiver->read_data_realtime(buffer, buffer_size, at_timestamp);
         }
     }
+
     return std::nullopt;
 }
 
 std::optional<uint32_t> rav::ravenna_node::read_audio_data_realtime(
     const id receiver_id, const audio_buffer_view<float>& output_buffer, const std::optional<uint32_t> at_timestamp
-) const {
+) {
     TRACY_ZONE_SCOPED;
 
-    // TODO: Synchronize with maintenance_thread_
+    const auto lock = realtime_shared_context_.lock_realtime();
 
-    for (const auto& receiver : receivers_) {
+    for (auto* receiver : lock->receivers) {
         if (receiver->get_id() == receiver_id) {
             return receiver->read_audio_data_realtime(output_buffer, at_timestamp);
         }
@@ -231,4 +244,12 @@ std::optional<uint32_t> rav::ravenna_node::read_audio_data_realtime(
 
 bool rav::ravenna_node::is_maintenance_thread() const {
     return maintenance_thread_id_ == std::this_thread::get_id();
+}
+
+bool rav::ravenna_node::update_realtime_shared_context() {
+    auto new_context = std::make_unique<realtime_shared_context>();
+    for (auto& receiver : receivers_) {
+        new_context->receivers.emplace_back(receiver.get());
+    }
+    return realtime_shared_context_.update(std::move(new_context));
 }

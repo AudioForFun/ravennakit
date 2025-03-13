@@ -20,6 +20,7 @@
 #include "ravenna_rtsp_client.hpp"
 #include "ravenna_receiver.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
+#include "ravennakit/core/sync/realtime_shared_object.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 
@@ -162,7 +163,7 @@ class ravenna_node {
      * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
     [[nodiscard]] std::optional<uint32_t>
-    read_data_realtime(id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp) const;
+    read_data_realtime(id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
 
     /**
      * Reads the data from the receiver with the given id.
@@ -174,7 +175,7 @@ class ravenna_node {
      */
     [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
         id receiver_id, const audio_buffer_view<float>& output_buffer, std::optional<uint32_t> at_timestamp
-    ) const;
+    );
 
     /**
      * @return True if this method is called on the maintenance thread, false otherwise.
@@ -220,6 +221,10 @@ class ravenna_node {
     }
 
   private:
+    struct realtime_shared_context {
+        std::vector<ravenna_receiver*> receivers;
+    };
+
     asio::io_context io_context_;
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
@@ -231,6 +236,10 @@ class ravenna_node {
 
     std::vector<std::unique_ptr<ravenna_receiver>> receivers_;
     subscriber_list<subscriber> subscribers_;
+
+    realtime_shared_object<realtime_shared_context> realtime_shared_context_;
+
+    [[nodiscard]] bool update_realtime_shared_context();
 };
 
 }  // namespace rav
