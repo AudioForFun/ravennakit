@@ -73,6 +73,19 @@ std::future<void> rav::ravenna_node::remove_receiver(id receiver_id) {
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
+std::future<bool> rav::ravenna_node::set_receiver_delay(id receiver_id, uint32_t delay_samples) {
+    auto work = [this, receiver_id, delay_samples] {
+        for (const auto& receiver : receivers_) {
+            if (receiver->get_id() == receiver_id) {
+                receiver->set_delay(delay_samples);
+                return true;
+            }
+        }
+        return false;
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
 std::future<void> rav::ravenna_node::add_subscriber(subscriber* subscriber_to_add) {
     RAV_ASSERT(subscriber_to_add != nullptr, "Subscriber must be valid");
     auto work = [this, subscriber_to_add] {
