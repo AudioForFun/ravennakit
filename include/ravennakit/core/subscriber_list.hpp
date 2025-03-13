@@ -205,14 +205,6 @@ class subscriber_list<T, void> {
   public:
     subscriber_list() = default;
 
-    ~subscriber_list() {
-        if (!subscribers_.empty()) {
-            // Is the subscriber list is not empty at time of destruction, it's a strong indication that the lifetime of
-            // a subscriber is longer than this list which might indicate a bug.
-            RAV_WARNING("Subscriber list not empty");
-        }
-    }
-
     subscriber_list(const subscriber_list&) = delete;
     subscriber_list& operator=(const subscriber_list&) = delete;
 

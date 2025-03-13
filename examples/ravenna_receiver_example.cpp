@@ -180,15 +180,23 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
 
         ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);
-        ravenna_receiver_->add_data_callback(this);
-        set_rtp_stream_receiver(ravenna_receiver_.get());
+        if (!ravenna_receiver_->add_data_callback(this)) {
+            RAV_WARNING("Failed to add data callback");
+        }
+        if (!ravenna_receiver_->add_subscriber(this)) {
+            RAV_WARNING("Failed to add subscriber");
+        }
         ravenna_receiver_->subscribe_to_session(stream_name);
     }
 
     ~ravenna_receiver_example() override {
-        set_rtp_stream_receiver(nullptr);
         if (ravenna_receiver_) {
-            ravenna_receiver_->remove_data_callback(this);
+            if (!ravenna_receiver_->remove_subscriber(this)) {
+                RAV_WARNING("Failed to remove subscriber");
+            }
+            if (!ravenna_receiver_->remove_data_callback(this)) {
+                RAV_WARNING("Failed to remove data callback");
+            }
         }
     }
 
@@ -201,7 +209,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber, rav
         portaudio_stream_.stop();
     }
 
-    void stream_updated(const rav::rtp_stream_receiver::stream_updated_event& event) override {
+    void rtp_stream_receiver_updated(const rav::rtp_stream_receiver::stream_updated_event& event) override {
         if (!event.selected_audio_format.is_valid() || audio_format_ == event.selected_audio_format) {
             return;
         }

@@ -116,7 +116,9 @@ rav::ravenna_node::add_receiver_subscriber(id receiver_id, rtp_stream_receiver::
     auto work = [this, receiver_id, subscriber_to_add] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                subscriber_to_add->set_rtp_stream_receiver(receiver.get());
+                if (!receiver->add_subscriber(subscriber_to_add)) {
+                    RAV_WARNING("Already subscribed");
+                }
                 return;
             }
         }
@@ -130,7 +132,9 @@ rav::ravenna_node::remove_receiver_subscriber(id receiver_id, rtp_stream_receive
     auto work = [this, receiver_id, subscriber_to_remove] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                subscriber_to_remove->set_rtp_stream_receiver(nullptr);
+                if (!receiver->remove_subscriber(subscriber_to_remove)) {
+                    RAV_WARNING("Not subscribed");
+                }
                 return;
             }
         }

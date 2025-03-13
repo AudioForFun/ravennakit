@@ -63,25 +63,6 @@ std::string rav::rtp_stream_receiver::stream_updated_event::to_string() const {
     );
 }
 
-rav::rtp_stream_receiver::subscriber::~subscriber() {
-    RAV_ASSERT_NO_THROW(receiver_ == nullptr, "Please call set_rtp_stream_receiver(nullptr) before destruction");
-}
-
-void rav::rtp_stream_receiver::subscriber::set_rtp_stream_receiver(rtp_stream_receiver* receiver) {
-    if (receiver_ == receiver) {
-        return;
-    }
-    if (receiver_ != nullptr) {
-        if (!receiver_->subscribers_.remove(this)) {
-            RAV_WARNING("Subscriber not found in receiver");
-        }
-    }
-    receiver_ = receiver;
-    if (receiver_ != nullptr && receiver_->subscribers_.add(this)) {
-        stream_updated(receiver_->make_updated_event());
-    }
-}
-
 rav::rtp_stream_receiver::rtp_stream_receiver(rtp_receiver& receiver) :
     rtp_receiver_(receiver), maintenance_timer_(receiver.get_io_context()) {}
 
@@ -257,7 +238,7 @@ void rav::rtp_stream_receiver::update_sdp(const sdp::session_description& sdp) {
     if (should_restart || was_changed) {
         auto event = make_updated_event();
         for (auto& s : subscribers_) {
-            s->stream_updated(event);
+            s->rtp_stream_receiver_updated(event);
         }
     }
 }
@@ -272,12 +253,24 @@ void rav::rtp_stream_receiver::set_delay(const uint32_t delay) {
 
     const auto event = make_updated_event();
     for (auto* s : subscribers_) {
-        s->stream_updated(event);
+        s->rtp_stream_receiver_updated(event);
     }
 }
 
 uint32_t rav::rtp_stream_receiver::get_delay() const {
     return delay_;
+}
+
+bool rav::rtp_stream_receiver::add_subscriber(subscriber* subscriber) {
+    if (subscribers_.add(subscriber)) {
+        subscriber->rtp_stream_receiver_updated(make_updated_event());
+        return true;
+    }
+    return false;
+}
+
+bool rav::rtp_stream_receiver::remove_subscriber(subscriber* subscriber) {
+    return subscribers_.remove(subscriber);
 }
 
 bool rav::rtp_stream_receiver::add_data_callback(data_callback* callback) {
@@ -579,7 +572,7 @@ void rav::rtp_stream_receiver::set_state(const receiver_state new_state, const b
     if (notify_subscribers) {
         const auto event = make_updated_event();
         for (auto* s : subscribers_) {
-            s->stream_updated(event);
+            s->rtp_stream_receiver_updated(event);
         }
     }
 }

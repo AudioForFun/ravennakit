@@ -35,8 +35,12 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber, public rav:
 
         ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);  // 10ms @ 48kHz
-        ravenna_receiver_->add_data_callback(this);
-        set_rtp_stream_receiver(ravenna_receiver_.get());
+        if (!ravenna_receiver_->add_data_callback(this)) {
+            RAV_WARNING("Failed to add data callback");
+        }
+        if (!ravenna_receiver_->add_subscriber(this)) {
+            RAV_WARNING("Failed to add subscriber");
+        }
         ravenna_receiver_->subscribe_to_session(stream_name_);
 
         advertiser_ = rav::dnssd::dnssd_advertiser::create(io_context_);
@@ -68,18 +72,24 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber, public rav:
         );
 
         transmitter_->on<rav::ravenna_transmitter::on_data_requested_event>([this](auto event) {
-            ravenna_receiver_->read_data_realtime(
+            std::ignore = ravenna_receiver_->read_data_realtime(
                 event.buffer.data(), event.buffer.size(), event.timestamp - ravenna_receiver_->get_delay()
             );
         });
     }
 
     ~loopback_example() override {
-        set_rtp_stream_receiver(nullptr);
-        ravenna_receiver_->remove_data_callback(this);
+        if (ravenna_receiver_ != nullptr) {
+            if (!ravenna_receiver_->remove_subscriber(this)) {
+                RAV_WARNING("Failed to remove subscriber");
+            }
+            if (!ravenna_receiver_->remove_data_callback(this)) {
+                RAV_WARNING("Failed to remove data callback");
+            }
+        }
     }
 
-    void stream_updated(const rav::rtp_stream_receiver::stream_updated_event& event) override {
+    void rtp_stream_receiver_updated(const rav::rtp_stream_receiver::stream_updated_event& event) override {
         buffer_.resize(event.selected_audio_format.bytes_per_frame() * event.packet_time_frames);
         if (!transmitter_->set_audio_format(event.selected_audio_format)) {
             RAV_ERROR("Format not supported by transmitter");

@@ -79,22 +79,13 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      */
     class subscriber {
       public:
-        virtual ~subscriber();
+        virtual ~subscriber() = default;
 
         /**
          * Called when the stream has changed.
          * @param event The event.
          */
-        virtual void stream_updated([[maybe_unused]] const stream_updated_event& event) {}
-
-        /**
-         * Set the rtp stream receiver, subscribing to the receiver.
-         * @param receiver The receiver to set.
-         */
-        void set_rtp_stream_receiver(rtp_stream_receiver* receiver);
-
-      private:
-        rtp_stream_receiver* receiver_ {nullptr};
+        virtual void rtp_stream_receiver_updated([[maybe_unused]] const stream_updated_event& event) {}
     };
 
     /**
@@ -170,18 +161,32 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
     [[nodiscard]] uint32_t get_delay() const;
 
     /**
+     * Adds a subscriber to the receiver.
+     * @param subscriber The subscriber to add.
+     * @return true if the subscriber was added, or false if it was already in the list.
+     */
+    [[nodiscard]] bool add_subscriber(subscriber* subscriber);
+
+    /**
+     * Removes a subscriber from the receiver.
+     * @param subscriber The subscriber to remove.
+     * @return true if the subscriber was removed, or false if it wasn't found.
+     */
+    [[nodiscard]] bool remove_subscriber(subscriber* subscriber);
+
+    /**
      * Adds a callback to the receiver.
      * @param callback The callback to add.
      * @return true if the callback was added, or false if it was already added.
      */
-    bool add_data_callback(data_callback* callback);
+    [[nodiscard]] bool add_data_callback(data_callback* callback);
 
     /**
      * Removes a data callback from the receiver.
      * @param callback The callback to remove.
      * @return true if the callback was removed, or false if it wasn't found.
      */
-    bool remove_data_callback(data_callback* callback);
+    [[nodiscard]] bool remove_data_callback(data_callback* callback);
 
     /**
      * Reads data from the buffer at the given timestamp.
@@ -194,7 +199,7 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      * be used for the first read and after that the timestamp will be incremented by the packet time.
      * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    std::optional<uint32_t>
+    [[nodiscard]] std::optional<uint32_t>
     read_data_realtime(uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
 
     /**
@@ -207,23 +212,23 @@ class rtp_stream_receiver: public rtp_receiver::subscriber {
      * be used for the first read and after that the timestamp will be incremented by the packet time.
      * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    std::optional<uint32_t>
+    [[nodiscard]] std::optional<uint32_t>
     read_audio_data_realtime(audio_buffer_view<float> output_buffer, std::optional<uint32_t> at_timestamp);
 
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
      */
-    stream_stats get_session_stats() const;
+    [[nodiscard]] stream_stats get_session_stats() const;
 
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
      */
-    rtp_packet_stats::counters get_packet_stats() const;
+    [[nodiscard]] rtp_packet_stats::counters get_packet_stats() const;
 
     /**
      * @return The packet interval statistics for the first stream, if it exists, otherwise an empty structure.
      */
-    sliding_stats::stats get_packet_interval_stats() const;
+    [[nodiscard]] sliding_stats::stats get_packet_interval_stats() const;
 
     // rtp_receiver::subscriber overrides
     void on_rtp_packet(const rtp_receiver::rtp_packet_event& rtp_event) override;

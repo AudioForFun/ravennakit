@@ -47,7 +47,7 @@ struct ravenna_node_example final: rav::ravenna_node::subscriber, rav::rtp_strea
         // node.add_receiver_subscriber(receiver.get_id(), this); TODO: Replace
     }
 
-    void stream_updated(const rav::rtp_stream_receiver::stream_updated_event& event) override {
+    void rtp_stream_receiver_updated(const rav::rtp_stream_receiver::stream_updated_event& event) override {
         RAV_INFO("Stream updated: {}", event.to_string());
     }
 
