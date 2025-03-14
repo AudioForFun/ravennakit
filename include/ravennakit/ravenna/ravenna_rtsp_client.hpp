@@ -32,7 +32,7 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
     class subscriber {
       public:
         subscriber() = default;
-        virtual ~subscriber();
+        virtual ~subscriber() = default;
 
         subscriber(const subscriber&) = delete;
         subscriber& operator=(const subscriber&) = delete;
@@ -45,38 +45,25 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
          * @param event The announced event.
          */
         virtual void on_announced([[maybe_unused]] const announced_event& event) {}
-
-        /**
-         * Sets the ravenna_rtsp_client for this subscriber, unsubscribing from the previous client if it exists and
-         * subscribing to the new client.
-         * @param rtsp_client The ravenna_rtsp_client to set.
-         */
-        void set_ravenna_rtsp_client(ravenna_rtsp_client* rtsp_client);
-
-        /**
-         * Sets the session name for this subscriber.
-         * @param session_name The session name to set.
-         */
-        void subscribe_to_session(std::string session_name);
-
-        /**
-         * @return The session name for this subscriber.
-         */
-        [[nodiscard]] const std::string& get_session_name() const;
-
-      private:
-        ravenna_rtsp_client* rtsp_client_ {};
-        std::string session_name_;
-
-        void subscribe_to_session();
-        void unsubscribe_from_session();
     };
 
     explicit ravenna_rtsp_client(asio::io_context& io_context, ravenna_browser& browser);
     ~ravenna_rtsp_client() override;
 
-    // ravenna_browser::subscriber overrides
-    void ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) override;
+    /**
+     * Subscribes to a session.
+     * @param subscriber The subscriber to add.
+     * @param session_name The name of the session to subscribe to.
+     * @return true if the subscriber was added, or false if it was already in the list.
+     */
+    [[nodiscard]] bool subscribe_to_session(subscriber* subscriber, const std::string& session_name);
+
+    /**
+     * Unsubscribes from all sessions.
+     * @param subscriber The subscriber to remove.
+     * @return true if the subscriber was removed from at least one session, or false if it wasn't.
+     */
+    [[nodiscard]] bool unsubscribe_from_all_sessions(subscriber* subscriber);
 
     /**
      * Tries to find the SDP for the given session.
@@ -98,6 +85,9 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
      * @return The io_context used by this client.
      */
     [[nodiscard]] asio::io_context& get_io_context() const;
+
+    // ravenna_browser::subscriber overrides
+    void ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) override;
 
   private:
     struct session_context {

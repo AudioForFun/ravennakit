@@ -29,6 +29,18 @@ class ravenna_receiver: public rtp_stream_receiver, public ravenna_rtsp_client::
     ravenna_receiver& operator=(ravenna_receiver&&) noexcept = delete;
 
     /**
+     * Subscribes to a session.
+     * @param session_name The name of the session to subscribe to.
+     * @return true if the subscriber was added, or false if it was already in the list.
+     */
+    [[nodiscard]] bool subscribe_to_session(const std::string& session_name);
+
+    /**
+     * @return The name of the session, which is empty if not subscribed.
+     */
+    const std::string& get_session_name() const;
+
+    /**
      * @return The SDP for the session.
      */
     std::optional<sdp::session_description> get_sdp() const;
@@ -44,6 +56,7 @@ class ravenna_receiver: public rtp_stream_receiver, public ravenna_rtsp_client::
 
   private:
     ravenna_rtsp_client& rtsp_client_;
+    std::string session_name_;
 };
 
 }  // namespace rav

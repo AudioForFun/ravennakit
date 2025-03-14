@@ -45,7 +45,6 @@ class stream_recorder: public rav::rtp_stream_receiver::subscriber {
             if (!receiver_->remove_subscriber(this)) {
                 RAV_WARNING("Failed to remove subscriber");
             }
-            receiver_->set_ravenna_rtsp_client(nullptr);
         }
         close();
     }
@@ -117,7 +116,10 @@ class ravenna_recorder_example {
     void add_stream(const std::string& stream_name) {
         auto receiver = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
         receiver->set_delay(480);  // 10ms @ 48kHz
-        receiver->subscribe_to_session(stream_name);
+        if (!receiver->subscribe_to_session(stream_name)) {
+            RAV_ERROR("Failed to subscribe to session");
+            return;
+        }
         recorders_.emplace_back(std::make_unique<stream_recorder>(std::move(receiver)));
     }
 

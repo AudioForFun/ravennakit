@@ -38,8 +38,12 @@ rav::ravenna_node::~ravenna_node() {
 
 std::future<rav::id> rav::ravenna_node::create_receiver(const std::string& session_name) {
     auto work = [this, session_name]() mutable {
-        const auto& it = receivers_.emplace_back(std::make_unique<ravenna_receiver>(rtsp_client_, *rtp_receiver_));
-        it->subscribe_to_session(session_name);
+        auto new_receiver = std::make_unique<ravenna_receiver>(rtsp_client_, *rtp_receiver_);
+        if (!new_receiver->subscribe_to_session(session_name)) {
+            RAV_ERROR("Failed to subscribe to session: {}", session_name);
+            return id {};
+        }
+        const auto& it = receivers_.emplace_back(std::move(new_receiver));
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
         }
