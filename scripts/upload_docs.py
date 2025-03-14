@@ -25,7 +25,10 @@ def upload_docs_using_sftp(args):
     scp_cmd = ['scp', '-P', f'{args.ssh_port}', '-r', files[0],
                f'{args.username}@{args.hostname}:{args.remote_path}/{tmp_file_name}']
     ssh_cmd = ['ssh', f'{args.username}@{args.hostname}', '-p', args.ssh_port,
-               f'mkdir -p {args.remote_path}/{git_version} && unzip {args.remote_path}/{tmp_file_name} -d {args.remote_path}/{git_version} && rm {args.remote_path}/{tmp_file_name}']
+               f'mkdir -p {args.remote_path}/{git_version} && unzip {args.remote_path}/{tmp_file_name} -d {args.remote_path}/{git_version} && rm {args.remote_path}/{tmp_file_name} && ln -sfn {args.remote_path}/{git_version} {args.remote_path}/latest']
+
+    print(f"{' '.join(scp_cmd)}")
+    print(f"{' '.join(ssh_cmd)}")
 
     subprocess.run(scp_cmd, check=True)
     subprocess.run(ssh_cmd, check=True)
