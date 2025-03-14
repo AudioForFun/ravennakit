@@ -481,8 +481,6 @@ void rav::rtp_stream_receiver::handle_rtp_packet_event_for_session(
 
     const wrapping_uint32 packet_timestamp(event.packet.timestamp());
 
-    TRACY_PLOT("packet timestamp", static_cast<double>(packet_timestamp.value()));
-
     if (!stream.first_packet_timestamp.has_value()) {
         stream.seq = event.packet.sequence_number();
         stream.first_packet_timestamp = event.packet.timestamp();
@@ -603,8 +601,6 @@ void rav::rtp_stream_receiver::do_maintenance() {
     }
 
     std::ignore = shared_state_.reclaim();
-
-    TRACY_PLOT("Num shared states", static_cast<double>(shared_state_.get_num_values()));
 
     maintenance_timer_.expires_after(std::chrono::seconds(1));
     maintenance_timer_.async_wait([this](const asio::error_code ec) {
