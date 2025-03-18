@@ -30,5 +30,5 @@ An RTP session is defined as a context for the exchange of RTP packets, typicall
 
 ### SSRC
 
-SSRCs are unique to each stream within a session (but practically globally). They are used to identify the source of a
-stream.
+SSRCs are unique to each stream within a session (but practically speaking often globally). They are used to identify
+the source of a stream.
