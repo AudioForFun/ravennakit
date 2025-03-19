@@ -57,13 +57,13 @@
 
             // Function to extract version from the URL
             function getCurrentVersion() {
-                let match = window.location.pathname.match(/reference\/([^\/]+)/);
+                let match = window.location.pathname.match(/\/([^\/]+)/);
                 return match ? match[1] : null;
             }
 
             let currentVersion = getCurrentVersion();
 
-            fetch("/reference/versions.php")
+            fetch("/versions.php")
                 .then(response => response.json())
                 .then(data => {
                     // Populate the dropdown with versions
