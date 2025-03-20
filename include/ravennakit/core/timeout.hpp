@@ -13,7 +13,7 @@
 #include <chrono>
 #include <thread>
 
-namespace rav::util::chrono {
+namespace rav {
 
 /**
  * Simple timeout class which blocks the current thread until a condition becomes true, or the timeout expires.

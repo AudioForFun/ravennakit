@@ -33,7 +33,7 @@ TEST_CASE("io_context_runner", "[io_context_runner]") {
             });
         }
 
-        const rav::util::chrono::timeout timeout(k_default_timeout_seconds_seconds);
+        const rav::timeout timeout(k_default_timeout_seconds_seconds);
         const auto result = timeout.wait_until([&total, &expected_total] {
             return total == expected_total && total != 0;
         });
