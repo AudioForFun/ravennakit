@@ -22,33 +22,33 @@ namespace rav {
 /**
  * Maintains connections to one or more RAVENNA RTSP servers, upon request.
  */
-class ravenna_rtsp_client: public ravenna_browser::subscriber {
+class RavennaRtspClient: public RavennaBrowser::Subscriber {
   public:
-    struct announced_event {
+    struct AnnouncedEvent {
         const std::string& session_name;
         const sdp::session_description& sdp;
     };
 
-    class subscriber {
+    class Subscriber {
       public:
-        subscriber() = default;
-        virtual ~subscriber() = default;
+        Subscriber() = default;
+        virtual ~Subscriber() = default;
 
-        subscriber(const subscriber&) = delete;
-        subscriber& operator=(const subscriber&) = delete;
+        Subscriber(const Subscriber&) = delete;
+        Subscriber& operator=(const Subscriber&) = delete;
 
-        subscriber(subscriber&&) noexcept = delete;
-        subscriber& operator=(subscriber&&) noexcept = delete;
+        Subscriber(Subscriber&&) noexcept = delete;
+        Subscriber& operator=(Subscriber&&) noexcept = delete;
 
         /**
          * Called when a session is announced.
          * @param event The announced event.
          */
-        virtual void on_announced([[maybe_unused]] const announced_event& event) {}
+        virtual void on_announced([[maybe_unused]] const AnnouncedEvent& event) {}
     };
 
-    explicit ravenna_rtsp_client(asio::io_context& io_context, ravenna_browser& browser);
-    ~ravenna_rtsp_client() override;
+    explicit RavennaRtspClient(asio::io_context& io_context, RavennaBrowser& browser);
+    ~RavennaRtspClient() override;
 
     /**
      * Subscribes to a session.
@@ -56,14 +56,14 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
      * @param session_name The name of the session to subscribe to.
      * @return true if the subscriber was added, or false if it was already in the list.
      */
-    [[nodiscard]] bool subscribe_to_session(subscriber* subscriber_to_add, const std::string& session_name);
+    [[nodiscard]] bool subscribe_to_session(Subscriber* subscriber_to_add, const std::string& session_name);
 
     /**
      * Unsubscribes from all sessions.
      * @param subscriber_to_remove The subscriber to remove.
      * @return true if the subscriber was removed from at least one session, or false if it wasn't.
      */
-    [[nodiscard]] bool unsubscribe_from_all_sessions(subscriber* subscriber_to_remove);
+    [[nodiscard]] bool unsubscribe_from_all_sessions(Subscriber* subscriber_to_remove);
 
     /**
      * Tries to find the SDP for the given session.
@@ -90,29 +90,29 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
     void ravenna_session_discovered(const dnssd::Browser::service_resolved& event) override;
 
   private:
-    struct session_context {
+    struct SessionContext {
         std::string session_name;
-        subscriber_list<subscriber> subscribers;
+        subscriber_list<Subscriber> subscribers;
         std::optional<sdp::session_description> sdp_;
         std::optional<std::string> sdp_text_;
         std::string host_target;
         uint16_t port {};
     };
 
-    struct connection_context {
+    struct ConnectionContext {
         std::string host_target;
         uint16_t port {};
         rtsp::client client;
     };
 
     asio::io_context& io_context_;
-    ravenna_browser& browser_;
-    std::vector<session_context> sessions_;
-    std::vector<connection_context> connections_;
+    RavennaBrowser& browser_;
+    std::vector<SessionContext> sessions_;
+    std::vector<ConnectionContext> connections_;
 
-    connection_context& find_or_create_connection(const std::string& host_target, uint16_t port);
-    connection_context* find_connection(const std::string& host_target, uint16_t port);
-    void update_session_with_service(session_context& session, const dnssd::ServiceDescription& service);
+    ConnectionContext& find_or_create_connection(const std::string& host_target, uint16_t port);
+    ConnectionContext* find_connection(const std::string& host_target, uint16_t port);
+    void update_session_with_service(SessionContext& session, const dnssd::ServiceDescription& service);
     void do_maintenance();
     void handle_incoming_sdp(const std::string& sdp_text);
 };

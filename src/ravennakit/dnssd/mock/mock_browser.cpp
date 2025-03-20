@@ -118,7 +118,7 @@ std::vector<rav::dnssd::ServiceDescription> rav::dnssd::MockBrowser::get_service
     return result;
 }
 
-void rav::dnssd::MockBrowser::subscribe(subscriber& s) {
+void rav::dnssd::MockBrowser::subscribe(Subscriber& s) {
     subscribers_.push_back(s);
     for (auto& [fullname, service] : services_) {
         s->emit(service_discovered {service});

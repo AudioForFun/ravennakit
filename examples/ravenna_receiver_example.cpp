@@ -165,13 +165,13 @@ class ravenna_receiver: public rav::rtp::rtp_stream_receiver::subscriber {
         const std::string& stream_name, std::string audio_device_name, const std::string& interface_address
     ) :
         audio_device_name_(std::move(audio_device_name)) {
-        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, browser_);
+        rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
 
         rav::rtp::rtp_receiver::configuration config;
         config.interface_address = asio::ip::make_address(interface_address);
         rtp_receiver_ = std::make_unique<rav::rtp::rtp_receiver>(io_context_, config);
 
-        ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
+        ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);
         if (!ravenna_receiver_->subscribe(this)) {
             RAV_WARNING("Failed to add subscriber");
@@ -217,10 +217,10 @@ class ravenna_receiver: public rav::rtp::rtp_stream_receiver::subscriber {
 
   private:
     asio::io_context io_context_;
-    rav::ravenna_browser browser_ {io_context_};
-    std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
+    rav::RavennaBrowser browser_ {io_context_};
+    std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
     std::unique_ptr<rav::rtp::rtp_receiver> rtp_receiver_;
-    std::unique_ptr<rav::ravenna_receiver> ravenna_receiver_;
+    std::unique_ptr<rav::RavennaReceiver> ravenna_receiver_;
     std::string audio_device_name_;
     portaudio_stream portaudio_stream_;
     rav::audio_format audio_format_;

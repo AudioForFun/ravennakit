@@ -62,13 +62,13 @@ class MockBrowser final: public Browser {
     void browse_for(const std::string& service_type) override;
     [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
     [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
-    void subscribe(subscriber& s) override;
+    void subscribe(Subscriber& s) override;
 
   private:
     asio::io_context& io_context_;
     std::map<std::string, ServiceDescription> services_;  // fullname -> service description
     std::set<std::string> browsers_; // reg_type
-    subscriber subscribers_;
+    Subscriber subscribers_;
 
     /**
      * Emits fiven event to all subscribers.

@@ -51,7 +51,7 @@ TEST_CASE("dnssd | Browse and advertise") {
         const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
         auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, txt_record, false, true);
 
-        rav::dnssd::Browser::subscriber subscriber;
+        rav::dnssd::Browser::Subscriber subscriber;
         subscriber->on<rav::dnssd::Browser::service_discovered>([&](const auto& event) {
             discovered_services.push_back(event.description);
         });
@@ -118,7 +118,7 @@ TEST_CASE("dnssd | Update a txt record") {
     const auto browser = rav::dnssd::Browser::create(io_context);
     RAV_ASSERT(browser, "Expected a dnssd browser");
     bool updated = false;
-    rav::dnssd::Browser::subscriber subscriber;
+    rav::dnssd::Browser::Subscriber subscriber;
     subscriber->on<rav::dnssd::Browser::service_resolved>([&](const auto& event) {
         if (event.description.txt.empty() && !updated) {
             advertiser->update_txt_record(id, txt_record);

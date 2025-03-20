@@ -38,21 +38,21 @@ namespace rav {
 /**
  * This class contains all the components to act like a RAVENNA node as specified in the RAVENNA protocol.
  */
-class ravenna_node {
+class RavennaNode {
   public:
     /**
      * Base class for classes which want to receive updates from the ravenna node.
      */
-    class subscriber: public ravenna_browser::subscriber {
+    class Subscriber: public RavennaBrowser::Subscriber {
       public:
-        ~subscriber() override = default;
+        ~Subscriber() override = default;
 
         /**
          * Called when a receiver is added to the node, or when subscribing.
          * Called from the maintenance thread.
          * @param receiver The id of the receiver.
          */
-        virtual void ravenna_receiver_added([[maybe_unused]] const ravenna_receiver& receiver) {}
+        virtual void ravenna_receiver_added([[maybe_unused]] const RavennaReceiver& receiver) {}
 
         /**
          * Called when a receiver is removed from the node.
@@ -62,8 +62,8 @@ class ravenna_node {
         virtual void ravenna_receiver_removed([[maybe_unused]] id receiver_id) {}
     };
 
-    explicit ravenna_node(rtp::rtp_receiver::configuration config);
-    ~ravenna_node();
+    explicit RavennaNode(rtp::rtp_receiver::configuration config);
+    ~RavennaNode();
 
     /**
      * Creates a new receiver for the given session.
@@ -93,14 +93,14 @@ class ravenna_node {
      * This method can be called from any thread, and will wait until the operation is complete.
      * @param subscriber_to_add The subscriber to add.
      */
-    [[nodiscard]] std::future<void> subscribe(subscriber* subscriber_to_add);
+    [[nodiscard]] std::future<void> subscribe(Subscriber* subscriber_to_add);
 
     /**
      * Removes a subscriber from the node.
      * This method can be called from any thread, and will wait until the operation is complete.
      * @param subscriber_to_remove The subscriber to remove.
      */
-    [[nodiscard]] std::future<void> unsubscribe(subscriber* subscriber_to_remove);
+    [[nodiscard]] std::future<void> unsubscribe(Subscriber* subscriber_to_remove);
 
     /**
      * Adds a subscriber to the receiver with the given id.
@@ -134,7 +134,7 @@ class ravenna_node {
      * @param update_function The function to call with the receiver.
      */
     [[nodiscard]] std::future<bool>
-    get_receiver(id receiver_id, std::function<void(ravenna_receiver&)> update_function);
+    get_receiver(id receiver_id, std::function<void(RavennaReceiver&)> update_function);
 
     /**
      * Get the SDP for the receiver with the given id.
@@ -220,7 +220,7 @@ class ravenna_node {
 
   private:
     struct realtime_shared_context {
-        std::vector<ravenna_receiver*> receivers;
+        std::vector<RavennaReceiver*> receivers;
     };
 
     asio::io_context io_context_;
@@ -228,12 +228,12 @@ class ravenna_node {
     std::thread::id maintenance_thread_id_;
     asio::ip::address interface_address;
 
-    ravenna_browser browser_ {io_context_};
-    ravenna_rtsp_client rtsp_client_ {io_context_, browser_};
+    RavennaBrowser browser_ {io_context_};
+    RavennaRtspClient rtsp_client_ {io_context_, browser_};
     std::unique_ptr<rtp::rtp_receiver> rtp_receiver_;
 
-    std::vector<std::unique_ptr<ravenna_receiver>> receivers_;
-    subscriber_list<subscriber> subscribers_;
+    std::vector<std::unique_ptr<RavennaReceiver>> receivers_;
+    subscriber_list<Subscriber> subscribers_;
 
     realtime_shared_object<realtime_shared_context> realtime_shared_context_;
 

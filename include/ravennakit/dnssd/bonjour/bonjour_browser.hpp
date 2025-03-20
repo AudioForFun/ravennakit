@@ -111,7 +111,7 @@ class BonjourBrowser: public Browser {
     [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
     [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
 
-    void subscribe(subscriber& s) override;
+    void subscribe(Subscriber& s) override;
 
   private:
     asio::ip::tcp::socket service_socket_;
@@ -119,7 +119,7 @@ class BonjourBrowser: public Browser {
     std::map<std::string, service> services_;                         // fullname -> service
     std::map<std::string, BonjourScopedDnsServiceRef> browsers_;  // reg_type -> DNSServiceRef
     size_t process_results_failed_attempts_ = 0;
-    subscriber subscribers_;
+    Subscriber subscribers_;
 
     void async_process_results();
 

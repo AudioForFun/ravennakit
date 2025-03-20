@@ -24,11 +24,11 @@ class loopback: public rav::rtp::rtp_stream_receiver::subscriber {
   public:
     explicit loopback(std::string stream_name, const asio::ip::address_v4& interface_addr) :
         stream_name_(std::move(stream_name)) {
-        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, browser_);
+        rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
         auto config = rav::rtp::rtp_receiver::configuration {interface_addr};
         rtp_receiver_ = std::make_unique<rav::rtp::rtp_receiver>(io_context_, config);
 
-        ravenna_receiver_ = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
+        ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(*rtsp_client_, *rtp_receiver_);
         ravenna_receiver_->set_delay(480);  // 10ms @ 48kHz
         if (!ravenna_receiver_->subscribe(this)) {
             RAV_WARNING("Failed to add subscriber");
@@ -59,12 +59,12 @@ class loopback: public rav::rtp::rtp_stream_receiver::subscriber {
             }
         });
 
-        transmitter_ = std::make_unique<rav::ravenna_transmitter>(
+        transmitter_ = std::make_unique<rav::RavennaTransmitter>(
             io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, *rtp_transmitter_, rav::id(1),
             stream_name_ + "_loopback", interface_addr
         );
 
-        transmitter_->on<rav::ravenna_transmitter::on_data_requested_event>([this](auto event) {
+        transmitter_->on<rav::RavennaTransmitter::OnDataRequestedEvent>([this](auto event) {
             std::ignore = ravenna_receiver_->read_data_realtime(
                 event.buffer.data(), event.buffer.size(), event.timestamp - ravenna_receiver_->get_delay()
             );
@@ -104,17 +104,17 @@ class loopback: public rav::rtp::rtp_stream_receiver::subscriber {
     bool ptp_clock_stable_ = false;
 
     // Receiver components
-    rav::ravenna_browser browser_ {io_context_};
-    std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
+    rav::RavennaBrowser browser_ {io_context_};
+    std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
     std::unique_ptr<rav::rtp::rtp_receiver> rtp_receiver_;
-    std::unique_ptr<rav::ravenna_receiver> ravenna_receiver_;
+    std::unique_ptr<rav::RavennaReceiver> ravenna_receiver_;
 
     // Sender components
     std::unique_ptr<rav::dnssd::Advertiser> advertiser_;
     std::unique_ptr<rav::rtsp::server> rtsp_server_;
     std::unique_ptr<rav::rtp::rtp_transmitter> rtp_transmitter_;
     std::unique_ptr<rav::ptp::Instance> ptp_instance_;
-    std::unique_ptr<rav::ravenna_transmitter> transmitter_;
+    std::unique_ptr<rav::RavennaTransmitter> transmitter_;
     rav::event_slot<rav::ptp::Instance::PortChangedStateEventEvent> ptp_port_changed_event_slot_;
 
     /**

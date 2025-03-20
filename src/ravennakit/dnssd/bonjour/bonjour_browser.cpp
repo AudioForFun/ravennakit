@@ -281,7 +281,7 @@ std::vector<rav::dnssd::ServiceDescription> rav::dnssd::BonjourBrowser::get_serv
     return result;
 }
 
-void rav::dnssd::BonjourBrowser::subscribe(subscriber& s) {
+void rav::dnssd::BonjourBrowser::subscribe(Subscriber& s) {
     subscribers_.push_back(s);
     for (auto& [fullname, service] : services_) {
         s->emit(service_discovered {service.description()});

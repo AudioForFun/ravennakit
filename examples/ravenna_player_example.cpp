@@ -36,7 +36,7 @@ class wav_file_player {
             throw std::runtime_error("File does not exist: " + file_to_play.path().string());
         }
 
-        auto transmitter = std::make_unique<rav::ravenna_transmitter>(
+        auto transmitter = std::make_unique<rav::RavennaTransmitter>(
             io_context, advertiser, rtsp_server, ptp_instance, rtp_transmitter, id_generator.next(), session_name,
             interface_address
         );
@@ -56,7 +56,7 @@ class wav_file_player {
         reader_ = std::move(reader);
         transmitter_ = std::move(transmitter);
 
-        transmitter_->on<rav::ravenna_transmitter::on_data_requested_event>([this](auto event) {
+        transmitter_->on<rav::RavennaTransmitter::OnDataRequestedEvent>([this](auto event) {
             TRACY_ZONE_SCOPED;
 
             if (reader_->remaining_audio_data() == 0) {
@@ -85,7 +85,7 @@ class wav_file_player {
 
   private:
     std::unique_ptr<rav::wav_audio_format::reader> reader_;
-    std::unique_ptr<rav::ravenna_transmitter> transmitter_;
+    std::unique_ptr<rav::RavennaTransmitter> transmitter_;
 };
 
 }  // namespace examples

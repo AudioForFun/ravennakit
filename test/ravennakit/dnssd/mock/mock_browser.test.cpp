@@ -20,7 +20,7 @@ TEST_CASE("mock_browser") {
         std::vector<rav::dnssd::ServiceDescription> discovered_services;
         std::vector<rav::dnssd::ServiceDescription> removed_services;
 
-        rav::dnssd::Browser::subscriber subscriber;
+        rav::dnssd::Browser::Subscriber subscriber;
         subscriber->on<rav::dnssd::Browser::service_discovered>([&](const auto& event) {
             discovered_services.push_back(event.description);
         });
@@ -51,7 +51,7 @@ TEST_CASE("mock_browser") {
     SECTION("Mock resolving a service") {
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
 
-        rav::dnssd::Browser::subscriber subscriber;
+        rav::dnssd::Browser::Subscriber subscriber;
         subscriber->on<rav::dnssd::Browser::service_resolved>([&](const auto& event) {
             resolved_services.push_back(event.description);
         });
@@ -78,7 +78,7 @@ TEST_CASE("mock_browser") {
         std::vector<rav::dnssd::ServiceDescription> addresses_added;
         std::vector<rav::dnssd::ServiceDescription> addresses_removed;
 
-        rav::dnssd::Browser::subscriber subscriber;
+        rav::dnssd::Browser::Subscriber subscriber;
         subscriber->on<rav::dnssd::Browser::address_added>([&](const auto& event) {
             addresses_added.push_back(event.description);
         });
@@ -155,7 +155,7 @@ TEST_CASE("mock_browser") {
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
         std::vector<rav::dnssd::ServiceDescription> addresses_added;
 
-        rav::dnssd::Browser::subscriber subscriber;
+        rav::dnssd::Browser::Subscriber subscriber;
         subscriber->on<rav::dnssd::Browser::service_discovered>([&](const auto& event) {
             discovered_services.push_back(event.description);
         });

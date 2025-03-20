@@ -18,14 +18,14 @@ namespace rav {
 /**
  * Convenience class which contains a dnssd browser for nodes and sessions.
  */
-class ravenna_browser {
+class RavennaBrowser {
   public:
     /**
      * Baseclass for other classes which need updates on discovered nodes and sessions.
      */
-    class subscriber {
+    class Subscriber {
       public:
-        virtual ~subscriber() = default;
+        virtual ~Subscriber() = default;
 
         /**
          * Called when a node is discovered.
@@ -52,7 +52,7 @@ class ravenna_browser {
         virtual void ravenna_session_removed([[maybe_unused]] const dnssd::Browser::service_removed& event) {}
     };
 
-    explicit ravenna_browser(asio::io_context& io_context);
+    explicit RavennaBrowser(asio::io_context& io_context);
 
     /**
      * Finds a node by its name.
@@ -73,23 +73,23 @@ class ravenna_browser {
      * @param subscriber_to_add The subscriber to add.
      * @return true if the subscriber was added, or false if it was already in the list.
      */
-    [[nodiscard]] bool subscribe(subscriber* subscriber_to_add);
+    [[nodiscard]] bool subscribe(Subscriber* subscriber_to_add);
 
     /**
      * Removes a subscriber from the browser.
      * @param subscriber_to_remove The subscriber to remove.
      * @return true if the subscriber was removed, or false if it wasn't found.
      */
-    [[nodiscard]] bool unsubscribe(subscriber* subscriber_to_remove);
+    [[nodiscard]] bool unsubscribe(Subscriber* subscriber_to_remove);
 
   private:
     std::unique_ptr<dnssd::Browser> node_browser_;
-    dnssd::Browser::subscriber node_browser_subscriber_;
+    dnssd::Browser::Subscriber node_browser_subscriber_;
 
     std::unique_ptr<dnssd::Browser> session_browser_;
-    dnssd::Browser::subscriber session_browser_subscriber_;
+    dnssd::Browser::Subscriber session_browser_subscriber_;
 
-    subscriber_list<subscriber> subscribers_;
+    subscriber_list<Subscriber> subscribers_;
 };
 
 }  // namespace rav

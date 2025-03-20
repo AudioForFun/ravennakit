@@ -26,28 +26,28 @@
 
 namespace rav {
 
-class ravenna_transmitter: public rtsp::server::path_handler {
+class RavennaTransmitter: public rtsp::server::path_handler {
   public:
-    struct on_data_requested_event {
+    struct OnDataRequestedEvent {
         uint32_t timestamp; // RTP timestamp
         buffer_view<uint8_t> buffer;
     };
 
-    using events_type = events<on_data_requested_event>;
+    using EventsType = events<OnDataRequestedEvent>;
 
-    ravenna_transmitter(
+    RavennaTransmitter(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::server& rtsp_server,
         ptp::Instance& ptp_instance, rtp::rtp_transmitter& rtp_transmitter, id id, std::string session_name,
         asio::ip::address_v4 interface_address
     );
 
-    ~ravenna_transmitter() override;
+    ~RavennaTransmitter() override;
 
-    ravenna_transmitter(const ravenna_transmitter& other) = delete;
-    ravenna_transmitter& operator=(const ravenna_transmitter& other) = delete;
+    RavennaTransmitter(const RavennaTransmitter& other) = delete;
+    RavennaTransmitter& operator=(const RavennaTransmitter& other) = delete;
 
-    ravenna_transmitter(ravenna_transmitter&& other) noexcept = delete;
-    ravenna_transmitter& operator=(ravenna_transmitter&& other) noexcept = delete;
+    RavennaTransmitter(RavennaTransmitter&& other) noexcept = delete;
+    RavennaTransmitter& operator=(RavennaTransmitter&& other) noexcept = delete;
 
     /**
      * @return The transmitter ID.
@@ -111,7 +111,7 @@ class ravenna_transmitter: public rtsp::server::path_handler {
      * @param handler The handler to register.
      */
     template<class T>
-    void on(events_type::handler<T> handler) {
+    void on(EventsType::handler<T> handler) {
         events_.on(handler);
     }
 
@@ -140,7 +140,7 @@ class ravenna_transmitter: public rtsp::server::path_handler {
     rtp::rtp_packet rtp_packet_;
     std::vector<uint8_t> packet_intermediate_buffer_;
     asio::high_resolution_timer timer_;
-    events_type events_;
+    EventsType events_;
     byte_buffer send_buffer_;
     event_slot<ptp::Instance::ParentChangedEvent> ptp_parent_changed_slot_;
 

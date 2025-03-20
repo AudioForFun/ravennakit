@@ -17,16 +17,16 @@
 
 namespace rav {
 
-class ravenna_receiver: public rtp::rtp_stream_receiver, public ravenna_rtsp_client::subscriber {
+class RavennaReceiver: public rtp::rtp_stream_receiver, public RavennaRtspClient::Subscriber {
   public:
-    explicit ravenna_receiver(ravenna_rtsp_client& rtsp_client, rtp::rtp_receiver& rtp_receiver);
-    ~ravenna_receiver() override;
+    explicit RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::rtp_receiver& rtp_receiver);
+    ~RavennaReceiver() override;
 
-    ravenna_receiver(const ravenna_receiver&) = delete;
-    ravenna_receiver& operator=(const ravenna_receiver&) = delete;
+    RavennaReceiver(const RavennaReceiver&) = delete;
+    RavennaReceiver& operator=(const RavennaReceiver&) = delete;
 
-    ravenna_receiver(ravenna_receiver&&) noexcept = delete;
-    ravenna_receiver& operator=(ravenna_receiver&&) noexcept = delete;
+    RavennaReceiver(RavennaReceiver&&) noexcept = delete;
+    RavennaReceiver& operator=(RavennaReceiver&&) noexcept = delete;
 
     /**
      * Subscribes to a session.
@@ -52,10 +52,10 @@ class ravenna_receiver: public rtp::rtp_stream_receiver, public ravenna_rtsp_cli
     [[nodiscard]] std::optional<std::string> get_sdp_text() const;
 
     // ravenna_rtsp_client::subscriber overrides
-    void on_announced(const ravenna_rtsp_client::announced_event& event) override;
+    void on_announced(const RavennaRtspClient::AnnouncedEvent& event) override;
 
   private:
-    ravenna_rtsp_client& rtsp_client_;
+    RavennaRtspClient& rtsp_client_;
     std::string session_name_;
 };
 

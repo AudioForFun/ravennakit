@@ -12,14 +12,14 @@
 #include "ravennakit/core/util/todo.hpp"
 #include "ravennakit/rtp/detail/rtp_filter.hpp"
 
-rav::ravenna_receiver::ravenna_receiver(ravenna_rtsp_client& rtsp_client, rtp::rtp_receiver& rtp_receiver) :
+rav::RavennaReceiver::RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::rtp_receiver& rtp_receiver) :
     rtp_stream_receiver(rtp_receiver), rtsp_client_(rtsp_client) {}
 
-rav::ravenna_receiver::~ravenna_receiver() {
+rav::RavennaReceiver::~RavennaReceiver() {
     std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
 }
 
-void rav::ravenna_receiver::on_announced(const ravenna_rtsp_client::announced_event& event) {
+void rav::RavennaReceiver::on_announced(const RavennaRtspClient::AnnouncedEvent& event) {
     try {
         RAV_ASSERT(event.session_name == session_name_, "Expecting session_name to match");
         update_sdp(event.sdp);
@@ -29,7 +29,7 @@ void rav::ravenna_receiver::on_announced(const ravenna_rtsp_client::announced_ev
     }
 }
 
-bool rav::ravenna_receiver::subscribe_to_session(const std::string& session_name) {
+bool rav::RavennaReceiver::subscribe_to_session(const std::string& session_name) {
     if (session_name_ == session_name) {
         return false;
     }
@@ -48,14 +48,14 @@ bool rav::ravenna_receiver::subscribe_to_session(const std::string& session_name
     return true;
 }
 
-const std::string& rav::ravenna_receiver::get_session_name() const {
+const std::string& rav::RavennaReceiver::get_session_name() const {
     return session_name_;
 }
 
-std::optional<rav::sdp::session_description> rav::ravenna_receiver::get_sdp() const {
+std::optional<rav::sdp::session_description> rav::RavennaReceiver::get_sdp() const {
     return rtsp_client_.get_sdp_for_session(session_name_);
 }
 
-std::optional<std::string> rav::ravenna_receiver::get_sdp_text() const {
+std::optional<std::string> rav::RavennaReceiver::get_sdp_text() const {
     return rtsp_client_.get_sdp_text_for_session(session_name_);
 }

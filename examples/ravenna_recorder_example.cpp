@@ -27,7 +27,7 @@ namespace examples {
  */
 class stream_recorder: public rav::rtp::rtp_stream_receiver::subscriber {
   public:
-    explicit stream_recorder(std::unique_ptr<rav::ravenna_receiver> sink) : receiver_(std::move(sink)) {
+    explicit stream_recorder(std::unique_ptr<rav::RavennaReceiver> sink) : receiver_(std::move(sink)) {
         if (receiver_) {
             if (!receiver_->subscribe(this)) {
                 RAV_WARNING("Failed to add subscriber");
@@ -88,7 +88,7 @@ class stream_recorder: public rav::rtp::rtp_stream_receiver::subscriber {
     }
 
   private:
-    std::unique_ptr<rav::ravenna_receiver> receiver_;
+    std::unique_ptr<rav::RavennaReceiver> receiver_;
     std::unique_ptr<rav::file_output_stream> file_output_stream_;
     std::unique_ptr<rav::wav_audio_format::writer> wav_writer_;
     std::vector<uint8_t> audio_data_;
@@ -99,7 +99,7 @@ class stream_recorder: public rav::rtp::rtp_stream_receiver::subscriber {
 class ravenna_recorder {
   public:
     explicit ravenna_recorder(const std::string& interface_address) {
-        rtsp_client_ = std::make_unique<rav::ravenna_rtsp_client>(io_context_, browser_);
+        rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
 
         rav::rtp::rtp_receiver::configuration config;
         config.interface_address = asio::ip::make_address(interface_address);
@@ -109,7 +109,7 @@ class ravenna_recorder {
     ~ravenna_recorder() = default;
 
     void add_stream(const std::string& stream_name) {
-        auto receiver = std::make_unique<rav::ravenna_receiver>(*rtsp_client_, *rtp_receiver_);
+        auto receiver = std::make_unique<rav::RavennaReceiver>(*rtsp_client_, *rtp_receiver_);
         receiver->set_delay(480);  // 10ms @ 48kHz
         if (!receiver->subscribe_to_session(stream_name)) {
             RAV_ERROR("Failed to subscribe to session");
@@ -128,8 +128,8 @@ class ravenna_recorder {
 
   private:
     asio::io_context io_context_;
-    rav::ravenna_browser browser_ {io_context_};
-    std::unique_ptr<rav::ravenna_rtsp_client> rtsp_client_;
+    rav::RavennaBrowser browser_ {io_context_};
+    std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
     std::unique_ptr<rav::rtp::rtp_receiver> rtp_receiver_;
     std::vector<std::unique_ptr<stream_recorder>> recorders_;
 };

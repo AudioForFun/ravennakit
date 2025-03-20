@@ -24,7 +24,7 @@ int main(const int argc, char* argv[]) {
         exit(-1);
     }
 
-    rav::dnssd::Browser::subscriber subscriber;
+    rav::dnssd::Browser::Subscriber subscriber;
 
     subscriber->on<rav::dnssd::Browser::service_discovered>([](const auto& event) {
         RAV_INFO("Service discovered: {}", event.description.to_string());

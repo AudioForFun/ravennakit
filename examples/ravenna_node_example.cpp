@@ -17,7 +17,7 @@
 
 namespace examples {
 
-struct ravenna_node final: rav::ravenna_node::subscriber, rav::rtp::rtp_stream_receiver::subscriber {
+struct ravenna_node final: rav::RavennaNode::Subscriber, rav::rtp::rtp_stream_receiver::subscriber {
     explicit ravenna_node(const rav::rtp::rtp_receiver::configuration& config) : node(config) {
         node.subscribe(this).wait();
     }
@@ -42,7 +42,7 @@ struct ravenna_node final: rav::ravenna_node::subscriber, rav::rtp::rtp_stream_r
         RAV_INFO("RAVENNA session removed: {}", event.description.to_string());
     }
 
-    void ravenna_receiver_added(const rav::ravenna_receiver& receiver) override {
+    void ravenna_receiver_added(const rav::RavennaReceiver& receiver) override {
         RAV_INFO("RAVENNA receiver added for: {}", receiver.get_session_name());
     }
 
@@ -50,7 +50,7 @@ struct ravenna_node final: rav::ravenna_node::subscriber, rav::rtp::rtp_stream_r
         RAV_INFO("Stream updated: {}", event.to_string());
     }
 
-    rav::ravenna_node node;
+    rav::RavennaNode node;
 };
 
 }  // namespace examples

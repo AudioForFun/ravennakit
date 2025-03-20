@@ -77,7 +77,7 @@ class Browser {
         const std::string& error_message;
     };
 
-    using subscriber = linked_node<
+    using Subscriber = linked_node<
         events<service_discovered, service_removed, service_resolved, address_added, address_removed, browse_error>>;
 
     virtual ~Browser() = default;
@@ -113,7 +113,7 @@ class Browser {
      * up-to-date with the current state (i.e. existing discovered services).
      * @param s The subscriber to subscribe.
      */
-    virtual void subscribe(subscriber& s) = 0;
+    virtual void subscribe(Subscriber& s) = 0;
 };
 
 }  // namespace rav::dnssd

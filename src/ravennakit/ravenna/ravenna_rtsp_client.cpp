@@ -10,20 +10,20 @@
 
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 
-rav::ravenna_rtsp_client::ravenna_rtsp_client(asio::io_context& io_context, ravenna_browser& browser) :
+rav::RavennaRtspClient::RavennaRtspClient(asio::io_context& io_context, RavennaBrowser& browser) :
     io_context_(io_context), browser_(browser) {
     if (!browser_.subscribe(this)) {
         RAV_WARNING("Failed to add subscriber to browser");
     }
 }
 
-rav::ravenna_rtsp_client::~ravenna_rtsp_client() {
+rav::RavennaRtspClient::~RavennaRtspClient() {
     if (!browser_.unsubscribe(this)) {
         RAV_WARNING("Failed to remove subscriber from browser");
     }
 }
 
-bool rav::ravenna_rtsp_client::subscribe_to_session(subscriber* subscriber_to_add, const std::string& session_name) {
+bool rav::RavennaRtspClient::subscribe_to_session(Subscriber* subscriber_to_add, const std::string& session_name) {
     RAV_ASSERT(subscriber_to_add != nullptr, "Subscriber must not be nullptr");
 
     // Subscribe to existing session
@@ -34,7 +34,7 @@ bool rav::ravenna_rtsp_client::subscribe_to_session(subscriber* subscriber_to_ad
                 return false;
             }
             if (session.sdp_.has_value()) {
-                subscriber_to_add->on_announced(announced_event {session_name, *session.sdp_});
+                subscriber_to_add->on_announced(AnnouncedEvent {session_name, *session.sdp_});
             }
             return true;
         }
@@ -59,7 +59,7 @@ bool rav::ravenna_rtsp_client::subscribe_to_session(subscriber* subscriber_to_ad
     return true;
 }
 
-bool rav::ravenna_rtsp_client::unsubscribe_from_all_sessions(subscriber* subscriber_to_remove) {
+bool rav::RavennaRtspClient::unsubscribe_from_all_sessions(Subscriber* subscriber_to_remove) {
     RAV_ASSERT(subscriber_to_remove != nullptr, "Subscriber must not be nullptr");
 
     auto count = 0;
@@ -72,7 +72,7 @@ bool rav::ravenna_rtsp_client::unsubscribe_from_all_sessions(subscriber* subscri
     return count > 0;
 }
 
-void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::Browser::service_resolved& event) {
+void rav::RavennaRtspClient::ravenna_session_discovered(const dnssd::Browser::service_resolved& event) {
     RAV_TRACE("RAVENNA session resolved: {}", event.description.to_string());
     for (auto& session : sessions_) {
         if (event.description.name == session.session_name) {
@@ -82,7 +82,7 @@ void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::Browser::
 }
 
 std::optional<rav::sdp::session_description>
-rav::ravenna_rtsp_client::get_sdp_for_session(const std::string& session_name) const {
+rav::RavennaRtspClient::get_sdp_for_session(const std::string& session_name) const {
     for (auto& session : sessions_) {
         if (session.session_name == session_name) {
             return session.sdp_;
@@ -91,7 +91,7 @@ rav::ravenna_rtsp_client::get_sdp_for_session(const std::string& session_name) c
     return std::nullopt;
 }
 
-std::optional<std::string> rav::ravenna_rtsp_client::get_sdp_text_for_session(const std::string& session_name) const {
+std::optional<std::string> rav::RavennaRtspClient::get_sdp_text_for_session(const std::string& session_name) const {
     for (auto& session : sessions_) {
         if (session.session_name == session_name) {
             return session.sdp_text_;
@@ -100,12 +100,12 @@ std::optional<std::string> rav::ravenna_rtsp_client::get_sdp_text_for_session(co
     return std::nullopt;
 }
 
-asio::io_context& rav::ravenna_rtsp_client::get_io_context() const {
+asio::io_context& rav::RavennaRtspClient::get_io_context() const {
     return io_context_;
 }
 
-rav::ravenna_rtsp_client::connection_context&
-rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_target, const uint16_t port) {
+rav::RavennaRtspClient::ConnectionContext&
+rav::RavennaRtspClient::find_or_create_connection(const std::string& host_target, const uint16_t port) {
     if (const auto connection = find_connection(host_target, port)) {
         return *connection;
     }
@@ -174,8 +174,8 @@ rav::ravenna_rtsp_client::find_or_create_connection(const std::string& host_targ
     return new_connection;
 }
 
-rav::ravenna_rtsp_client::connection_context*
-rav::ravenna_rtsp_client::find_connection(const std::string& host_target, const uint16_t port) {
+rav::RavennaRtspClient::ConnectionContext*
+rav::RavennaRtspClient::find_connection(const std::string& host_target, const uint16_t port) {
     for (auto& connection : connections_) {
         if (connection.host_target == host_target && connection.port == port) {
             return &connection;
@@ -184,8 +184,8 @@ rav::ravenna_rtsp_client::find_connection(const std::string& host_target, const 
     return nullptr;
 }
 
-void rav::ravenna_rtsp_client::update_session_with_service(
-    session_context& session, const dnssd::ServiceDescription& service
+void rav::RavennaRtspClient::update_session_with_service(
+    SessionContext& session, const dnssd::ServiceDescription& service
 ) {
     session.host_target = service.host_target;
     session.port = service.port;
@@ -194,7 +194,7 @@ void rav::ravenna_rtsp_client::update_session_with_service(
     connection.client.async_describe(fmt::format("/by-name/{}", session.session_name));
 }
 
-void rav::ravenna_rtsp_client::do_maintenance() {
+void rav::RavennaRtspClient::do_maintenance() {
     for (auto& session : sessions_) {
         if (session.subscribers.empty()) {
             if (!session.host_target.empty() && session.port != 0) {
@@ -216,7 +216,7 @@ void rav::ravenna_rtsp_client::do_maintenance() {
     );
 }
 
-void rav::ravenna_rtsp_client::handle_incoming_sdp(const std::string& sdp_text) {
+void rav::RavennaRtspClient::handle_incoming_sdp(const std::string& sdp_text) {
     auto result = sdp::session_description::parse_new(sdp_text);
     if (result.is_err()) {
         RAV_ERROR("Failed to parse SDP: {}", result.get_err());
@@ -231,7 +231,7 @@ void rav::ravenna_rtsp_client::handle_incoming_sdp(const std::string& sdp_text) 
             session.sdp_text_ = sdp_text;
 
             session.subscribers.foreach ([&](auto s) {
-                s->on_announced(announced_event {session.session_name, sdp});
+                s->on_announced(AnnouncedEvent {session.session_name, sdp});
             });
         }
     }
