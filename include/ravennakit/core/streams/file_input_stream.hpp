@@ -21,7 +21,7 @@ namespace rav {
  */
 class file_input_stream final: public input_stream {
   public:
-    explicit file_input_stream(const file& f) {
+    explicit file_input_stream(const File& f) {
         fstream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         fstream_.open(f.path(), std::ios::binary | std::ios::ate);
         if (!fstream_.is_open()) {

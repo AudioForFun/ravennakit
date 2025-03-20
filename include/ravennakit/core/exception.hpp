@@ -27,18 +27,18 @@
     #endif
 #endif
 
-#define RAV_THROW_EXCEPTION(...) throw rav::exception(fmt::format(__VA_ARGS__), __FILE__, __LINE__, RAV_FUNCTION)
+#define RAV_THROW_EXCEPTION(...) throw rav::Exception(fmt::format(__VA_ARGS__), __FILE__, __LINE__, RAV_FUNCTION)
 
 namespace rav {
 
-class exception: public std::exception {
+class Exception: public std::exception {
   public:
     explicit
-    exception(const char* msg, const char* file = nullptr, const int line = -1, const char* function_name = nullptr) :
+    Exception(const char* msg, const char* file = nullptr, const int line = -1, const char* function_name = nullptr) :
         error_(msg), file_(file), line_(line), function_name_(function_name) {}
 
     explicit
-    exception(std::string msg, const char* file = nullptr, const int line = -1, const char* function_name = nullptr) :
+    Exception(std::string msg, const char* file = nullptr, const int line = -1, const char* function_name = nullptr) :
         error_(std::move(msg)), file_(file), line_(line), function_name_(function_name) {}
 
     /**

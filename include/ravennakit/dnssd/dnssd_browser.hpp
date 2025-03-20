@@ -77,8 +77,8 @@ class Browser {
         const std::string& error_message;
     };
 
-    using Subscriber = linked_node<
-        events<ServiceDiscovered, ServiceRemoved, ServiceResolved, AddressAdded, AddressRemoved, BrowseError>>;
+    using Subscriber = LinkedNode<
+        Events<ServiceDiscovered, ServiceRemoved, ServiceResolved, AddressAdded, AddressRemoved, BrowseError>>;
 
     virtual ~Browser() = default;
 

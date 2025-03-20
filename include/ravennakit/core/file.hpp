@@ -18,28 +18,28 @@ namespace rav {
 /**
  * Represents a file on the file system.
  */
-class file {
+class File {
   public:
-    file() = default;
+    File() = default;
 
     /**
      * Constructs a file object with the given path.
      * @param path The path to the file or directory.
      */
-    explicit file(std::filesystem::path path) : path_(std::move(path)) {}
+    explicit File(std::filesystem::path path) : path_(std::move(path)) {}
 
     /**
      * Constructs a file object with the given path.
      * @param path The path to the file or directory.
      */
-    explicit file(const char* path) : path_(path) {}
+    explicit File(const char* path) : path_(path) {}
 
     /**
      * Appends given path to the file path.
      * @param p The path to append.
      * @return A new file object with the appended path.
      */
-    file& operator/(const std::filesystem::path& p) {
+    File& operator/(const std::filesystem::path& p) {
         return *this /= p;
     }
 
@@ -48,7 +48,7 @@ class file {
      * @param p The path to append.
      * @return A new file object with the appended path.
      */
-    file& operator/=(const std::filesystem::path& p) {
+    File& operator/=(const std::filesystem::path& p) {
         path_ /= p;
         return *this;
     }
@@ -88,8 +88,8 @@ class file {
     /**
      * @return The parent directory of the file.
      */
-    [[nodiscard]] file parent() const {
-        return file(path_.parent_path());
+    [[nodiscard]] File parent() const {
+        return File(path_.parent_path());
     }
 
     /**

@@ -21,7 +21,7 @@
  * will be triggered.
  */
 #define RAV_ASSERT_EXCLUSIVE_ACCESS(guard)                           \
-    rav::exclusive_access_guard::lock CONCAT(lock, __LINE__)(guard); \
+    rav::ExclusiveAccessGuard::Lock CONCAT(lock, __LINE__)(guard); \
     RAV_ASSERT(!CONCAT(lock, __LINE__).violated(), "exclusive access violation");
 
 #include <atomic>
@@ -32,25 +32,25 @@ namespace rav {
 /**
  * Guards exclusive access to a resource. Throws if the resource is already accessed.
  */
-class exclusive_access_guard {
+class ExclusiveAccessGuard {
   public:
     /**
      * Locks and exclusive access guard.
      */
-    class lock {
+    class Lock {
       public:
         /**
          * Constructs a new lock.
          * @throws std::runtime_error if exclusive access is violated.
          */
-        explicit lock(exclusive_access_guard& access_guard) : exclusive_access_guard_(access_guard) {
+        explicit Lock(ExclusiveAccessGuard& access_guard) : exclusive_access_guard_(access_guard) {
             const auto prev = exclusive_access_guard_.counter_.fetch_add(1, std::memory_order_relaxed);
             if (prev != 0) {
                 violated_ = true;
             }
         }
 
-        ~lock() {
+        ~Lock() {
             exclusive_access_guard_.counter_.fetch_sub(1, std::memory_order_relaxed);
         }
 
@@ -62,20 +62,20 @@ class exclusive_access_guard {
         }
 
       private:
-        exclusive_access_guard& exclusive_access_guard_;
+        ExclusiveAccessGuard& exclusive_access_guard_;
         bool violated_ = false;
     };
 
     /**
      * Constructs a new exclusive access guard.
      */
-    explicit exclusive_access_guard() = default;
+    explicit ExclusiveAccessGuard() = default;
 
-    exclusive_access_guard(const exclusive_access_guard&) = delete;
-    exclusive_access_guard& operator=(const exclusive_access_guard&) = delete;
+    ExclusiveAccessGuard(const ExclusiveAccessGuard&) = delete;
+    ExclusiveAccessGuard& operator=(const ExclusiveAccessGuard&) = delete;
 
-    exclusive_access_guard(exclusive_access_guard&&) = delete;
-    exclusive_access_guard& operator=(exclusive_access_guard&&) = delete;
+    ExclusiveAccessGuard(ExclusiveAccessGuard&&) = delete;
+    ExclusiveAccessGuard& operator=(ExclusiveAccessGuard&&) = delete;
 
   private:
     std::atomic<int8_t> counter_ {};

@@ -20,7 +20,7 @@ namespace rav::rtsp {
 /**
  * Parses RTSP messages.
  */
-class Parser final: public events<Request, Response> {
+class Parser final: public Events<Request, Response> {
   public:
     /**
      * The status of parsing.

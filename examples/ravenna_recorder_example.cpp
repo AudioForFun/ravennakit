@@ -66,7 +66,7 @@ class stream_recorder: public rav::rtp::StreamReceiver::Subscriber {
 
         audio_format_ = event.selected_audio_format;
         file_output_stream_ =
-            std::make_unique<rav::file_output_stream>(rav::file(receiver_->get_session_name() + ".wav"));
+            std::make_unique<rav::file_output_stream>(rav::File(receiver_->get_session_name() + ".wav"));
         wav_writer_ = std::make_unique<rav::wav_audio_format::writer>(
             *file_output_stream_, rav::wav_audio_format::format_code::pcm, audio_format_.sample_rate,
             audio_format_.num_channels, audio_format_.bytes_per_sample() * 8

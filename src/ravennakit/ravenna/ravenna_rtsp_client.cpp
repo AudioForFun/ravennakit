@@ -135,7 +135,7 @@ rav::RavennaRtspClient::find_or_create_connection(const std::string& host_target
         if (event.rtsp_request.method == "GET_PARAMETER") {
             if (event.rtsp_request.data.empty()) {
                 // Interpret as liveliness check (ping) (https://datatracker.ietf.org/doc/html/rfc2326#section-10.8)
-                rtsp::Response Response;
+                rtsp::Response response;
                 response.status_code = 200;
                 response.reason_phrase = "OK";
                 client.async_send_response(response);

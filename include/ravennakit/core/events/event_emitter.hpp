@@ -18,7 +18,7 @@ namespace rav {
  * An alias for an event slot which can be used to subscribe to events.
  */
 template<typename... Args>
-using event_slot = linked_node<std::function<void(Args...)>>;
+using event_slot = LinkedNode<std::function<void(Args...)>>;
 
 /**
  * An event emitter which can be used to subscribe to and emit events of a given type.
@@ -32,7 +32,7 @@ using event_slot = linked_node<std::function<void(Args...)>>;
 template<typename... Args>
 class event_emitter {
   public:
-    using handle = linked_node<std::function<void(Args...)>>;
+    using handle = LinkedNode<std::function<void(Args...)>>;
 
     /**
      * Emits an event to all subscribers.

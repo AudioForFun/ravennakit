@@ -169,7 +169,7 @@ void rav::RavennaTransmitter::send_announce() const {
         RAV_ERROR("Failed to encode SDP: {}", sdp.error());
         return;
     }
-    rtsp::Request Request;
+    rtsp::Request request;
     request.method = "ANNOUNCE";
     request.rtsp_headers.set("content-type", "application/sdp");
     request.data = std::move(sdp.value());

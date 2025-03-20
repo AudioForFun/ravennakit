@@ -15,7 +15,7 @@
 
 TEST_CASE("condition", "[condition]") {
     SECTION("Test signaling") {
-        rav::condition signal;
+        rav::Condition signal;
 
         std::thread t1([&signal] {
             signal.wait();
@@ -37,7 +37,7 @@ TEST_CASE("condition", "[condition]") {
     }
 
     SECTION("Test timeout") {
-        rav::condition signal;
+        rav::Condition signal;
         REQUIRE(signal.wait_for_ms(1) == false);
         signal.signal();
         REQUIRE(signal.wait_for_ms(1) == true);

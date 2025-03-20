@@ -24,7 +24,7 @@ namespace rav::rtsp {
 class Client final: Connection::Subscriber {
   public:
     using EventsType =
-        events<Connection::ConnectEvent, Connection::ResponseEvent, Connection::RequestEvent>;
+        Events<Connection::ConnectEvent, Connection::ResponseEvent, Connection::RequestEvent>;
 
     explicit Client(asio::io_context& io_context);
     ~Client() override;

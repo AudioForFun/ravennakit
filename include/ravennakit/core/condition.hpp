@@ -19,7 +19,7 @@ namespace rav {
  * Simple mechanism for signalling between threads. One thread can wait, while another can signal.
  * In most cases you'll likely want to use a std::promise and std::future pair instead.
  */
-class condition {
+class Condition {
   public:
     /**
      * Waits until signaled.

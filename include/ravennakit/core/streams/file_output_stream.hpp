@@ -20,7 +20,7 @@ namespace rav {
  */
 class file_output_stream final: public output_stream {
   public:
-    explicit file_output_stream(const file& file) {
+    explicit file_output_stream(const File& file) {
         ofstream_.exceptions(std::ofstream::failbit | std::ofstream::badbit);
         ofstream_.open(file.path(), std::ios::binary);
         if (!ofstream_.is_open()) {  // Note: not sure if this check is necessary

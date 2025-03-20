@@ -36,7 +36,7 @@ void rav::rtsp::Client::async_describe(const std::string& path, std::string data
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    Request Request;
+    Request request;
     request.method = "DESCRIBE";
     request.uri = uri::encode("rtsp", host_, path);
     request.rtsp_headers.set("CSeq", "15");
@@ -51,7 +51,7 @@ void rav::rtsp::Client::async_setup(const std::string& path) const {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    Request Request;
+    Request request;
     request.method = "SETUP";
     request.uri = uri::encode("rtsp", host_, path);
     request.rtsp_headers.set("CSeq", "15");
@@ -65,7 +65,7 @@ void rav::rtsp::Client::async_play(const std::string& path) const {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    Request Request;
+    Request request;
     request.method = "PLAY";
     request.uri = uri::encode("rtsp", host_, path);
     request.rtsp_headers.set("CSeq", "15");
@@ -79,7 +79,7 @@ void rav::rtsp::Client::async_teardown(const std::string& path) const {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    Request Request;
+    Request request;
     request.method = "TEARDOWN";
     request.uri = uri::encode("rtsp", host_, path);
     request.rtsp_headers.set("CSeq", "15");

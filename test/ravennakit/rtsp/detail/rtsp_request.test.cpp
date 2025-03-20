@@ -14,7 +14,7 @@
 
 TEST_CASE("rtsp_request", "[rtsp_request]") {
     SECTION("Get header") {
-        rav::rtsp::Request Request;
+        rav::rtsp::Request request;
         request.rtsp_headers.push_back(rav::rtsp::Headers::Header {"Content-Length", "123"});
         request.rtsp_headers.push_back({"Content-Type", "application/sdp"});
 
@@ -34,7 +34,7 @@ TEST_CASE("rtsp_request", "[rtsp_request]") {
     }
 
     SECTION("Get content length") {
-        rav::rtsp::Request Request;
+        rav::rtsp::Request request;
         request.rtsp_headers.push_back({"Content-Length", "123"});
 
         if (auto content_length = request.rtsp_headers.get_content_length(); content_length) {
@@ -45,12 +45,12 @@ TEST_CASE("rtsp_request", "[rtsp_request]") {
     }
 
     SECTION("Get content length while there is no Content-Length header") {
-        rav::rtsp::Request Request;
+        rav::rtsp::Request request;
         REQUIRE(request.rtsp_headers.get_content_length() == std::nullopt);
     }
 
     SECTION("reset") {
-        rav::rtsp::Request Request;
+        rav::rtsp::Request request;
         request.method = "GET";
         request.uri = "/index.html";
         request.rtsp_version_major = 1;

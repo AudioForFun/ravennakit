@@ -16,19 +16,19 @@ namespace rav {
 
 /**
  * Wrapper around std::tuple for holding different kinds of events.
- * @tparam Events The events to be held.
+ * @tparam E The events to be held.
  */
-template<class... Events>
-class events {
+template<class... E>
+class Events {
   public:
-    events() = default;
-    virtual ~events() = default;
+    Events() = default;
+    virtual ~Events() = default;
 
-    events(const events&) = delete;
-    events& operator=(const events&) = delete;
+    Events(const Events&) = delete;
+    Events& operator=(const Events&) = delete;
 
-    events(events&&) = default;
-    events& operator=(events&&) = default;
+    Events(Events&&) = default;
+    Events& operator=(Events&&) = default;
 
     template<class Type>
     using handler = std::function<void(const Type&)>;
@@ -57,7 +57,7 @@ class events {
      * Deletes all handlers.
      */
     virtual void reset() noexcept {
-        (reset<Events>(), ...);
+        (reset<E>(), ...);
     }
 
     /**
@@ -83,7 +83,7 @@ class events {
     }
 
   private:
-    std::tuple<handler<Events>...> handlers {};
+    std::tuple<handler<E>...> handlers {};
 
     template<class Type>
     const auto& get() const noexcept {

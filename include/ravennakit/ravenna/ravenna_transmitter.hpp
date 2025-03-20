@@ -33,7 +33,7 @@ class RavennaTransmitter: public rtsp::Server::PathHandler {
         buffer_view<uint8_t> buffer;
     };
 
-    using EventsType = events<OnDataRequestedEvent>;
+    using EventsType = Events<OnDataRequestedEvent>;
 
     RavennaTransmitter(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,

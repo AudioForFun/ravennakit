@@ -18,7 +18,7 @@ TEST_CASE("rtsp_parser | parse responses in multiple chunks", "[rtsp_parser]") {
     );
 
     rav::string_buffer input;
-    rav::rtsp::Parser Parser;
+    rav::rtsp::Parser parser;
 
     int response_count = 0;
 
@@ -79,7 +79,7 @@ TEST_CASE("rtsp_parser | Parse ok response without data", "[rtsp_parser]") {
 
     int response_count = 0;
 
-    rav::rtsp::Parser Parser;
+    rav::rtsp::Parser parser;
     parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
         REQUIRE(response.rtsp_version_major == 1);
         REQUIRE(response.rtsp_version_minor == 0);
@@ -111,7 +111,7 @@ TEST_CASE("rtsp_parser | Parse ok response with data", "[rtsp_parser]") {
 
     int response_count = 0;
 
-    rav::rtsp::Parser Parser;
+    rav::rtsp::Parser parser;
     parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
         REQUIRE(response.rtsp_version_major == 1);
         REQUIRE(response.rtsp_version_minor == 0);
@@ -145,7 +145,7 @@ TEST_CASE("rtsp_parser | Parse response from Anubis", "[rtsp_parser]") {
 
     int response_count = 0;
 
-    rav::rtsp::Parser Parser;
+    rav::rtsp::Parser parser;
     parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
         REQUIRE(response.rtsp_version_major == 1);
         REQUIRE(response.rtsp_version_minor == 0);
@@ -171,7 +171,7 @@ TEST_CASE("rtsp_parser | Parse some requests", "[rtsp_parser]") {
 
         int request_count = 0;
 
-        rav::rtsp::Parser Parser;
+        rav::rtsp::Parser parser;
         parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
@@ -194,7 +194,7 @@ TEST_CASE("rtsp_parser | Parse some requests", "[rtsp_parser]") {
 
         int request_count = 0;
 
-        rav::rtsp::Parser Parser;
+        rav::rtsp::Parser parser;
         parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
@@ -219,7 +219,7 @@ TEST_CASE("rtsp_parser | Parse some requests", "[rtsp_parser]") {
 
         int request_count = 0;
 
-        rav::rtsp::Parser Parser;
+        rav::rtsp::Parser parser;
         parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
@@ -253,7 +253,7 @@ TEST_CASE("rtsp_parser | Parse some requests", "[rtsp_parser]") {
 
         int request_count = 0;
 
-        rav::rtsp::Parser Parser;
+        rav::rtsp::Parser parser;
         parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
@@ -274,7 +274,7 @@ TEST_CASE("rtsp_parser | Parse some requests", "[rtsp_parser]") {
 TEST_CASE("rtsp_parser | Parse some requests in chunks", "[rtsp_parser]") {
     int request_count = 0;
 
-    rav::rtsp::Parser Parser;
+    rav::rtsp::Parser parser;
     parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
         REQUIRE(request.method == "DESCRIBE");
         REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
@@ -327,7 +327,7 @@ TEST_CASE("rtsp_parser | Parse Anubis ANNOUNCE request", "[rtsp_parser]") {
 
     int request_count = 0;
 
-    rav::rtsp::Parser Parser;
+    rav::rtsp::Parser parser;
     parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
         REQUIRE(request.method == "ANNOUNCE");
         REQUIRE(request.uri.empty());
@@ -358,7 +358,7 @@ TEST_CASE("rtsp_parser | Parse Anubis DESCRIBE response and ANNOUNCE request", "
     int request_count = 0;
     int response_count = 0;
 
-    rav::rtsp::Parser Parser;
+    rav::rtsp::Parser parser;
 
     parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
         REQUIRE(response.rtsp_version_major == 1);

@@ -242,7 +242,7 @@ class StreamReceiver: public Receiver::Subscriber {
     std::vector<MediaStream> media_streams_;
     subscriber_list<Subscriber> subscribers_;
     asio::steady_timer maintenance_timer_;
-    exclusive_access_guard realtime_access_guard_;
+    ExclusiveAccessGuard realtime_access_guard_;
 
     /**
      * Used for copying received packets to the realtime context.

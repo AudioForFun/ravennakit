@@ -30,7 +30,7 @@ class wav_file_player {
     explicit wav_file_player(
         asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
         rav::ptp::Instance& ptp_instance, rav::rtp::Transmitter& rtp_transmitter, rav::id::generator& id_generator,
-        const asio::ip::address_v4& interface_address, const rav::file& file_to_play, const std::string& session_name
+        const asio::ip::address_v4& interface_address, const rav::File& file_to_play, const std::string& session_name
     ) {
         if (!file_to_play.exists()) {
             throw std::runtime_error("File does not exist: " + file_to_play.path().string());
@@ -140,7 +140,7 @@ int main(int const argc, char* argv[]) {
     rav::id::generator id_generator;
 
     for (auto& file_path : file_paths) {
-        auto file = rav::file(file_path);
+        auto file = rav::File(file_path);
         const auto file_session_name = file.path().filename().string();
 
         wav_file_players.emplace_back(

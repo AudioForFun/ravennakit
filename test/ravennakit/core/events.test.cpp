@@ -26,7 +26,7 @@ struct int_event {
 TEST_CASE("events", "[events]") {
     rav::vector_buffer<std::string> fired_events;
 
-    rav::events<str_event, int_event> events;
+    rav::Events<str_event, int_event> events;
     events.on<str_event>([&fired_events](const str_event& event) {
         fired_events.push_back(event.string);
     });

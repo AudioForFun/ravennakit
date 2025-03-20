@@ -19,55 +19,55 @@ namespace rav {
  * @tparam T The type of the data to be stored in the linked node.
  */
 template<class T>
-class linked_node {
+class LinkedNode {
   public:
     /**
      * Iterator for linked nodes.
      */
-    class iterator {
+    class Iterator {
       public:
-        explicit iterator(linked_node* node) : current(node) {}
+        explicit Iterator(LinkedNode* node) : current(node) {}
 
-        linked_node& operator*() const {
+        LinkedNode& operator*() const {
             return *current;
         }
 
-        iterator& operator++() {
+        Iterator& operator++() {
             if (current) {
                 current = current->next_;
             }
             return *this;
         }
 
-        bool operator==(const iterator& other) const {
+        bool operator==(const Iterator& other) const {
             return current == other.current;
         }
 
-        bool operator!=(const iterator& other) const {
+        bool operator!=(const Iterator& other) const {
             return current != other.current;
         }
 
       private:
-        linked_node* current {};
+        LinkedNode* current {};
     };
 
-    linked_node() = default;
+    LinkedNode() = default;
 
     /**
      * Creates a new linked node with the given data.
      * @param data The data to be stored in the linked node.
      */
-    explicit linked_node(T data) : value_(data) {}
+    explicit LinkedNode(T data) : value_(data) {}
 
     /**
      * Destructor which removes itself from the linked list if linked.
      */
-    ~linked_node() {
+    ~LinkedNode() {
         unlink();
     }
 
-    linked_node(const linked_node&) = delete;
-    linked_node& operator=(const linked_node&) = delete;
+    LinkedNode(const LinkedNode&) = delete;
+    LinkedNode& operator=(const LinkedNode&) = delete;
 
     /**
      * Constructs a linked node replacing other. After returning, this will have happened:
@@ -76,7 +76,7 @@ class linked_node {
      * - The value contained in other will be moved to this.
      * @param other The linked node to replace.
      */
-    linked_node(linked_node&& other) noexcept {
+    LinkedNode(LinkedNode&& other) noexcept {
         if (other.prev_) {
             other.prev_->next_ = this;
             prev_ = other.prev_;
@@ -100,7 +100,7 @@ class linked_node {
      * - The value contained in other will be moved to this.
      * @param other Other node to be moved.
      */
-    linked_node& operator=(linked_node&& other) noexcept {
+    LinkedNode& operator=(LinkedNode&& other) noexcept {
         if (this == &other) {
             return *this;
         }
@@ -130,7 +130,7 @@ class linked_node {
      * @param value The new value to be assigned.
      * @return this
      */
-    linked_node& operator=(T value) {
+    LinkedNode& operator=(T value) {
         value_ = std::move(value);
         return *this;
     }
@@ -139,7 +139,7 @@ class linked_node {
      * Returns the first node in the linked list.
      * @return The first node in the linked list, or this if not linked.
      */
-    linked_node* front() {
+    LinkedNode* front() {
         auto* current = this;
         while (current->prev_ != nullptr) {
             current = current->prev_;
@@ -151,7 +151,7 @@ class linked_node {
      * Returns the last node in the linked list.
      * @return The last node in the linked list, or this if not linked.
      */
-    linked_node* back() {
+    LinkedNode* back() {
         auto* current = this;
         while (current->next_ != nullptr) {
             current = current->next_;
@@ -164,7 +164,7 @@ class linked_node {
      * position.
      * @param node The node to push to the back of the linked list.
      */
-    void push_back(linked_node& node) {
+    void push_back(LinkedNode& node) {
         if (node.is_linked()) {
             node.unlink();
         }
@@ -247,30 +247,30 @@ class linked_node {
     /**
      * @returns An iterator to the first node in the linked list.
      */
-    iterator begin() {
-        return iterator(front());
+    Iterator begin() {
+        return Iterator(front());
     }
 
     /**
      * @returns An iterator to the end of the linked list.
      */
-    iterator end() {
-        return iterator(nullptr);
+    Iterator end() {
+        return Iterator(nullptr);
     }
 
     /**
      *
      * @returns An iterator to the first node in the linked list.
      */
-    iterator begin() const {
-        return iterator(back());
+    Iterator begin() const {
+        return Iterator(back());
     }
 
     /**
      * @returns An iterator to the end of the linked list.
      */
-    iterator end() const {
-        return iterator(nullptr);
+    Iterator end() const {
+        return Iterator(nullptr);
     }
 
     /**
@@ -297,7 +297,7 @@ class linked_node {
     /**
      * @param f The function to be called for each node in the linked list.
      */
-    void foreach (const std::function<void(linked_node&)>& f) {
+    void foreach (const std::function<void(LinkedNode&)>& f) {
         for (auto& node : *this) {
             f(node);
         }
@@ -305,8 +305,8 @@ class linked_node {
 
   private:
     T value_ {};
-    linked_node* prev_ = nullptr;
-    linked_node* next_ = nullptr;
+    LinkedNode* prev_ = nullptr;
+    LinkedNode* next_ = nullptr;
 };
 
 }  // namespace rav

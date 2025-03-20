@@ -33,7 +33,7 @@ class Advertiser {
         const char* name;
     };
 
-    using Subscriber = linked_node<events<AdvertiserError, NameConflict>>;
+    using Subscriber = LinkedNode<Events<AdvertiserError, NameConflict>>;
 
     explicit Advertiser() = default;
     virtual ~Advertiser() = default;

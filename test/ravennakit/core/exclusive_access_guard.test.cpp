@@ -17,10 +17,10 @@
 
 TEST_CASE("exclusive_access_guard") {
     SECTION("Exclusive access violation") {
-        rav::exclusive_access_guard guard;
+        rav::ExclusiveAccessGuard guard;
 
-        const rav::exclusive_access_guard::lock lock1(guard);
-        const rav::exclusive_access_guard::lock lock2(guard);
+        const rav::ExclusiveAccessGuard::Lock lock1(guard);
+        const rav::ExclusiveAccessGuard::Lock lock2(guard);
 
         REQUIRE_FALSE(lock1.violated());
         REQUIRE(lock2.violated());
@@ -29,11 +29,11 @@ TEST_CASE("exclusive_access_guard") {
     SECTION("Trigger exclusive access violation by running two threads") {
         std::atomic keep_going {true};
 
-        rav::exclusive_access_guard guard;
+        rav::ExclusiveAccessGuard guard;
 
         auto function = [&keep_going, &guard]() {
             while (keep_going) {
-                const rav::exclusive_access_guard::lock lock(guard);
+                const rav::ExclusiveAccessGuard::Lock lock(guard);
                 if (lock.violated()) {
                     keep_going = false;
                     return true;
