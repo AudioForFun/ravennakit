@@ -39,7 +39,7 @@ class Packet {
      * @param value The value to increment with.
      * @return The new sequence number.
      */
-    wrapping_uint<uint16_t> sequence_number_inc(uint16_t value);
+    WrappingUint<uint16_t> sequence_number_inc(uint16_t value);
 
     /**
      * Sets the timestamp.
@@ -52,12 +52,12 @@ class Packet {
      * @param value The value to add.
      * @return The new timestamp.
      */
-    wrapping_uint<uint32_t> timestamp_inc(uint32_t value);
+    WrappingUint<uint32_t> timestamp_inc(uint32_t value);
 
     /**
      * @return The timestamp.
      */
-    [[nodiscard]] wrapping_uint<uint32_t> timestamp() const {
+    [[nodiscard]] WrappingUint<uint32_t> timestamp() const {
         return timestamp_;
     }
 
@@ -75,12 +75,12 @@ class Packet {
      * @param buffer The buffer to write to.
      * @return true if the packet was successfully encoded and written, or false otherwise.
      */
-    void encode(const uint8_t* payload_data, size_t payload_size, byte_buffer& buffer) const;
+    void encode(const uint8_t* payload_data, size_t payload_size, ByteBuffer& buffer) const;
 
   private:
     uint8_t payload_type_ {0};
-    wrapping_uint<uint16_t> sequence_number_ {0};
-    wrapping_uint<uint32_t> timestamp_ {0};
+    WrappingUint<uint16_t> sequence_number_ {0};
+    WrappingUint<uint32_t> timestamp_ {0};
     uint32_t ssrc_ {0};
 };
 

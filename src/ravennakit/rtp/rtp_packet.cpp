@@ -18,7 +18,7 @@ void rav::rtp::Packet::sequence_number(const uint16_t value) {
     sequence_number_ = value;
 }
 
-rav::wrapping_uint<unsigned short> rav::rtp::Packet::sequence_number_inc(const uint16_t value) {
+rav::WrappingUint<unsigned short> rav::rtp::Packet::sequence_number_inc(const uint16_t value) {
     sequence_number_ += value;
     return sequence_number_;
 }
@@ -27,7 +27,7 @@ void rav::rtp::Packet::timestamp(const uint32_t value) {
     timestamp_ = value;
 }
 
-rav::wrapping_uint<unsigned> rav::rtp::Packet::timestamp_inc(const uint32_t value) {
+rav::WrappingUint<unsigned> rav::rtp::Packet::timestamp_inc(const uint32_t value) {
     timestamp_ += value;
     return timestamp_;
 }
@@ -36,7 +36,7 @@ void rav::rtp::Packet::ssrc(const uint32_t value) {
     ssrc_ = value;
 }
 
-void rav::rtp::Packet::encode(const uint8_t* payload_data, const size_t payload_size, byte_buffer& buffer) const {
+void rav::rtp::Packet::encode(const uint8_t* payload_data, const size_t payload_size, ByteBuffer& buffer) const {
     uint8_t v_p_x_cc = 0;
     v_p_x_cc |= 0b10000000;  // Version 2.
     v_p_x_cc |= 0b00000000;  // No padding.

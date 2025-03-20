@@ -16,7 +16,7 @@
 
 TEST_CASE("uri parse") {
     SECTION("Full URI") {
-        auto uri = rav::uri::parse(
+        auto uri = rav::Uri::parse(
             "foo://user:pass@example.com:8042/some/path%20with%20space?key=value+space&key2=value2#fragment"
         );
         REQUIRE(uri.scheme == "foo");
@@ -30,7 +30,7 @@ TEST_CASE("uri parse") {
     }
 
     SECTION("Minimal URI") {
-        auto uri = rav::uri::parse("foo://");
+        auto uri = rav::Uri::parse("foo://");
         REQUIRE(uri.scheme == "foo");
         REQUIRE(uri.user.empty());
         REQUIRE(uri.password.empty());
@@ -42,7 +42,7 @@ TEST_CASE("uri parse") {
     }
 
     SECTION("Only host") {
-        auto uri = rav::uri::parse("foo://example.com");
+        auto uri = rav::Uri::parse("foo://example.com");
         REQUIRE(uri.scheme == "foo");
         REQUIRE(uri.user.empty());
         REQUIRE(uri.password.empty());
@@ -54,7 +54,7 @@ TEST_CASE("uri parse") {
     }
 
     SECTION("With port") {
-        auto uri = rav::uri::parse("foo://example.com:1234");
+        auto uri = rav::Uri::parse("foo://example.com:1234");
         REQUIRE(uri.scheme == "foo");
         REQUIRE(uri.user.empty());
         REQUIRE(uri.password.empty());
@@ -66,7 +66,7 @@ TEST_CASE("uri parse") {
     }
 
     SECTION("With path") {
-        auto uri = rav::uri::parse("foo://example.com:1234/some/path");
+        auto uri = rav::Uri::parse("foo://example.com:1234/some/path");
         REQUIRE(uri.scheme == "foo");
         REQUIRE(uri.user.empty());
         REQUIRE(uri.password.empty());
@@ -78,7 +78,7 @@ TEST_CASE("uri parse") {
     }
 
     SECTION("With query") {
-        auto uri = rav::uri::parse("foo://example.com:1234/some/path?key1=value1&key2=value2");
+        auto uri = rav::Uri::parse("foo://example.com:1234/some/path?key1=value1&key2=value2");
         REQUIRE(uri.scheme == "foo");
         REQUIRE(uri.user.empty());
         REQUIRE(uri.password.empty());
@@ -90,7 +90,7 @@ TEST_CASE("uri parse") {
     }
 
     SECTION("With fragment") {
-        auto uri = rav::uri::parse("foo://example.com:1234/some/path#fragment");
+        auto uri = rav::Uri::parse("foo://example.com:1234/some/path#fragment");
         REQUIRE(uri.scheme == "foo");
         REQUIRE(uri.user.empty());
         REQUIRE(uri.password.empty());
@@ -103,7 +103,7 @@ TEST_CASE("uri parse") {
 }
 
 TEST_CASE("uri to_string") {
-    const rav::uri uri {
+    const rav::Uri uri {
         "foo",
         "user",
         "pass",
@@ -120,35 +120,35 @@ TEST_CASE("uri to_string") {
 }
 
 TEST_CASE("uri decode") {
-    auto result = rav::uri::decode("foo%20bar%21+");
+    auto result = rav::Uri::decode("foo%20bar%21+");
     REQUIRE(result == "foo bar!+");
 
-    result = rav::uri::decode("foo%20bar%21+", true);
+    result = rav::Uri::decode("foo%20bar%21+", true);
     REQUIRE(result == "foo bar! ");
 
-    result = rav::uri::decode(
+    result = rav::Uri::decode(
         "%20%21%22%23%24%25%26%27%28%29%2A%2B%2C%2D%2E%2F%3A%3B%3C%3D%3E%3F%40%5B%5C%5D%5E%5F%60%7B%7C%7D%7E"
     );
     REQUIRE(result == " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~");  // Includes all unreserved characters
 }
 
 TEST_CASE("uri encode") {
-    auto result = rav::uri::encode(" !\"#$%&'()*+,/:;<=>?@[\\]^`{|}", false, true);
+    auto result = rav::Uri::encode(" !\"#$%&'()*+,/:;<=>?@[\\]^`{|}", false, true);
     REQUIRE(result == "%20%21%22%23%24%25%26%27%28%29%2A%2B%2C%2F%3A%3B%3C%3D%3E%3F%40%5B%5C%5D%5E%60%7B%7C%7D");
 
     // Unreserved characters
-    result = rav::uri::encode("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~");
+    result = rav::Uri::encode("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~");
     REQUIRE(result == "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._~");
 
-    result = rav::uri::encode(" ", true);
+    result = rav::Uri::encode(" ", true);
     REQUIRE(result == "+");
 
-    result = rav::uri::encode(" ", false);
+    result = rav::Uri::encode(" ", false);
     REQUIRE(result == "%20");
 
-    result = rav::uri::encode("/", true, true);
+    result = rav::Uri::encode("/", true, true);
     REQUIRE(result == "%2F");
 
-    result = rav::uri::encode("/", true, false);
+    result = rav::Uri::encode("/", true, false);
     REQUIRE(result == "/");
 }

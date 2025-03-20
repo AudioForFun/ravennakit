@@ -22,15 +22,15 @@ namespace rav {
 /**
  * Represents a MAC address.
  */
-class mac_address {
+class MacAddress {
   public:
-    mac_address() = default;
+    MacAddress() = default;
 
     /**
      * Construct a MAC address from a byte array, assuming the array is (at least) 6 bytes long.
      * @param bytes The byte array containing the MAC address.
      */
-    explicit mac_address(const uint8_t* bytes) {
+    explicit MacAddress(const uint8_t* bytes) {
         std::copy_n(bytes, 6, address_.data());
     }
 
@@ -43,7 +43,7 @@ class mac_address {
      * @param byte4 Byte 4
      * @param byte5 Byte 5
      */
-    mac_address(
+    MacAddress(
         const uint8_t byte0, const uint8_t byte1, const uint8_t byte2, const uint8_t byte3, const uint8_t byte4,
         const uint8_t byte5
     ) :
@@ -53,7 +53,7 @@ class mac_address {
      * Construct a MAC address from a string. The string must be in the format "00:11:22:33:44:55".
      * @param str The string containing the MAC address.
      */
-    explicit mac_address(const char* str) {
+    explicit MacAddress(const char* str) {
         const auto parts = string_split(str, ':');
         if (parts.size() != 6) {
             RAV_THROW_EXCEPTION("Invalid MAC address format: {}", str);

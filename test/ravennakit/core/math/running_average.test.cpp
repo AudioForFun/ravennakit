@@ -15,13 +15,13 @@
 
 TEST_CASE("running_average") {
     SECTION("Initialization") {
-        constexpr rav::running_average avg;
+        constexpr rav::RunningAverage avg;
         REQUIRE(rav::is_within(avg.average() , 0.0, 0.0));
         REQUIRE(avg.count() == 0);
     }
 
     SECTION("Do some averaging") {
-        rav::running_average avg;
+        rav::RunningAverage avg;
         avg.add(1);
         avg.add(2.0);
         avg.add(3);

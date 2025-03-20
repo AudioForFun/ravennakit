@@ -33,14 +33,14 @@ class Transmitter {
      * @param packet Encoded RTP packet.
      * @param endpoint The endpoint to send the packet to.
      */
-    void send_to(const byte_buffer& packet, const asio::ip::udp::endpoint& endpoint) {
+    void send_to(const ByteBuffer& packet, const asio::ip::udp::endpoint& endpoint) {
         RAV_ASSERT(packet.data() != nullptr, "Packet data is null");
         RAV_ASSERT(packet.size() > 0, "Packet size is 0");
         socket_.send_to(asio::buffer(packet.data(), packet.size()), endpoint);
     }
 
   private:
-    byte_buffer buffer_;
+    ByteBuffer buffer_;
     asio::ip::udp::socket socket_;
 };
 

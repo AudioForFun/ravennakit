@@ -23,7 +23,7 @@ namespace rav {
  * RAII wrapper for CFArrayRef.
  */
 template<class E>
-class cf_array: public cf_type<CFArrayRef> {
+class CfArray: public CfType<CFArrayRef> {
   public:
     /**
      * Constructs a new cf_array from an existing CFArrayRef. The array_ref is assumed to be already retained, and this
@@ -32,7 +32,7 @@ class cf_array: public cf_type<CFArrayRef> {
      * @param retain True to retain the given array_ref, false otherwise (where it is assumed that the array_ref has
      * been retained before and needs to be placed under RAII).
      */
-    explicit cf_array(const CFArrayRef array_ref, const bool retain = true) : cf_type(array_ref, retain) {}
+    explicit CfArray(const CFArrayRef array_ref, const bool retain = true) : CfType(array_ref, retain) {}
 
     /**
      * @return The amount of elements in the array.

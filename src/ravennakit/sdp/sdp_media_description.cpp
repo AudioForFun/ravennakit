@@ -19,7 +19,7 @@
 
 rav::sdp::MediaDescription::ParseResult<rav::sdp::MediaDescription>
 rav::sdp::MediaDescription::parse_new(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     if (!parser.skip("m=")) {
         return ParseResult<MediaDescription>::err("media: expecting 'm='");
@@ -72,7 +72,7 @@ rav::sdp::MediaDescription::parse_new(const std::string_view line) {
 
 rav::sdp::MediaDescription::ParseResult<void>
 rav::sdp::MediaDescription::parse_attribute(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     if (!parser.skip("a=")) {
         return ParseResult<void>::err("attribute: expecting 'a='");
@@ -189,7 +189,7 @@ rav::sdp::MediaDescription::parse_attribute(const std::string_view line) {
         if (!denom) {
             return ParseResult<void>::err("media: failed to parse clock-deviation denominator value");
         }
-        clock_deviation_ = fraction<uint32_t> {*num, *denom};
+        clock_deviation_ = Fraction<uint32_t> {*num, *denom};
     } else if (key == SourceFilter::k_attribute_name) {
         if (const auto value = parser.read_until_end()) {
             auto filter = SourceFilter::parse_new(*value);
@@ -333,11 +333,11 @@ void rav::sdp::MediaDescription::set_sync_time(const std::optional<uint32_t> syn
     sync_time_ = sync_time;
 }
 
-const std::optional<rav::fraction<unsigned>>& rav::sdp::MediaDescription::clock_deviation() const {
+const std::optional<rav::Fraction<unsigned>>& rav::sdp::MediaDescription::clock_deviation() const {
     return clock_deviation_;
 }
 
-void rav::sdp::MediaDescription::set_clock_deviation(const std::optional<fraction<uint32_t>> clock_deviation) {
+void rav::sdp::MediaDescription::set_clock_deviation(const std::optional<Fraction<uint32_t>> clock_deviation) {
     clock_deviation_ = clock_deviation;
 }
 

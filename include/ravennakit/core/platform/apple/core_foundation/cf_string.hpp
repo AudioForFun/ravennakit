@@ -21,7 +21,7 @@ namespace rav {
 /**
  * An RAII wrapper around CFStringRef.
  */
-class cf_string: public cf_type<CFStringRef> {
+class CfString: public CfType<CFStringRef> {
   public:
     /**
      * Constructs a new cf_string from an existing CFStringRef. The string_ref is assumed to be already retained, and
@@ -30,7 +30,7 @@ class cf_string: public cf_type<CFStringRef> {
      * @param retain True to retain the given string_ref, false otherwise (where it is assumed that the string_ref has
      * been retained before and needs to be placed under RAII).
      */
-    explicit cf_string(const CFStringRef string_ref, const bool retain = true) : cf_type(string_ref, retain) {}
+    explicit CfString(const CFStringRef string_ref, const bool retain = true) : CfType(string_ref, retain) {}
 
     /**
      * Constructs a new std::string from given CFStringRef.

@@ -27,25 +27,25 @@ namespace rav {
  * the specified number of iterations, the operation is considered failed. Default is 100'000.
  */
 template<class T, size_t loop_upper_bound = 100'000>
-class realtime_shared_object {
+class RealtimeSharedObject {
   public:
     /**
      * A lock object provides access to the value. The lock object is used to access the value in a real-time safe way.
      */
-    class realtime_lock {
+    class RealtimeLock {
       public:
-        explicit realtime_lock(realtime_shared_object& parent) : parent_(&parent) {
+        explicit RealtimeLock(RealtimeSharedObject& parent) : parent_(&parent) {
             value_ = parent_->ptr_.exchange(nullptr);
         }
 
-        ~realtime_lock() {
+        ~RealtimeLock() {
             reset();
         }
 
-        realtime_lock(const realtime_lock&) = delete;
-        realtime_lock& operator=(const realtime_lock&) = delete;
-        realtime_lock(realtime_lock&&) = delete;
-        realtime_lock& operator=(realtime_lock&&) = delete;
+        RealtimeLock(const RealtimeLock&) = delete;
+        RealtimeLock& operator=(const RealtimeLock&) = delete;
+        RealtimeLock(RealtimeLock&&) = delete;
+        RealtimeLock& operator=(RealtimeLock&&) = delete;
 
         /**
          * @return A pointer to the contained object, or nullptr if the value is nullptr.
@@ -86,41 +86,41 @@ class realtime_shared_object {
         }
 
       private:
-        realtime_shared_object* parent_;
+        RealtimeSharedObject* parent_;
         T* value_ {nullptr};
     };
 
     /**
      * Default constructor.
      */
-    realtime_shared_object() : storage_(std::make_unique<T>()), ptr_(storage_.get()) {}
+    RealtimeSharedObject() : storage_(std::make_unique<T>()), ptr_(storage_.get()) {}
 
     /**
      * @param initial_value Initial value to set. Must not be nullptr.
      */
-    explicit realtime_shared_object(std::unique_ptr<T> initial_value) :
+    explicit RealtimeSharedObject(std::unique_ptr<T> initial_value) :
         storage_(std::move(initial_value)), ptr_(storage_.get()) {}
 
     /**
      * @param initial_value Initial value to set.
      */
-    explicit realtime_shared_object(const T& initial_value) :
+    explicit RealtimeSharedObject(const T& initial_value) :
         storage_(std::make_unique<T>(initial_value)), ptr_(storage_.get()) {}
 
     /**
      * @param initial_value Initial value to set.
      */
-    explicit realtime_shared_object(T&& initial_value) :
+    explicit RealtimeSharedObject(T&& initial_value) :
         storage_(std::make_unique<T>(std::move(initial_value))), ptr_(storage_.get()) {}
 
-    ~realtime_shared_object() {
+    ~RealtimeSharedObject() {
         RAV_ASSERT_NO_THROW(ptr_ != nullptr, "There should be no active locks");
     }
 
-    realtime_shared_object(const realtime_shared_object&) = delete;
-    realtime_shared_object& operator=(const realtime_shared_object&) = delete;
-    realtime_shared_object(realtime_shared_object&&) = delete;
-    realtime_shared_object& operator=(realtime_shared_object&&) = delete;
+    RealtimeSharedObject(const RealtimeSharedObject&) = delete;
+    RealtimeSharedObject& operator=(const RealtimeSharedObject&) = delete;
+    RealtimeSharedObject(RealtimeSharedObject&&) = delete;
+    RealtimeSharedObject& operator=(RealtimeSharedObject&&) = delete;
 
     /**
      * @return Get a lock for realtime access to the current value. During the lifetime of this lock (or until reset is
@@ -128,8 +128,8 @@ class realtime_shared_object {
      * Real-time safe: yes, wait-free
      * Thread safe: no.
      */
-    [[nodiscard]] realtime_lock lock_realtime() {
-        return realtime_lock(*this);
+    [[nodiscard]] RealtimeLock lock_realtime() {
+        return RealtimeLock(*this);
     }
 
     /**

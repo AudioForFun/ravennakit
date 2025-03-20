@@ -21,7 +21,7 @@ TEST_CASE("ptp_pdelay_resp_message") {
             0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,  // port identity
             0x99, 0xaa                                       // Port number
         };
-        auto msg = rav::ptp::PdelayRespMessage::from_data(rav::buffer_view(data)).value();
+        auto msg = rav::ptp::PdelayRespMessage::from_data(rav::BufferView(data)).value();
         REQUIRE(msg.request_receipt_timestamp.raw_seconds() == 0x123456789012);
         REQUIRE(msg.request_receipt_timestamp.raw_nanoseconds() == 0x34567890);
         REQUIRE(msg.requesting_port_identity.clock_identity.data[0] == 0x11);

@@ -22,7 +22,7 @@
 rav::sdp::SessionDescription::ParseResult<rav::sdp::SessionDescription>
 rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
     SessionDescription sd;
-    string_parser parser(sdp_text);
+    StringParser parser(sdp_text);
 
     for (auto line = parser.read_line(); line.has_value(); line = parser.read_line()) {
         if (line->empty()) {
@@ -314,7 +314,7 @@ rav::sdp::SessionDescription::parse_version(const std::string_view line) {
 
 rav::sdp::SessionDescription::ParseResult<void>
 rav::sdp::SessionDescription::parse_attribute(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     if (!parser.skip("a=")) {
         return ParseResult<void>::err("attribute: expecting 'a='");

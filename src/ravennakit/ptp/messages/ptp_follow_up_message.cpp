@@ -13,7 +13,7 @@
 #include "ravennakit/ptp/messages/ptp_message_header.hpp"
 
 tl::expected<rav::ptp::FollowUpMessage, rav::ptp::Error>
-rav::ptp::FollowUpMessage::from_data(const MessageHeader& header, const buffer_view<const uint8_t> data) {
+rav::ptp::FollowUpMessage::from_data(const MessageHeader& header, const BufferView<const uint8_t> data) {
     if (data.size() < k_message_size) {
         return tl::unexpected(Error::invalid_message_length);
     }

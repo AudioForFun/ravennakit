@@ -63,10 +63,10 @@ class StreamReceiver: public Receiver::Subscriber {
      * Event for when this receiver changed in some way, containing the updated parameters.
      */
     struct stream_updated_event {
-        id receiver_id;
+        Id receiver_id;
         Session session;
         Filter filter;
-        audio_format selected_audio_format;
+        AudioFormat selected_audio_format;
         uint16_t packet_time_frames = 0;
         uint32_t delay_samples = 0;
         receiver_state state = receiver_state::idle;
@@ -101,7 +101,7 @@ class StreamReceiver: public Receiver::Subscriber {
          *
          * @param timestamp The timestamp of newly received the data.
          */
-        virtual void on_data_received([[maybe_unused]] wrapping_uint32 timestamp) {}
+        virtual void on_data_received([[maybe_unused]] WrappingUint32 timestamp) {}
 
         /**
          * Called when data is ready to be consumed.
@@ -115,7 +115,7 @@ class StreamReceiver: public Receiver::Subscriber {
          *
          * @param timestamp The timestamp of the packet which triggered this event, ** minus the delay **.
          */
-        virtual void on_data_ready([[maybe_unused]] wrapping_uint32 timestamp) {}
+        virtual void on_data_ready([[maybe_unused]] WrappingUint32 timestamp) {}
     };
 
     /**
@@ -123,7 +123,7 @@ class StreamReceiver: public Receiver::Subscriber {
      */
     struct StreamStats {
         /// The packet interval statistics.
-        sliding_stats::stats packet_interval_stats;
+        SlidingStats::Stats packet_interval_stats;
         /// The packet statistics.
         PacketStats::Counters packet_stats;
     };
@@ -135,7 +135,7 @@ class StreamReceiver: public Receiver::Subscriber {
     /**
      * @returns The unique ID of this stream receiver. The id is unique across the process.
      */
-    [[nodiscard]] id get_id() const;
+    [[nodiscard]] Id get_id() const;
 
     /**
      * Update the stream information with given SDP. Might result in a restart of the streaming if the parameters have
@@ -194,7 +194,7 @@ class StreamReceiver: public Receiver::Subscriber {
      * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
     [[nodiscard]] std::optional<uint32_t>
-    read_audio_data_realtime(audio_buffer_view<float> output_buffer, std::optional<uint32_t> at_timestamp);
+    read_audio_data_realtime(AudioBufferView<float> output_buffer, std::optional<uint32_t> at_timestamp);
 
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
@@ -209,7 +209,7 @@ class StreamReceiver: public Receiver::Subscriber {
     /**
      * @return The packet interval statistics for the first stream, if it exists, otherwise an empty structure.
      */
-    [[nodiscard]] sliding_stats::stats get_packet_interval_stats() const;
+    [[nodiscard]] SlidingStats::Stats get_packet_interval_stats() const;
 
     // rtp_receiver::subscriber overrides
     void on_rtp_packet(const Receiver::RtpPacketEvent& rtp_event) override;
@@ -224,23 +224,23 @@ class StreamReceiver: public Receiver::Subscriber {
 
         Session session;
         Filter filter;
-        audio_format selected_format;
+        AudioFormat selected_format;
         uint16_t packet_time_frames = 0;
-        wrapping_uint16 seq;
-        std::optional<wrapping_uint32> first_packet_timestamp;
+        WrappingUint16 seq;
+        std::optional<WrappingUint32> first_packet_timestamp;
         PacketStats packet_stats;
-        throttle<PacketStats::Counters> packet_stats_throttle {std::chrono::seconds(5)};
-        wrapping_uint64 last_packet_time_ns;
-        sliding_stats packet_interval_stats {1000};
-        throttle<void> packet_interval_throttle {std::chrono::seconds(10)};
+        Throttle<PacketStats::Counters> packet_stats_throttle {std::chrono::seconds(5)};
+        WrappingUint64 last_packet_time_ns;
+        SlidingStats packet_interval_stats {1000};
+        Throttle<void> packet_interval_throttle {std::chrono::seconds(10)};
     };
 
     Receiver& rtp_receiver_;
-    id id_ {id::next_process_wide_unique_id()};
+    Id id_ {Id::next_process_wide_unique_id()};
     std::atomic<uint32_t> delay_ = 480;  // 100ms at 48KHz
     receiver_state state_ {receiver_state::idle};
     std::vector<MediaStream> media_streams_;
-    subscriber_list<Subscriber> subscribers_;
+    SubscriberList<Subscriber> subscribers_;
     asio::steady_timer maintenance_timer_;
     ExclusiveAccessGuard realtime_access_guard_;
 
@@ -258,18 +258,18 @@ class StreamReceiver: public Receiver::Subscriber {
     struct SharedState {
         ReceiveBuffer receiver_buffer;
         std::vector<uint8_t> read_buffer;
-        fifo_buffer<IntermediatePacket, Fifo::Spsc> fifo;
-        fifo_buffer<uint16_t, Fifo::Spsc> packets_too_old;
-        std::optional<wrapping_uint32> first_packet_timestamp;
-        wrapping_uint32 next_ts;
-        audio_format selected_audio_format;
+        FifoBuffer<IntermediatePacket, Fifo::Spsc> fifo;
+        FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;
+        std::optional<WrappingUint32> first_packet_timestamp;
+        WrappingUint32 next_ts;
+        AudioFormat selected_audio_format;
         /// Whether data is being consumed. When the FIFO is full, this will be set to false.
         std::atomic_bool consumer_active {false};
     };
 
-    rcu<SharedState> shared_state_;
-    rcu<SharedState>::reader audio_thread_reader_ {shared_state_.create_reader()};
-    rcu<SharedState>::reader network_thread_reader_ {shared_state_.create_reader()};
+    Rcu<SharedState> shared_state_;
+    Rcu<SharedState>::Reader audio_thread_reader_ {shared_state_.create_reader()};
+    Rcu<SharedState>::Reader network_thread_reader_ {shared_state_.create_reader()};
 
     /**
      * Restarts the stream if it is running, otherwise does nothing.

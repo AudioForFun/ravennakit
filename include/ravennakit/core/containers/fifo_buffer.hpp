@@ -22,23 +22,23 @@ namespace rav {
  * A classic FIFO buffer implementation with different strategies F.
  */
 template<class T, class F>
-class fifo_buffer {
+class FifoBuffer {
   public:
-    fifo_buffer() = default;
+    FifoBuffer() = default;
 
     /**
      * Constructs a queue with a given number of elements.
      * @param capacity The number of elements the queue can hold.
      */
-    explicit fifo_buffer(const size_t capacity) {
+    explicit FifoBuffer(const size_t capacity) {
         resize(capacity);
     }
 
-    fifo_buffer(const fifo_buffer& other) = delete;
-    fifo_buffer& operator=(const fifo_buffer& other) = delete;
+    FifoBuffer(const FifoBuffer& other) = delete;
+    FifoBuffer& operator=(const FifoBuffer& other) = delete;
 
-    fifo_buffer(fifo_buffer&& other) noexcept = delete;
-    fifo_buffer& operator=(fifo_buffer&& other) noexcept = delete;
+    FifoBuffer(FifoBuffer&& other) noexcept = delete;
+    FifoBuffer& operator=(FifoBuffer&& other) noexcept = delete;
 
     /**
      * Pushes a value to the buffer.

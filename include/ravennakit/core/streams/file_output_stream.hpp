@@ -18,9 +18,9 @@ namespace rav {
 /**
  * An implementation of output_stream for writing to a file.
  */
-class file_output_stream final: public output_stream {
+class FileOutputStream final: public OutputStream {
   public:
-    explicit file_output_stream(const File& file) {
+    explicit FileOutputStream(const File& file) {
         ofstream_.exceptions(std::ofstream::failbit | std::ofstream::badbit);
         ofstream_.open(file.path(), std::ios::binary);
         if (!ofstream_.is_open()) {  // Note: not sure if this check is necessary
@@ -29,15 +29,15 @@ class file_output_stream final: public output_stream {
         ofstream_.seekp(0);
     }
 
-    ~file_output_stream() override = default;
+    ~FileOutputStream() override = default;
 
     // output_stream overrides
-    tl::expected<void, error> write(const uint8_t* buffer, const size_t size) override {
+    tl::expected<void, Error> write(const uint8_t* buffer, const size_t size) override {
         ofstream_.write(reinterpret_cast<const char*>(buffer), static_cast<std::streamsize>(size));
         return {};
     }
 
-    tl::expected<void, error> set_write_position(const size_t position) override {
+    tl::expected<void, Error> set_write_position(const size_t position) override {
         ofstream_.seekp(static_cast<std::streamsize>(position));
         return {};
     }

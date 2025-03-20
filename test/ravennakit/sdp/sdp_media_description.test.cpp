@@ -208,7 +208,7 @@ TEST_CASE("media_description | To string") {
 
     SECTION("media clock") {
         md.set_media_clock(
-            {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::fraction<int>>({48000, 1})}
+            {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::Fraction<int>>({48000, 1})}
         );
         expected += "a=mediaclk:direct=5 rate=48000/1\r\n";
         REQUIRE(md.to_string().value() == expected);
@@ -227,7 +227,7 @@ TEST_CASE("media_description | To string") {
     }
 
     SECTION("RAVENNA clock deviation") {
-        md.set_clock_deviation(std::optional<rav::fraction<unsigned>>({1001, 1000}));
+        md.set_clock_deviation(std::optional<rav::Fraction<unsigned>>({1001, 1000}));
         expected += "a=clock-deviation:1001/1000\r\n";
         REQUIRE(md.to_string().value() == expected);
     }

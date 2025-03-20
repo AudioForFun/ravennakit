@@ -13,7 +13,7 @@
 
 namespace rav {
 
-enum class audio_encoding : uint8_t {
+enum class AudioEncoding : uint8_t {
     undefined,
     pcm_s8,
     pcm_u8,
@@ -27,21 +27,21 @@ enum class audio_encoding : uint8_t {
 /**
  * @return The number of bytes per sample.
  */
-inline uint8_t audio_encoding_bytes_per_sample(const audio_encoding encoding) {
+inline uint8_t audio_encoding_bytes_per_sample(const AudioEncoding encoding) {
     switch (encoding) {
-        case audio_encoding::pcm_s8:
-        case audio_encoding::pcm_u8:
+        case AudioEncoding::pcm_s8:
+        case AudioEncoding::pcm_u8:
             return 1;
-        case audio_encoding::pcm_s16:
+        case AudioEncoding::pcm_s16:
             return 2;
-        case audio_encoding::pcm_s24:
+        case AudioEncoding::pcm_s24:
             return 3;
-        case audio_encoding::pcm_s32:
-        case audio_encoding::pcm_f32:
+        case AudioEncoding::pcm_s32:
+        case AudioEncoding::pcm_f32:
             return 4;
-        case audio_encoding::pcm_f64:
+        case AudioEncoding::pcm_f64:
             return 8;
-        case audio_encoding::undefined:
+        case AudioEncoding::undefined:
         default:
             return 0;
     }
@@ -50,39 +50,39 @@ inline uint8_t audio_encoding_bytes_per_sample(const audio_encoding encoding) {
 /**
  * @return The ground value for the encoding.
  */
-inline uint8_t audio_encoding_ground_value(const audio_encoding encoding) {
+inline uint8_t audio_encoding_ground_value(const AudioEncoding encoding) {
     switch (encoding) {
-        case audio_encoding::pcm_u8:
+        case AudioEncoding::pcm_u8:
             return 0x80;
-        case audio_encoding::pcm_s8:
-        case audio_encoding::pcm_s16:
-        case audio_encoding::pcm_s24:
-        case audio_encoding::pcm_s32:
-        case audio_encoding::pcm_f32:
-        case audio_encoding::pcm_f64:
-        case audio_encoding::undefined:
+        case AudioEncoding::pcm_s8:
+        case AudioEncoding::pcm_s16:
+        case AudioEncoding::pcm_s24:
+        case AudioEncoding::pcm_s32:
+        case AudioEncoding::pcm_f32:
+        case AudioEncoding::pcm_f64:
+        case AudioEncoding::undefined:
         default:
             return 0;
     }
 }
 
-inline const char* audio_encoding_to_string(const audio_encoding encoding) {
+inline const char* audio_encoding_to_string(const AudioEncoding encoding) {
     switch (encoding) {
-        case audio_encoding::undefined:
+        case AudioEncoding::undefined:
             return "undefined";
-        case audio_encoding::pcm_s8:
+        case AudioEncoding::pcm_s8:
             return "pcm_s8";
-        case audio_encoding::pcm_u8:
+        case AudioEncoding::pcm_u8:
             return "pcm_u8";
-        case audio_encoding::pcm_s16:
+        case AudioEncoding::pcm_s16:
             return "pcm_s16";
-        case audio_encoding::pcm_s24:
+        case AudioEncoding::pcm_s24:
             return "pcm_s24";
-        case audio_encoding::pcm_s32:
+        case AudioEncoding::pcm_s32:
             return "pcm_s32";
-        case audio_encoding::pcm_f32:
+        case AudioEncoding::pcm_f32:
             return "pcm_f32";
-        case audio_encoding::pcm_f64:
+        case AudioEncoding::pcm_f64:
             return "pcm_f64";
         default:
             return "unknown";

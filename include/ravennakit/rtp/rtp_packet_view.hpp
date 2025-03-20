@@ -98,7 +98,7 @@ class PacketView {
     /**
      * @return Returns the header extension data. Data is not endian swapped.
      */
-    [[nodiscard]] buffer_view<const uint8_t> get_header_extension_data() const;
+    [[nodiscard]] BufferView<const uint8_t> get_header_extension_data() const;
 
     /**
      * @returns Returns the length of the header which is also the start index of the payload data.
@@ -108,7 +108,7 @@ class PacketView {
     /**
      * @return Returns a view to the payload data.
      */
-    [[nodiscard]] buffer_view<const uint8_t> payload_data() const;
+    [[nodiscard]] BufferView<const uint8_t> payload_data() const;
 
     /**
      * @return Returns the size of the RTP header in bytes.

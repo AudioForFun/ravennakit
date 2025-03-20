@@ -24,7 +24,7 @@ namespace rav {
  * Use this class for the sequence id in PTP, sequence number in RTP, timestamp in RTP, etc.
  */
 template<class T>
-class wrapping_uint {
+class WrappingUint {
     static_assert(std::is_integral_v<T>, "sequence_number only supports integral types");
     static_assert(std::is_unsigned_v<T>, "sequence_number only supports unsigned types");
 
@@ -32,13 +32,13 @@ class wrapping_uint {
     /**
      * Default construct a sequence number with the value 0.
      */
-    wrapping_uint() = default;
+    WrappingUint() = default;
 
     /**
      * Construct a sequence number with the given value.
      * @param value The initial value of the sequence number.
      */
-    explicit wrapping_uint(const T value) : value_(value) {}
+    explicit WrappingUint(const T value) : value_(value) {}
 
     /**
      * Updates the value in the sequence. The number of steps taken from the previous value to given value
@@ -79,7 +79,7 @@ class wrapping_uint {
      * @param value The new value of the sequence number.
      * @return This instance.
      */
-    wrapping_uint& operator=(const T value) {
+    WrappingUint& operator=(const T value) {
         value_ = value;
         return *this;
     }
@@ -89,7 +89,7 @@ class wrapping_uint {
      * @param value The value to increment by.
      * @return This instance.
      */
-    wrapping_uint& operator+=(const T value) {
+    WrappingUint& operator+=(const T value) {
         value_ += value;
         return *this;
     }
@@ -99,7 +99,7 @@ class wrapping_uint {
      * @param value The value to decrement by.
      * @return This instance.
      */
-    wrapping_uint& operator-=(const T value) {
+    WrappingUint& operator-=(const T value) {
         value_ -= value;
         return *this;
     }
@@ -109,8 +109,8 @@ class wrapping_uint {
      * @param value The value to increment by.
      * @return A new sequence number instance.
      */
-    wrapping_uint operator+(const T value) const {
-        return wrapping_uint(value_ + value);
+    WrappingUint operator+(const T value) const {
+        return WrappingUint(value_ + value);
     }
 
     /**
@@ -118,8 +118,8 @@ class wrapping_uint {
      * @param value The value to decrement by.
      * @return A new sequence number instance.
      */
-    wrapping_uint operator-(const T value) const {
-        return wrapping_uint(value_ - value);
+    WrappingUint operator-(const T value) const {
+        return WrappingUint(value_ - value);
     }
 
     /**
@@ -146,7 +146,7 @@ class wrapping_uint {
      * @param rhs Right hand side.
      * @return True if the sequence number is less than the given value, false otherwise.
      */
-    friend bool operator==(const wrapping_uint& lhs, const wrapping_uint& rhs) {
+    friend bool operator==(const WrappingUint& lhs, const WrappingUint& rhs) {
         return lhs.value_ == rhs.value_;
     }
 
@@ -156,7 +156,7 @@ class wrapping_uint {
      * @param rhs Right hand side.
      * @return True if the sequence number is not equal to the given value, false otherwise.
      */
-    friend bool operator!=(const wrapping_uint& lhs, const wrapping_uint& rhs) {
+    friend bool operator!=(const WrappingUint& lhs, const WrappingUint& rhs) {
         return lhs.value_ != rhs.value_;
     }
 
@@ -166,7 +166,7 @@ class wrapping_uint {
      * @param rhs Right hand side.
      * @return True if the sequence number is less than the given value, false otherwise.
      */
-    friend bool operator<(const wrapping_uint& lhs, const wrapping_uint& rhs) {
+    friend bool operator<(const WrappingUint& lhs, const WrappingUint& rhs) {
         return is_older_than(lhs.value_, rhs.value_);
     }
 
@@ -176,7 +176,7 @@ class wrapping_uint {
      * @param rhs Right hand side.
      * @return True if the sequence number is less than or equal to the given value, false otherwise.
      */
-    friend bool operator<=(const wrapping_uint& lhs, const wrapping_uint& rhs) {
+    friend bool operator<=(const WrappingUint& lhs, const WrappingUint& rhs) {
         return lhs < rhs || lhs == rhs;
     }
 
@@ -186,7 +186,7 @@ class wrapping_uint {
      * @param rhs Right hand side.
      * @return True if the sequence number is greater than the given value, false otherwise.
      */
-    friend bool operator>(const wrapping_uint& lhs, const wrapping_uint& rhs) {
+    friend bool operator>(const WrappingUint& lhs, const WrappingUint& rhs) {
         return !(lhs <= rhs);
     }
 
@@ -196,7 +196,7 @@ class wrapping_uint {
      * @param rhs Right hand side.
      * @return True if the sequence number is greater than or equal to the given value, false otherwise.
      */
-    friend bool operator>=(const wrapping_uint& lhs, const wrapping_uint& rhs) {
+    friend bool operator>=(const WrappingUint& lhs, const WrappingUint& rhs) {
         return lhs > rhs || lhs == rhs;
     }
 
@@ -205,7 +205,7 @@ class wrapping_uint {
      * @param other The other sequence number.
      * @return The difference between the two sequence numbers.
      */
-    std::make_signed_t<T> diff(const wrapping_uint& other) const {
+    std::make_signed_t<T> diff(const WrappingUint& other) const {
         // 1 -> 0
         if (is_older_than(other.value_, value_)) {
             return static_cast<std::make_signed_t<T>>(value_ - other.value_) * -1;
@@ -228,15 +228,15 @@ class wrapping_uint {
 };
 
 /// 8-bit wrapping unsigned integer.
-using wrapping_uint8 = wrapping_uint<uint8_t>;
+using WrappingUint8 = WrappingUint<uint8_t>;
 
 /// 16-bit wrapping unsigned integer.
-using wrapping_uint16 = wrapping_uint<uint16_t>;
+using WrappingUint16 = WrappingUint<uint16_t>;
 
 /// 32-bit wrapping unsigned integer.
-using wrapping_uint32 = wrapping_uint<uint32_t>;
+using WrappingUint32 = WrappingUint<uint32_t>;
 
 /// 64-bit wrapping unsigned integer.
-using wrapping_uint64 = wrapping_uint<uint64_t>;
+using WrappingUint64 = WrappingUint<uint64_t>;
 
 }  // namespace rav

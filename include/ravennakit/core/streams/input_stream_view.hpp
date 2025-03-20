@@ -17,7 +17,7 @@ namespace rav {
 /**
  * A non-owning view of some data that can be read from.
  */
-class input_stream_view: public input_stream {
+class InputStreamView: public InputStream {
   public:
     /**
      * Constructs a new input stream view pointing to the given data. It doesn't take ownership of the data so make sure
@@ -25,7 +25,7 @@ class input_stream_view: public input_stream {
      * @param data The data to read from. Must not be nullptr.
      * @param size The size of the data.
      */
-    input_stream_view(const uint8_t* data, size_t size);
+    InputStreamView(const uint8_t* data, size_t size);
 
     /**
      * Constructs a new input stream view pointing to the given container. It doesn't take ownership of the container so
@@ -34,15 +34,15 @@ class input_stream_view: public input_stream {
      * @param container The container to read from. Must not be empty.
      */
     template<class T>
-    explicit input_stream_view(const T& container) : input_stream_view(container.data(), container.size()) {}
+    explicit InputStreamView(const T& container) : InputStreamView(container.data(), container.size()) {}
 
-    ~input_stream_view() override = default;
+    ~InputStreamView() override = default;
 
-    input_stream_view(const input_stream_view&) = default;
-    input_stream_view& operator=(const input_stream_view&) = default;
+    InputStreamView(const InputStreamView&) = default;
+    InputStreamView& operator=(const InputStreamView&) = default;
 
-    input_stream_view(input_stream_view&&) noexcept = default;
-    input_stream_view& operator=(input_stream_view&&) noexcept = default;
+    InputStreamView(InputStreamView&&) noexcept = default;
+    InputStreamView& operator=(InputStreamView&&) noexcept = default;
 
     /**
      * Resets the stream to its initial state by setting the read position to 0.
@@ -50,7 +50,7 @@ class input_stream_view: public input_stream {
     void reset();
 
     // input_stream overrides
-    [[nodiscard]] tl::expected<size_t, error> read(uint8_t* buffer, size_t size) override;
+    [[nodiscard]] tl::expected<size_t, Error> read(uint8_t* buffer, size_t size) override;
     [[nodiscard]] bool set_read_position(size_t position) override;
     [[nodiscard]] size_t get_read_position() override;
     [[nodiscard]] std::optional<size_t> size() const override;

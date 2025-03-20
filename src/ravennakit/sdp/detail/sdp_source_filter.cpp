@@ -60,7 +60,7 @@ tl::expected<void, std::string> rav::sdp::SourceFilter::validate() const {
 rav::sdp::SourceFilter::ParseResult<rav::sdp::SourceFilter>
 rav::sdp::SourceFilter::parse_new(const std::string_view line) {
     SourceFilter filter;
-    string_parser parser(line);
+    StringParser parser(line);
 
     // Skip leading space
     if (!parser.skip(' ')) {

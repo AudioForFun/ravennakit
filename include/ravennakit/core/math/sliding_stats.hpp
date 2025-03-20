@@ -22,9 +22,9 @@ namespace rav {
  * Values can be added after which different calculations can be performed on the values. The values are stored in a
  * ring buffer to keep track of the last N values. Older values will be overwritten by newer values.
  */
-class sliding_stats {
+class SlidingStats {
   public:
-    struct stats {
+    struct Stats {
         double average {};
         double median {};
         double min {};
@@ -38,7 +38,7 @@ class sliding_stats {
      * Constructor.
      * @param size The amount of elements to hold.
      */
-    explicit sliding_stats(const size_t size) : window_(size), sorted_data_(size) {}
+    explicit SlidingStats(const size_t size) : window_(size), sorted_data_(size) {}
 
     /**
      * Adds a new value and recalculates the statistics.
@@ -115,7 +115,7 @@ class sliding_stats {
     /**
      * @return The statistics of the values in the window as a struct. Convenient when data needs to be copied.
      */
-    stats get_stats() const {
+    Stats get_stats() const {
         const auto var = variance();
         return {average_, median_, min_, max_, var, standard_deviation(var), window_.size()};
     }
@@ -170,7 +170,7 @@ class sliding_stats {
     }
 
   private:
-    ring_buffer<double> window_;
+    RingBuffer<double> window_;
     std::vector<double> sorted_data_;
     double average_ {};  // Last calculated average value
     double median_ {};   // Last calculated median value

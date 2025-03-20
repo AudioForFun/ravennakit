@@ -92,7 +92,7 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
   private:
     struct SessionContext {
         std::string session_name;
-        subscriber_list<Subscriber> subscribers;
+        SubscriberList<Subscriber> subscribers;
         std::optional<sdp::SessionDescription> sdp_;
         std::optional<std::string> sdp_text_;
         std::string host_target;

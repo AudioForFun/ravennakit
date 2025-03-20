@@ -20,7 +20,7 @@ namespace rav {
 /**
  * URI parser and encoder. Should be enough for the common case, but it's not a full implementation.
  */
-struct uri {
+struct Uri {
     std::string scheme;
     std::string user;
     std::string password;
@@ -35,7 +35,7 @@ struct uri {
      * @param encoded_uri Encoded URI string.
      * @return Parsed URI.
      */
-    static uri parse(const std::string& encoded_uri);
+    static Uri parse(const std::string& encoded_uri);
 
     /**
      * Encodes the URI into a string.

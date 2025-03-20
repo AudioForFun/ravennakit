@@ -11,7 +11,7 @@
 #include "ravennakit/ptp/messages/ptp_pdelay_req_message.hpp"
 
 tl::expected<rav::ptp::PdelayReqMessage, rav::ptp::Error>
-rav::ptp::PdelayReqMessage::from_data(const buffer_view<const uint8_t> data) {
+rav::ptp::PdelayReqMessage::from_data(const BufferView<const uint8_t> data) {
     if (data.size() < k_message_size) {
         return tl::make_unexpected(Error::invalid_message_length);
     }
@@ -21,7 +21,7 @@ rav::ptp::PdelayReqMessage::from_data(const buffer_view<const uint8_t> data) {
     return msg;
 }
 
-void rav::ptp::PdelayReqMessage::write_to(byte_buffer& buffer) const {
+void rav::ptp::PdelayReqMessage::write_to(ByteBuffer& buffer) const {
     return origin_timestamp.write_to(buffer);
 }
 

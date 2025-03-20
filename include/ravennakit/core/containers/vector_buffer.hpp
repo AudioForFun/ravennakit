@@ -23,18 +23,18 @@ namespace rav {
  * Simple buffer around a vector that allows for easy reading and writing of values.
  */
 template<class T>
-class vector_buffer {
+class VectorBuffer {
   public:
-    vector_buffer() = default;
+    VectorBuffer() = default;
 
-    explicit vector_buffer(size_t size) : data_(size) {}
+    explicit VectorBuffer(size_t size) : data_(size) {}
 
-    vector_buffer(std::initializer_list<T> values) : data_(values) {}
+    VectorBuffer(std::initializer_list<T> values) : data_(values) {}
 
-    vector_buffer(const vector_buffer& other) = default;
-    vector_buffer(vector_buffer&& other) noexcept = default;
-    vector_buffer& operator=(const vector_buffer& other) = default;
-    vector_buffer& operator=(vector_buffer&& other) noexcept = default;
+    VectorBuffer(const VectorBuffer& other) = default;
+    VectorBuffer(VectorBuffer&& other) noexcept = default;
+    VectorBuffer& operator=(const VectorBuffer& other) = default;
+    VectorBuffer& operator=(VectorBuffer&& other) noexcept = default;
 
     bool operator==(const std::vector<T>& other) const {
         return data_ == other;

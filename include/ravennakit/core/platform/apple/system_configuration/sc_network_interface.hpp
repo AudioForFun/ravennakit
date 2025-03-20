@@ -23,29 +23,29 @@ namespace rav {
 /**
  * An RAII wrapper around SCNetworkServiceRef.
  */
-class sc_network_interface : public cf_type<SCNetworkInterfaceRef> {
+class ScNetworkInterface : public CfType<SCNetworkInterfaceRef> {
   public:
-    sc_network_interface(const SCNetworkInterfaceRef interface, const bool retain) : cf_type(interface, retain) {}
+    ScNetworkInterface(const SCNetworkInterfaceRef interface, const bool retain) : CfType(interface, retain) {}
 
     /**
      * @return The BSD name of the interface.
      */
     [[nodiscard]] std::string get_bsd_name() const {
-        return cf_string::to_string(SCNetworkInterfaceGetBSDName(get()));
+        return CfString::to_string(SCNetworkInterfaceGetBSDName(get()));
     }
 
     /**
      * @return The localized display name of the interface.
      */
     [[nodiscard]] std::string get_localized_display_name() const {
-        return cf_string::to_string(SCNetworkInterfaceGetLocalizedDisplayName(get()));
+        return CfString::to_string(SCNetworkInterfaceGetLocalizedDisplayName(get()));
     }
 
     /**
      * @returns The type of the interface.
      */
     [[nodiscard]] std::string get_type()const {
-        return cf_string::to_string(SCNetworkInterfaceGetInterfaceType(get()));
+        return CfString::to_string(SCNetworkInterfaceGetInterfaceType(get()));
     }
 };
 

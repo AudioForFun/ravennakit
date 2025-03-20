@@ -104,7 +104,7 @@ void rav::rtsp::Server::on_connect(Connection& connection) {
 
 void rav::rtsp::Server::on_request(Connection& connection, const Request& request) {
     RAV_TRACE("Received request: {}", request.to_debug_string(false));
-    const auto uri = uri::parse(request.uri);
+    const auto uri = Uri::parse(request.uri);
 
     const auto pc = paths_[uri.path];
     if (pc.handler) {

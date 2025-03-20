@@ -18,7 +18,7 @@
 
 rav::RavennaTransmitter::RavennaTransmitter(
     asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-    ptp::Instance& ptp_instance, rtp::Transmitter& rtp_transmitter, const id id, std::string session_name,
+    ptp::Instance& ptp_instance, rtp::Transmitter& rtp_transmitter, const Id id, std::string session_name,
     asio::ip::address_v4 interface_address
 ) :
     advertiser_(advertiser),
@@ -76,7 +76,7 @@ rav::RavennaTransmitter::~RavennaTransmitter() {
     rtsp_server_.unregister_handler(this);
 }
 
-rav::id rav::RavennaTransmitter::get_id() const {
+rav::Id rav::RavennaTransmitter::get_id() const {
     return id_;
 }
 
@@ -84,7 +84,7 @@ std::string rav::RavennaTransmitter::session_name() const {
     return session_name_;
 }
 
-bool rav::RavennaTransmitter::set_audio_format(const audio_format format) {
+bool rav::RavennaTransmitter::set_audio_format(const AudioFormat format) {
     const auto sdp_format = sdp::Format::from_audio_format(format);
     if (!sdp_format) {
         RAV_ERROR("Failed to convert audio format to SDP format");
@@ -100,7 +100,7 @@ bool rav::RavennaTransmitter::set_audio_format(const audio_format format) {
 
     rtp_packet_.payload_type(sdp_format_.payload_type);
     // TODO: Implement proper SSRC generation
-    rtp_packet_.ssrc(static_cast<uint32_t>(random().get_random_int(0, std::numeric_limits<int>::max())));
+    rtp_packet_.ssrc(static_cast<uint32_t>(Random().get_random_int(0, std::numeric_limits<int>::max())));
 
     return true;
 }
@@ -173,12 +173,12 @@ void rav::RavennaTransmitter::send_announce() const {
     request.method = "ANNOUNCE";
     request.rtsp_headers.set("content-type", "application/sdp");
     request.data = std::move(sdp.value());
-    request.uri = uri::encode(
+    request.uri = Uri::encode(
         "rtsp://", interface_address_.to_string() + ":" + std::to_string(rtsp_server_.port()), path_by_name_
     );
     rtsp_server_.send_request(path_by_name_, request);
     request.uri =
-        uri::encode("rtsp://", interface_address_.to_string() + ":" + std::to_string(rtsp_server_.port()), path_by_id_);
+        Uri::encode("rtsp://", interface_address_.to_string() + ":" + std::to_string(rtsp_server_.port()), path_by_id_);
     rtsp_server_.send_request(path_by_name_, request);
 }
 
@@ -278,15 +278,15 @@ void rav::RavennaTransmitter::send_data() {
 
     for (auto i = 0; i < 1000; i++) {
         const auto now_samples = ptp_instance_.get_local_ptp_time().to_samples(audio_format_.sample_rate);
-        if (wrapping_uint(static_cast<uint32_t>(now_samples)) < rtp_packet_.timestamp()) {
+        if (WrappingUint(static_cast<uint32_t>(now_samples)) < rtp_packet_.timestamp()) {
             break;
         }
 
         events_.emit(
-            OnDataRequestedEvent {rtp_packet_.timestamp().value(), buffer_view(packet_intermediate_buffer_)}
+            OnDataRequestedEvent {rtp_packet_.timestamp().value(), BufferView(packet_intermediate_buffer_)}
         );
 
-        if (audio_format_.byte_order == audio_format::byte_order::le) {
+        if (audio_format_.byte_order == AudioFormat::ByteOrder::le) {
             swap_bytes(packet_intermediate_buffer_.data(), required_amount_of_data, audio_format_.bytes_per_sample());
         }
 

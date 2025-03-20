@@ -106,18 +106,18 @@ class TimeInterval {
      * @return The wire format value.
      */
     [[nodiscard]] int64_t to_wire_format() const {
-        const auto r = safe_int64(seconds_) * 1'000'000'000 * k_fractional_scale + nanos_;
+        const auto r = SafeInt64(seconds_) * 1'000'000'000 * k_fractional_scale + nanos_;
 
         if (r.expected()) {
             return r.value();
         }
 
         switch (r.error()) {
-            case safe_int_error::overflow:
+            case SafeIntError::overflow:
                 return std::numeric_limits<int64_t>::max();
-            case safe_int_error::underflow:
+            case SafeIntError::underflow:
                 return std::numeric_limits<int64_t>::min();
-            case safe_int_error::div_by_zero:
+            case SafeIntError::div_by_zero:
             default:
                 RAV_ASSERT_FALSE("Division by zero when converting to wire format");
                 return {};

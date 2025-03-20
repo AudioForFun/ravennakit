@@ -131,7 +131,7 @@ uint16_t rav::rtp::PacketView::get_header_extension_defined_by_profile() const {
     return data;
 }
 
-rav::buffer_view<const uint8_t> rav::rtp::PacketView::get_header_extension_data() const {
+rav::BufferView<const uint8_t> rav::rtp::PacketView::get_header_extension_data() const {
     if (!extension()) {
         return {};
     }
@@ -153,7 +153,7 @@ size_t rav::rtp::PacketView::header_total_length() const {
     return kRtpHeaderBaseLengthOctets + csrc_count() * sizeof(uint32_t) + extension_length_octets;
 }
 
-rav::buffer_view<const uint8_t> rav::rtp::PacketView::payload_data() const {
+rav::BufferView<const uint8_t> rav::rtp::PacketView::payload_data() const {
     if (data_ == nullptr) {
         return {};
     }

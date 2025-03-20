@@ -24,22 +24,22 @@ namespace rav {
  * @tparam C The type of the context to store with each subscriber. If void, no context will be stored.
  */
 template<class T, class C = void>
-class subscriber_list {
+class SubscriberList {
   public:
-    subscriber_list() = default;
+    SubscriberList() = default;
 
-    ~subscriber_list() {
+    ~SubscriberList() {
         RAV_ASSERT_NO_THROW(
             subscribers_.empty(),
             "Subscriber list is not empty, this is a strong indication that the lifetime of the subscriber is longer than the list"
         );
     }
 
-    subscriber_list(const subscriber_list&) = delete;
-    subscriber_list& operator=(const subscriber_list&) = delete;
+    SubscriberList(const SubscriberList&) = delete;
+    SubscriberList& operator=(const SubscriberList&) = delete;
 
-    subscriber_list(subscriber_list&&) = default;
-    subscriber_list& operator=(subscriber_list&&) = default;
+    SubscriberList(SubscriberList&&) = default;
+    SubscriberList& operator=(SubscriberList&&) = default;
 
     /**
      * @returns An iterator to the beginning of the list.
@@ -201,15 +201,15 @@ class subscriber_list {
 
 /// Specialize the void case
 template<class T>
-class subscriber_list<T, void> {
+class SubscriberList<T, void> {
   public:
-    subscriber_list() = default;
+    SubscriberList() = default;
 
-    subscriber_list(const subscriber_list&) = delete;
-    subscriber_list& operator=(const subscriber_list&) = delete;
+    SubscriberList(const SubscriberList&) = delete;
+    SubscriberList& operator=(const SubscriberList&) = delete;
 
-    subscriber_list(subscriber_list&&) = default;
-    subscriber_list& operator=(subscriber_list&&) = default;
+    SubscriberList(SubscriberList&&) = default;
+    SubscriberList& operator=(SubscriberList&&) = default;
 
     /**
      * @returns An iterator to the beginning of the list.

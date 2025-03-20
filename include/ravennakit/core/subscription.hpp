@@ -20,21 +20,21 @@ namespace rav {
  * A simple class which executes given function upon destruction.
  * Very suitable for subscriptions which must go out of scope when the owning class gets destructed.
  */
-class subscription {
+class Subscription {
   public:
-    subscription() = default;
+    Subscription() = default;
 
-    explicit subscription(std::function<void()> on_destruction_callback) :
+    explicit Subscription(std::function<void()> on_destruction_callback) :
         on_destruction_callback_(std::move(on_destruction_callback)) {}
 
-    subscription(const subscription& other) = delete;
-    subscription& operator=(const subscription& other) = delete;
+    Subscription(const Subscription& other) = delete;
+    Subscription& operator=(const Subscription& other) = delete;
 
-    subscription(subscription&& other) noexcept {
+    Subscription(Subscription&& other) noexcept {
         *this = std::move(other);
     }
 
-    subscription& operator=(subscription&& other) noexcept {
+    Subscription& operator=(Subscription&& other) noexcept {
         if (on_destruction_callback_) {
             on_destruction_callback_();
         }
@@ -45,7 +45,7 @@ class subscription {
         return *this;
     }
 
-    ~subscription() {
+    ~Subscription() {
         if (on_destruction_callback_) {
             on_destruction_callback_();
         }
@@ -56,7 +56,7 @@ class subscription {
      * @param on_destruction_callback The callback to invoke upon destruction.
      * @return The subscription itself.
      */
-    subscription& operator=(std::function<void()>&& on_destruction_callback) noexcept {
+    Subscription& operator=(std::function<void()>&& on_destruction_callback) noexcept {
         if (on_destruction_callback_) {
             on_destruction_callback_();
         }
@@ -98,6 +98,6 @@ class subscription {
 /**
  * Convenience alias for subscription. Use this if you want to defer some action until the end of the scope.
  */
-using defer = subscription;
+using Defer = Subscription;
 
 }  // namespace rav

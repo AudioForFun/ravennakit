@@ -118,7 +118,7 @@ class PacketView {
     /**
      * @returns The profile specific extension data, or an empty buffer if no extension data is present.
      */
-    [[nodiscard]] buffer_view<const uint8_t> get_profile_specific_extension() const;
+    [[nodiscard]] BufferView<const uint8_t> get_profile_specific_extension() const;
 
     /**
      * @return The next RTCP packet in the buffer, or an empty (invalid) view if no more packets are available.

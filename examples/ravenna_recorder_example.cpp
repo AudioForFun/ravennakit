@@ -66,20 +66,20 @@ class stream_recorder: public rav::rtp::StreamReceiver::Subscriber {
 
         audio_format_ = event.selected_audio_format;
         file_output_stream_ =
-            std::make_unique<rav::file_output_stream>(rav::File(receiver_->get_session_name() + ".wav"));
-        wav_writer_ = std::make_unique<rav::wav_audio_format::writer>(
-            *file_output_stream_, rav::wav_audio_format::format_code::pcm, audio_format_.sample_rate,
+            std::make_unique<rav::FileOutputStream>(rav::File(receiver_->get_session_name() + ".wav"));
+        wav_writer_ = std::make_unique<rav::WavAudioFormat::Writer>(
+            *file_output_stream_, rav::WavAudioFormat::FormatCode::pcm, audio_format_.sample_rate,
             audio_format_.num_channels, audio_format_.bytes_per_sample() * 8
         );
         audio_data_.resize(event.packet_time_frames * audio_format_.bytes_per_frame());
     }
 
-    void on_data_ready(const rav::wrapping_uint32 timestamp) override {
+    void on_data_ready(const rav::WrappingUint32 timestamp) override {
         if (!receiver_->read_data_realtime(audio_data_.data(), audio_data_.size(), timestamp.value())) {
             RAV_ERROR("Failed to read audio data");
             return;
         }
-        if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
+        if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::be) {
             rav::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
         }
         if (!wav_writer_->write_audio_data(audio_data_.data(), audio_data_.size())) {
@@ -89,11 +89,11 @@ class stream_recorder: public rav::rtp::StreamReceiver::Subscriber {
 
   private:
     std::unique_ptr<rav::RavennaReceiver> receiver_;
-    std::unique_ptr<rav::file_output_stream> file_output_stream_;
-    std::unique_ptr<rav::wav_audio_format::writer> wav_writer_;
+    std::unique_ptr<rav::FileOutputStream> file_output_stream_;
+    std::unique_ptr<rav::WavAudioFormat::Writer> wav_writer_;
     std::vector<uint8_t> audio_data_;
-    rav::audio_format audio_format_;
-    std::optional<rav::wrapping_uint32> stream_ts_;
+    rav::AudioFormat audio_format_;
+    std::optional<rav::WrappingUint32> stream_ts_;
 };
 
 class ravenna_recorder {

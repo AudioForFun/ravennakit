@@ -42,7 +42,7 @@ struct TimeActiveField {
 
     /// A type alias for a parse result.
     template<class T>
-    using ParseResult = result<T, std::string>;
+    using ParseResult = Result<T, std::string>;
 
     /**
      * Parses a time field from a string.

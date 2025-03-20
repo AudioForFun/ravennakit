@@ -73,7 +73,7 @@ tl::expected<std::string, std::string> rav::sdp::ReferenceClock::to_string() con
 
 rav::sdp::ReferenceClock::ParseResult<rav::sdp::ReferenceClock>
 rav::sdp::ReferenceClock::parse_new(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     const auto source = parser.split("=");
     if (!source) {

@@ -18,7 +18,7 @@ namespace rav {
  * An alias for an event slot which can be used to subscribe to events.
  */
 template<typename... Args>
-using event_slot = LinkedNode<std::function<void(Args...)>>;
+using EventSlot = LinkedNode<std::function<void(Args...)>>;
 
 /**
  * An event emitter which can be used to subscribe to and emit events of a given type.
@@ -30,9 +30,9 @@ using event_slot = LinkedNode<std::function<void(Args...)>>;
  * @tparam Args List of arguments to be emitted.
  */
 template<typename... Args>
-class event_emitter {
+class EventEmitter {
   public:
-    using handle = LinkedNode<std::function<void(Args...)>>;
+    using Handle = LinkedNode<std::function<void(Args...)>>;
 
     /**
      * Emits an event to all subscribers.
@@ -46,7 +46,7 @@ class event_emitter {
      * Connects a handle to the event emitter. The handle will be automatically removed when it goes out of scope.
      * @param h The handle to connect.
      */
-    void connect(handle& h) {
+    void connect(Handle& h) {
         subscribers_.push_back(h);
     }
 
@@ -56,8 +56,8 @@ class event_emitter {
      * @param f The function to be called when the event is emitted.
      * @return A handle to the subscription.
      */
-    [[nodiscard]] event_slot<Args...> subscribe(std::function<void(Args...)> f) {
-        handle node(std::move(f));
+    [[nodiscard]] EventSlot<Args...> subscribe(std::function<void(Args...)> f) {
+        Handle node(std::move(f));
         subscribers_.push_back(node);
         return node;
     }
@@ -77,7 +77,7 @@ class event_emitter {
     }
 
   private:
-    handle subscribers_;
+    Handle subscribers_;
 };
 
 }  // namespace rav

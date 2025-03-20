@@ -37,7 +37,7 @@ struct PortIdentity {
      * Construct a PTP port identity from a byte array.
      * @param data The data to construct the port identity from. Must be at least 10 bytes long.
      */
-    static tl::expected<PortIdentity, Error> from_data(const buffer_view<const uint8_t> data) {
+    static tl::expected<PortIdentity, Error> from_data(const BufferView<const uint8_t> data) {
         if (data.size_bytes() < 10) {
             return tl::unexpected(Error::invalid_message_length);
         }
@@ -51,7 +51,7 @@ struct PortIdentity {
      * Write the ptp_announce_message to a byte buffer.
      * @param buffer The buffer to write to.
      */
-    void write_to(byte_buffer& buffer) const {
+    void write_to(ByteBuffer& buffer) const {
         clock_identity.write_to(buffer);
         buffer.write_be(port_number);
     }

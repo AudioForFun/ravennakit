@@ -26,21 +26,21 @@ namespace rav {
  * A handy utility class for parsing strings. It works like a stream, where it maintains a position in the string and
  * subsequent calls will read from that position.
  */
-class string_parser {
+class StringParser {
   public:
     /**
      * Constructs a parser from given string view. Doesn't take ownership of the string, so make sure for the original
      * string to outlive this parser instance.
      * @param str The string to parse.
      */
-    explicit string_parser(const std::string_view str) : str_(str) {}
+    explicit StringParser(const std::string_view str) : str_(str) {}
 
     /**
      * Constructs a parser from given string view. Doesn't take ownership of the string, so make sure for the original
      * string to outlive this parser instance.
      * @param str The string to parse.
      */
-    explicit string_parser(const std::optional<std::string_view>& str) {
+    explicit StringParser(const std::optional<std::string_view>& str) {
         if (str.has_value()) {
             str_ = *str;
         }
@@ -52,21 +52,21 @@ class string_parser {
      * @param str The string to parse.
      * @param size The size of the string (without terminating null character).
      */
-    string_parser(const char* str, const size_t size) : str_({str, size}) {}
+    StringParser(const char* str, const size_t size) : str_({str, size}) {}
 
     /**
      * Constructs a parser from given c-string. String must be null-terminated. Doesn't take ownership of the string, so
      * make sure for the original string to outlive this parser instance.
      * @param str The string to parse.
      */
-    explicit string_parser(const char* str) : str_ {str, std::strlen(str)} {}
+    explicit StringParser(const char* str) : str_ {str, std::strlen(str)} {}
 
     /**
      * Constructs a parser from given string. Doesn't take ownership of the string, so make sure for the original string
      * to outlive this parser instance.
      * @param str The string to parse.
      */
-    explicit string_parser(const std::string& str) : str_(str) {}
+    explicit StringParser(const std::string& str) : str_(str) {}
 
     /**
      * Reads until given delimiter.

@@ -15,7 +15,7 @@ namespace rav {
 /**
  * Holds the number of instances created and destroyed. Useful for tracking object creation and destruction in tests.
  */
-class object_counter {
+class ObjectCounter {
   public:
     size_t instances_created = 0;
     size_t instances_alive = 0;
@@ -25,21 +25,21 @@ class object_counter {
  * Little helper class which keeps track of how many instances of this class have been created and how many are still
  * alive. Useful to track object creation and destruction in tests.
  */
-class counted_object {
+class CountedObject {
   public:
-    explicit counted_object(object_counter& counter) : counter_(counter), index_(counter.instances_created++) {
+    explicit CountedObject(ObjectCounter& counter) : counter_(counter), index_(counter.instances_created++) {
         ++counter_.instances_alive;
     }
 
-    ~counted_object() {
+    ~CountedObject() {
         --counter_.instances_alive;
     }
 
-    counted_object(const counted_object&) = delete;
-    counted_object& operator=(const counted_object&) = delete;
+    CountedObject(const CountedObject&) = delete;
+    CountedObject& operator=(const CountedObject&) = delete;
 
-    counted_object(counted_object&&) = delete;
-    counted_object& operator=(counted_object&&) = delete;
+    CountedObject(CountedObject&&) = delete;
+    CountedObject& operator=(CountedObject&&) = delete;
 
     /**
      *
@@ -50,7 +50,7 @@ class counted_object {
     }
 
   private:
-    object_counter& counter_;
+    ObjectCounter& counter_;
     size_t index_ {};
 };
 

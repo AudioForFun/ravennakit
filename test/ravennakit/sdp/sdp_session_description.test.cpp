@@ -498,7 +498,7 @@ TEST_CASE("session_description | To string") {
 
     SECTION("Media clock attribute") {
         rav::sdp::MediaClockSource media_clock(
-            rav::sdp::MediaClockSource::ClockMode::direct, 0, rav::fraction<int>({1000, 1001})
+            rav::sdp::MediaClockSource::ClockMode::direct, 0, rav::Fraction<int>({1000, 1001})
         );
         sdp.set_media_clock(media_clock);
         expected += "a=mediaclk:direct=0 rate=1000/1001\r\n";
@@ -529,11 +529,11 @@ TEST_CASE("session_description | To string") {
         {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1}
     );
     md1.set_media_clock(
-        {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::fraction<int>>({48000, 1})}
+        {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::Fraction<int>>({48000, 1})}
     );
     md1.set_clock_domain(rav::sdp::RavennaClockDomain {rav::sdp::RavennaClockDomain::SyncSource::ptp_v2, 1});
     md1.set_sync_time(1234);
-    md1.set_clock_deviation(std::optional<rav::fraction<unsigned>>({1001, 1000}));
+    md1.set_clock_deviation(std::optional<rav::Fraction<unsigned>>({1001, 1000}));
     sdp.add_media_description(md1);
 
     expected +=

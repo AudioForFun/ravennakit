@@ -16,25 +16,25 @@
 TEST_CASE("input_stream_view") {
     SECTION("raw data") {
         constexpr uint8_t data[] = {0x11, 0x22, 0x33, 0x44};
-        rav::input_stream_view stream(data, rav::num_elements_in_array(data));
+        rav::InputStreamView stream(data, rav::num_elements_in_array(data));
         REQUIRE(stream.read_be<uint32_t>() == 0x11223344);
     }
 
     SECTION("vector") {
         const std::vector<uint8_t> data = {0x11, 0x22, 0x33, 0x44};
-        rav::input_stream_view stream(data);
+        rav::InputStreamView stream(data);
         REQUIRE(stream.read_be<uint32_t>() == 0x11223344);
     }
 
     SECTION("array") {
         constexpr std::array<uint8_t, 4> data = {0x11, 0x22, 0x33, 0x44};
-        rav::input_stream_view stream(data);
+        rav::InputStreamView stream(data);
         REQUIRE(stream.read_be<uint32_t>() == 0x11223344);
     }
 
     SECTION("Other functions") {
         const std::vector<uint8_t> data = {0x11, 0x22, 0x33, 0x44};
-        rav::input_stream_view stream(data);
+        rav::InputStreamView stream(data);
         REQUIRE(stream.size().has_value());
         REQUIRE(stream.size().value() == 4);
         REQUIRE_FALSE(stream.exhausted());

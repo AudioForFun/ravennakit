@@ -15,20 +15,20 @@
 #include <thread>
 #include <catch2/catch_all.hpp>
 
-static_assert(!std::is_copy_constructible_v<rav::rcu<int>>);
-static_assert(!std::is_move_constructible_v<rav::rcu<int>>);
-static_assert(!std::is_copy_assignable_v<rav::rcu<int>>);
-static_assert(!std::is_move_assignable_v<rav::rcu<int>>);
+static_assert(!std::is_copy_constructible_v<rav::Rcu<int>>);
+static_assert(!std::is_move_constructible_v<rav::Rcu<int>>);
+static_assert(!std::is_copy_assignable_v<rav::Rcu<int>>);
+static_assert(!std::is_move_assignable_v<rav::Rcu<int>>);
 
-static_assert(!std::is_copy_constructible_v<rav::rcu<int>::reader>);
-static_assert(!std::is_move_constructible_v<rav::rcu<int>::reader>);
-static_assert(!std::is_copy_assignable_v<rav::rcu<int>::reader>);
-static_assert(!std::is_move_assignable_v<rav::rcu<int>::reader>);
+static_assert(!std::is_copy_constructible_v<rav::Rcu<int>::Reader>);
+static_assert(!std::is_move_constructible_v<rav::Rcu<int>::Reader>);
+static_assert(!std::is_copy_assignable_v<rav::Rcu<int>::Reader>);
+static_assert(!std::is_move_assignable_v<rav::Rcu<int>::Reader>);
 
-static_assert(!std::is_copy_constructible_v<rav::rcu<int>::reader::realtime_lock>);
-static_assert(!std::is_move_constructible_v<rav::rcu<int>::reader::realtime_lock>);
-static_assert(!std::is_copy_assignable_v<rav::rcu<int>::reader::realtime_lock>);
-static_assert(!std::is_move_assignable_v<rav::rcu<int>::reader::realtime_lock>);
+static_assert(!std::is_copy_constructible_v<rav::Rcu<int>::Reader::RealtimeLock>);
+static_assert(!std::is_move_constructible_v<rav::Rcu<int>::Reader::RealtimeLock>);
+static_assert(!std::is_copy_assignable_v<rav::Rcu<int>::Reader::RealtimeLock>);
+static_assert(!std::is_move_assignable_v<rav::Rcu<int>::Reader::RealtimeLock>);
 
 namespace {
 constexpr auto k_timeout_seconds = 60;
@@ -36,16 +36,16 @@ constexpr auto k_timeout_seconds = 60;
 
 TEST_CASE("rcu") {
     SECTION("Default state") {
-        rav::rcu<int> rcu;
-        rav::rcu<int>::reader reader(rcu);
+        rav::Rcu<int> rcu;
+        rav::Rcu<int>::Reader reader(rcu);
 
         const auto lock = reader.lock_realtime();
         REQUIRE(lock.get() == nullptr);
     }
 
     SECTION("Basic operation") {
-        rav::rcu<std::string> rcu;
-        rav::rcu<std::string>::reader reader(rcu);
+        rav::Rcu<std::string> rcu;
+        rav::Rcu<std::string>::Reader reader(rcu);
 
         {
             const auto lock = reader.lock_realtime();
@@ -68,9 +68,9 @@ TEST_CASE("rcu") {
     }
 
     SECTION("Track object lifetime") {
-        rav::object_counter counter;
+        rav::ObjectCounter counter;
 
-        rav::rcu<rav::counted_object> rcu;
+        rav::Rcu<rav::CountedObject> rcu;
         rcu.update(counter);
 
         REQUIRE(counter.instances_created == 1);
@@ -120,9 +120,9 @@ TEST_CASE("rcu") {
     }
 
     SECTION("The value can be cleared") {
-        rav::object_counter counter;
+        rav::ObjectCounter counter;
 
-        rav::rcu<rav::counted_object> rcu;
+        rav::Rcu<rav::CountedObject> rcu;
         auto reader = rcu.create_reader();
         rcu.update(counter);
 
@@ -148,8 +148,8 @@ TEST_CASE("rcu") {
     }
 
     SECTION("Reclaim") {
-        rav::object_counter counter;
-        rav::rcu<rav::counted_object> rcu;
+        rav::ObjectCounter counter;
+        rav::Rcu<rav::CountedObject> rcu;
 
         REQUIRE(counter.instances_created == 0);
         REQUIRE(counter.instances_alive == 0);
@@ -177,8 +177,8 @@ TEST_CASE("rcu") {
     }
 
     SECTION("Only objects older than the first object used by any reader are deleted") {
-        rav::object_counter counter;
-        rav::rcu<rav::counted_object> rcu;
+        rav::ObjectCounter counter;
+        rav::Rcu<rav::CountedObject> rcu;
         rcu.update(counter);
 
         auto reader1 = rcu.create_reader();
@@ -214,7 +214,7 @@ TEST_CASE("rcu") {
     }
 
     SECTION("Reader does not block writer") {
-        rav::rcu<std::string> rcu;
+        rav::Rcu<std::string> rcu;
         rcu.update("Hello, World!");
 
         std::promise<void> value_updated;
@@ -254,7 +254,7 @@ TEST_CASE("rcu") {
     }
 
     SECTION("Readers can be created and destroyed concurrently") {
-        rav::rcu<std::string> rcu("Hello, World!");
+        rav::Rcu<std::string> rcu("Hello, World!");
         static constexpr size_t num_threads = 100;
         std::vector<std::string> results(num_threads);
 
@@ -304,7 +304,7 @@ TEST_CASE("rcu") {
         static constexpr size_t num_reclaim_thread = 3;
 
         // Assign the values we're going to give the rcu object
-        rav::rcu<std::pair<size_t, std::string>> rcu;
+        rav::Rcu<std::pair<size_t, std::string>> rcu;
 
         std::atomic<size_t> num_readers_finished = 0;
 

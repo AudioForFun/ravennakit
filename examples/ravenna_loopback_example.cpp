@@ -60,7 +60,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
         });
 
         transmitter_ = std::make_unique<rav::RavennaTransmitter>(
-            io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, *rtp_transmitter_, rav::id(1),
+            io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, *rtp_transmitter_, rav::Id(1),
             stream_name_ + "_loopback", interface_addr
         );
 
@@ -88,7 +88,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
         start_transmitting();
     }
 
-    void on_data_ready(rav::wrapping_uint32 timestamp) override {
+    void on_data_ready(rav::WrappingUint32 timestamp) override {
         most_recent_timestamp_ = timestamp;
     }
 
@@ -100,7 +100,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
     std::string stream_name_;
     asio::io_context io_context_;
     std::vector<uint8_t> buffer_;
-    std::optional<rav::wrapping_uint32> most_recent_timestamp_;
+    std::optional<rav::WrappingUint32> most_recent_timestamp_;
     bool ptp_clock_stable_ = false;
 
     // Receiver components
@@ -115,7 +115,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
     std::unique_ptr<rav::rtp::Transmitter> rtp_transmitter_;
     std::unique_ptr<rav::ptp::Instance> ptp_instance_;
     std::unique_ptr<rav::RavennaTransmitter> transmitter_;
-    rav::event_slot<rav::ptp::Instance::PortChangedStateEventEvent> ptp_port_changed_event_slot_;
+    rav::EventSlot<rav::ptp::Instance::PortChangedStateEventEvent> ptp_port_changed_event_slot_;
 
     /**
      * Starts transmitting if the PTP clock is stable and a timestamp is available and transmitter is not already

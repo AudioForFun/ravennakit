@@ -13,19 +13,19 @@
 #include <future>
 #include <catch2/catch_all.hpp>
 
-static_assert(!std::is_copy_constructible_v<rav::realtime_shared_object<int>>);
-static_assert(!std::is_move_constructible_v<rav::realtime_shared_object<int>>);
-static_assert(!std::is_copy_assignable_v<rav::realtime_shared_object<int>>);
-static_assert(!std::is_move_assignable_v<rav::realtime_shared_object<int>>);
+static_assert(!std::is_copy_constructible_v<rav::RealtimeSharedObject<int>>);
+static_assert(!std::is_move_constructible_v<rav::RealtimeSharedObject<int>>);
+static_assert(!std::is_copy_assignable_v<rav::RealtimeSharedObject<int>>);
+static_assert(!std::is_move_assignable_v<rav::RealtimeSharedObject<int>>);
 
-static_assert(!std::is_copy_constructible_v<rav::realtime_shared_object<int>::realtime_lock>);
-static_assert(!std::is_move_constructible_v<rav::realtime_shared_object<int>::realtime_lock>);
-static_assert(!std::is_copy_assignable_v<rav::realtime_shared_object<int>::realtime_lock>);
-static_assert(!std::is_move_assignable_v<rav::realtime_shared_object<int>::realtime_lock>);
+static_assert(!std::is_copy_constructible_v<rav::RealtimeSharedObject<int>::RealtimeLock>);
+static_assert(!std::is_move_constructible_v<rav::RealtimeSharedObject<int>::RealtimeLock>);
+static_assert(!std::is_copy_assignable_v<rav::RealtimeSharedObject<int>::RealtimeLock>);
+static_assert(!std::is_move_assignable_v<rav::RealtimeSharedObject<int>::RealtimeLock>);
 
 TEST_CASE("realtime_shared_object") {
     SECTION("Default state") {
-        rav::realtime_shared_object<std::string> obj;
+        rav::RealtimeSharedObject<std::string> obj;
         auto lock = obj.lock_realtime();
         REQUIRE(lock.get() != nullptr);
         REQUIRE(lock->empty());
@@ -35,7 +35,7 @@ TEST_CASE("realtime_shared_object") {
         static constexpr size_t num_values = 50;
         static constexpr size_t num_writer_threads = 2;
 
-        rav::realtime_shared_object<std::pair<size_t, std::string>> obj;
+        rav::RealtimeSharedObject<std::pair<size_t, std::string>> obj;
 
         std::atomic_bool keep_going {true};
 

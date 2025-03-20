@@ -56,7 +56,7 @@ struct OriginField {
 
     /// A type alias for a parse result.
     template<class T>
-    using ParseResult = result<T, std::string>;
+    using ParseResult = Result<T, std::string>;
 
     /**
      * Parses an origin field from a string.

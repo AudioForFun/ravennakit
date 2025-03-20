@@ -123,7 +123,7 @@ std::optional<rav::ptp::StateDecisionCode> rav::ptp::Port::calculate_recommended
 
     const ComparisonDataSet d0(default_ds);
 
-    if (range(1, 127).contains(default_ds.clock_quality.clock_class)) {
+    if (Range(1, 127).contains(default_ds.clock_quality.clock_class)) {
         // D0 better or better by topology than Erbest
         if (!erbest_
             || d0.compare(ComparisonDataSet(*erbest_, port_ds_.port_identity))
@@ -154,7 +154,7 @@ std::optional<rav::ptp::StateDecisionCode> rav::ptp::Port::calculate_recommended
 }
 
 void rav::ptp::Port::schedule_announce_receipt_timeout() {
-    const auto random_factor = random().get_random_int(0, 1000) / 1000.0;
+    const auto random_factor = Random().get_random_int(0, 1000) / 1000.0;
     const auto announce_interval_ms = static_cast<int>(std::pow(2, port_ds_.log_announce_interval) * 1000);
     const auto announce_receipt_timeout = port_ds_.announce_receipt_timeout * announce_interval_ms
         + static_cast<int>(random_factor * announce_interval_ms);
@@ -344,7 +344,7 @@ void rav::ptp::Port::increase_age() {
 void rav::ptp::Port::handle_recv_event(const rtp::UdpSenderReceiver::recv_event& event) {
     TRACY_ZONE_SCOPED;
 
-    const buffer_view data(event.data, event.size);
+    const BufferView data(event.data, event.size);
     auto header = MessageHeader::from_data(data);
     if (!header) {
         RAV_TRACE("PTP Header error: {}", to_string(header.error()));
@@ -455,7 +455,7 @@ void rav::ptp::Port::handle_recv_event(const rtp::UdpSenderReceiver::recv_event&
 }
 
 void rav::ptp::Port::handle_announce_message(
-    const AnnounceMessage& announce_message, buffer_view<const uint8_t> tlvs
+    const AnnounceMessage& announce_message, BufferView<const uint8_t> tlvs
 ) {
     TRACY_ZONE_SCOPED;
 
@@ -505,7 +505,7 @@ void rav::ptp::Port::handle_announce_message(
     parent_.execute_state_decision_event();
 }
 
-void rav::ptp::Port::handle_sync_message(SyncMessage sync_message, buffer_view<const uint8_t> tlvs) {
+void rav::ptp::Port::handle_sync_message(SyncMessage sync_message, BufferView<const uint8_t> tlvs) {
     TRACY_ZONE_SCOPED;
 
     std::ignore = tlvs;
@@ -547,7 +547,7 @@ void rav::ptp::Port::handle_sync_message(SyncMessage sync_message, buffer_view<c
 }
 
 void rav::ptp::Port::handle_follow_up_message(
-    const FollowUpMessage& follow_up_message, buffer_view<const uint8_t> tlvs
+    const FollowUpMessage& follow_up_message, BufferView<const uint8_t> tlvs
 ) {
     TRACY_ZONE_SCOPED;
 
@@ -585,7 +585,7 @@ void rav::ptp::Port::handle_follow_up_message(
 }
 
 void rav::ptp::Port::handle_delay_resp_message(
-    const DelayRespMessage& delay_resp_message, buffer_view<const uint8_t> tlvs
+    const DelayRespMessage& delay_resp_message, BufferView<const uint8_t> tlvs
 ) {
     TRACY_ZONE_SCOPED;
 
@@ -640,14 +640,14 @@ void rav::ptp::Port::handle_delay_resp_message(
 }
 
 void rav::ptp::Port::handle_pdelay_resp_message(
-    const PdelayRespMessage& delay_req_message, buffer_view<const uint8_t> tlvs
+    const PdelayRespMessage& delay_req_message, BufferView<const uint8_t> tlvs
 ) {
     std::ignore = delay_req_message;
     std::ignore = tlvs;
 }
 
 void rav::ptp::Port::handle_pdelay_resp_follow_up_message(
-    const PdelayRespFollowUpMessage& delay_req_message, buffer_view<const uint8_t> tlvs
+    const PdelayRespFollowUpMessage& delay_req_message, BufferView<const uint8_t> tlvs
 ) {
     std::ignore = delay_req_message;
     std::ignore = tlvs;

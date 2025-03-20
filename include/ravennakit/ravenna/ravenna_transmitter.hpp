@@ -30,14 +30,14 @@ class RavennaTransmitter: public rtsp::Server::PathHandler {
   public:
     struct OnDataRequestedEvent {
         uint32_t timestamp; // RTP timestamp
-        buffer_view<uint8_t> buffer;
+        BufferView<uint8_t> buffer;
     };
 
     using EventsType = Events<OnDataRequestedEvent>;
 
     RavennaTransmitter(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-        ptp::Instance& ptp_instance, rtp::Transmitter& rtp_transmitter, id id, std::string session_name,
+        ptp::Instance& ptp_instance, rtp::Transmitter& rtp_transmitter, Id id, std::string session_name,
         asio::ip::address_v4 interface_address
     );
 
@@ -52,7 +52,7 @@ class RavennaTransmitter: public rtsp::Server::PathHandler {
     /**
      * @return The transmitter ID.
      */
-    [[nodiscard]] id get_id() const;
+    [[nodiscard]] Id get_id() const;
 
     /**
      * @return The session name.
@@ -64,7 +64,7 @@ class RavennaTransmitter: public rtsp::Server::PathHandler {
      * @param format The audio format to set.
      * @return True if the audio format is supported, false otherwise.
      */
-    [[nodiscard]] bool set_audio_format(audio_format format);
+    [[nodiscard]] bool set_audio_format(AudioFormat format);
 
     /**
      * Sets the packet time.
@@ -124,15 +124,15 @@ class RavennaTransmitter: public rtsp::Server::PathHandler {
     ptp::Instance& ptp_instance_;
     rtp::Transmitter& rtp_transmitter_;
 
-    id id_;
+    Id id_;
     std::string session_name_;
     asio::ip::address_v4 interface_address_;
     asio::ip::address_v4 destination_address_;
     std::string path_by_name_;
     std::string path_by_id_;
-    id advertisement_id_;
+    Id advertisement_id_;
     int32_t clock_domain_ {};
-    audio_format audio_format_;
+    AudioFormat audio_format_;
     sdp::Format sdp_format_;  // I think we can compute this from audio_format_ each time we need it
     aes67::PacketTime ptime_ {aes67::PacketTime::ms_1()};
     bool running_ {false};
@@ -141,8 +141,8 @@ class RavennaTransmitter: public rtsp::Server::PathHandler {
     std::vector<uint8_t> packet_intermediate_buffer_;
     asio::high_resolution_timer timer_;
     EventsType events_;
-    byte_buffer send_buffer_;
-    event_slot<ptp::Instance::ParentChangedEvent> ptp_parent_changed_slot_;
+    ByteBuffer send_buffer_;
+    EventSlot<ptp::Instance::ParentChangedEvent> ptp_parent_changed_slot_;
 
     /**
      * Sends an announce request to all connected clients.

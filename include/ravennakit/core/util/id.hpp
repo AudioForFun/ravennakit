@@ -21,39 +21,39 @@ namespace rav {
  * A class which represents a unique identifier. How unique the identifier is depends on how this class is used. The id
  * itself is a uint64_t.
  */
-class id {
+class Id {
   public:
-    class generator {
+    class Generator {
       public:
-        generator() = default;
+        Generator() = default;
 
         /**
          * This function is thread safe and can be safely called from any thread at any time.
          * @return The next unique ID
          */
-        [[nodiscard]] id next() {
+        [[nodiscard]] Id next() {
             RAV_ASSERT(next_id_ != 0, "Next ID is 0, which is reserved for invalid IDs");
             RAV_ASSERT(next_id_ != std::numeric_limits<uint64_t>::max(), "The next ID is at the maximum value");
-            return id(next_id_.fetch_add(1));
+            return Id(next_id_.fetch_add(1));
         }
 
       private:
         std::atomic<uint64_t> next_id_ {1};
     };
 
-    id() = default;
+    Id() = default;
 
     /**
      * Constructs an id from an integer value.
      * @param int_id The integer value of the ID
      */
-    explicit id(const uint64_t int_id) : id_(int_id) {}
+    explicit Id(const uint64_t int_id) : id_(int_id) {}
 
-    id(const id& other) = default;
-    id(id&& other) noexcept = default;
+    Id(const Id& other) = default;
+    Id(Id&& other) noexcept = default;
 
-    id& operator=(const id& other) = default;
-    id& operator=(id&& other) noexcept = default;
+    Id& operator=(const Id& other) = default;
+    Id& operator=(Id&& other) noexcept = default;
 
     /**
      * @return True if the id is not 0, false otherwise.
@@ -80,11 +80,11 @@ class id {
         return id_ == value;
     }
 
-    friend bool operator==(const id& lhs, const id& rhs) {
+    friend bool operator==(const Id& lhs, const Id& rhs) {
         return lhs.id_ == rhs.id_;
     }
 
-    friend bool operator!=(const id& lhs, const id& rhs) {
+    friend bool operator!=(const Id& lhs, const Id& rhs) {
         return !(lhs == rhs);
     }
 
@@ -93,8 +93,8 @@ class id {
      * This function is thread safe and can be safely called from any thread at any time.
      * @return The next id.
      */
-    static id next_process_wide_unique_id() noexcept {
-        static generator gen;
+    static Id next_process_wide_unique_id() noexcept {
+        static Generator gen;
         return gen.next();
     }
 

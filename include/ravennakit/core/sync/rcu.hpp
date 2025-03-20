@@ -32,19 +32,19 @@ namespace rav {
  * @tparam T The type of the object to share.
  */
 template<class T>
-class rcu {
+class Rcu {
   public:
     /**
      * A reader object gives a single thread access to the most recent value. Store a reader object per thread, and use
      * read_lock to acquire a lock which in turn provides access to the value.
      */
-    class reader {
+    class Reader {
       public:
         /**
          * A lock object provides access to the value. Getting and using a lock is wait-free.
          * Each lock will get the same value as long as there is at least one lock alive.
          */
-        class realtime_lock {
+        class RealtimeLock {
           public:
             /**
              * Constructs a lock from given reader.
@@ -53,7 +53,7 @@ class rcu {
              * Thread safe: no.
              * @param parent_reader The reader to associate this lock with.
              */
-            explicit realtime_lock(reader& parent_reader) : reader_(&parent_reader) {
+            explicit RealtimeLock(Reader& parent_reader) : reader_(&parent_reader) {
                 if (reader_->num_locks_.fetch_add(1) >= 1) {
                     // We load the existing value, which results in every lock getting the same value as long as there
                     // is at least one lock alive. This is by design.
@@ -68,14 +68,14 @@ class rcu {
                 }
             }
 
-            ~realtime_lock() {
+            ~RealtimeLock() {
                 reset();
             }
 
-            realtime_lock(const realtime_lock&) = delete;
-            realtime_lock& operator=(const realtime_lock&) = delete;
-            realtime_lock(realtime_lock&&) = delete;
-            realtime_lock& operator=(realtime_lock&&) = delete;
+            RealtimeLock(const RealtimeLock&) = delete;
+            RealtimeLock& operator=(const RealtimeLock&) = delete;
+            RealtimeLock(RealtimeLock&&) = delete;
+            RealtimeLock& operator=(RealtimeLock&&) = delete;
 
             /**
              * @returns True if the lock holds a value, false otherwise.
@@ -158,7 +158,7 @@ class rcu {
             }
 
           private:
-            reader* reader_ {nullptr};
+            Reader* reader_ {nullptr};
             T* value_ {nullptr};
         };
 
@@ -168,7 +168,7 @@ class rcu {
          * Thread safe: yes.
          * @param owner The owner of this reader.
          */
-        explicit reader(rcu& owner) : owner_(owner) {
+        explicit Reader(Rcu& owner) : owner_(owner) {
             std::lock_guard lock(owner_.readers_mutex_);
             owner_.readers_.push_back(this);
         }
@@ -178,7 +178,7 @@ class rcu {
          * Real-time safe: no.
          * Thread safe: yes.
          */
-        ~reader() {
+        ~Reader() {
             std::lock_guard lock(owner_.readers_mutex_);
             owner_.readers_.erase(
                 std::remove(owner_.readers_.begin(), owner_.readers_.end(), this), owner_.readers_.end()
@@ -193,19 +193,19 @@ class rcu {
          * Thread safe: no.
          * @return The lock object.
          */
-        realtime_lock lock_realtime() {
-            return realtime_lock(*this);
+        RealtimeLock lock_realtime() {
+            return RealtimeLock(*this);
         }
 
       private:
-        friend class rcu;
-        rcu& owner_;
+        friend class Rcu;
+        Rcu& owner_;
         T* value_ {};
         std::atomic<uint64_t> epoch_ {0};
         std::atomic<int64_t> num_locks_ {0};
     };
 
-    rcu() = default;
+    Rcu() = default;
 
     /**
      * Constructs an rcu object with a new value.
@@ -213,7 +213,7 @@ class rcu {
      * Thread safe: yes.
      * @param new_value
      */
-    explicit rcu(std::unique_ptr<T> new_value) {
+    explicit Rcu(std::unique_ptr<T> new_value) {
         update(std::move(new_value));
     }
 
@@ -223,7 +223,7 @@ class rcu {
      * Thread safe: yes.
      * @param value
      */
-    explicit rcu(T value) {
+    explicit Rcu(T value) {
         update(std::make_unique<T>(std::move(value)));
     }
 
@@ -232,8 +232,8 @@ class rcu {
      * Thread safe: yes.
      * @return A reader object which uses this rcu object.
      */
-    reader create_reader() {
-        return reader(*this);
+    Reader create_reader() {
+        return Reader(*this);
     }
 
     /**
@@ -260,7 +260,7 @@ class rcu {
         // At this point a reader takes most_recent_value_ with current epoch, which is not a problem because newer
         // values than the oldest used value are never deleted.
         auto epoch = current_epoch_.fetch_add(1) + 1;
-        values_.emplace_back(epoch_and_value {epoch, std::move(new_value)});
+        values_.emplace_back(EpochAndValue {epoch, std::move(new_value)});
     }
 
     /**
@@ -311,7 +311,7 @@ class rcu {
     }
 
   private:
-    struct epoch_and_value {
+    struct EpochAndValue {
         uint64_t epoch;
         std::unique_ptr<T> value;
     };
@@ -320,13 +320,13 @@ class rcu {
     std::mutex values_mutex_;
 
     // Holds the current and previous values.
-    std::vector<epoch_and_value> values_;
+    std::vector<EpochAndValue> values_;
 
     // Protects the readers_ vector.
     std::mutex readers_mutex_;
 
     // Holds the readers.
-    std::vector<reader*> readers_;
+    std::vector<Reader*> readers_;
 
     // Stores the most recent value.
     std::atomic<T*> most_recent_value_ {nullptr};

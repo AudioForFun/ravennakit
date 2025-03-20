@@ -132,11 +132,11 @@ class Receiver {
     struct SessionContext {
         Session session;
         std::vector<StreamState> stream_states;
-        subscriber_list<Subscriber, SubscriberContext> subscribers;
+        SubscriberList<Subscriber, SubscriberContext> subscribers;
         std::shared_ptr<UdpSenderReceiver> rtp_sender_receiver;
         std::shared_ptr<UdpSenderReceiver> rtcp_sender_receiver;
-        subscription rtp_multicast_subscription;
-        subscription rtcp_multicast_subscription;
+        Subscription rtp_multicast_subscription;
+        Subscription rtcp_multicast_subscription;
     };
 
     asio::io_context& io_context_;

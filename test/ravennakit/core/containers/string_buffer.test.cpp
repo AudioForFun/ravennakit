@@ -15,7 +15,7 @@
 
 TEST_CASE("string_buffer | prepare and commit, read and consume", "[string_buffer]") {
     constexpr std::string_view test_data = "0123456789";
-    rav::string_buffer stream;
+    rav::StringBuffer stream;
 
     // Prepare and commit
     REQUIRE(stream.remaining() == 0);
@@ -39,7 +39,7 @@ TEST_CASE("string_buffer | prepare and commit, read and consume", "[string_buffe
 
 TEST_CASE("string_buffer | read until newline", "[string_buffer]") {
     SECTION("LF") {
-        rav::string_buffer stream;
+        rav::StringBuffer stream;
         stream.write("Hello\nWorld\n\n");
         auto line1 = stream.read_until_newline();
         REQUIRE(line1);
@@ -58,7 +58,7 @@ TEST_CASE("string_buffer | read until newline", "[string_buffer]") {
     }
 
     SECTION("CRLF") {
-        rav::string_buffer stream;
+        rav::StringBuffer stream;
         stream.write("Hello\r\nWorld\r\n\r\n");
         auto line1 = stream.read_until_newline();
         REQUIRE(line1);
@@ -78,7 +78,7 @@ TEST_CASE("string_buffer | read until newline", "[string_buffer]") {
 }
 
 TEST_CASE("string_buffer | reset", "[string_buffer]") {
-    rav::string_buffer stream;
+    rav::StringBuffer stream;
     stream.write("test");
     REQUIRE(stream.remaining() == 4);
     stream.clear();
@@ -86,7 +86,7 @@ TEST_CASE("string_buffer | reset", "[string_buffer]") {
 }
 
 TEST_CASE("string_buffer | starts with", "[string_buffer]") {
-    rav::string_buffer stream;
+    rav::StringBuffer stream;
     stream.write("Hello World");
     REQUIRE(stream.starts_with("Hello"));
     REQUIRE(stream.starts_with("Hello World"));

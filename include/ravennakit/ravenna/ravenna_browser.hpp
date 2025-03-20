@@ -89,7 +89,7 @@ class RavennaBrowser {
     std::unique_ptr<dnssd::Browser> session_browser_;
     dnssd::Browser::Subscriber session_browser_subscriber_;
 
-    subscriber_list<Subscriber> subscribers_;
+    SubscriberList<Subscriber> subscribers_;
 };
 
 }  // namespace rav

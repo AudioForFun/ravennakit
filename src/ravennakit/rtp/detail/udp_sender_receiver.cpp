@@ -104,7 +104,7 @@ size_t receive_from_socket(
     msg.msg_flags = 0;
 
     const ssize_t received_bytes = recvmsg(socket.native_handle(), &msg, 0);
-    recv_time = rav::high_resolution_clock::now();
+    recv_time = rav::HighResolutionClock::now();
     if (received_bytes < 0) {
         ec = asio::error_code(errno, asio::system_category());
         return 0;
@@ -144,7 +144,7 @@ class rav::rtp::UdpSenderReceiver::impl: public std::enable_shared_from_this<imp
     void async_receive();
     void send(const uint8_t* data, size_t size, const asio::ip::udp::endpoint& endpoint);
 
-    subscription
+    Subscription
     join_multicast_group(const asio::ip::address& multicast_address, const asio::ip::address& interface_address);
 
     [[nodiscard]] asio::error_code set_multicast_outbound_interface(const asio::ip::address_v4& interface_address);
@@ -316,7 +316,7 @@ void rav::rtp::UdpSenderReceiver::impl::async_receive() {
     });
 }
 
-rav::subscription rav::rtp::UdpSenderReceiver::impl::join_multicast_group(
+rav::Subscription rav::rtp::UdpSenderReceiver::impl::join_multicast_group(
     const asio::ip::address& multicast_address, const asio::ip::address& interface_address
 ) {
     auto leave_group = [self = shared_from_this(), multicast_address, interface_address] {
@@ -344,7 +344,7 @@ rav::subscription rav::rtp::UdpSenderReceiver::impl::join_multicast_group(
         if (group.multicast_address == multicast_address && group.interface_address == interface_address) {
             RAV_ASSERT(group.use_count > 0, "Invalid use count");
             group.use_count++;
-            return subscription(leave_group);
+            return Subscription(leave_group);
         }
     }
 
@@ -358,7 +358,7 @@ rav::subscription rav::rtp::UdpSenderReceiver::impl::join_multicast_group(
         socket_.local_endpoint().port()
     );
 
-    return subscription(leave_group);
+    return Subscription(leave_group);
 }
 
 void rav::rtp::UdpSenderReceiver::start(HandlerType handler) const {
@@ -372,7 +372,7 @@ void rav::rtp::UdpSenderReceiver::send(
     impl_->send(data, size, endpoint);
 }
 
-rav::subscription rav::rtp::UdpSenderReceiver::join_multicast_group(
+rav::Subscription rav::rtp::UdpSenderReceiver::join_multicast_group(
     const asio::ip::address& multicast_address, const asio::ip::address& interface_address
 ) const {
     if (impl_ == nullptr) {

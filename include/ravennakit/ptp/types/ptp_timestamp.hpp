@@ -178,7 +178,7 @@ struct Timestamp {
      * @param data The data to create the timestamp from. Assumed to be in network byte order.
      * @return The created ptp_timestamp.
      */
-    static Timestamp from_data(const buffer_view<const uint8_t> data) {
+    static Timestamp from_data(const BufferView<const uint8_t> data) {
         RAV_ASSERT(data.size() >= 10, "data is too short to create a ptp_timestamp");
         Timestamp ts;
         ts.seconds_ = data.read_be<uint48_t>(0).to_uint64();
@@ -190,7 +190,7 @@ struct Timestamp {
      * Write the ptp_announce_message to a byte buffer.
      * @param buffer The buffer to write to.
      */
-    void write_to(byte_buffer& buffer) const {
+    void write_to(ByteBuffer& buffer) const {
         buffer.write_be<uint48_t>(seconds_);
         buffer.write_be<uint32_t>(nanoseconds_);
     }

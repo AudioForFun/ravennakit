@@ -36,19 +36,19 @@ struct Profile {
 
     struct port_ds_struct {
         int8_t log_announce_interval_default {};
-        range<int8_t> log_announce_interval_range {};
+        Range<int8_t> log_announce_interval_range {};
 
         int8_t log_sync_interval_default {};
-        range<int8_t> log_sync_interval_range {};
+        Range<int8_t> log_sync_interval_range {};
 
         int8_t log_min_delay_req_interval_default {};
-        range<int8_t> log_min_delay_req_interval_range {};
+        Range<int8_t> log_min_delay_req_interval_range {};
 
         uint8_t announce_receipt_timeout_default {};
-        range<uint8_t> announce_receipt_timeout_range {};
+        Range<uint8_t> announce_receipt_timeout_range {};
 
         std::optional<int8_t> log_pdelay_req_interval_default {};
-        std::optional<range<int8_t>> log_pdelay_req_interval_range {};
+        std::optional<Range<int8_t>> log_pdelay_req_interval_range {};
     } port_ds;
 
     struct transparent_clock_default_ds_struct {

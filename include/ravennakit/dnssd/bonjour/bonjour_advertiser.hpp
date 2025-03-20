@@ -30,25 +30,25 @@ class BonjourAdvertiser: public Advertiser {
      */
     explicit BonjourAdvertiser(asio::io_context& io_context);
 
-    id register_service(
+    Id register_service(
         const std::string& reg_type, const char* name, const char* domain, uint16_t port, const TxtRecord& txt_record,
         bool auto_rename, bool local_only
     ) override;
 
-    void update_txt_record(id id, const TxtRecord& txt_record) override;
-    void unregister_service(id id) override;
+    void update_txt_record(Id id, const TxtRecord& txt_record) override;
+    void unregister_service(Id id) override;
 
     void subscribe(Subscriber& s) override;
 
   private:
     struct registered_service {
-        id id;
+        Id id;
         BonjourScopedDnsServiceRef service_ref;
     };
 
     asio::ip::tcp::socket service_socket_;
     BonjourSharedConnection shared_connection_;
-    id::generator id_generator_;
+    Id::Generator id_generator_;
     std::vector<registered_service> registered_services_;
     size_t process_results_failed_attempts_ = 0;
     Subscriber subscribers_;
@@ -60,7 +60,7 @@ class BonjourAdvertiser: public Advertiser {
         const char* reg_type, const char* reply_domain, void* context
     );
 
-    registered_service* find_registered_service(id id);
+    registered_service* find_registered_service(Id id);
 
     /**
      * Emits fiven event to all subscribers.

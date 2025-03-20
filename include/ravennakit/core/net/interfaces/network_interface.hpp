@@ -40,10 +40,10 @@ namespace rav {
 /**
  * Represents a network interface in the system.
  */
-class network_interface {
+class NetworkInterface {
   public:
     /// The type of the network interface.
-    enum class type {
+    enum class Type {
         undefined,
         wired_ethernet,
         wifi,
@@ -53,7 +53,7 @@ class network_interface {
     };
 
     /// The capabilities of the network interface.
-    struct capabilities {
+    struct Capabilities {
         bool hw_timestamp {false};
         bool sw_timestamp {false};
         bool multicast {false};
@@ -66,7 +66,7 @@ class network_interface {
      * interface, and should be the BSD name on BSD-style platforms and the AdapterName on Windows platforms.
      * @param identifier The unique identifier of the network interface.
      */
-    explicit network_interface(std::string identifier) : identifier_(std::move(identifier)) {}
+    explicit NetworkInterface(std::string identifier) : identifier_(std::move(identifier)) {}
 
     /**
      *
@@ -91,7 +91,7 @@ class network_interface {
     /**
      * @return The MAC address of the network interface, or nullopt if the interface does not have a MAC address.
      */
-    [[nodiscard]] const std::optional<mac_address>& get_mac_address() const {
+    [[nodiscard]] const std::optional<MacAddress>& get_mac_address() const {
         return mac_address_;
     }
 
@@ -105,7 +105,7 @@ class network_interface {
     /**
      * @return The type of the interface.
      */
-    [[nodiscard]] type get_type() const {
+    [[nodiscard]] Type get_type() const {
         return type_;
     }
 
@@ -132,22 +132,22 @@ class network_interface {
      * @param type The type to convert.
      * @returns The string representation of the type.
      */
-    static const char* type_to_string(type type);
+    static const char* type_to_string(Type type);
 
     /**
      * @returns A list of all network interfaces on the system. Only several operating systems are supported: macOS,
      * Windows and Linux. Not Android.
      */
-    static tl::expected<std::vector<network_interface>, int> get_all();
+    static tl::expected<std::vector<NetworkInterface>, int> get_all();
 
   private:
     std::string identifier_;
     std::string display_name_;
     std::string description_;
-    std::optional<mac_address> mac_address_;
+    std::optional<MacAddress> mac_address_;
     std::vector<asio::ip::address> addresses_;
-    type type_ {type::undefined};
-    capabilities capabilities_ {};
+    Type type_ {Type::undefined};
+    Capabilities capabilities_ {};
 #if RAV_WINDOWS
     IF_LUID if_luid_ {};
 #endif

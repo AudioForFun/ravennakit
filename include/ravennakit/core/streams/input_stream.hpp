@@ -22,15 +22,15 @@ namespace rav {
 /**
  * Baseclass for classes that want to provide stream-like access to data.
  */
-class input_stream {
+class InputStream {
   public:
-    enum class error {
+    enum class Error {
         insufficient_data,
         failed_to_set_read_position,
     };
 
-    input_stream() = default;
-    virtual ~input_stream() = default;
+    InputStream() = default;
+    virtual ~InputStream() = default;
 
     /**
      * Reads data from the stream into the given buffer.
@@ -39,7 +39,7 @@ class input_stream {
      * @param size The number of bytes to read.
      * @return The number of bytes read.
      */
-    [[nodiscard]] virtual tl::expected<size_t, error> read(uint8_t* buffer, size_t size) = 0;
+    [[nodiscard]] virtual tl::expected<size_t, Error> read(uint8_t* buffer, size_t size) = 0;
 
     /**
      * Sets the read position in the stream.
@@ -83,7 +83,7 @@ class input_stream {
      * @param size The number of bytes to read.
      * @return The string read from the stream.
      */
-    [[nodiscard]] tl::expected<std::string, error> read_as_string(size_t size);
+    [[nodiscard]] tl::expected<std::string, Error> read_as_string(size_t size);
 
     /**
      * Reads a value from the given stream in native byte order (not to be confused with network-endian).
@@ -91,14 +91,14 @@ class input_stream {
      * @return The decoded value.
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
-    [[nodiscard]] tl::expected<Type, error> read_ne() {
+    [[nodiscard]] tl::expected<Type, Error> read_ne() {
         Type value;
         auto result = read(reinterpret_cast<uint8_t*>(std::addressof(value)), sizeof(Type));
         if (!result) {
             return tl::unexpected(result.error());
         }
         if (result.value() != sizeof(Type)) {
-            return tl::unexpected(error::insufficient_data);
+            return tl::unexpected(Error::insufficient_data);
         }
         return value;
     }
@@ -109,7 +109,7 @@ class input_stream {
      * @return The decoded value.
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
-    [[nodiscard]] tl::expected<Type, error> read_be() {
+    [[nodiscard]] tl::expected<Type, Error> read_be() {
         return read_ne<Type>().map([](Type value) {
             return swap_if_le(value);
         });
@@ -121,7 +121,7 @@ class input_stream {
      * @return The decoded value.
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
-    [[nodiscard]] tl::expected<Type, error> read_le() {
+    [[nodiscard]] tl::expected<Type, Error> read_le() {
         return read_ne<Type>().map([](Type value) {
             return swap_if_be(value);
         });
@@ -131,11 +131,11 @@ class input_stream {
      * @param e The error to convert to a string.
      * @return The string representation of the error.
      */
-    static const char* to_string(const error e) {
+    static const char* to_string(const Error e) {
         switch (e) {
-            case error::insufficient_data:
+            case Error::insufficient_data:
                 return "insufficient data";
-            case error::failed_to_set_read_position:
+            case Error::failed_to_set_read_position:
                 return "failed to set read position";
         }
         return "unknown error";

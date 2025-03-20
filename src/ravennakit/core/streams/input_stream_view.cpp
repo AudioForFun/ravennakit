@@ -13,7 +13,7 @@
 #include "ravennakit/core/assert.hpp"
 #include "ravennakit/core/util.hpp"
 
-rav::input_stream_view::input_stream_view(const uint8_t* data, const size_t size) : data_(data), size_(size) {
+rav::InputStreamView::InputStreamView(const uint8_t* data, const size_t size) : data_(data), size_(size) {
     RAV_ASSERT(data != nullptr, "Data must not be nullptr");
     RAV_ASSERT(size > 0, "Size must be greater than 0");
     if (data_ == nullptr) {
@@ -21,11 +21,11 @@ rav::input_stream_view::input_stream_view(const uint8_t* data, const size_t size
     }
 }
 
-void rav::input_stream_view::reset() {
+void rav::InputStreamView::reset() {
     read_position_ = 0;
 }
 
-tl::expected<size_t, rav::input_stream::error> rav::input_stream_view::read(uint8_t* buffer, const size_t size) {
+tl::expected<size_t, rav::InputStream::Error> rav::InputStreamView::read(uint8_t* buffer, const size_t size) {
     if (size_ - read_position_ < size) {
         return 0;
     }
@@ -34,7 +34,7 @@ tl::expected<size_t, rav::input_stream::error> rav::input_stream_view::read(uint
     return size;
 }
 
-bool rav::input_stream_view::set_read_position(const size_t position) {
+bool rav::InputStreamView::set_read_position(const size_t position) {
     if (position > size_) {
         return false;
     }
@@ -42,14 +42,14 @@ bool rav::input_stream_view::set_read_position(const size_t position) {
     return true;
 }
 
-size_t rav::input_stream_view::get_read_position() {
+size_t rav::InputStreamView::get_read_position() {
     return read_position_;
 }
 
-std::optional<size_t> rav::input_stream_view::size() const {
+std::optional<size_t> rav::InputStreamView::size() const {
     return size_;
 }
 
-bool rav::input_stream_view::exhausted() {
+bool rav::InputStreamView::exhausted() {
     return read_position_ >= size_;
 }

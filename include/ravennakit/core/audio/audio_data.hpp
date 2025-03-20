@@ -22,22 +22,22 @@
 
 namespace rav {
 
-class audio_data {
+class AudioData {
   public:
     /**
      * Types for specifying interleaving.
      */
-    struct interleaving {
-        struct interleaved {};
+    struct Interleaving {
+        struct Interleaved {};
 
-        struct noninterleaved {};
+        struct Noninterleaved {};
     };
 
     /**
      * Types for specifying byte order.
      */
-    struct byte_order {
-        struct le {
+    struct ByteOrder {
+        struct Le {
             static constexpr bool is_little_endian = true;
 
             /**
@@ -73,7 +73,7 @@ class audio_data {
             }
         };
 
-        struct be {
+        struct Be {
             static constexpr bool is_little_endian = false;
 
             /**
@@ -115,7 +115,7 @@ class audio_data {
             }
         };
 
-        struct ne {
+        struct Ne {
             static constexpr bool is_little_endian = little_endian;
 
             /**
@@ -293,8 +293,8 @@ class audio_data {
             return false;  // Unequal amount of frames between src and dst
         }
 
-        if constexpr (std::is_same_v<SrcInterleaving, audio_data::interleaving::interleaved>) {
-            if constexpr (std::is_same_v<DstInterleaving, audio_data::interleaving::interleaved>) {
+        if constexpr (std::is_same_v<SrcInterleaving, AudioData::Interleaving::Interleaved>) {
+            if constexpr (std::is_same_v<DstInterleaving, AudioData::Interleaving::Interleaved>) {
                 // Interleaved src, interleaved dst
                 for (size_t i = 0; i < num_frames * num_channels; ++i) {
                     convert_sample<SrcType, SrcByteOrder, DstType, DstByteOrder>(src + i, dst + i);
@@ -307,8 +307,8 @@ class audio_data {
                     convert_sample<SrcType, SrcByteOrder, DstType, DstByteOrder>(src + i, dst + dst_i);
                 }
             }
-        } else if constexpr (std::is_same_v<SrcInterleaving, audio_data::interleaving::noninterleaved>) {
-            if constexpr (std::is_same_v<DstInterleaving, audio_data::interleaving::interleaved>) {
+        } else if constexpr (std::is_same_v<SrcInterleaving, AudioData::Interleaving::Noninterleaved>) {
+            if constexpr (std::is_same_v<DstInterleaving, AudioData::Interleaving::Interleaved>) {
                 // Noninterleaved src, interleaved dst
                 for (size_t i = 0; i < num_frames * num_channels; ++i) {
                     const auto ch = i % num_frames;
@@ -352,7 +352,7 @@ class audio_data {
         RAV_ASSERT(src != nullptr, "src shouldn't be nullptr");
         RAV_ASSERT(dst != nullptr, "dst shouldn't be nullptr");
 
-        if constexpr (std::is_same_v<SrcInterleaving, audio_data::interleaving::interleaved>) {
+        if constexpr (std::is_same_v<SrcInterleaving, AudioData::Interleaving::Interleaved>) {
             // interleaved to non-interleaved
             for (size_t i = 0; i < num_frames * num_channels; ++i) {
                 const auto ch = i % num_channels;
@@ -361,7 +361,7 @@ class audio_data {
                     src + i + src_start_frame * num_channels, dst[ch] + frame + dst_start_frame
                 );
             }
-        } else if constexpr (std::is_same_v<SrcInterleaving, audio_data::interleaving::noninterleaved>) {
+        } else if constexpr (std::is_same_v<SrcInterleaving, AudioData::Interleaving::Noninterleaved>) {
             // interleaved to interleaved (channels)
             for (size_t i = 0; i < num_frames * num_channels; ++i) {
                 const auto ch = i / num_frames;
@@ -401,7 +401,7 @@ class audio_data {
         RAV_ASSERT(src != nullptr, "src shouldn't be nullptr");
         RAV_ASSERT(dst != nullptr, "dst shouldn't be nullptr");
 
-        if constexpr (std::is_same_v<DstInterleaving, audio_data::interleaving::interleaved>) {
+        if constexpr (std::is_same_v<DstInterleaving, AudioData::Interleaving::Interleaved>) {
             // non-interleaved to interleaved
             for (size_t frame = 0; frame < num_frames; ++frame) {
                 for (size_t ch = 0; ch < num_channels; ++ch) {
@@ -411,7 +411,7 @@ class audio_data {
                     );
                 }
             }
-        } else if constexpr (std::is_same_v<DstInterleaving, audio_data::interleaving::noninterleaved>) {
+        } else if constexpr (std::is_same_v<DstInterleaving, AudioData::Interleaving::Noninterleaved>) {
             // non-interleaved to non-interleaved
             for (size_t frame = 0; frame < num_frames; ++frame) {
                 for (size_t ch = 0; ch < num_channels; ++ch) {
@@ -438,7 +438,7 @@ class audio_data {
      * @return True if the conversion was successful, false otherwise.
      */
     [[maybe_unused]] static bool de_interleave(
-        const buffer_view<uint8_t> input_buffer, const buffer_view<uint8_t> output_buffer, const size_t num_channels,
+        const BufferView<uint8_t> input_buffer, const BufferView<uint8_t> output_buffer, const size_t num_channels,
         const size_t bytes_per_sample
     ) {
         RAV_ASSERT(!input_buffer.empty(), "input_buffer shouldn't be empty");
@@ -475,7 +475,7 @@ class audio_data {
      * @return True if the conversion was successful, false otherwise.
      */
     [[maybe_unused]] static bool interleave(
-        const buffer_view<uint8_t> input_buffer, const buffer_view<uint8_t> output_buffer, const size_t num_channels,
+        const BufferView<uint8_t> input_buffer, const BufferView<uint8_t> output_buffer, const size_t num_channels,
         const size_t bytes_per_sample, const size_t num_frames
     ) {
         RAV_ASSERT(!input_buffer.empty(), "input_buffer shouldn't be empty");

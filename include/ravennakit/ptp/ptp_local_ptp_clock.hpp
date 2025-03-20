@@ -37,7 +37,7 @@ class LocalPtpClockClock {
      * no relation to wallclock time (UTC or TAI).
      */
     static Timestamp system_monotonic_now() {
-        return Timestamp(high_resolution_clock::now());
+        return Timestamp(HighResolutionClock::now());
     }
 
     /**
@@ -197,10 +197,10 @@ class LocalPtpClockClock {
     Timestamp last_sync_ = system_monotonic_now();
     double shift_ {};
     double frequency_ratio_ = 1.0;
-    sliding_stats offset_stats_ {51};
-    sliding_stats filtered_offset_stats_ {51};
+    SlidingStats offset_stats_ {51};
+    SlidingStats filtered_offset_stats_ {51};
     size_t adjustments_since_last_step_ {};
-    throttle<void> trace_adjustments_throttle_ {std::chrono::seconds(5)};
+    Throttle<void> trace_adjustments_throttle_ {std::chrono::seconds(5)};
 };
 
 }  // namespace rav

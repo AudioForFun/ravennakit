@@ -73,7 +73,7 @@ auto rav::ptp::MessageHeader::FlagField::tie_members() const {
 }
 
 tl::expected<rav::ptp::MessageHeader, rav::ptp::Error>
-rav::ptp::MessageHeader::from_data(buffer_view<const uint8_t> data) {
+rav::ptp::MessageHeader::from_data(BufferView<const uint8_t> data) {
     if (data.empty()) {
         return tl::unexpected(Error::invalid_data);
     }
@@ -102,7 +102,7 @@ rav::ptp::MessageHeader::from_data(buffer_view<const uint8_t> data) {
     return header;
 }
 
-void rav::ptp::MessageHeader::write_to(byte_buffer& buffer) const {
+void rav::ptp::MessageHeader::write_to(ByteBuffer& buffer) const {
     // major sdo id + message type (left shift by multiplication to avoid type promotion)
     buffer.write_be<uint8_t>(((sdo_id.major & 0b00001111) * 16) | (static_cast<uint8_t>(message_type) & 0b00001111));
     // minor version ptp + version ptp (left shift by multiplication to avoid type promotion)

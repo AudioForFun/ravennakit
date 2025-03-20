@@ -12,9 +12,9 @@
 
 #include "ravennakit/core/string_parser.hpp"
 
-rav::uri rav::uri::parse(const std::string& encoded_uri) {
-    uri uri {};
-    string_parser parser {encoded_uri};
+rav::Uri rav::Uri::parse(const std::string& encoded_uri) {
+    Uri uri {};
+    StringParser parser {encoded_uri};
 
     // Scheme (required)
     const auto scheme = parser.read_until("://");
@@ -25,10 +25,10 @@ rav::uri rav::uri::parse(const std::string& encoded_uri) {
 
     // Authority (optional)
     if (const auto authority = parser.split("/")) {
-        string_parser authority_parser {*authority};
+        StringParser authority_parser {*authority};
         // User info (optional)
         if (const auto user_info = authority_parser.read_until("@")) {
-            string_parser user_info_parser {*user_info};
+            StringParser user_info_parser {*user_info};
             if (const auto user = user_info_parser.split(":")) {
                 uri.user = decode(*user);
             }
@@ -70,7 +70,7 @@ rav::uri rav::uri::parse(const std::string& encoded_uri) {
     return uri;
 }
 
-std::string rav::uri::to_string() const {
+std::string rav::Uri::to_string() const {
     std::string output;
     output.reserve(256);
 
@@ -130,7 +130,7 @@ std::string rav::uri::to_string() const {
     return output;
 }
 
-std::string rav::uri::encode(const std::string_view str, const bool encode_plus, const bool encode_slash) {
+std::string rav::Uri::encode(const std::string_view str, const bool encode_plus, const bool encode_slash) {
     std::string output;
     output.reserve(str.size());
     for (const auto chr : str) {
@@ -148,11 +148,11 @@ std::string rav::uri::encode(const std::string_view str, const bool encode_plus,
     return output;
 }
 
-std::string rav::uri::encode(const std::string_view scheme, const std::string_view host, const std::string_view path) {
+std::string rav::Uri::encode(const std::string_view scheme, const std::string_view host, const std::string_view path) {
     return fmt::format("{}://{}{}", encode(scheme), host, encode(path));
 }
 
-std::string rav::uri::decode(const std::string_view encoded, const bool decode_plus) {
+std::string rav::Uri::decode(const std::string_view encoded, const bool decode_plus) {
     std::string output;
     output.reserve(encoded.size());
     for (size_t i = 0; i < encoded.size(); ++i) {
@@ -170,9 +170,9 @@ std::string rav::uri::decode(const std::string_view encoded, const bool decode_p
     return output;
 }
 
-std::map<std::string, std::string> rav::uri::parse_query(const std::string_view query_string) {
+std::map<std::string, std::string> rav::Uri::parse_query(const std::string_view query_string) {
     std::map<std::string, std::string> query;
-    string_parser parser {query_string};
+    StringParser parser {query_string};
     parser.skip('?');
     while (!parser.exhausted()) {
         if (const auto key = parser.read_until("=")) {

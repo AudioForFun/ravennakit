@@ -19,15 +19,15 @@ namespace rav {
  * @tparam T The type of the value to throttle.
  */
 template<class T>
-class throttle {
+class Throttle {
   public:
-    throttle() = default;
+    Throttle() = default;
 
     /**
      * Constructs the throttle with the given interval.
      * @param interval The interval to throttle the value to.
      */
-    explicit throttle(const std::chrono::milliseconds interval) : interval_(interval) {}
+    explicit Throttle(const std::chrono::milliseconds interval) : interval_(interval) {}
 
     /**
      * @param interval The interval to throttle the value to.
@@ -86,15 +86,15 @@ class throttle {
  * Specialization for void, which doesn't store a value.
  */
 template<>
-class throttle<void> {
+class Throttle<void> {
 public:
-    throttle() = default;
+    Throttle() = default;
 
     /**
      * Constructs the throttle with the given interval.
      * @param interval The interval to throttle the value to.
      */
-    explicit throttle(const std::chrono::milliseconds interval) : interval_(interval) {}
+    explicit Throttle(const std::chrono::milliseconds interval) : interval_(interval) {}
 
     /**
      * @param interval The interval to throttle the value to.

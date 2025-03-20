@@ -31,7 +31,7 @@ class SessionDescription {
     /// A type alias for a parse result.
     /// TODO: Replace with tl::expected
     template<class T>
-    using ParseResult = result<T, std::string>;
+    using ParseResult = Result<T, std::string>;
 
     /**
      * Parses an SDP session description from a string.

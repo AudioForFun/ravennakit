@@ -27,7 +27,7 @@ struct RavennaClockDomain {
 
     /// A type alias for a parse result.
     template<class T>
-    using ParseResult = result<T, std::string>;
+    using ParseResult = Result<T, std::string>;
 
     SyncSource source {SyncSource::undefined};
     int32_t domain {};

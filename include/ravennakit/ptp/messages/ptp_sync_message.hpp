@@ -29,13 +29,13 @@ struct SyncMessage {
      * @param data The message data. Expects it to start at the beginning of the message, excluding the header.
      * @return A ptp_announce_message if the data is valid, otherwise a ptp_error.
      */
-    static tl::expected<SyncMessage, Error> from_data(const MessageHeader& header, buffer_view<const uint8_t> data);
+    static tl::expected<SyncMessage, Error> from_data(const MessageHeader& header, BufferView<const uint8_t> data);
 
     /**
      * Write the ptp_announce_message to a byte buffer.
      * @param buffer The buffer to write to.
      */
-    void write_to(byte_buffer& buffer) const;
+    void write_to(ByteBuffer& buffer) const;
 
     /**
      * @returns A string representation of the ptp_announce_message.

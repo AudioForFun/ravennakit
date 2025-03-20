@@ -26,7 +26,7 @@ class pipe {
   public:
     /**
      * Constructs a pipe.
-     * @throws rav::exception if pipe() fails.
+     * @throws rav::Exception if pipe() fails.
      */
     pipe() {
         if (::pipe(fds_) == -1) {
@@ -47,7 +47,7 @@ class pipe {
      * Writes data to the pipe.
      * @param data The data to write.
      * @param size The size of the data.
-     * @throws rav::exception if read() fails.
+     * @throws rav::Exception if read() fails.
      * @return The number of bytes written.
      */
     ssize_t write(const void* data, const size_t size) const {
@@ -58,7 +58,7 @@ class pipe {
      * Reads data from the pipe.
      * @param data The data to read into.
      * @param size The size of the data.
-     * @throws rav::exception if read() fails.
+     * @throws rav::Exception if read() fails.
      * @return The number of bytes read.
      */
     ssize_t read(void* data, const size_t size) const {

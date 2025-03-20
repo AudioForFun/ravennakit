@@ -23,12 +23,12 @@ constexpr int k_num_writes_per_thread = 10'000;
 
 template<class T, class F>
 void instantiate_buffer() {
-    rav::audio_fifo_buffer<T, F> buffer;
+    rav::AudioFifoBuffer<T, F> buffer;
 }
 
 template<class T>
-rav::audio_buffer<T> get_filled_audio_buffer(const size_t num_channels, const size_t num_frames) {
-    rav::audio_buffer<T> buffer {num_channels, num_frames};
+rav::AudioBuffer<T> get_filled_audio_buffer(const size_t num_channels, const size_t num_frames) {
+    rav::AudioBuffer<T> buffer {num_channels, num_frames};
     T counter = 1;
     for (size_t ch = 0; ch < num_channels; ++ch) {
         for (size_t fr = 0; fr < num_frames; ++fr) {
@@ -39,7 +39,7 @@ rav::audio_buffer<T> get_filled_audio_buffer(const size_t num_channels, const si
 }
 
 template<typename T>
-int64_t get_sum_of_all_samples(const rav::audio_buffer<T>& buffer) {
+int64_t get_sum_of_all_samples(const rav::AudioBuffer<T>& buffer) {
     int64_t total = 0;
     for (size_t ch = 0; ch < buffer.num_channels(); ++ch) {
         for (size_t fr = 0; fr < buffer.num_frames(); ++fr) {
@@ -51,7 +51,7 @@ int64_t get_sum_of_all_samples(const rav::audio_buffer<T>& buffer) {
 
 template<typename T, typename F>
 void test_circular_buffer_read_write() {
-    rav::audio_fifo_buffer<T, F> buffer {2, 10};
+    rav::AudioFifoBuffer<T, F> buffer {2, 10};
 
     const auto src = get_filled_audio_buffer<T>(k_num_channels, 3);
     REQUIRE(buffer.write(src));
@@ -59,7 +59,7 @@ void test_circular_buffer_read_write() {
     REQUIRE(buffer.write(src));
     REQUIRE_FALSE(buffer.write(src));
 
-    rav::audio_buffer<T> dst {k_num_channels, 9};
+    rav::AudioBuffer<T> dst {k_num_channels, 9};
     REQUIRE(buffer.read(dst));
     REQUIRE_FALSE(buffer.read(dst));
 
@@ -187,7 +187,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Test single producer single consumer") {
         int64_t expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::Fifo::Spsc> buffer(2, 10);
+        rav::AudioFifoBuffer<int, rav::Fifo::Spsc> buffer(2, 10);
 
         std::thread writer([&] {
             const auto src = get_filled_audio_buffer<int>(2, 3);
@@ -201,7 +201,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
 
         std::atomic writer_done = false;
         std::thread reader([&] {
-            rav::audio_buffer<int> dst(2, 3);
+            rav::AudioBuffer<int> dst(2, 3);
             while (!writer_done) {
                 while (buffer.read(dst)) {
                     total += get_sum_of_all_samples(dst);
@@ -221,7 +221,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Test multi producer single consumer") {
         std::atomic<int64_t> expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::Fifo::Mpsc> buffer(2, 10);
+        rav::AudioFifoBuffer<int, rav::Fifo::Mpsc> buffer(2, 10);
 
         std::vector<std::thread> writers;
         writers.reserve(k_num_writer_threads);
@@ -240,7 +240,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
 
         std::atomic writers_done = false;
         std::thread reader([&] {
-            rav::audio_buffer<int> dst(2, 3);
+            rav::AudioBuffer<int> dst(2, 3);
             while (!writers_done) {
                 while (buffer.read(dst)) {
                     total += get_sum_of_all_samples(dst);
@@ -262,7 +262,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Test single producer multi consumer") {
         int64_t expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::Fifo::Spmc> buffer(2, 10);
+        rav::AudioFifoBuffer<int, rav::Fifo::Spmc> buffer(2, 10);
 
         std::thread writer([&] {
             const auto src = get_filled_audio_buffer<int>(2, 3);
@@ -280,7 +280,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
 
         for (auto t = 0; t < k_num_reader_threads; t++) {
             readers.emplace_back([&] {
-                rav::audio_buffer<int> dst(2, 3);
+                rav::AudioBuffer<int> dst(2, 3);
                 while (!writer_done) {
                     while (buffer.read(dst)) {
                         total += get_sum_of_all_samples(dst);
@@ -303,7 +303,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Test multi producer multi consumer") {
         std::atomic<int64_t> expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::Fifo::Mpmc> buffer(2, 10);
+        rav::AudioFifoBuffer<int, rav::Fifo::Mpmc> buffer(2, 10);
 
         std::vector<std::thread> writers;
         writers.reserve(k_num_writer_threads);
@@ -326,7 +326,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
 
         for (auto t = 0; t < k_num_reader_threads; t++) {
             readers.emplace_back([&] {
-                rav::audio_buffer<int> dst(2, 3);
+                rav::AudioBuffer<int> dst(2, 3);
                 while (!writers_done) {
                     while (buffer.read(dst)) {
                         total += get_sum_of_all_samples(dst);
@@ -350,17 +350,17 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
 }
 
 TEST_CASE("circular_audio_buffer | read from data", "[circular_audio_buffer]") {
-    rav::vector_buffer<int16_t> src({1, 2, 3, 4, 5, 6});
-    rav::audio_fifo_buffer<int16_t> ring(2, 5);
+    rav::VectorBuffer<int16_t> src({1, 2, 3, 4, 5, 6});
+    rav::AudioFifoBuffer<int16_t> ring(2, 5);
 
     auto result =
-        ring.write_from_data<int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+        ring.write_from_data<int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
             src.data(), 3
         );
 
     REQUIRE(result);
 
-    rav::audio_buffer<int16_t> dst(2, 3);
+    rav::AudioBuffer<int16_t> dst(2, 3);
     auto read_result = ring.read(dst);
     REQUIRE(read_result);
     REQUIRE(dst[0][0] == 1);
@@ -370,7 +370,7 @@ TEST_CASE("circular_audio_buffer | read from data", "[circular_audio_buffer]") {
     REQUIRE(dst[1][1] == 4);
     REQUIRE(dst[1][2] == 6);
 
-    result = ring.write_from_data<int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+    result = ring.write_from_data<int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
         src.data(), 3
     );
 
@@ -388,18 +388,18 @@ TEST_CASE("circular_audio_buffer | read from data", "[circular_audio_buffer]") {
 }
 
 TEST_CASE("circular_audio_buffer | write to data", "[circular_audio_buffer]") {
-    rav::vector_buffer<int16_t> src({1, 2, 3, 4, 5, 6});
-    rav::audio_fifo_buffer<int16_t> ring(2, 5);
+    rav::VectorBuffer<int16_t> src({1, 2, 3, 4, 5, 6});
+    rav::AudioFifoBuffer<int16_t> ring(2, 5);
 
     auto result =
-        ring.write_from_data<int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+        ring.write_from_data<int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
             src.data(), 3
         );
 
     REQUIRE(result);
 
     std::vector<int16_t> dst(6);
-    result = ring.read_to_data<int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+    result = ring.read_to_data<int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
         dst.data(), 3
     );
 

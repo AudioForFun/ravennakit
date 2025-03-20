@@ -20,15 +20,15 @@ namespace rav {
 /**
  * An abstract class representing an output stream, providing all kinds of write operations.
  */
-class output_stream {
+class OutputStream {
   public:
-    enum class error {
+    enum class Error {
         failed_to_write,
         out_of_memory,
     };
 
-    output_stream() = default;
-    virtual ~output_stream() = default;
+    OutputStream() = default;
+    virtual ~OutputStream() = default;
 
     /**
      * Writes data from the given buffer to the stream.
@@ -36,7 +36,7 @@ class output_stream {
      * @param size The number of bytes to write.
      * @return An expected indicating success or failure.
      */
-    [[nodiscard]] virtual tl::expected<void, error> write(const uint8_t* buffer, size_t size) = 0;
+    [[nodiscard]] virtual tl::expected<void, Error> write(const uint8_t* buffer, size_t size) = 0;
 
     /**
      * Convenience function to write data from a char buffer to the stream.
@@ -44,7 +44,7 @@ class output_stream {
      * @param size The number of bytes to write.
      * @return An expected indicating success or failure.
      */
-    [[nodiscard]] tl::expected<void, error> write(const char* buffer, const size_t size) {
+    [[nodiscard]] tl::expected<void, Error> write(const char* buffer, const size_t size) {
         return write(reinterpret_cast<const uint8_t*>(buffer), size);
     }
 
@@ -53,7 +53,7 @@ class output_stream {
      * @param position The new write position.
      * @return True if the write position was successfully set.
      */
-    [[nodiscard]] virtual tl::expected<void, error> set_write_position(size_t position) = 0;
+    [[nodiscard]] virtual tl::expected<void, Error> set_write_position(size_t position) = 0;
 
     /**
      * @return The current write position in the stream.
@@ -73,7 +73,7 @@ class output_stream {
      * @return An expected indicating success or failure.
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
-    [[nodiscard]] tl::expected<void, error> write_ne(const Type value) {
+    [[nodiscard]] tl::expected<void, Error> write_ne(const Type value) {
         return write(reinterpret_cast<const uint8_t*>(std::addressof(value)), sizeof(Type));
     }
 
@@ -84,7 +84,7 @@ class output_stream {
      * @return An expected indicating success or failure.
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
-    [[nodiscard]] tl::expected<void, error> write_be(const Type value) {
+    [[nodiscard]] tl::expected<void, Error> write_be(const Type value) {
         return write_ne(swap_if_le(value));
     }
 
@@ -95,7 +95,7 @@ class output_stream {
      * @return An expected indicating success or failure.
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
-    [[nodiscard]] tl::expected<void, error> write_le(const Type value) {
+    [[nodiscard]] tl::expected<void, Error> write_le(const Type value) {
         return write_ne(swap_if_be(value));
     }
 
@@ -104,7 +104,7 @@ class output_stream {
      * @param str The string to write.
      * @return An expected indicating success or failure.
      */
-    [[nodiscard]] tl::expected<void, error> write_string(const std::string& str) {
+    [[nodiscard]] tl::expected<void, Error> write_string(const std::string& str) {
         OK_OR_RETURN(write_le<uint64_t>(str.size()));
         OK_OR_RETURN(write(reinterpret_cast<const uint8_t*>(str.data()), str.size()));
         return {};
@@ -117,7 +117,7 @@ class output_stream {
      * @param str The string to write.
      * @return An expected indicating success or failure.
      */
-    [[nodiscard]] tl::expected<void, error> write_cstring(const char* str) {
+    [[nodiscard]] tl::expected<void, Error> write_cstring(const char* str) {
         return write(reinterpret_cast<const uint8_t*>(str), std::strlen(str) + 1);
     }
 };

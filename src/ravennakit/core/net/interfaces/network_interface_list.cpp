@@ -16,7 +16,7 @@ rav::network_interface_list::network_interface_list() {
     refresh();
 }
 
-const rav::network_interface* rav::network_interface_list::find_by_string(const std::string& search_string) const {
+const rav::NetworkInterface* rav::network_interface_list::find_by_string(const std::string& search_string) const {
     if (search_string.empty()) {
         return nullptr;
     }
@@ -62,7 +62,7 @@ const rav::network_interface* rav::network_interface_list::find_by_string(const 
     return nullptr;
 }
 
-const rav::network_interface* rav::network_interface_list::find_by_address(const asio::ip::address& address) const {
+const rav::NetworkInterface* rav::network_interface_list::find_by_address(const asio::ip::address& address) const {
     for (auto& interface : interfaces_) {
         for (const auto& addr : interface.addresses()) {
             if (addr == address) {
@@ -74,7 +74,7 @@ const rav::network_interface* rav::network_interface_list::find_by_address(const
 }
 
 void rav::network_interface_list::refresh() {
-    auto result = network_interface::get_all();
+    auto result = NetworkInterface::get_all();
     if (!result) {
         RAV_ERROR("Failed to get network interfaces: {}", result.error());
         return;
@@ -82,6 +82,6 @@ void rav::network_interface_list::refresh() {
     interfaces_ = std::move(result.value());
 }
 
-const std::vector<rav::network_interface>& rav::network_interface_list::interfaces() const {
+const std::vector<rav::NetworkInterface>& rav::network_interface_list::interfaces() const {
     return interfaces_;
 }

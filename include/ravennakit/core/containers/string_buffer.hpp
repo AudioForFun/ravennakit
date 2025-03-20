@@ -21,15 +21,15 @@ namespace rav {
 /**
  * Simple buffer around a string that allows for easy reading and writing of values.
  */
-class string_buffer {
+class StringBuffer {
   public:
-    string_buffer() = default;
+    StringBuffer() = default;
 
     /**
      * Constructs a string_buffer with the given data.
      * @param data The initial data.
      */
-    explicit string_buffer(std::string data) : data_(std::move(data)), write_position_(data_.size()) {}
+    explicit StringBuffer(std::string data) : data_(std::move(data)), write_position_(data_.size()) {}
 
     /**
      * Prepares space in the buffer for writing. The returned buffer_view is valid until the next call to a non-const
@@ -38,7 +38,7 @@ class string_buffer {
      * @param size The number of characters to reserve in the buffer.
      * @return A string_view representing the writable portion of the buffer.
      */
-    buffer_view<std::string::value_type> prepare(const size_t size) {
+    BufferView<std::string::value_type> prepare(const size_t size) {
         data_.resize(write_position_ + size);
         return {data_.data() + write_position_, size};
     }

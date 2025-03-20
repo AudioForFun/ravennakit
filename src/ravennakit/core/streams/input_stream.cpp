@@ -10,18 +10,18 @@
 
 #include "ravennakit/core/streams/input_stream.hpp"
 
-std::optional<size_t> rav::input_stream::remaining() {
+std::optional<size_t> rav::InputStream::remaining() {
     if (const auto s = size()) {
         return *s - get_read_position();
     }
     return std::nullopt;
 }
 
-bool rav::input_stream::skip(const size_t size) {
+bool rav::InputStream::skip(const size_t size) {
     return set_read_position(get_read_position() + size);
 }
 
-tl::expected<std::string, rav::input_stream::error> rav::input_stream::read_as_string(const size_t size) {
+tl::expected<std::string, rav::InputStream::Error> rav::InputStream::read_as_string(const size_t size) {
     std::string str(size, '\0');
     return read(reinterpret_cast<uint8_t*>(str.data()), size).map([&str](const auto n) {
         str.resize(n);

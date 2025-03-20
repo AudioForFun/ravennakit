@@ -36,12 +36,12 @@ rav::RavennaNode::~RavennaNode() {
     }
 }
 
-std::future<rav::id> rav::RavennaNode::create_receiver(const std::string& session_name) {
+std::future<rav::Id> rav::RavennaNode::create_receiver(const std::string& session_name) {
     auto work = [this, session_name]() mutable {
         auto new_receiver = std::make_unique<RavennaReceiver>(rtsp_client_, *rtp_receiver_);
         if (!new_receiver->subscribe_to_session(session_name)) {
             RAV_ERROR("Failed to subscribe to session: {}", session_name);
-            return id {};
+            return Id {};
         }
         const auto& it = receivers_.emplace_back(std::move(new_receiver));
         for (const auto& s : subscribers_) {
@@ -55,7 +55,7 @@ std::future<rav::id> rav::RavennaNode::create_receiver(const std::string& sessio
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void> rav::RavennaNode::remove_receiver(id receiver_id) {
+std::future<void> rav::RavennaNode::remove_receiver(Id receiver_id) {
     auto work = [this, receiver_id]() mutable {
         for (auto it = receivers_.begin(); it != receivers_.end(); ++it) {
             if ((*it)->get_id() == receiver_id) {
@@ -77,7 +77,7 @@ std::future<void> rav::RavennaNode::remove_receiver(id receiver_id) {
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<bool> rav::RavennaNode::set_receiver_delay(id receiver_id, uint32_t delay_samples) {
+std::future<bool> rav::RavennaNode::set_receiver_delay(Id receiver_id, uint32_t delay_samples) {
     auto work = [this, receiver_id, delay_samples] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -120,7 +120,7 @@ std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber_to_remove
 }
 
 std::future<void>
-rav::RavennaNode::subscribe_to_receiver(id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_add) {
+rav::RavennaNode::subscribe_to_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_add) {
     auto work = [this, receiver_id, subscriber_to_add] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -136,7 +136,7 @@ rav::RavennaNode::subscribe_to_receiver(id receiver_id, rtp::StreamReceiver::Sub
 }
 
 std::future<void>
-rav::RavennaNode::unsubscribe_from_receiver(id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_remove) {
+rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_remove) {
     auto work = [this, receiver_id, subscriber_to_remove] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -151,7 +151,7 @@ rav::RavennaNode::unsubscribe_from_receiver(id receiver_id, rtp::StreamReceiver:
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<rav::rtp::StreamReceiver::StreamStats> rav::RavennaNode::get_stats_for_receiver(id receiver_id) {
+std::future<rav::rtp::StreamReceiver::StreamStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id) {
     auto work = [this, receiver_id] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -164,7 +164,7 @@ std::future<rav::rtp::StreamReceiver::StreamStats> rav::RavennaNode::get_stats_f
 }
 
 std::future<bool>
-rav::RavennaNode::get_receiver(id receiver_id, std::function<void(RavennaReceiver&)> update_function) {
+rav::RavennaNode::get_receiver(Id receiver_id, std::function<void(RavennaReceiver&)> update_function) {
     RAV_ASSERT(update_function != nullptr, "Function must be valid");
     auto work = [this, receiver_id, f = std::move(update_function)] {
         for (const auto& receiver : receivers_) {
@@ -178,7 +178,7 @@ rav::RavennaNode::get_receiver(id receiver_id, std::function<void(RavennaReceive
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_sdp_for_receiver(id receiver_id) {
+std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_sdp_for_receiver(Id receiver_id) {
     auto work = [this, receiver_id]() -> std::optional<sdp::SessionDescription> {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -190,7 +190,7 @@ std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_s
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_receiver(id receiver_id) {
+std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_receiver(Id receiver_id) {
     TRACY_ZONE_SCOPED;
     auto work = [this, receiver_id]() -> std::optional<std::string> {
         for (const auto& receiver : receivers_) {
@@ -204,7 +204,7 @@ std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_recei
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
-    const id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+    const Id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
 ) {
     TRACY_ZONE_SCOPED;
 
@@ -220,7 +220,7 @@ std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_audio_data_realtime(
-    const id receiver_id, const audio_buffer_view<float>& output_buffer, const std::optional<uint32_t> at_timestamp
+    const Id receiver_id, const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
 ) {
     TRACY_ZONE_SCOPED;
 

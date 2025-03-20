@@ -25,7 +25,7 @@ struct PdelayRespFollowUpMessage {
      * @param data The message data. Expects it to start at the beginning of the message, excluding the header.
      * @return A ptp_announce_message if the data is valid, otherwise a ptp_error.
      */
-    static tl::expected<PdelayRespFollowUpMessage, Error> from_data(buffer_view<const uint8_t> data);
+    static tl::expected<PdelayRespFollowUpMessage, Error> from_data(BufferView<const uint8_t> data);
 
     /**
      * @returns A string representation of the ptp_announce_message.

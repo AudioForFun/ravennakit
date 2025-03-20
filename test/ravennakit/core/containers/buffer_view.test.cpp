@@ -13,15 +13,15 @@
 #include <ravennakit/core/containers/buffer_view.hpp>
 #include <ravennakit/core/util.hpp>
 
-static_assert(std::is_trivially_copyable_v<rav::buffer_view<double>> == true);
-static_assert(std::is_trivially_copyable_v<rav::buffer_view<float>> == true);
-static_assert(std::is_trivially_copyable_v<rav::buffer_view<int>> == true);
-static_assert(std::is_trivially_copyable_v<rav::buffer_view<char>> == true);
+static_assert(std::is_trivially_copyable_v<rav::BufferView<double>> == true);
+static_assert(std::is_trivially_copyable_v<rav::BufferView<float>> == true);
+static_assert(std::is_trivially_copyable_v<rav::BufferView<int>> == true);
+static_assert(std::is_trivially_copyable_v<rav::BufferView<char>> == true);
 
 TEST_CASE("buffer_view | buffer_view()", "[buffer_view]") {
     SECTION("Test int buffer") {
         int data[] = {1, 2, 3, 4, 5};
-        const rav::buffer_view buffer_view(data, rav::num_elements_in_array(data));
+        const rav::BufferView buffer_view(data, rav::num_elements_in_array(data));
 
         REQUIRE(buffer_view.size() == 5);
         REQUIRE(buffer_view.size_bytes() == 5 * sizeof(int));
@@ -31,7 +31,7 @@ TEST_CASE("buffer_view | buffer_view()", "[buffer_view]") {
 
     SECTION("Test char buffer") {
         char data[] = {1, 2, 3, 4, 5};
-        const rav::buffer_view buffer_view(data, rav::num_elements_in_array(data));
+        const rav::BufferView buffer_view(data, rav::num_elements_in_array(data));
 
         REQUIRE(buffer_view.size() == 5);
         REQUIRE(buffer_view.size_bytes() == 5 * sizeof(char));
@@ -41,7 +41,7 @@ TEST_CASE("buffer_view | buffer_view()", "[buffer_view]") {
 
     SECTION("Test empty buffer") {
         int data = 5;
-        const rav::buffer_view buffer_view(&data, 0);
+        const rav::BufferView buffer_view(&data, 0);
 
         REQUIRE(buffer_view.size() == 0);  // NOLINT
         REQUIRE(buffer_view.size_bytes() == 0);
@@ -50,7 +50,7 @@ TEST_CASE("buffer_view | buffer_view()", "[buffer_view]") {
     }
 
     SECTION("Test invalid buffer") {
-        const rav::buffer_view<int> buffer_view(nullptr, 1);
+        const rav::BufferView<int> buffer_view(nullptr, 1);
 
         REQUIRE(buffer_view.size() == 0);  // NOLINT
         REQUIRE(buffer_view.size_bytes() == 0);
@@ -60,8 +60,8 @@ TEST_CASE("buffer_view | buffer_view()", "[buffer_view]") {
 
     SECTION("buffer_view can be copied") {
         int data[] = {1, 2, 3, 4, 5};
-        const rav::buffer_view buffer_view(data, rav::num_elements_in_array(data));
-        const rav::buffer_view buffer_view_copy(buffer_view);
+        const rav::BufferView buffer_view(data, rav::num_elements_in_array(data));
+        const rav::BufferView buffer_view_copy(buffer_view);
 
         REQUIRE(buffer_view.data() == buffer_view_copy.data());
         REQUIRE(buffer_view.size() == buffer_view_copy.size());
@@ -72,7 +72,7 @@ TEST_CASE("buffer_view | buffer_view()", "[buffer_view]") {
 
 TEST_CASE("buffer_view | reinterpret()", "[buffer_view]") {
     std::array<int16_t, 4> data{};
-    const rav::buffer_view buffer_view(data.data(), data.size());
+    const rav::BufferView buffer_view(data.data(), data.size());
 
     const auto reinterpreted = buffer_view.reinterpret<int32_t>();
     REQUIRE(reinterpreted.data() == reinterpret_cast<const int32_t*>(data.data()));

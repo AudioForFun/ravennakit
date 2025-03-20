@@ -46,7 +46,7 @@ struct ConnectionInfoField {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, std::string>;
+    using parse_result = Result<T, std::string>;
 
     /**
      * Parses a connection info field from a string.

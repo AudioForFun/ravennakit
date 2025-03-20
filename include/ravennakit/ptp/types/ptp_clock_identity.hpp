@@ -33,7 +33,7 @@ struct ClockIdentity {
      * Construct a PTP clock identity from a byte array.
      * @param mac_address The MAC address to construct the clock identity from.
      */
-    static ClockIdentity from_mac_address(const mac_address& mac_address) {
+    static ClockIdentity from_mac_address(const MacAddress& mac_address) {
         const auto mac_bytes = mac_address.bytes();
         return {mac_bytes[0], mac_bytes[1], mac_bytes[2], 0xff, 0xfe, mac_bytes[3], mac_bytes[4], mac_bytes[5]};
     }
@@ -42,7 +42,7 @@ struct ClockIdentity {
      * Construct a PTP clock identity from a byte array.
      * @param view The data view to construct the clock identity from. Must be at least 8 bytes long.
      */
-    static ClockIdentity from_data(buffer_view<const uint8_t> view) {
+    static ClockIdentity from_data(BufferView<const uint8_t> view) {
         RAV_ASSERT(view.size() >= 8, "Data is too short to construct a PTP clock identity");
         ClockIdentity clock_identity;
         std::memcpy(clock_identity.data.data(), view.data(), sizeof(clock_identity.data));
@@ -53,7 +53,7 @@ struct ClockIdentity {
      * Write the ptp_announce_message to a byte buffer.
      * @param buffer The buffer to write to.
      */
-    void write_to(byte_buffer& buffer) const {
+    void write_to(ByteBuffer& buffer) const {
         buffer.write(data.data(), data.size());
     }
 

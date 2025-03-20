@@ -14,7 +14,7 @@
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("vector_buffer", "[vector_buffer]") {
-    rav::vector_buffer<uint32_t> buffer;
+    rav::VectorBuffer<uint32_t> buffer;
 
     SECTION("write") {
         buffer.push_back(0x12345678);

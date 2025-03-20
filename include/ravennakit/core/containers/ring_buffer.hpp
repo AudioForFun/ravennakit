@@ -23,18 +23,18 @@ namespace rav {
  * @tparam T The type of the elements stored in the buffer.
  */
 template<class T>
-class ring_buffer {
+class RingBuffer {
   public:
-    explicit ring_buffer(size_t size) : data_(size) {
+    explicit RingBuffer(size_t size) : data_(size) {
         RAV_ASSERT(size > 0, "Ring buffer must have a size greater than zero");
     }
 
-    ring_buffer(std::initializer_list<T> initializer_list) : data_(initializer_list), count_(initializer_list.size()) {}
+    RingBuffer(std::initializer_list<T> initializer_list) : data_(initializer_list), count_(initializer_list.size()) {}
 
-    ring_buffer(const ring_buffer& other) = default;
-    ring_buffer& operator=(const ring_buffer& other) = default;
+    RingBuffer(const RingBuffer& other) = default;
+    RingBuffer& operator=(const RingBuffer& other) = default;
 
-    ring_buffer(ring_buffer&& other) noexcept {
+    RingBuffer(RingBuffer&& other) noexcept {
         if (this != &other) {
             std::swap(data_, other.data_);
             std::swap(read_index_, other.read_index_);
@@ -43,7 +43,7 @@ class ring_buffer {
         }
     }
 
-    ring_buffer& operator=(ring_buffer&& other) noexcept {
+    RingBuffer& operator=(RingBuffer&& other) noexcept {
         if (this != &other) {
             std::swap(data_, other.data_);
             std::swap(read_index_, other.read_index_);
@@ -172,11 +172,11 @@ class ring_buffer {
         return std::tie(data_, read_index_, write_index_, count_);
     }
 
-    friend bool operator==(const ring_buffer& lhs, const ring_buffer& rhs) {
+    friend bool operator==(const RingBuffer& lhs, const RingBuffer& rhs) {
         return lhs.tie() == rhs.tie();
     }
 
-    friend bool operator!=(const ring_buffer& lhs, const ring_buffer& rhs) {
+    friend bool operator!=(const RingBuffer& lhs, const RingBuffer& rhs) {
         return lhs.tie() != rhs.tie();
     }
 
@@ -184,7 +184,7 @@ class ring_buffer {
      * An iterator for the ring buffer.
      */
     template<typename BufferType, typename ValueType>
-    class iterator_base {
+    class IteratorBase {
       public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = ValueType;
@@ -192,7 +192,7 @@ class ring_buffer {
         using pointer = ValueType*;
         using reference = ValueType&;
 
-        iterator_base(BufferType& buffer, const size_t logical_index, const size_t remaining) :
+        IteratorBase(BufferType& buffer, const size_t logical_index, const size_t remaining) :
             buffer_(buffer), logical_index_(logical_index), remaining_(remaining) {}
 
         reference operator*() {
@@ -204,23 +204,23 @@ class ring_buffer {
             return &(**this);
         }
 
-        iterator_base& operator++() {
+        IteratorBase& operator++() {
             ++logical_index_;
             --remaining_;
             return *this;
         }
 
-        iterator_base operator++(int) {
-            iterator_base temp = *this;
+        IteratorBase operator++(int) {
+            IteratorBase temp = *this;
             ++(*this);
             return temp;
         }
 
-        bool operator==(const iterator_base& other) const {
+        bool operator==(const IteratorBase& other) const {
             return remaining_ == other.remaining_;
         }
 
-        bool operator!=(const iterator_base& other) const {
+        bool operator!=(const IteratorBase& other) const {
             return remaining_ != other.remaining_;
         }
 
@@ -230,31 +230,31 @@ class ring_buffer {
         size_t remaining_;
     };
 
-    using iterator = iterator_base<ring_buffer, T>;
-    using const_iterator = iterator_base<const ring_buffer, const T>;
+    using Iterator = IteratorBase<RingBuffer, T>;
+    using ConstIterator = IteratorBase<const RingBuffer, const T>;
 
-    iterator begin() {
-        return iterator(*this, 0, count_);
+    Iterator begin() {
+        return Iterator(*this, 0, count_);
     }
 
-    iterator end() {
-        return iterator(*this, count_, 0);
+    Iterator end() {
+        return Iterator(*this, count_, 0);
     }
 
-    const_iterator begin() const {
-        return const_iterator(*this, 0, count_);
+    ConstIterator begin() const {
+        return ConstIterator(*this, 0, count_);
     }
 
-    const_iterator end() const {
-        return const_iterator(*this, count_, 0);
+    ConstIterator end() const {
+        return ConstIterator(*this, count_, 0);
     }
 
-    const_iterator cbegin() const {
-        return const_iterator(*this, 0, count_);
+    ConstIterator cbegin() const {
+        return ConstIterator(*this, 0, count_);
     }
 
-    const_iterator cend() const {
-        return const_iterator(*this, count_, 0);
+    ConstIterator cend() const {
+        return ConstIterator(*this, count_, 0);
     }
 
   private:

@@ -102,7 +102,7 @@ class PacketTime {
     }
 
   private:
-    fraction<uint8_t> fraction_ {};
+    Fraction<uint8_t> fraction_ {};
 };
 
 }  // namespace rav

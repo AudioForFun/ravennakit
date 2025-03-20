@@ -29,7 +29,7 @@ class wav_file_player {
   public:
     explicit wav_file_player(
         asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
-        rav::ptp::Instance& ptp_instance, rav::rtp::Transmitter& rtp_transmitter, rav::id::generator& id_generator,
+        rav::ptp::Instance& ptp_instance, rav::rtp::Transmitter& rtp_transmitter, rav::Id::Generator& id_generator,
         const asio::ip::address_v4& interface_address, const rav::File& file_to_play, const std::string& session_name
     ) {
         if (!file_to_play.exists()) {
@@ -41,8 +41,8 @@ class wav_file_player {
             interface_address
         );
 
-        auto file_input_stream = std::make_unique<rav::file_input_stream>(file_to_play);
-        auto reader = std::make_unique<rav::wav_audio_format::reader>(std::move(file_input_stream));
+        auto file_input_stream = std::make_unique<rav::FileInputStream>(file_to_play);
+        auto reader = std::make_unique<rav::WavAudioFormat::Reader>(std::move(file_input_stream));
 
         const auto format = reader->get_audio_format();
         if (!format) {
@@ -65,7 +65,7 @@ class wav_file_player {
 
             auto result = reader_->read_audio_data(event.buffer.data(), event.buffer.size_bytes());
             if (!result) {
-                RAV_ERROR("Failed to read audio data: {}", rav::input_stream::to_string(result.error()));
+                RAV_ERROR("Failed to read audio data: {}", rav::InputStream::to_string(result.error()));
                 return;
             }
             auto read = result.value();
@@ -84,7 +84,7 @@ class wav_file_player {
     }
 
   private:
-    std::unique_ptr<rav::wav_audio_format::reader> reader_;
+    std::unique_ptr<rav::WavAudioFormat::Reader> reader_;
     std::unique_ptr<rav::RavennaTransmitter> transmitter_;
 };
 
@@ -137,7 +137,7 @@ int main(int const argc, char* argv[]) {
     }
 
     // ID generator
-    rav::id::generator id_generator;
+    rav::Id::Generator id_generator;
 
     for (auto& file_path : file_paths) {
         auto file = rav::File(file_path);

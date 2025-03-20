@@ -13,18 +13,18 @@
 #include "ravennakit/sdp/detail/sdp_media_clock_source.hpp"
 
 rav::sdp::MediaClockSource::MediaClockSource(
-    const ClockMode mode, const std::optional<int64_t> offset, const std::optional<fraction<int32_t>> rate
+    const ClockMode mode, const std::optional<int64_t> offset, const std::optional<Fraction<int32_t>> rate
 ) :
     mode_(mode), offset_(offset), rate_(rate) {}
 
 rav::sdp::MediaClockSource::ParseResult<rav::sdp::MediaClockSource>
 rav::sdp::MediaClockSource::parse_new(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     MediaClockSource clock;
 
     if (const auto mode_part = parser.split(' ')) {
-        string_parser mode_parser(*mode_part);
+        StringParser mode_parser(*mode_part);
 
         if (const auto mode = mode_parser.split('=')) {
             if (mode == "direct") {
@@ -63,7 +63,7 @@ rav::sdp::MediaClockSource::parse_new(const std::string_view line) {
             if (!denominator) {
                 return ParseResult<MediaClockSource>::err("media_clock: invalid rate denominator");
             }
-            clock.rate_ = fraction<int32_t> {*numerator, *denominator};
+            clock.rate_ = Fraction<int32_t> {*numerator, *denominator};
         } else {
             return ParseResult<MediaClockSource>::err("media_clock: unexpected token");
         }
@@ -82,7 +82,7 @@ std::optional<int64_t> rav::sdp::MediaClockSource::offset() const {
     return offset_;
 }
 
-const std::optional<rav::fraction<int>>& rav::sdp::MediaClockSource::rate() const {
+const std::optional<rav::Fraction<int>>& rav::sdp::MediaClockSource::rate() const {
     return rate_;
 }
 

@@ -13,7 +13,7 @@
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("byte_buffer") {
-    rav::byte_buffer buffer;
+    rav::ByteBuffer buffer;
     buffer.write_be<uint8_t>(0x12);
     buffer.write_be<uint16_t>(0x3456);
     buffer.write_be<uint32_t>(0x789ABCDE);

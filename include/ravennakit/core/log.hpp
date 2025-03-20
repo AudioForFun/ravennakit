@@ -93,9 +93,9 @@
 #endif
 
 #define CATCH_LOG_UNCAUGHT_EXCEPTIONS                                                                          \
-    catch (const rav::exception& e) {                                                                          \
+    catch (const rav::Exception& e) {                                                                          \
         RAV_CRITICAL(                                                                                          \
-            "rav::exception caught: {} - please handle your exceptions before reaching this point.", e.what()  \
+            "rav::Exception caught: {} - please handle your exceptions before reaching this point.", e.what()  \
         );                                                                                                     \
     }                                                                                                          \
     catch (const std::exception& e) {                                                                          \

@@ -40,8 +40,8 @@ class Instance {
         const Port& port;
     };
 
-    event_emitter<ParentChangedEvent> on_parent_changed;
-    event_emitter<PortChangedStateEventEvent> on_port_changed_state;
+    EventEmitter<ParentChangedEvent> on_parent_changed;
+    EventEmitter<PortChangedStateEventEvent> on_port_changed_state;
 
     /**
      * Constructs a PTP instance.

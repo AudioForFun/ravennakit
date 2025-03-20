@@ -10,7 +10,7 @@
 
 #include "ravennakit/rtsp/detail/rtsp_parser.hpp"
 
-rav::rtsp::Parser::result rav::rtsp::Parser::parse(string_buffer& input) {
+rav::rtsp::Parser::result rav::rtsp::Parser::parse(StringBuffer& input) {
     while (!input.exhausted()) {
         if (state_ == state::start) {
             const auto start_line = input.read_until_newline();
@@ -51,7 +51,7 @@ rav::rtsp::Parser::result rav::rtsp::Parser::parse(string_buffer& input) {
                 }
 
                 Headers::Header h;
-                string_parser header_parser(*header_line);
+                StringParser header_parser(*header_line);
 
                 // Header name
                 if (auto name = header_parser.split(':')) {
@@ -118,7 +118,7 @@ void rav::rtsp::Parser::reset() noexcept {
 }
 
 rav::rtsp::Parser::result rav::rtsp::Parser::handle_response() {
-    string_parser p(start_line_);
+    StringParser p(start_line_);
     p.skip("RTSP/");
     const auto version_major = p.read_int<int32_t>();
     if (!version_major) {
@@ -161,7 +161,7 @@ rav::rtsp::Parser::result rav::rtsp::Parser::handle_response() {
 }
 
 rav::rtsp::Parser::result rav::rtsp::Parser::handle_request() {
-    string_parser p(start_line_);
+    StringParser p(start_line_);
     const auto method = p.split(' ');
     if (!method) {
         return result::bad_method;

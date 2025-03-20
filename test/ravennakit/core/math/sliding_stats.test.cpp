@@ -15,7 +15,7 @@
 
 TEST_CASE("sliding_stats") {
     SECTION("average") {
-        rav::sliding_stats avg(5);
+        rav::SlidingStats avg(5);
         REQUIRE(avg.count() == 0);
         REQUIRE(rav::is_within(avg.average(), 0.0, 0.0));
         avg.add(1);
@@ -37,7 +37,7 @@ TEST_CASE("sliding_stats") {
     }
 
     SECTION("median") {
-        rav::sliding_stats stats(5);
+        rav::SlidingStats stats(5);
         REQUIRE(stats.count() == 0);
         REQUIRE(rav::is_within(stats.median(), 0.0, 0.0));
         stats.add(1);

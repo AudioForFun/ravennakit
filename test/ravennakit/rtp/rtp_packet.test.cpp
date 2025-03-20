@@ -24,12 +24,12 @@ TEST_CASE("rtp_packet") {
 
         std::vector<uint8_t> payload = {0x01, 0x02, 0x03, 0x04, 0x05};
 
-        rav::byte_buffer buffer;
+        rav::ByteBuffer buffer;
         packet.encode(payload.data(), payload.size(), buffer);
         REQUIRE(buffer.size() == 17);
 
         SECTION("Test first encoding") {
-            rav::input_stream_view stream(buffer);
+            rav::InputStreamView stream(buffer);
             REQUIRE(stream.size().value() == 17);
             REQUIRE(stream.read_be<uint8_t>() == 0x80);         // v=2, p=0, x=0, cc=0
             REQUIRE(stream.read_be<uint8_t>() == 0x7f);         // m=0, pt=0xff
@@ -53,7 +53,7 @@ TEST_CASE("rtp_packet") {
         REQUIRE(buffer.size() == 16);
 
         SECTION("Test second encoding") {
-            rav::input_stream_view stream(buffer);
+            rav::InputStreamView stream(buffer);
             REQUIRE(stream.size().value() == 16);
             REQUIRE(stream.read_be<uint8_t>() == 0x80);         // v=2, p=0, x=0, cc=0
             REQUIRE(stream.read_be<uint8_t>() == 0x7f);         // Payload type remains the same

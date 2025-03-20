@@ -15,32 +15,32 @@
 namespace {
 
 template<class T, class U>
-tl::expected<T, rav::safe_int_error> test_add(T a, U b) {
-    rav::safe_int<T> safe_a {a};
+tl::expected<T, rav::SafeIntError> test_add(T a, U b) {
+    rav::SafeInt<T> safe_a {a};
     auto r = safe_a + b;
     REQUIRE(safe_a.value() == a);  // Test that the original is unchanged
     return r.expected();
 }
 
 template<class T, class U>
-tl::expected<T, rav::safe_int_error> test_sub(T a, U b) {
-    rav::safe_int<T> safe_a {a};
+tl::expected<T, rav::SafeIntError> test_sub(T a, U b) {
+    rav::SafeInt<T> safe_a {a};
     auto r = safe_a - b;
     REQUIRE(safe_a.value() == a);  // Test that the original is unchanged
     return r.expected();
 }
 
 template<class T, class U>
-tl::expected<T, rav::safe_int_error> test_mul(T a, U b) {
-    rav::safe_int<T> safe_a {a};
+tl::expected<T, rav::SafeIntError> test_mul(T a, U b) {
+    rav::SafeInt<T> safe_a {a};
     auto r = safe_a * b;
     REQUIRE(safe_a.value() == a);  // Test that the original is unchanged
     return r.expected();
 }
 
 template<class T, class U>
-tl::expected<T, rav::safe_int_error> test_div(T a, U b) {
-    rav::safe_int<T> safe_a {a};
+tl::expected<T, rav::SafeIntError> test_div(T a, U b) {
+    rav::SafeInt<T> safe_a {a};
     auto r = safe_a / b;
     REQUIRE(safe_a.value() == a);  // Test that the original is unchanged
     return r.expected();
@@ -58,27 +58,27 @@ TEST_CASE("safe_int") {
         }
 
         SECTION("Positive overflow detection") {
-            REQUIRE(test_add<int8_t, int8_t>(100, 30) == tl::unexpected(rav::safe_int_error::overflow));
-            REQUIRE(test_add<uint8_t, uint8_t>(200, 100) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_add<int8_t, int8_t>(100, 30) == tl::unexpected(rav::SafeIntError::overflow));
+            REQUIRE(test_add<uint8_t, uint8_t>(200, 100) == tl::unexpected(rav::SafeIntError::overflow));
             REQUIRE(
                 test_add<int16_t, int16_t>(std::numeric_limits<int16_t>::max(), 1)
-                == tl::unexpected(rav::safe_int_error::overflow)
+                == tl::unexpected(rav::SafeIntError::overflow)
             );
             REQUIRE(
                 test_add<int32_t, int32_t>(std::numeric_limits<int32_t>::max(), 1)
-                == tl::unexpected(rav::safe_int_error::overflow)
+                == tl::unexpected(rav::SafeIntError::overflow)
             );
         }
 
         SECTION("Negative underflow detection") {
-            REQUIRE(test_add<int8_t, int8_t>(-100, -30) == tl::unexpected(rav::safe_int_error::underflow));
+            REQUIRE(test_add<int8_t, int8_t>(-100, -30) == tl::unexpected(rav::SafeIntError::underflow));
             REQUIRE(
                 test_add<int16_t, int16_t>(std::numeric_limits<int16_t>::min(), -1)
-                == tl::unexpected(rav::safe_int_error::underflow)
+                == tl::unexpected(rav::SafeIntError::underflow)
             );
             REQUIRE(
                 test_add<int32_t, int32_t>(std::numeric_limits<int32_t>::min(), -1)
-                == tl::unexpected(rav::safe_int_error::underflow)
+                == tl::unexpected(rav::SafeIntError::underflow)
             );
         }
 
@@ -89,16 +89,16 @@ TEST_CASE("safe_int") {
             REQUIRE(test_add<int8_t, int8_t>(127, 0) == 127);
 
             // Overflow/underflow at extremes
-            REQUIRE(test_add<int8_t, int8_t>(-1, -128) == tl::unexpected(rav::safe_int_error::underflow));
-            REQUIRE(test_add<int8_t, int8_t>(127, 1) == tl::unexpected(rav::safe_int_error::overflow));
-            REQUIRE(test_add<int8_t, int8_t>(-128, -1) == tl::unexpected(rav::safe_int_error::underflow));
-            REQUIRE(test_add<uint8_t, uint8_t>(255, 1) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_add<int8_t, int8_t>(-1, -128) == tl::unexpected(rav::SafeIntError::underflow));
+            REQUIRE(test_add<int8_t, int8_t>(127, 1) == tl::unexpected(rav::SafeIntError::overflow));
+            REQUIRE(test_add<int8_t, int8_t>(-128, -1) == tl::unexpected(rav::SafeIntError::underflow));
+            REQUIRE(test_add<uint8_t, uint8_t>(255, 1) == tl::unexpected(rav::SafeIntError::overflow));
         }
 
         SECTION("Unsigned edge cases") {
             REQUIRE(test_add<uint8_t, uint8_t>(0, 0) == 0);
             REQUIRE(test_add<uint8_t, uint8_t>(255, 0) == 255);
-            REQUIRE(test_add<uint8_t, uint8_t>(255, 1) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_add<uint8_t, uint8_t>(255, 1) == tl::unexpected(rav::SafeIntError::overflow));
             REQUIRE(test_add<uint8_t, uint8_t>(0, 1) == 1);
         }
     }
@@ -112,26 +112,26 @@ TEST_CASE("safe_int") {
         }
 
         SECTION("Negative underflow detection") {
-            REQUIRE(test_sub<int8_t, int8_t>(-128, 1) == tl::unexpected(rav::safe_int_error::underflow));
+            REQUIRE(test_sub<int8_t, int8_t>(-128, 1) == tl::unexpected(rav::SafeIntError::underflow));
             REQUIRE(
                 test_sub<int16_t, int16_t>(std::numeric_limits<int16_t>::min(), 1)
-                == tl::unexpected(rav::safe_int_error::underflow)
+                == tl::unexpected(rav::SafeIntError::underflow)
             );
             REQUIRE(
                 test_sub<int32_t, int32_t>(std::numeric_limits<int32_t>::min(), 1)
-                == tl::unexpected(rav::safe_int_error::underflow)
+                == tl::unexpected(rav::SafeIntError::underflow)
             );
         }
 
         SECTION("Positive overflow detection") {
-            REQUIRE(test_sub<int8_t, int8_t>(127, -1) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_sub<int8_t, int8_t>(127, -1) == tl::unexpected(rav::SafeIntError::overflow));
             REQUIRE(
                 test_sub<int16_t, int16_t>(std::numeric_limits<int16_t>::max(), -1)
-                == tl::unexpected(rav::safe_int_error::overflow)
+                == tl::unexpected(rav::SafeIntError::overflow)
             );
             REQUIRE(
                 test_sub<int32_t, int32_t>(std::numeric_limits<int32_t>::max(), -1)
-                == tl::unexpected(rav::safe_int_error::overflow)
+                == tl::unexpected(rav::SafeIntError::overflow)
             );
         }
 
@@ -145,7 +145,7 @@ TEST_CASE("safe_int") {
         SECTION("Unsigned edge cases") {
             REQUIRE(test_sub<uint8_t, uint8_t>(0, 0) == 0);
             REQUIRE(test_sub<uint8_t, uint8_t>(255, 255) == 0);
-            REQUIRE(test_sub<uint8_t, uint8_t>(0, 1) == tl::unexpected(rav::safe_int_error::underflow));
+            REQUIRE(test_sub<uint8_t, uint8_t>(0, 1) == tl::unexpected(rav::SafeIntError::underflow));
         }
     }
 
@@ -158,21 +158,21 @@ TEST_CASE("safe_int") {
         }
 
         SECTION("Positive overflow detection") {
-            REQUIRE(test_mul<int8_t, int8_t>(100, 2) == tl::unexpected(rav::safe_int_error::overflow));
-            REQUIRE(test_mul<uint8_t, uint8_t>(20, 20) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_mul<int8_t, int8_t>(100, 2) == tl::unexpected(rav::SafeIntError::overflow));
+            REQUIRE(test_mul<uint8_t, uint8_t>(20, 20) == tl::unexpected(rav::SafeIntError::overflow));
             REQUIRE(
                 test_mul<int16_t>(std::numeric_limits<int16_t>::max() / 2 + 1, 2)
-                == tl::unexpected(rav::safe_int_error::overflow)
+                == tl::unexpected(rav::SafeIntError::overflow)
             );
         }
 
         SECTION("Negative underflow detection") {
-            REQUIRE(test_mul<int8_t, int8_t>(-128, 2) == tl::unexpected(rav::safe_int_error::underflow));
+            REQUIRE(test_mul<int8_t, int8_t>(-128, 2) == tl::unexpected(rav::SafeIntError::underflow));
             REQUIRE(
-                test_mul<int16_t>(std::numeric_limits<int16_t>::min(), 2) == tl::unexpected(rav::safe_int_error::underflow)
+                test_mul<int16_t>(std::numeric_limits<int16_t>::min(), 2) == tl::unexpected(rav::SafeIntError::underflow)
             );
             REQUIRE(
-                test_mul<int32_t>(std::numeric_limits<int32_t>::min(), 2) == tl::unexpected(rav::safe_int_error::underflow)
+                test_mul<int32_t>(std::numeric_limits<int32_t>::min(), 2) == tl::unexpected(rav::SafeIntError::underflow)
             );
         }
 
@@ -180,14 +180,14 @@ TEST_CASE("safe_int") {
             REQUIRE(test_mul<int8_t, int8_t>(0, 0) == 0);
             REQUIRE(test_mul<int8_t, int8_t>(127, 0) == 0);
             REQUIRE(test_mul<int8_t, int8_t>(-128, 0) == 0);
-            REQUIRE(test_mul<int8_t, int8_t>(-128, -1) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_mul<int8_t, int8_t>(-128, -1) == tl::unexpected(rav::SafeIntError::overflow));
             REQUIRE(test_mul<int8_t, int8_t>(127, 1) == 127);
         }
 
         SECTION("Unsigned edge cases") {
             REQUIRE(test_mul<uint8_t, uint8_t>(255, 0) == 0);
             REQUIRE(test_mul<uint8_t, uint8_t>(255, 1) == 255);
-            REQUIRE(test_mul<uint8_t, uint8_t>(255, 2) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_mul<uint8_t, uint8_t>(255, 2) == tl::unexpected(rav::SafeIntError::overflow));
         }
     }
 
@@ -200,22 +200,22 @@ TEST_CASE("safe_int") {
         }
 
         SECTION("Division by zero detection") {
-            REQUIRE(test_div<int8_t, int8_t>(10, 0) == tl::unexpected(rav::safe_int_error::div_by_zero));
-            REQUIRE(test_div<int16_t, int16_t>(-100, 0) == tl::unexpected(rav::safe_int_error::div_by_zero));
-            REQUIRE(test_div<uint8_t, uint8_t>(0, 0) == tl::unexpected(rav::safe_int_error::div_by_zero));
+            REQUIRE(test_div<int8_t, int8_t>(10, 0) == tl::unexpected(rav::SafeIntError::div_by_zero));
+            REQUIRE(test_div<int16_t, int16_t>(-100, 0) == tl::unexpected(rav::SafeIntError::div_by_zero));
+            REQUIRE(test_div<uint8_t, uint8_t>(0, 0) == tl::unexpected(rav::SafeIntError::div_by_zero));
         }
 
         SECTION("Overflow detection for signed types") {
-            REQUIRE(test_div<int8_t, int8_t>(std::numeric_limits<int8_t>::min(), -1) == tl::unexpected(rav::safe_int_error::overflow));
-            REQUIRE(test_div<int16_t, int16_t>(std::numeric_limits<int16_t>::min(), -1) == tl::unexpected(rav::safe_int_error::overflow));
-            REQUIRE(test_div<int32_t, int32_t>(std::numeric_limits<int32_t>::min(), -1) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_div<int8_t, int8_t>(std::numeric_limits<int8_t>::min(), -1) == tl::unexpected(rav::SafeIntError::overflow));
+            REQUIRE(test_div<int16_t, int16_t>(std::numeric_limits<int16_t>::min(), -1) == tl::unexpected(rav::SafeIntError::overflow));
+            REQUIRE(test_div<int32_t, int32_t>(std::numeric_limits<int32_t>::min(), -1) == tl::unexpected(rav::SafeIntError::overflow));
         }
 
         SECTION("Edge cases") {
             REQUIRE(test_div<int8_t, int8_t>(0, 1) == 0);
             REQUIRE(test_div<int8_t, int8_t>(0, -1) == 0);
             REQUIRE(test_div<int8_t, int8_t>(127, 1) == 127);
-            REQUIRE(test_div<int8_t, int8_t>(-128, -1) == tl::unexpected(rav::safe_int_error::overflow));
+            REQUIRE(test_div<int8_t, int8_t>(-128, -1) == tl::unexpected(rav::SafeIntError::overflow));
             REQUIRE(test_div<int8_t, int8_t>(-127, -1) == 127);
         }
 
@@ -227,12 +227,12 @@ TEST_CASE("safe_int") {
     }
 
     SECTION("Chaining") {
-        auto r = rav::safe_int<int8_t>(10) + 20 - 5 * 4 / 2;
+        auto r = rav::SafeInt<int8_t>(10) + 20 - 5 * 4 / 2;
         REQUIRE(r.value() == 20);
     }
 
     SECTION("Chaining with error") {
-        auto r = rav::safe_int<int8_t>(127) + 1 - 5 * 4 / 2;
-        REQUIRE(r.error() == rav::safe_int_error::overflow);
+        auto r = rav::SafeInt<int8_t>(127) + 1 - 5 * 4 / 2;
+        REQUIRE(r.error() == rav::SafeIntError::overflow);
     }
 }

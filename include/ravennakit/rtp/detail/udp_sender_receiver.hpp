@@ -78,7 +78,7 @@ class UdpSenderReceiver {
      * @param interface_address The interface address to join the multicast group on.
      * @returns A subscription object which will leave the multicast group when it goes out of scope.
      */
-    [[nodiscard]] subscription
+    [[nodiscard]] Subscription
     join_multicast_group(const asio::ip::address& multicast_address, const asio::ip::address& interface_address) const;
 
     /**

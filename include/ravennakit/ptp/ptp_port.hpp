@@ -94,26 +94,26 @@ class Port {
     asio::steady_timer announce_receipt_timeout_timer_;
     rtp::UdpSenderReceiver event_socket_;
     rtp::UdpSenderReceiver general_socket_;
-    std::vector<subscription> subscriptions_;
+    std::vector<Subscription> subscriptions_;
     ForeignMasterList foreign_master_list_;
     std::optional<AnnounceMessage> erbest_;
-    sliding_stats mean_delay_stats_ {31};
+    SlidingStats mean_delay_stats_ {31};
     double mean_delay_ = 0.0;
     BasicFilter mean_delay_filter_ {0.1};
     int32_t syncs_until_delay_req_ = 10;  // Number of syncs until the next delay_req message.
-    byte_buffer send_buffer_ {128};
+    ByteBuffer send_buffer_ {128};
 
-    ring_buffer<SyncMessage> sync_messages_ {8};
-    ring_buffer<RequestResponseDelaySequence> request_response_delay_sequences_ {8};
+    RingBuffer<SyncMessage> sync_messages_ {8};
+    RingBuffer<RequestResponseDelaySequence> request_response_delay_sequences_ {8};
 
     void handle_recv_event(const rtp::UdpSenderReceiver::recv_event& event);
-    void handle_announce_message(const AnnounceMessage& announce_message, buffer_view<const uint8_t> tlvs);
-    void handle_sync_message(SyncMessage sync_message, buffer_view<const uint8_t> tlvs);
-    void handle_follow_up_message(const FollowUpMessage& follow_up_message, buffer_view<const uint8_t> tlvs);
-    void handle_delay_resp_message(const DelayRespMessage& delay_resp_message, buffer_view<const uint8_t> tlvs);
-    void handle_pdelay_resp_message(const PdelayRespMessage& delay_req_message, buffer_view<const uint8_t> tlvs);
+    void handle_announce_message(const AnnounceMessage& announce_message, BufferView<const uint8_t> tlvs);
+    void handle_sync_message(SyncMessage sync_message, BufferView<const uint8_t> tlvs);
+    void handle_follow_up_message(const FollowUpMessage& follow_up_message, BufferView<const uint8_t> tlvs);
+    void handle_delay_resp_message(const DelayRespMessage& delay_resp_message, BufferView<const uint8_t> tlvs);
+    void handle_pdelay_resp_message(const PdelayRespMessage& delay_req_message, BufferView<const uint8_t> tlvs);
     void handle_pdelay_resp_follow_up_message(
-        const PdelayRespFollowUpMessage& delay_req_message, buffer_view<const uint8_t> tlvs
+        const PdelayRespFollowUpMessage& delay_req_message, BufferView<const uint8_t> tlvs
     );
 
     /**

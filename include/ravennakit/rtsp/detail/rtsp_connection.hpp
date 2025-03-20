@@ -147,8 +147,8 @@ class Connection final: public std::enable_shared_from_this<Connection> {
 
   private:
     asio::ip::tcp::socket socket_;
-    string_buffer input_buffer_;
-    string_buffer output_buffer_;
+    StringBuffer input_buffer_;
+    StringBuffer output_buffer_;
     Parser parser_;
     Subscriber* subscriber_ {};
 

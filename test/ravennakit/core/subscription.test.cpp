@@ -16,7 +16,7 @@ TEST_CASE("subscription") {
     SECTION("Basic functionality") {
         int count = 0;
         {
-            rav::subscription subscription([&count] {
+            rav::Subscription subscription([&count] {
                 count++;
             });
             REQUIRE(count == 0);
@@ -27,10 +27,10 @@ TEST_CASE("subscription") {
     SECTION("Move construct") {
         int count = 0;
         {
-            rav::subscription subscription([&count] {
+            rav::Subscription subscription([&count] {
                 count++;
             });
-            rav::subscription subscription2(std::move(subscription));
+            rav::Subscription subscription2(std::move(subscription));
             REQUIRE(count == 0);
         }
         REQUIRE(count == 1);
@@ -40,11 +40,11 @@ TEST_CASE("subscription") {
         int count_a = 0;
         int count_b = 0;
         {
-            rav::subscription subscription_a([&count_a] {
+            rav::Subscription subscription_a([&count_a] {
                 count_a++;
             });
 
-            rav::subscription subscription_b([&count_b] {
+            rav::Subscription subscription_b([&count_b] {
                 count_b++;
             });
 
@@ -63,7 +63,7 @@ TEST_CASE("subscription") {
     SECTION("Assign new callback") {
         int count = 0;
         {
-            rav::subscription subscription([&count] {
+            rav::Subscription subscription([&count] {
                 count++;
             });
             REQUIRE(count == 0);
@@ -80,7 +80,7 @@ TEST_CASE("subscription") {
     SECTION("Release subscription") {
         int count = 0;
         {
-            rav::subscription subscription([&count] {
+            rav::Subscription subscription([&count] {
                 count++;
             });
             subscription.release();
@@ -92,7 +92,7 @@ TEST_CASE("subscription") {
     SECTION("Reset subscription") {
         int count = 0;
         {
-            rav::subscription subscription([&count] {
+            rav::Subscription subscription([&count] {
                 count++;
             });
             subscription.reset();
@@ -102,9 +102,9 @@ TEST_CASE("subscription") {
     }
 
     SECTION("Operator bool") {
-        rav::subscription subscription([] {});
+        rav::Subscription subscription([] {});
         REQUIRE(subscription);
-        rav::subscription empty_subscription;
+        rav::Subscription empty_subscription;
         REQUIRE_FALSE(empty_subscription);
     }
 }

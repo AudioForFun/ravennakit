@@ -19,9 +19,9 @@ namespace rav {
  * Simple timeout class which blocks the current thread until a condition becomes true, or the timeout expires.
  */
 template<class Rep, class Period>
-class timeout {
+class Timeout {
   public:
-    explicit timeout(const std::chrono::duration<Rep, Period>& duration) : duration_(duration) {}
+    explicit Timeout(const std::chrono::duration<Rep, Period>& duration) : duration_(duration) {}
 
     /**
      * @returns True if the timeout has expired.

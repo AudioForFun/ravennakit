@@ -29,7 +29,7 @@ void test_fifo_buffer_read_write() {
         src[i] = static_cast<T>(i + 1);  // NOLINT
     }
 
-    rav::fifo_buffer<T, F> buffer(S);
+    rav::FifoBuffer<T, F> buffer(S);
 
     REQUIRE(buffer.write(src.data(), src.size()));
     REQUIRE_FALSE(buffer.write(&src[0], 1));
@@ -108,7 +108,7 @@ TEST_CASE("fifo_buffer") {
     SECTION("Test single producer single consumer") {
         int64_t expected_total = 0;
 
-        rav::fifo_buffer<int64_t, rav::Fifo::Spsc> buffer(10);
+        rav::FifoBuffer<int64_t, rav::Fifo::Spsc> buffer(10);
 
         std::thread writer([&] {
             for (int i = 0; i < num_writes_per_thread; i++) {
@@ -146,7 +146,7 @@ TEST_CASE("fifo_buffer") {
     }
 
     SECTION("Test single producer single consumer with string") {
-        rav::fifo_buffer<std::string, rav::Fifo::Spsc> buffer(10);
+        rav::FifoBuffer<std::string, rav::Fifo::Spsc> buffer(10);
 
         std::thread writer([&] {
             for (int i = 0; i < num_writes_per_thread; i++) {
@@ -178,7 +178,7 @@ TEST_CASE("fifo_buffer") {
     SECTION("Test multi producer single consumer") {
         std::atomic<int64_t> expected_total = 0;
 
-        rav::fifo_buffer<int64_t, rav::Fifo::Mpsc> buffer(10);
+        rav::FifoBuffer<int64_t, rav::Fifo::Mpsc> buffer(10);
 
         std::vector<std::thread> writers;
         writers.reserve(num_writer_threads);
@@ -225,7 +225,7 @@ TEST_CASE("fifo_buffer") {
     SECTION("Test single producer multi consumer") {
         int64_t expected_total = 0;
 
-        rav::fifo_buffer<int64_t, rav::Fifo::Spmc> buffer(10);
+        rav::FifoBuffer<int64_t, rav::Fifo::Spmc> buffer(10);
 
         std::thread writer([&] {
             for (int i = 0; i < num_writes_per_thread; i++) {
@@ -272,7 +272,7 @@ TEST_CASE("fifo_buffer") {
     SECTION("Test multi producer multi consumer") {
         std::atomic<int64_t> expected_total = 0;
 
-        rav::fifo_buffer<int64_t, rav::Fifo::Mpmc> buffer(10);
+        rav::FifoBuffer<int64_t, rav::Fifo::Mpmc> buffer(10);
 
         std::vector<std::thread> writers;
         writers.reserve(num_writer_threads);
@@ -324,26 +324,26 @@ TEST_CASE("fifo_buffer") {
     }
 }
 
-static_assert(!std::is_move_constructible_v<rav::fifo_buffer<int, rav::Fifo::Single>>);
-static_assert(!std::is_move_constructible_v<rav::fifo_buffer<int, rav::Fifo::Spsc>>);
-static_assert(!std::is_move_constructible_v<rav::fifo_buffer<int, rav::Fifo::Mpsc>>);
-static_assert(!std::is_move_constructible_v<rav::fifo_buffer<int, rav::Fifo::Spmc>>);
-static_assert(!std::is_move_constructible_v<rav::fifo_buffer<int, rav::Fifo::Mpmc>>);
+static_assert(!std::is_move_constructible_v<rav::FifoBuffer<int, rav::Fifo::Single>>);
+static_assert(!std::is_move_constructible_v<rav::FifoBuffer<int, rav::Fifo::Spsc>>);
+static_assert(!std::is_move_constructible_v<rav::FifoBuffer<int, rav::Fifo::Mpsc>>);
+static_assert(!std::is_move_constructible_v<rav::FifoBuffer<int, rav::Fifo::Spmc>>);
+static_assert(!std::is_move_constructible_v<rav::FifoBuffer<int, rav::Fifo::Mpmc>>);
 
-static_assert(!std::is_move_assignable_v<rav::fifo_buffer<int, rav::Fifo::Single>>);
-static_assert(!std::is_move_assignable_v<rav::fifo_buffer<int, rav::Fifo::Spsc>>);
-static_assert(!std::is_move_assignable_v<rav::fifo_buffer<int, rav::Fifo::Mpsc>>);
-static_assert(!std::is_move_assignable_v<rav::fifo_buffer<int, rav::Fifo::Spmc>>);
-static_assert(!std::is_move_assignable_v<rav::fifo_buffer<int, rav::Fifo::Mpmc>>);
+static_assert(!std::is_move_assignable_v<rav::FifoBuffer<int, rav::Fifo::Single>>);
+static_assert(!std::is_move_assignable_v<rav::FifoBuffer<int, rav::Fifo::Spsc>>);
+static_assert(!std::is_move_assignable_v<rav::FifoBuffer<int, rav::Fifo::Mpsc>>);
+static_assert(!std::is_move_assignable_v<rav::FifoBuffer<int, rav::Fifo::Spmc>>);
+static_assert(!std::is_move_assignable_v<rav::FifoBuffer<int, rav::Fifo::Mpmc>>);
 
-static_assert(!std::is_copy_constructible_v<rav::fifo_buffer<int, rav::Fifo::Single>>);
-static_assert(!std::is_copy_constructible_v<rav::fifo_buffer<int, rav::Fifo::Spsc>>);
-static_assert(!std::is_copy_constructible_v<rav::fifo_buffer<int, rav::Fifo::Mpsc>>);
-static_assert(!std::is_copy_constructible_v<rav::fifo_buffer<int, rav::Fifo::Spmc>>);
-static_assert(!std::is_copy_constructible_v<rav::fifo_buffer<int, rav::Fifo::Mpmc>>);
+static_assert(!std::is_copy_constructible_v<rav::FifoBuffer<int, rav::Fifo::Single>>);
+static_assert(!std::is_copy_constructible_v<rav::FifoBuffer<int, rav::Fifo::Spsc>>);
+static_assert(!std::is_copy_constructible_v<rav::FifoBuffer<int, rav::Fifo::Mpsc>>);
+static_assert(!std::is_copy_constructible_v<rav::FifoBuffer<int, rav::Fifo::Spmc>>);
+static_assert(!std::is_copy_constructible_v<rav::FifoBuffer<int, rav::Fifo::Mpmc>>);
 
-static_assert(!std::is_copy_assignable_v<rav::fifo_buffer<int, rav::Fifo::Single>>);
-static_assert(!std::is_copy_assignable_v<rav::fifo_buffer<int, rav::Fifo::Spsc>>);
-static_assert(!std::is_copy_assignable_v<rav::fifo_buffer<int, rav::Fifo::Mpsc>>);
-static_assert(!std::is_copy_assignable_v<rav::fifo_buffer<int, rav::Fifo::Spmc>>);
-static_assert(!std::is_copy_assignable_v<rav::fifo_buffer<int, rav::Fifo::Mpmc>>);
+static_assert(!std::is_copy_assignable_v<rav::FifoBuffer<int, rav::Fifo::Single>>);
+static_assert(!std::is_copy_assignable_v<rav::FifoBuffer<int, rav::Fifo::Spsc>>);
+static_assert(!std::is_copy_assignable_v<rav::FifoBuffer<int, rav::Fifo::Mpsc>>);
+static_assert(!std::is_copy_assignable_v<rav::FifoBuffer<int, rav::Fifo::Spmc>>);
+static_assert(!std::is_copy_assignable_v<rav::FifoBuffer<int, rav::Fifo::Mpmc>>);

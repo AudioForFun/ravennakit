@@ -28,19 +28,19 @@ struct Format {
 
     /// A type alias for a parse result.
     template<class T>
-    using parse_result = result<T, std::string>;
+    using parse_result = Result<T, std::string>;
 
     [[nodiscard]] std::string to_string() const;
 
     /**
      * @return The format as audio_format, or nullopt if the format is not supported or cannot be converted.
      */
-    [[nodiscard]] std::optional<audio_format> to_audio_format() const;
+    [[nodiscard]] std::optional<AudioFormat> to_audio_format() const;
 
     /**
      * @return The format as audio_format, or nullopt if the format is not supported or cannot be converted.
      */
-    [[nodiscard]] static std::optional<Format> from_audio_format(const audio_format& input_format) ;
+    [[nodiscard]] static std::optional<Format> from_audio_format(const AudioFormat& input_format) ;
 
     /**
      * Parses a format from a string.

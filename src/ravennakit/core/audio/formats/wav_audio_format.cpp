@@ -18,8 +18,8 @@
 
 namespace {}
 
-void rav::wav_audio_format::fmt_chunk::read(input_stream& istream, const uint32_t chunk_size) {
-    format = istream.read_le<format_code>().value();
+void rav::WavAudioFormat::FmtChunk::read(InputStream& istream, const uint32_t chunk_size) {
+    format = istream.read_le<FormatCode>().value();
     num_channels = istream.read_le<uint16_t>().value();
     sample_rate = istream.read_le<uint32_t>().value();
     avg_bytes_per_sec = istream.read_le<uint32_t>().value();
@@ -43,7 +43,7 @@ void rav::wav_audio_format::fmt_chunk::read(input_stream& istream, const uint32_
     }
 }
 
-tl::expected<size_t, rav::output_stream::error> rav::wav_audio_format::fmt_chunk::write(output_stream& ostream) const {
+tl::expected<size_t, rav::OutputStream::Error> rav::WavAudioFormat::FmtChunk::write(OutputStream& ostream) const {
     const auto start_pos = ostream.get_write_position();
 
     auto map_value = [] {
@@ -69,73 +69,73 @@ tl::expected<size_t, rav::output_stream::error> rav::wav_audio_format::fmt_chunk
     return ostream.get_write_position() - start_pos;
 }
 
-std::optional<rav::audio_format> rav::wav_audio_format::fmt_chunk::to_audio_format() const {
+std::optional<rav::AudioFormat> rav::WavAudioFormat::FmtChunk::to_audio_format() const {
     switch (format) {
-        case format_code::pcm: {
+        case FormatCode::pcm: {
             if (bits_per_sample == 8) {
-                return audio_format {
-                    audio_format::byte_order::le, audio_encoding::pcm_u8, audio_format::channel_ordering::interleaved,
+                return AudioFormat {
+                    AudioFormat::ByteOrder::le, AudioEncoding::pcm_u8, AudioFormat::ChannelOrdering::interleaved,
                     sample_rate, num_channels
                 };
             }
             if (bits_per_sample == 16) {
-                return audio_format {
-                    audio_format::byte_order::le,
-                    audio_encoding::pcm_s16,
-                    audio_format::channel_ordering::interleaved,
+                return AudioFormat {
+                    AudioFormat::ByteOrder::le,
+                    AudioEncoding::pcm_s16,
+                    AudioFormat::ChannelOrdering::interleaved,
                     sample_rate,
                     num_channels,
                 };
             }
             if (bits_per_sample == 24) {
-                return audio_format {
-                    audio_format::byte_order::le,
-                    audio_encoding::pcm_s24,
-                    audio_format::channel_ordering::interleaved,
+                return AudioFormat {
+                    AudioFormat::ByteOrder::le,
+                    AudioEncoding::pcm_s24,
+                    AudioFormat::ChannelOrdering::interleaved,
                     sample_rate,
                     num_channels,
                 };
             }
             break;
         }
-        case format_code::ieee_float: {
+        case FormatCode::ieee_float: {
             if (bits_per_sample == 32) {
-                return audio_format {
-                    audio_format::byte_order::le,
-                    audio_encoding::pcm_f32,
-                    audio_format::channel_ordering::interleaved,
+                return AudioFormat {
+                    AudioFormat::ByteOrder::le,
+                    AudioEncoding::pcm_f32,
+                    AudioFormat::ChannelOrdering::interleaved,
                     sample_rate,
                     num_channels,
                 };
             }
             if (bits_per_sample == 64) {
-                return audio_format {
-                    audio_format::byte_order::le,
-                    audio_encoding::pcm_f64,
-                    audio_format::channel_ordering::interleaved,
+                return AudioFormat {
+                    AudioFormat::ByteOrder::le,
+                    AudioEncoding::pcm_f64,
+                    AudioFormat::ChannelOrdering::interleaved,
                     sample_rate,
                     num_channels,
                 };
             }
             break;
         }
-        case format_code::alaw:
-        case format_code::mulaw:
-        case format_code::extensible:
+        case FormatCode::alaw:
+        case FormatCode::mulaw:
+        case FormatCode::extensible:
         default:
             return std::nullopt;
     }
     return std::nullopt;
 }
 
-bool rav::wav_audio_format::data_chunk::read(input_stream& istream, const uint32_t chunk_size) {
+bool rav::WavAudioFormat::DataChunk::read(InputStream& istream, const uint32_t chunk_size) {
     data_begin = istream.get_read_position();
     data_size = chunk_size;
     return istream.skip(chunk_size);
 }
 
-tl::expected<size_t, rav::output_stream::error>
-rav::wav_audio_format::data_chunk::write(output_stream& ostream, const size_t data_written) {
+tl::expected<size_t, rav::OutputStream::Error>
+rav::WavAudioFormat::DataChunk::write(OutputStream& ostream, const size_t data_written) {
     auto map_value = [] {
         return 0;
     };
@@ -147,7 +147,7 @@ rav::wav_audio_format::data_chunk::write(output_stream& ostream, const size_t da
     return data_begin - pos;
 }
 
-rav::wav_audio_format::reader::reader(std::unique_ptr<input_stream> istream) : istream_(std::move(istream)) {
+rav::WavAudioFormat::Reader::Reader(std::unique_ptr<InputStream> istream) : istream_(std::move(istream)) {
     RAV_ASSERT(istream_, "Invalid input stream");
 
     // RIFF header
@@ -212,8 +212,8 @@ rav::wav_audio_format::reader::reader(std::unique_ptr<input_stream> istream) : i
     }
 }
 
-tl::expected<size_t, rav::input_stream::error>
-rav::wav_audio_format::reader::read_audio_data(uint8_t* buffer, const size_t size) {
+tl::expected<size_t, rav::InputStream::Error>
+rav::WavAudioFormat::Reader::read_audio_data(uint8_t* buffer, const size_t size) {
     if (!data_chunk_.has_value()) {
         return 0;
     }
@@ -224,7 +224,7 @@ rav::wav_audio_format::reader::read_audio_data(uint8_t* buffer, const size_t siz
     }
 
     if (!istream_->set_read_position(data_chunk_->data_begin + data_read_position_)) {
-        return tl::unexpected(input_stream::error::failed_to_set_read_position);
+        return tl::unexpected(InputStream::Error::failed_to_set_read_position);
     }
 
     auto read = istream_->read(buffer, bytes_to_read);
@@ -232,7 +232,7 @@ rav::wav_audio_format::reader::read_audio_data(uint8_t* buffer, const size_t siz
         return read;
     }
     if (read.value() != bytes_to_read) {
-        return tl::unexpected(input_stream::error::insufficient_data);
+        return tl::unexpected(InputStream::Error::insufficient_data);
     }
 
     data_read_position_ += bytes_to_read;
@@ -240,32 +240,32 @@ rav::wav_audio_format::reader::read_audio_data(uint8_t* buffer, const size_t siz
     return bytes_to_read;
 }
 
-size_t rav::wav_audio_format::reader::remaining_audio_data() const {
+size_t rav::WavAudioFormat::Reader::remaining_audio_data() const {
     RAV_ASSERT(data_read_position_ <= data_chunk_->data_size, "Invalid read position");
     return data_chunk_->data_size - data_read_position_;
 }
 
-void rav::wav_audio_format::reader::set_read_position(const size_t position) {
+void rav::WavAudioFormat::Reader::set_read_position(const size_t position) {
     data_read_position_ = position;
 }
 
-double rav::wav_audio_format::reader::sample_rate() const {
+double rav::WavAudioFormat::Reader::sample_rate() const {
     return fmt_chunk_.value().sample_rate;
 }
 
-size_t rav::wav_audio_format::reader::num_channels() const {
+size_t rav::WavAudioFormat::Reader::num_channels() const {
     return fmt_chunk_.value().num_channels;
 }
 
-std::optional<rav::audio_format> rav::wav_audio_format::reader::get_audio_format() const {
+std::optional<rav::AudioFormat> rav::WavAudioFormat::Reader::get_audio_format() const {
     if (!fmt_chunk_.has_value()) {
         return std::nullopt;
     }
     return fmt_chunk_->to_audio_format();
 }
 
-rav::wav_audio_format::writer::writer(
-    output_stream& ostream, const format_code format, const double sample_rate, const size_t num_channels,
+rav::WavAudioFormat::Writer::Writer(
+    OutputStream& ostream, const FormatCode format, const double sample_rate, const size_t num_channels,
     const size_t bits_per_sample
 ) :
     ostream_(ostream) {
@@ -282,20 +282,20 @@ rav::wav_audio_format::writer::writer(
     }
 }
 
-rav::wav_audio_format::writer::~writer() {
+rav::WavAudioFormat::Writer::~Writer() {
     if (!finalize()) {
         RAV_ERROR("Failed to finalize wav file");
     }
 }
 
-tl::expected<void, rav::output_stream::error>
-rav::wav_audio_format::writer::write_audio_data(const uint8_t* buffer, const size_t size) {
+tl::expected<void, rav::OutputStream::Error>
+rav::WavAudioFormat::Writer::write_audio_data(const uint8_t* buffer, const size_t size) {
     OK_OR_RETURN(ostream_.write(buffer, size));
     audio_data_written_ += size;
     return {};
 }
 
-bool rav::wav_audio_format::writer::finalize() {
+bool rav::WavAudioFormat::Writer::finalize() {
     if (!write_header()) {
         return false;
     }
@@ -303,7 +303,7 @@ bool rav::wav_audio_format::writer::finalize() {
     return true;
 }
 
-tl::expected<void, rav::output_stream::error> rav::wav_audio_format::writer::write_header() {
+tl::expected<void, rav::OutputStream::Error> rav::WavAudioFormat::Writer::write_header() {
     const auto pos = ostream_.get_write_position();
     OK_OR_RETURN(ostream_.set_write_position(0));
     OK_OR_RETURN(ostream_.write("RIFF", 4));

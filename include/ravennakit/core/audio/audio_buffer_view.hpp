@@ -18,7 +18,7 @@ namespace rav {
  * @tparam T
  */
 template<class T>
-class audio_buffer_view {
+class AudioBufferView {
   public:
     /**
      * Constructs an audio buffer view with the given channels, number of channels, and number of frames. The view does
@@ -27,7 +27,7 @@ class audio_buffer_view {
      * @param num_channels The number of channels.
      * @param num_frames The number of frames.
      */
-    audio_buffer_view(T* const* channels, const size_t num_channels, const size_t num_frames) :
+    AudioBufferView(T* const* channels, const size_t num_channels, const size_t num_frames) :
         channels_(channels), num_channels_(num_channels), num_frames_(num_frames) {}
 
     /**
@@ -36,7 +36,7 @@ class audio_buffer_view {
      * @return A pointer to the beginning of the channel.
      */
     const T* operator[](size_t channel_index) const {
-        RAV_ASSERT(channel_index < audio_buffer_view<T>::num_channels(), "Channel index out of bounds");
+        RAV_ASSERT(channel_index < AudioBufferView<T>::num_channels(), "Channel index out of bounds");
         return channels_[channel_index];
     }
 
@@ -47,7 +47,7 @@ class audio_buffer_view {
      * @param rhs Right hand side audio buffer.
      * @return True if the audio buffers are equal, false otherwise.
      */
-    friend bool operator==(const audio_buffer_view& lhs, const audio_buffer_view& rhs) {
+    friend bool operator==(const AudioBufferView& lhs, const AudioBufferView& rhs) {
         if (lhs.num_channels_ != rhs.num_channels_ || lhs.num_frames_ != rhs.num_frames_) {
             return false;
         }
@@ -66,7 +66,7 @@ class audio_buffer_view {
      * @param rhs Right hand side audio buffer.
      * @return True if the audio buffers are not equal, false otherwise.
      */
-    friend bool operator!=(const audio_buffer_view& lhs, const audio_buffer_view& rhs) {
+    friend bool operator!=(const AudioBufferView& lhs, const AudioBufferView& rhs) {
         return !(lhs == rhs);
     }
 
@@ -239,7 +239,7 @@ class audio_buffer_view {
      * @param other The other audio buffer view.
      * @return True if the audio buffer view is valid and the number of channels and frames match, false otherwise.
      */
-    bool add(const audio_buffer_view& other) {
+    bool add(const AudioBufferView& other) {
         static_assert(std::is_floating_point_v<T>, "Not supported for integer types");
 
         if (num_channels_ != other.num_channels_ || num_frames_ != other.num_frames_) {
@@ -268,8 +268,8 @@ class audio_buffer_view {
      * @param num_channels The number of channels.
      * @return A copy of this view with the given number of channels.
      */
-    audio_buffer_view with_num_channels(size_t num_channels) {
-        return audio_buffer_view(channels_, num_channels, num_frames_);
+    AudioBufferView with_num_channels(size_t num_channels) {
+        return AudioBufferView(channels_, num_channels, num_frames_);
     }
 
     /**
@@ -277,8 +277,8 @@ class audio_buffer_view {
      * @param num_frames The number of frames.
      * @return A copy of this view with the given number of frames.
      */
-    audio_buffer_view with_num_frames(size_t num_frames) {
-        return audio_buffer_view(channels_, num_channels_, num_frames);
+    AudioBufferView with_num_frames(size_t num_frames) {
+        return AudioBufferView(channels_, num_channels_, num_frames);
     }
 
   protected:

@@ -42,7 +42,7 @@ std::string rav::sdp::RavennaClockDomain::to_string(const SyncSource source) {
 
 rav::sdp::RavennaClockDomain::ParseResult<rav::sdp::RavennaClockDomain>
 rav::sdp::RavennaClockDomain::parse_new(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     RavennaClockDomain clock_domain;
 

@@ -49,7 +49,7 @@ tl::expected<std::string, std::string> rav::sdp::ConnectionInfoField::to_string(
 
 rav::sdp::ConnectionInfoField::parse_result<rav::sdp::ConnectionInfoField>
 rav::sdp::ConnectionInfoField::parse_new(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     if (!parser.skip("c=")) {
         return parse_result<ConnectionInfoField>::err("connection: expecting 'c='");

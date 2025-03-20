@@ -19,9 +19,9 @@ namespace rav {
 /**
  * An implementation of input_stream for reading from a file.
  */
-class file_input_stream final: public input_stream {
+class FileInputStream final: public InputStream {
   public:
-    explicit file_input_stream(const File& f) {
+    explicit FileInputStream(const File& f) {
         fstream_.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         fstream_.open(f.path(), std::ios::binary | std::ios::ate);
         if (!fstream_.is_open()) {
@@ -39,7 +39,7 @@ class file_input_stream final: public input_stream {
     }
 
     // input_stream overrides
-    [[nodiscard]] tl::expected<size_t, error> read(uint8_t* buffer, const size_t size) override {
+    [[nodiscard]] tl::expected<size_t, Error> read(uint8_t* buffer, const size_t size) override {
         fstream_.read(reinterpret_cast<char*>(buffer), static_cast<std::streamsize>(size));
 
         // Check if reading was unsuccessful

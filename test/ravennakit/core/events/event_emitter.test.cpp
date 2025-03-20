@@ -15,7 +15,7 @@
 TEST_CASE("event_emitter") {
     SECTION("Subscribing") {
         int times_called = 0;
-        rav::event_emitter<std::string> emitter;
+        rav::EventEmitter<std::string> emitter;
         auto slot = emitter.subscribe([&times_called](const std::string& value) {
             REQUIRE(value == "Hello, world!");
             times_called++;
@@ -26,7 +26,7 @@ TEST_CASE("event_emitter") {
 
     SECTION("Subscribing with 2 arguments") {
         int times_called = 0;
-        rav::event_emitter<std::string, int> emitter;
+        rav::EventEmitter<std::string, int> emitter;
         auto slot = emitter.subscribe([&times_called](const std::string& value, const int& number) {
             REQUIRE(value == "Hello, world!");
             REQUIRE(number == 5);
@@ -38,7 +38,7 @@ TEST_CASE("event_emitter") {
 
     SECTION("Subscribing, emitting, unsubscribing, and emitting again") {
         int times_called = 0;
-        rav::event_emitter<std::string> emitter;
+        rav::EventEmitter<std::string> emitter;
         {
             auto slot = emitter.subscribe([&times_called](const std::string& value) {
                 REQUIRE(value == "Hello, world!");
@@ -52,7 +52,7 @@ TEST_CASE("event_emitter") {
     }
 
     SECTION("Subscribing without storing the handle should not call the handler") {
-        rav::event_emitter<std::string> emitter;
+        rav::EventEmitter<std::string> emitter;
         // By not keeping the slot, the subscription is removed immediately
         std::ignore = emitter.subscribe([](const std::string&) {
             FAIL("This should not be called");

@@ -45,7 +45,7 @@ tl::expected<std::string, std::string> rav::sdp::OriginField::to_string() const 
 }
 
 rav::sdp::OriginField::ParseResult<rav::sdp::OriginField> rav::sdp::OriginField::parse_new(std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     if (!parser.skip("o=")) {
         return ParseResult<OriginField>::err("origin: expecting 'o='");

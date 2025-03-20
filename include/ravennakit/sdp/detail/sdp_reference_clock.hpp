@@ -29,7 +29,7 @@ class ReferenceClock {
 
     /// A type alias for a parse result.
     template<class T>
-    using ParseResult = result<T, std::string>;
+    using ParseResult = Result<T, std::string>;
 
     ReferenceClock() = default;
     ReferenceClock(ClockSource source, PtpVersion version, std::string gmid, int32_t domain);

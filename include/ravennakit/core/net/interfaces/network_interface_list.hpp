@@ -32,22 +32,22 @@ class network_interface_list {
      * @param search_string The string to search for.
      * @return The network interface if found, otherwise nullptr.
      */
-    [[nodiscard]] const network_interface* find_by_string(const std::string& search_string) const;
+    [[nodiscard]] const NetworkInterface* find_by_string(const std::string& search_string) const;
 
     /**
      * Finds a network interface by the given address.
      * @param address The address to search for.
      * @return The network interface if found, otherwise nullptr.
      */
-    [[nodiscard]] const network_interface* find_by_address(const asio::ip::address& address) const;
+    [[nodiscard]] const NetworkInterface* find_by_address(const asio::ip::address& address) const;
 
     /**
      * @returns The list of network interfaces.
      */
-    [[nodiscard]] const std::vector<network_interface>& interfaces() const;
+    [[nodiscard]] const std::vector<NetworkInterface>& interfaces() const;
 
   private:
-    std::vector<network_interface> interfaces_;
+    std::vector<NetworkInterface> interfaces_;
 };
 
 }  // namespace rav

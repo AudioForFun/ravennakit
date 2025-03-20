@@ -17,7 +17,7 @@ namespace rav {
 /**
  * A running average.
  */
-class running_average {
+class RunningAverage {
 public:
     /**
      * Adds a new value to the running average.

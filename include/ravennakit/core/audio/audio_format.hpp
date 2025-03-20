@@ -19,20 +19,20 @@
 
 namespace rav {
 
-struct audio_format {
-    enum class byte_order : uint8_t {
+struct AudioFormat {
+    enum class ByteOrder : uint8_t {
         le,
         be,
     };
 
-    enum class channel_ordering : uint8_t {
+    enum class ChannelOrdering : uint8_t {
         interleaved,
         noninterleaved,
     };
 
-    byte_order byte_order {little_endian ? byte_order::le : byte_order::be};
-    audio_encoding encoding {};
-    channel_ordering ordering {channel_ordering::interleaved};
+    ByteOrder byte_order {little_endian ? ByteOrder::le : ByteOrder::be};
+    AudioEncoding encoding {};
+    ChannelOrdering ordering {ChannelOrdering::interleaved};
     uint32_t sample_rate {};
     uint32_t num_channels {};
 
@@ -56,31 +56,31 @@ struct audio_format {
     }
 
     [[nodiscard]] bool is_valid() const {
-        return encoding != audio_encoding::undefined && sample_rate != 0 && num_channels != 0;
+        return encoding != AudioEncoding::undefined && sample_rate != 0 && num_channels != 0;
     }
 
     [[nodiscard]] auto tie() const {
         return std::tie(encoding, sample_rate, num_channels, byte_order, ordering);
     }
 
-    bool operator==(const audio_format& other) const {
+    bool operator==(const AudioFormat& other) const {
         return tie() == other.tie();
     }
 
-    bool operator!=(const audio_format& other) const {
+    bool operator!=(const AudioFormat& other) const {
         return tie() != other.tie();
     }
 
     [[nodiscard]] bool is_native_byte_order() const {
-        return little_endian == (byte_order == byte_order::le);
+        return little_endian == (byte_order == ByteOrder::le);
     }
 
-    static const char* to_string(const enum byte_order order) {
-        return order == byte_order::le ? "le" : "be";
+    static const char* to_string(const enum ByteOrder order) {
+        return order == ByteOrder::le ? "le" : "be";
     }
 
-    static const char* to_string(const channel_ordering order) {
-        return order == channel_ordering::interleaved ? "interleaved" : "noninterleaved";
+    static const char* to_string(const ChannelOrdering order) {
+        return order == ChannelOrdering::interleaved ? "interleaved" : "noninterleaved";
     }
 };
 

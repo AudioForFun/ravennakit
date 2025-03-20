@@ -19,11 +19,11 @@ namespace rav {
  * @tparam T The value type.
  */
 template<class T>
-class range {
+class Range {
   public:
-    range() = default;
+    Range() = default;
 
-    constexpr range(T start, T end) : start_(start), end_(end) {
+    constexpr Range(T start, T end) : start_(start), end_(end) {
         RAV_ASSERT(start_ <= end_, "Invalid range");
     }
 

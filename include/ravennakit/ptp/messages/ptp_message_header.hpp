@@ -67,7 +67,7 @@ struct MessageHeader {
     FlagField flags;
     int64_t correction_field {};
     PortIdentity source_port_identity;
-    wrapping_uint<uint16_t> sequence_id {};
+    WrappingUint<uint16_t> sequence_id {};
     int8_t log_message_interval {};
 
     /**
@@ -75,13 +75,13 @@ struct MessageHeader {
      * @param data The data to interpret as a PTP message header.
      * @return A PTP message header if the data is valid, otherwise an error.
      */
-    static tl::expected<MessageHeader, Error> from_data(buffer_view<const uint8_t> data);
+    static tl::expected<MessageHeader, Error> from_data(BufferView<const uint8_t> data);
 
     /**
      * Write the ptp_announce_message to a byte buffer.
      * @param buffer The buffer to write to.
      */
-    void write_to(byte_buffer& buffer) const;
+    void write_to(ByteBuffer& buffer) const;
 
     /**
      * Converts the PTP message header to a human-readable string.

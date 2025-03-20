@@ -16,11 +16,11 @@
 
 TEST_CASE("ptp_sync_message") {
     SECTION("Unpack") {
-        rav::byte_stream stream;
+        rav::ByteStream stream;
         constexpr std::array<const uint8_t, 30> data {
             0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90,
         };
-        auto sync = rav::ptp::SyncMessage::from_data({}, rav::buffer_view(data)).value();
+        auto sync = rav::ptp::SyncMessage::from_data({}, rav::BufferView(data)).value();
         REQUIRE(sync.origin_timestamp.raw_seconds() == 0x123456789012);
         REQUIRE(sync.origin_timestamp.raw_nanoseconds() == 0x34567890);
     }
@@ -28,10 +28,10 @@ TEST_CASE("ptp_sync_message") {
     SECTION("Pack") {
         rav::ptp::SyncMessage sync;
         sync.origin_timestamp = rav::ptp::Timestamp(0x123456789012, 0x34567890);
-        rav::byte_buffer buffer;
+        rav::ByteBuffer buffer;
         sync.write_to(buffer);
 
-        rav::input_stream_view buffer_view(buffer);
+        rav::InputStreamView buffer_view(buffer);
         REQUIRE(buffer_view.size() == rav::ptp::SyncMessage::k_message_length);
         REQUIRE(buffer_view.skip(rav::ptp::MessageHeader::k_header_size));
         REQUIRE(buffer_view.read_be<rav::uint48_t>() == sync.origin_timestamp.raw_seconds());

@@ -32,7 +32,7 @@ tl::expected<std::string, std::string> rav::sdp::TimeActiveField::to_string() co
 
 rav::sdp::TimeActiveField::ParseResult<rav::sdp::TimeActiveField>
 rav::sdp::TimeActiveField::parse_new(const std::string_view line) {
-    string_parser parser(line);
+    StringParser parser(line);
 
     if (!parser.skip("t=")) {
         return ParseResult<TimeActiveField>::err("time: expecting 't='");

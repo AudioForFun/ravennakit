@@ -20,7 +20,7 @@ TEST_CASE("ptp_delay_resp_message") {
             0x6,  0x7,  0x8,  0x9,                           // ts nanoseconds
             0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80,  // clock identity
         };
-        auto msg = rav::ptp::DelayRespMessage::from_data({}, rav::buffer_view(data)).value();
+        auto msg = rav::ptp::DelayRespMessage::from_data({}, rav::BufferView(data)).value();
         REQUIRE(msg.receive_timestamp.raw_seconds() == 0x102030405);
         REQUIRE(msg.receive_timestamp.raw_nanoseconds() == 0x06070809);
         REQUIRE(msg.requesting_port_identity.clock_identity.data[0] == 0x10);

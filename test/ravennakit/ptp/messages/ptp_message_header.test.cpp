@@ -32,7 +32,7 @@ TEST_CASE("ptp_message_header") {
             0x81,                                            // logMessageInterval
         };
 
-        auto header = rav::ptp::MessageHeader::from_data(rav::buffer_view(data));
+        auto header = rav::ptp::MessageHeader::from_data(rav::BufferView(data));
 
         REQUIRE(header.has_value());
         REQUIRE(header->sdo_id.major == 0xf);
@@ -93,12 +93,12 @@ TEST_CASE("ptp_message_header") {
         header.source_port_identity.port_number = 0xabcd;
         header.sequence_id = 0x1122;
         header.log_message_interval = -127;
-        rav::byte_buffer buffer;
+        rav::ByteBuffer buffer;
         header.write_to(buffer);
 
         REQUIRE(buffer.size() == 34);
 
-        rav::input_stream_view stream(buffer);
+        rav::InputStreamView stream(buffer);
         REQUIRE(stream.read_be<uint8_t>().value() == 0xfd);                 // majorSdoId & messageType
         REQUIRE(stream.read_be<uint8_t>().value() == 0x12);                 // minorVersionPTP & versionPTP
         REQUIRE(stream.read_be<uint16_t>().value() == 300);                 // messageLength

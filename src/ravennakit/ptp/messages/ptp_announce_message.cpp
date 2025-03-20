@@ -12,7 +12,7 @@
 #include "ravennakit/core/byte_order.hpp"
 
 tl::expected<rav::ptp::AnnounceMessage, rav::ptp::Error>
-rav::ptp::AnnounceMessage::from_data(const MessageHeader& header, buffer_view<const uint8_t> data) {
+rav::ptp::AnnounceMessage::from_data(const MessageHeader& header, BufferView<const uint8_t> data) {
     if (data.size() < k_message_size) {
         return tl::unexpected(Error::invalid_message_length);
     }

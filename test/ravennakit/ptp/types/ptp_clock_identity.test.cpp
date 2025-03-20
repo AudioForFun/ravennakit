@@ -14,7 +14,7 @@
 
 TEST_CASE("ptp_clock_identity") {
     SECTION("Construct from MAC address") {
-        const rav::mac_address mac_address("a1:b2:c3:d4:e5:f6");
+        const rav::MacAddress mac_address("a1:b2:c3:d4:e5:f6");
         const rav::ptp::ClockIdentity clock_identity = rav::ptp::ClockIdentity::from_mac_address(mac_address);
 
         REQUIRE(clock_identity.data[0] == 0xa1);

@@ -26,7 +26,7 @@ class test_subscriber final {
 }  // namespace
 
 TEST_CASE("subscriber_list") {
-    rav::subscriber_list<test_subscriber> list;
+    rav::SubscriberList<test_subscriber> list;
 
     SECTION("Add, notify and remove") {
         test_subscriber subscriber1;
@@ -97,7 +97,7 @@ TEST_CASE("subscriber_list") {
         REQUIRE(list.add(&subscriber1));
         REQUIRE(list.add(&subscriber2));
 
-        rav::subscriber_list list2(std::move(list));
+        rav::SubscriberList list2(std::move(list));
 
         REQUIRE(list.empty());
         REQUIRE(list2.size() == 2);
@@ -112,7 +112,7 @@ TEST_CASE("subscriber_list") {
         REQUIRE(list.add(&subscriber1));
         REQUIRE(list.add(&subscriber2));
 
-        rav::subscriber_list<test_subscriber> list2;
+        rav::SubscriberList<test_subscriber> list2;
         test_subscriber subscriber3;
         REQUIRE(list2.add(&subscriber3));
 
@@ -134,7 +134,7 @@ TEST_CASE("subscriber_list") {
     }
 
     SECTION("subscriber_list with context") {
-        rav::subscriber_list<test_subscriber, std::string> list_with_context;
+        rav::SubscriberList<test_subscriber, std::string> list_with_context;
 
         SECTION("Add, notify and remove") {
             test_subscriber subscriber1;
@@ -205,7 +205,7 @@ TEST_CASE("subscriber_list") {
             REQUIRE(list_with_context.add(&subscriber1, "subscriber1"));
             REQUIRE(list_with_context.add(&subscriber2, "subscriber2"));
 
-            rav::subscriber_list list2(std::move(list_with_context));
+            rav::SubscriberList list2(std::move(list_with_context));
 
             REQUIRE(list_with_context.empty());
             REQUIRE(list2.size() == 2);
@@ -220,7 +220,7 @@ TEST_CASE("subscriber_list") {
             REQUIRE(list_with_context.add(&subscriber1, "subscriber1"));
             REQUIRE(list_with_context.add(&subscriber2, "subscriber2"));
 
-            rav::subscriber_list<test_subscriber, std::string> list2;
+            rav::SubscriberList<test_subscriber, std::string> list2;
             test_subscriber subscriber3;
             REQUIRE(list2.add(&subscriber3, "subscriber3"));
 

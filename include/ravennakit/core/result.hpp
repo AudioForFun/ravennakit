@@ -21,15 +21,15 @@ namespace rav {
  * @tparam E The error type.
  */
 template<class T, class E>
-class result {
+class Result {
   public:
     /**
      * Creates an ok result with given value.
      * @param value The value.
      * @return The result.
      */
-    static result ok(T value) {
-        result r;
+    static Result ok(T value) {
+        Result r;
         r.value_ = std::variant<T, E> {std::in_place_index<0>, std::move(value)};
         return r;
     }
@@ -39,8 +39,8 @@ class result {
      * @param error The error.
      * @return The result.
      */
-    static result err(E error) {
-        result r;
+    static Result err(E error) {
+        Result r;
         r.value_ = std::variant<T, E> {std::in_place_index<1>, std::move(error)};
         return r;
     }
@@ -84,7 +84,7 @@ class result {
   private:
     std::variant<T, E> value_;
 
-    explicit result() = default;
+    explicit Result() = default;
 
     // Warning: this constructor triggers undefined behavior sanitizer when running as x86_64 on Apple Silicon
     // I failed to reproduce the issue as a minimum reproducible example, so it seems to be specific to this codebase.
@@ -96,14 +96,14 @@ class result {
  * @tparam E The error type.
  */
 template<class E>
-class result<void, E> {
+class Result<void, E> {
   public:
     /**
      * Creates an ok result with given value.
      * @return The result.
      */
-    static result ok() {
-        return result();
+    static Result ok() {
+        return Result();
     }
 
     /**
@@ -111,8 +111,8 @@ class result<void, E> {
      * @param error The error.
      * @return The result.
      */
-    static result err(E error) {
-        return result(std::move(error));
+    static Result err(E error) {
+        return Result(std::move(error));
     }
 
     /**
@@ -139,9 +139,9 @@ class result<void, E> {
   private:
     std::optional<E> error_;
 
-    result() = default;
+    Result() = default;
 
-    explicit result(E error) : error_(std::move(error)) {}
+    explicit Result(E error) : error_(std::move(error)) {}
 };
 
 }  // namespace rav

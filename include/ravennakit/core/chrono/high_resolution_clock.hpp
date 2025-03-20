@@ -27,14 +27,14 @@ namespace rav {
 /**
  * Provides access to the current time with the highest possible resolution.
  */
-class high_resolution_clock {
+class HighResolutionClock {
   public:
     /**
      * @returns the current time in nanoseconds since an arbitrary point in time.
      * On macOS the value does not progress while the system is asleep.
      */
     static uint64_t now() {
-        static const high_resolution_clock clock;
+        static const HighResolutionClock clock;
 #if RAV_APPLE
         const uint64_t raw = mach_absolute_time();
         return raw * clock.timebase_.numerator / clock.timebase_.denominator;
@@ -54,12 +54,12 @@ class high_resolution_clock {
 
   private:
 #if RAV_APPLE
-    fraction<uint32_t> timebase_ {};
+    Fraction<uint32_t> timebase_ {};
 #elif RAV_WINDOWS
     LARGE_INTEGER frequency_{};
 #endif
 
-    high_resolution_clock() {
+    HighResolutionClock() {
 #if RAV_APPLE
         mach_timebase_info_data_t info;
         mach_timebase_info(&info);

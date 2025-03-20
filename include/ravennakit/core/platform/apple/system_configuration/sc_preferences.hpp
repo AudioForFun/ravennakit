@@ -22,22 +22,22 @@ namespace rav {
 /**
  * An RAII wrapper around SCNetworkInterfaceRef.
  */
-class sc_preferences: public cf_type<SCPreferencesRef> {
+class ScPreferences: public CfType<SCPreferencesRef> {
   public:
-    sc_preferences() : cf_type(SCPreferencesCreate(nullptr, CFSTR("RAVENNAKIT"), nullptr), false) {}
+    ScPreferences() : CfType(SCPreferencesCreate(nullptr, CFSTR("RAVENNAKIT"), nullptr), false) {}
 
     /**
      * @return All network services.
      */
-    [[nodiscard]] cf_array<SCNetworkServiceRef> get_network_services() const {
-        return cf_array<SCNetworkServiceRef>(SCNetworkServiceCopyAll(get()), false);
+    [[nodiscard]] CfArray<SCNetworkServiceRef> get_network_services() const {
+        return CfArray<SCNetworkServiceRef>(SCNetworkServiceCopyAll(get()), false);
     }
 
     /**
      * @return All network interfaces.
      */
-    static cf_array<SCNetworkInterfaceRef> get_network_interfaces() {
-        return cf_array<SCNetworkInterfaceRef>(SCNetworkInterfaceCopyAll(), false);
+    static CfArray<SCNetworkInterfaceRef> get_network_interfaces() {
+        return CfArray<SCNetworkInterfaceRef>(SCNetworkInterfaceCopyAll(), false);
     }
 };
 

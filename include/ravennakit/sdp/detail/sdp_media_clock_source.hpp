@@ -31,11 +31,11 @@ class MediaClockSource {
     enum class ClockMode { undefined, direct };
 
     MediaClockSource() = default;
-    MediaClockSource(ClockMode mode, std::optional<int64_t> offset, std::optional<fraction<int32_t>> rate);
+    MediaClockSource(ClockMode mode, std::optional<int64_t> offset, std::optional<Fraction<int32_t>> rate);
 
     /// A type alias for a parse result.
     template<class T>
-    using ParseResult = result<T, std::string>;
+    using ParseResult = Result<T, std::string>;
 
     static ParseResult<MediaClockSource> parse_new(std::string_view line);
 
@@ -52,11 +52,11 @@ class MediaClockSource {
     /**
      * @return The rate numerator of the media clock.
      */
-    [[nodiscard]] const std::optional<fraction<int32_t>>& rate() const;
+    [[nodiscard]] const std::optional<Fraction<int32_t>>& rate() const;
 
     /**
      * Validates the media clock source.
-     * @throws rav::exception if the media clock source is invalid.
+     * @throws rav::Exception if the media clock source is invalid.
      */
     [[nodiscard]] tl::expected<void, std::string> validate() const;
 
@@ -76,7 +76,7 @@ class MediaClockSource {
   private:
     ClockMode mode_ {ClockMode::undefined};
     std::optional<int64_t> offset_;
-    std::optional<fraction<int32_t>> rate_;
+    std::optional<Fraction<int32_t>> rate_;
 };
 
 }  // namespace rav::sdp

@@ -11,7 +11,7 @@
 #include "ravennakit/ptp/messages/ptp_delay_resp_message.hpp"
 
 tl::expected<rav::ptp::DelayRespMessage, rav::ptp::Error>
-rav::ptp::DelayRespMessage::from_data(const MessageHeader& header, const buffer_view<const uint8_t> data) {
+rav::ptp::DelayRespMessage::from_data(const MessageHeader& header, const BufferView<const uint8_t> data) {
     if (data.size() < k_message_size) {
         return tl::unexpected(Error::invalid_message_length);
     }

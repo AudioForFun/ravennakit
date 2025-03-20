@@ -11,7 +11,7 @@
 #include "ravennakit/ptp/messages/ptp_sync_message.hpp"
 
 tl::expected<rav::ptp::SyncMessage, rav::ptp::Error>
-rav::ptp::SyncMessage::from_data(const MessageHeader& header, const buffer_view<const uint8_t> data) {
+rav::ptp::SyncMessage::from_data(const MessageHeader& header, const BufferView<const uint8_t> data) {
     if (data.size() < k_message_length - MessageHeader::k_header_size) {
         return tl::unexpected(Error::invalid_message_length);
     }
@@ -22,7 +22,7 @@ rav::ptp::SyncMessage::from_data(const MessageHeader& header, const buffer_view<
     return msg;
 }
 
-void rav::ptp::SyncMessage::write_to(byte_buffer& buffer) const {
+void rav::ptp::SyncMessage::write_to(ByteBuffer& buffer) const {
     header.write_to(buffer);
     origin_timestamp.write_to(buffer);
 }

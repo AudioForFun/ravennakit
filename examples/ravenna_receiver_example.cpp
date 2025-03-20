@@ -213,7 +213,7 @@ class ravenna_receiver: public rav::rtp::StreamReceiver::Subscriber {
         );
     }
 
-    void on_data_ready([[maybe_unused]] rav::wrapping_uint32 timestamp) override {}
+    void on_data_ready([[maybe_unused]] rav::WrappingUint32 timestamp) override {}
 
   private:
     asio::io_context io_context_;
@@ -223,7 +223,7 @@ class ravenna_receiver: public rav::rtp::StreamReceiver::Subscriber {
     std::unique_ptr<rav::RavennaReceiver> ravenna_receiver_;
     std::string audio_device_name_;
     portaudio_stream portaudio_stream_;
-    rav::audio_format audio_format_;
+    rav::AudioFormat audio_format_;
 
     int stream_callback(
         const void* input, void* output, const unsigned long frame_count, const PaStreamCallbackTimeInfo* time_info,
@@ -243,7 +243,7 @@ class ravenna_receiver: public rav::rtp::StreamReceiver::Subscriber {
             return paContinue;
         }
 
-        if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
+        if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::be) {
             rav::swap_bytes(static_cast<uint8_t*>(output), buffer_size, audio_format_.bytes_per_sample());
         }
 
@@ -259,13 +259,13 @@ class ravenna_receiver: public rav::rtp::StreamReceiver::Subscriber {
         );
     }
 
-    static std::optional<uint32_t> get_sample_format_for_audio_format(const rav::audio_format& audio_format) {
-        std::array<std::pair<rav::audio_encoding, uint32_t>, 5> pairs {
-            {{rav::audio_encoding::pcm_u8, paUInt8},
-             {rav::audio_encoding::pcm_s8, paInt8},
-             {rav::audio_encoding::pcm_s16, paInt16},
-             {rav::audio_encoding::pcm_s24, paInt24},
-             {rav::audio_encoding::pcm_s32, paInt32}},
+    static std::optional<uint32_t> get_sample_format_for_audio_format(const rav::AudioFormat& audio_format) {
+        std::array<std::pair<rav::AudioEncoding, uint32_t>, 5> pairs {
+            {{rav::AudioEncoding::pcm_u8, paUInt8},
+             {rav::AudioEncoding::pcm_s8, paInt8},
+             {rav::AudioEncoding::pcm_s16, paInt16},
+             {rav::AudioEncoding::pcm_s24, paInt24},
+             {rav::AudioEncoding::pcm_s32, paInt32}},
         };
         for (auto& pair : pairs) {
             if (pair.first == audio_format.encoding) {

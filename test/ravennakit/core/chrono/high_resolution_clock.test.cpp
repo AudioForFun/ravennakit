@@ -16,14 +16,14 @@
 
 TEST_CASE("high_resolution_clock") {
     SECTION("now") {
-        const auto now = rav::high_resolution_clock::now();
+        const auto now = rav::HighResolutionClock::now();
         REQUIRE(now > 0);
     }
     SECTION("Progression") {
         for (int i = 0; i < 100; ++i) {
-            const auto now = rav::high_resolution_clock::now();
+            const auto now = rav::HighResolutionClock::now();
             std::this_thread::sleep_for(std::chrono::nanoseconds(100));
-            REQUIRE(rav::high_resolution_clock::now() >= now + 100);
+            REQUIRE(rav::HighResolutionClock::now() >= now + 100);
         }
     }
 }

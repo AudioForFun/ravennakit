@@ -14,7 +14,7 @@
 
 TEST_CASE("byte_stream", "[byte_stream]") {
     SECTION("Read") {
-        rav::byte_stream stream;
+        rav::ByteStream stream;
 
         REQUIRE(stream.write_ne<uint32_t>(1));
         REQUIRE(stream.write_ne<uint16_t>(2));
@@ -32,7 +32,7 @@ TEST_CASE("byte_stream", "[byte_stream]") {
     }
 
     SECTION("Set read position") {
-        rav::byte_stream stream;
+        rav::ByteStream stream;
         REQUIRE(stream.write_ne<uint32_t>(1));
 
         REQUIRE(stream.read_ne<uint32_t>() == 1);
@@ -42,7 +42,7 @@ TEST_CASE("byte_stream", "[byte_stream]") {
     }
 
     SECTION("Get read position") {
-        rav::byte_stream stream;
+        rav::ByteStream stream;
         REQUIRE(stream.write_ne<uint32_t>(1));
         REQUIRE(stream.get_read_position() == 0);
         REQUIRE(stream.read_ne<uint32_t>());
@@ -50,14 +50,14 @@ TEST_CASE("byte_stream", "[byte_stream]") {
     }
 
     SECTION("Get read position") {
-        rav::byte_stream stream;
+        rav::ByteStream stream;
         REQUIRE(stream.size() == 0);
         REQUIRE(stream.write_ne<uint32_t>(1));
         REQUIRE(stream.size() == 4);
     }
 
     SECTION("Set write position") {
-        rav::byte_stream stream;
+        rav::ByteStream stream;
         REQUIRE(stream.write_ne<uint32_t>(1));
         REQUIRE(stream.set_write_position(0));
         REQUIRE(stream.write_ne<uint32_t>(1));
@@ -70,13 +70,13 @@ TEST_CASE("byte_stream", "[byte_stream]") {
     }
 
     SECTION("Flush") {
-        rav::byte_stream stream;
+        rav::ByteStream stream;
         REQUIRE(stream.write_ne<uint32_t>(1));
         stream.flush();
     }
 
     SECTION("Construct with data") {
-        rav::byte_stream stream({0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8});
+        rav::ByteStream stream({0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8});
         REQUIRE(stream.get_read_position() == 0);
         REQUIRE(stream.get_write_position() == 8);
         REQUIRE(stream.size() == 8);

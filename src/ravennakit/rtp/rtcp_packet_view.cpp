@@ -182,7 +182,7 @@ rav::rtcp::ReportBlockView rav::rtcp::PacketView::get_report_block(const size_t 
     };
 }
 
-rav::buffer_view<const uint8_t> rav::rtcp::PacketView::get_profile_specific_extension() const {
+rav::BufferView<const uint8_t> rav::rtcp::PacketView::get_profile_specific_extension() const {
     if (data_ == nullptr) {
         return {};
     }

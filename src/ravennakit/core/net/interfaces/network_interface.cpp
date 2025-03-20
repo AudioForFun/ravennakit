@@ -46,13 +46,13 @@
 namespace {
 
 // Get the type of the interface
-rav::network_interface::type functional_type_for_interface(const char* name) {
+rav::NetworkInterface::Type functional_type_for_interface(const char* name) {
     const int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
-        return rav::network_interface::type::undefined;
+        return rav::NetworkInterface::Type::undefined;
     }
 
-    rav::defer close_socket([&] {
+    rav::Defer close_socket([&] {
         close(fd);
     });
 
@@ -62,26 +62,26 @@ rav::network_interface::type functional_type_for_interface(const char* name) {
     const bool success = ioctl(fd, SIOCGIFFUNCTIONALTYPE, &ifr) >= 0;
 
     if (!success) {
-        return rav::network_interface::type::undefined;
+        return rav::NetworkInterface::Type::undefined;
     }
 
     switch (ifr.ifr_ifru.ifru_functional_type) {
         case IFRTYPE_FUNCTIONAL_LOOPBACK:
-            return rav::network_interface::type::loopback;
+            return rav::NetworkInterface::Type::loopback;
         case IFRTYPE_FUNCTIONAL_WIRED:
-            return rav::network_interface::type::wired_ethernet;
+            return rav::NetworkInterface::Type::wired_ethernet;
         case IFRTYPE_FUNCTIONAL_WIFI_INFRA:
         case IFRTYPE_FUNCTIONAL_WIFI_AWDL:
-            return rav::network_interface::type::wifi;
+            return rav::NetworkInterface::Type::wifi;
         case IFRTYPE_FUNCTIONAL_CELLULAR:
-            return rav::network_interface::type::cellular;
+            return rav::NetworkInterface::Type::cellular;
         case IFRTYPE_FUNCTIONAL_UNKNOWN:
         default:
-            return rav::network_interface::type::other;
+            return rav::NetworkInterface::Type::other;
     }
 }
 
-rav::network_interface::capabilities capabilities_for_interface(const char* name) {
+rav::NetworkInterface::Capabilities capabilities_for_interface(const char* name) {
     ifreq ifr {};
 
     const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -90,7 +90,7 @@ rav::network_interface::capabilities capabilities_for_interface(const char* name
         return {};
     }
 
-    rav::defer close_socket([&] {
+    rav::Defer close_socket([&] {
         close(fd);
     });
 
@@ -102,7 +102,7 @@ rav::network_interface::capabilities capabilities_for_interface(const char* name
         return {};
     }
 
-    rav::network_interface::capabilities caps;
+    rav::NetworkInterface::Capabilities caps;
     caps.hw_timestamp = ifr.ifr_curcap & IFCAP_HW_TIMESTAMP;
     caps.sw_timestamp = ifr.ifr_curcap & IFCAP_SW_TIMESTAMP;
 
@@ -122,7 +122,7 @@ rav::network_interface::capabilities capabilities_for_interface(const char* name
 }  // namespace
 #endif
 
-std::optional<uint32_t> rav::network_interface::interface_index() const {
+std::optional<uint32_t> rav::NetworkInterface::interface_index() const {
 #if HAS_BSD_SOCKETS
     auto index = if_nametoindex(identifier_.c_str());
     if (index == 0) {
@@ -142,7 +142,7 @@ std::optional<uint32_t> rav::network_interface::interface_index() const {
 #endif
 }
 
-std::string rav::network_interface::to_string() {
+std::string rav::NetworkInterface::to_string() {
     std::string output = fmt::format("{}\n", identifier_);
 
     if (!display_name_.empty()) {
@@ -176,19 +176,19 @@ std::string rav::network_interface::to_string() {
     return output;
 }
 
-const char* rav::network_interface::type_to_string(const type type) {
+const char* rav::NetworkInterface::type_to_string(const Type type) {
     switch (type) {
-        case type::wired_ethernet:
+        case Type::wired_ethernet:
             return "wired_ethernet";
-        case type::wifi:
+        case Type::wifi:
             return "wifi";
-        case type::cellular:
+        case Type::cellular:
             return "cellular";
-        case type::loopback:
+        case Type::loopback:
             return "loopback";
-        case type::other:
+        case Type::other:
             return "other";
-        case type::undefined:
+        case Type::undefined:
         default:
             return "undefined";
     }
@@ -200,8 +200,8 @@ const char* rav::network_interface::type_to_string(const type type) {
 }
 #endif
 
-tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::get_all() {
-    std::vector<network_interface> network_interfaces;
+tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get_all() {
+    std::vector<NetworkInterface> network_interfaces;
 
 #if HAS_BSD_SOCKETS
     ifaddrs* ifap = nullptr;
@@ -211,7 +211,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::g
         return tl::unexpected(errno);
     }
 
-    defer cleanup([&ifap] {
+    Defer cleanup([&ifap] {
         freeifaddrs(ifap);
     });
 
@@ -223,7 +223,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::g
 
         auto it = std::find_if(
             network_interfaces.begin(), network_interfaces.end(),
-            [&ifa](const network_interface& network_interface) {
+            [&ifa](const NetworkInterface& network_interface) {
                 return network_interface.identifier_ == ifa->ifa_name;
             }
         );
@@ -248,7 +248,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::g
             } else if (ifa->ifa_addr->sa_family == AF_LINK) {
                 const sockaddr_dl* sdl = reinterpret_cast<struct sockaddr_dl*>(ifa->ifa_addr);
                 if (sdl->sdl_alen == 6) {  // MAC addresses are 6 bytes
-                    it->mac_address_ = mac_address(reinterpret_cast<uint8_t*>(LLADDR(sdl)));
+                    it->mac_address_ = MacAddress(reinterpret_cast<uint8_t*>(LLADDR(sdl)));
                 }
     #elif RAV_LINUX
             } else if (ifa->ifa_addr->sa_family == AF_PACKET) {
@@ -267,7 +267,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::g
     #if RAV_APPLE
     // Fill in the network display name
 
-    const auto interfaces = sc_preferences::get_network_interfaces();
+    const auto interfaces = ScPreferences::get_network_interfaces();
 
     if (!interfaces) {
         RAV_ERROR("Failed to get network interfaces");
@@ -275,7 +275,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::g
     }
 
     for (CFIndex i = 0; i < interfaces.count(); ++i) {
-        const auto interface = sc_network_interface(interfaces[i], true);
+        const auto interface = ScNetworkInterface(interfaces[i], true);
         if (!interface) {
             continue;
         }
@@ -287,7 +287,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::g
 
         auto it = std::find_if(
             network_interfaces.begin(), network_interfaces.end(),
-            [&bsd_name](const network_interface& network_interface) {
+            [&bsd_name](const NetworkInterface& network_interface) {
                 return network_interface.identifier_ == bsd_name;
             }
         );
@@ -385,7 +385,7 @@ tl::expected<std::vector<rav::network_interface>, int> rav::network_interface::g
     return network_interfaces;
 }
 
-std::string rav::network_interface::capabilities::to_string() const {
+std::string rav::NetworkInterface::Capabilities::to_string() const {
     std::string output;
     if (hw_timestamp) {
         fmt::format_to(std::back_inserter(output), " HW_TIMESTAMP");
@@ -399,6 +399,6 @@ std::string rav::network_interface::capabilities::to_string() const {
     return output;
 }
 
-const std::string& rav::network_interface::identifier() const {
+const std::string& rav::NetworkInterface::identifier() const {
     return identifier_;
 }

@@ -47,7 +47,7 @@ class Parser final: public Events<Request, Response> {
      * @param input The input to parse.
      * @return The result of the parsing.
      */
-    result parse(string_buffer& input);
+    result parse(StringBuffer& input);
 
     /**
      * Resets the state to initial state. This also removes event subscribers.

@@ -20,16 +20,16 @@
 namespace rav {
 
 template<class T, class F = Fifo::Single>
-class audio_fifo_buffer {
+class AudioFifoBuffer {
   public:
-    audio_fifo_buffer() = default;
+    AudioFifoBuffer() = default;
 
     /**
      * Constructs a queue with a given number of elements.
      * @param num_channels The number of channels in the buffer.
      * @param num_frames The number of frames in the buffer.
      */
-    explicit audio_fifo_buffer(const size_t num_channels, const size_t num_frames) {
+    explicit AudioFifoBuffer(const size_t num_channels, const size_t num_frames) {
         resize(num_channels, num_frames);
     }
 
@@ -38,7 +38,7 @@ class audio_fifo_buffer {
      * @param src Source data.
      * @return True if writing was successful, false if there was not enough space to write all data.
      */
-    bool write(const audio_buffer<T>& src) {
+    bool write(const AudioBuffer<T>& src) {
         return write(src.data(), src.num_channels(), src.num_frames());
     }
 
@@ -70,7 +70,7 @@ class audio_fifo_buffer {
      * @param dst Destination buffer.
      * @return True if reading was successful, false if there was not enough data to read.
      */
-    bool read(audio_buffer<T>& dst) {
+    bool read(AudioBuffer<T>& dst) {
         return read(dst.data(), dst.num_channels(), dst.num_frames());
     }
 
@@ -113,12 +113,12 @@ class audio_fifo_buffer {
         auto num_channels = buffer_.num_channels();
 
         if (auto write = fifo_.prepare_for_write(num_frames)) {
-            audio_data::convert<SrcType, SrcByteOrder, SrcInterleaving, T, audio_data::byte_order::ne>(
+            AudioData::convert<SrcType, SrcByteOrder, SrcInterleaving, T, AudioData::ByteOrder::Ne>(
                 data, write.position.size1, num_channels, buffer_.data(), 0, write.position.index1
             );
 
             if (write.position.size2 > 0) {
-                audio_data::convert<SrcType, SrcByteOrder, SrcInterleaving, T, audio_data::byte_order::ne>(
+                AudioData::convert<SrcType, SrcByteOrder, SrcInterleaving, T, AudioData::ByteOrder::Ne>(
                     data, write.position.size2, num_channels, buffer_.data(), write.position.size1, 0
                 );
             }
@@ -147,12 +147,12 @@ class audio_fifo_buffer {
         auto num_channels = buffer_.num_channels();
 
         if (auto read = fifo_.prepare_for_read(num_frames)) {
-            audio_data::convert<T, audio_data::byte_order::ne, DstType, DstByteOrder, DstInterleaving>(
+            AudioData::convert<T, AudioData::ByteOrder::Ne, DstType, DstByteOrder, DstInterleaving>(
                 buffer_.data(), read.position.size1, num_channels, data, read.position.index1, 0
             );
 
             if (read.position.size2 > 0) {
-                audio_data::convert<T, audio_data::byte_order::ne, DstType, DstByteOrder, DstInterleaving>(
+                AudioData::convert<T, AudioData::ByteOrder::Ne, DstType, DstByteOrder, DstInterleaving>(
                     buffer_.data(), read.position.size2, num_channels, data, 0, read.position.size1
                 );
             }
@@ -205,7 +205,7 @@ class audio_fifo_buffer {
     }
 
   private:
-    audio_buffer<T> buffer_;
+    AudioBuffer<T> buffer_;
     F fifo_;
 };
 

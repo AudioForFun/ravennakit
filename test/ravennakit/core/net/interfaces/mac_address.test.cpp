@@ -14,7 +14,7 @@
 
 TEST_CASE("mac_address") {
     SECTION("Construct from string 1") {
-        rav::mac_address mac("00:01:02:03:04:05");
+        rav::MacAddress mac("00:01:02:03:04:05");
         auto bytes = mac.bytes();
         REQUIRE(bytes[0] == 0x00);
         REQUIRE(bytes[1] == 0x01);
@@ -25,7 +25,7 @@ TEST_CASE("mac_address") {
     }
 
     SECTION("Construct from string 2") {
-        rav::mac_address mac("1a:2b:3c:d4:e5:e6");
+        rav::MacAddress mac("1a:2b:3c:d4:e5:e6");
         auto bytes = mac.bytes();
         REQUIRE(bytes[0] == 0x1a);
         REQUIRE(bytes[1] == 0x2b);

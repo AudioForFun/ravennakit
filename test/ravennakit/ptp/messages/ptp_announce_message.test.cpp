@@ -28,7 +28,7 @@ TEST_CASE("ptp_announce_message") {
             0x40,                                            // time source
         };
 
-        auto announce = rav::ptp::AnnounceMessage::from_data({}, rav::buffer_view(data));
+        auto announce = rav::ptp::AnnounceMessage::from_data({}, rav::BufferView(data));
         REQUIRE(announce);
         REQUIRE(announce->origin_timestamp.raw_seconds() == 0x010203040506);
         REQUIRE(announce->origin_timestamp.raw_nanoseconds() == 0x0708090a);

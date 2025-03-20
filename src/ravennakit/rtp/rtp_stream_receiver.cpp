@@ -73,14 +73,14 @@ rav::rtp::StreamReceiver::~StreamReceiver() {
     maintenance_timer_.cancel();
 }
 
-rav::id rav::rtp::StreamReceiver::get_id() const {
+rav::Id rav::rtp::StreamReceiver::get_id() const {
     return id_;
 }
 
 void rav::rtp::StreamReceiver::update_sdp(const sdp::SessionDescription& sdp) {
     const sdp::MediaDescription* selected_media_description = nullptr;
     const sdp::ConnectionInfoField* selected_connection_info = nullptr;
-    std::optional<audio_format> selected_audio_format;
+    std::optional<AudioFormat> selected_audio_format;
 
     for (auto& media_description : sdp.media_descriptions()) {
         if (media_description.media_type() != "audio") {
@@ -316,7 +316,7 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_data_realtime(
 }
 
 std::optional<uint32_t> rav::rtp::StreamReceiver::read_audio_data_realtime(
-    audio_buffer_view<float> output_buffer, const std::optional<uint32_t> at_timestamp
+    AudioBufferView<float> output_buffer, const std::optional<uint32_t> at_timestamp
 ) {
     TRACY_ZONE_SCOPED;
 
@@ -325,12 +325,12 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_audio_data_realtime(
     if (auto state = audio_thread_reader_.lock_realtime()) {
         const auto format = state->selected_audio_format;
 
-        if (format.byte_order != audio_format::byte_order::be) {
+        if (format.byte_order != AudioFormat::ByteOrder::be) {
             RAV_ERROR("Unexpected byte order");
             return std::nullopt;
         }
 
-        if (format.ordering != audio_format::channel_ordering::interleaved) {
+        if (format.ordering != AudioFormat::ChannelOrdering::interleaved) {
             RAV_ERROR("Unexpected channel ordering");
             return std::nullopt;
         }
@@ -348,20 +348,20 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_audio_data_realtime(
             return std::nullopt;
         }
 
-        if (format.encoding == audio_encoding::pcm_s16) {
-            const auto ok = audio_data::convert<
-                int16_t, audio_data::byte_order::be, audio_data::interleaving::interleaved, float,
-                audio_data::byte_order::ne>(
+        if (format.encoding == AudioEncoding::pcm_s16) {
+            const auto ok = AudioData::convert<
+                int16_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved, float,
+                AudioData::ByteOrder::Ne>(
                 reinterpret_cast<int16_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(),
                 output_buffer.data()
             );
             if (!ok) {
                 RAV_WARNING("Failed to convert audio data");
             }
-        } else if (format.encoding == audio_encoding::pcm_s24) {
-            const auto ok = audio_data::convert<
-                int24_t, audio_data::byte_order::be, audio_data::interleaving::interleaved, float,
-                audio_data::byte_order::ne>(
+        } else if (format.encoding == AudioEncoding::pcm_s24) {
+            const auto ok = AudioData::convert<
+                int24_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved, float,
+                AudioData::ByteOrder::Ne>(
                 reinterpret_cast<int24_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(),
                 output_buffer.data()
             );
@@ -397,7 +397,7 @@ rav::rtp::PacketStats::Counters rav::rtp::StreamReceiver::get_packet_stats() con
     return media_streams_.front().packet_stats.get_total_counts();
 }
 
-rav::sliding_stats::stats rav::rtp::StreamReceiver::get_packet_interval_stats() const {
+rav::SlidingStats::Stats rav::rtp::StreamReceiver::get_packet_interval_stats() const {
     if (media_streams_.empty()) {
         return {};
     }
@@ -412,7 +412,7 @@ void rav::rtp::StreamReceiver::restart() {
         return;
     }
 
-    std::optional<audio_format> selected_format;
+    std::optional<AudioFormat> selected_format;
     uint16_t packet_time_frames = 0;
 
     for (auto& stream : media_streams_) {
@@ -479,7 +479,7 @@ void rav::rtp::StreamReceiver::handle_rtp_packet_event_for_session(
 ) {
     TRACY_ZONE_SCOPED;
 
-    const wrapping_uint32 packet_timestamp(event.packet.timestamp());
+    const WrappingUint32 packet_timestamp(event.packet.timestamp());
 
     if (!stream.first_packet_timestamp.has_value()) {
         stream.seq = event.packet.sequence_number();
@@ -592,7 +592,7 @@ rav::rtp::StreamReceiver::stream_updated_event rav::rtp::StreamReceiver::make_up
 void rav::rtp::StreamReceiver::do_maintenance() {
     // Check if streams became are no longer receiving data
     if (state_ == receiver_state::ok || state_ == receiver_state::ok_no_consumer) {
-        const auto now = high_resolution_clock::now();
+        const auto now = HighResolutionClock::now();
         for (const auto& stream : media_streams_) {
             if ((stream.last_packet_time_ns + k_receive_timeout_ms * 1'000'000).value() < now) {
                 set_state(receiver_state::inactive, true);
@@ -622,7 +622,7 @@ void rav::rtp::StreamReceiver::do_realtime_maintenance() {
         }
 
         while (const auto packet = state->fifo.pop()) {
-            wrapping_uint32 packet_timestamp(packet->timestamp);
+            WrappingUint32 packet_timestamp(packet->timestamp);
             if (!state->first_packet_timestamp) {
                 RAV_TRACE("First packet timestamp: {}", packet->timestamp);
                 state->first_packet_timestamp = packet_timestamp;

@@ -18,10 +18,10 @@
 TEST_CASE("wav_audio_format | Read wav file", "[wav_audio_format]") {
     REQUIRE(sin_1ms_wav.size() == 1808);
 
-    auto bytes = std::make_unique<rav::byte_stream>(sin_1ms_wav);
+    auto bytes = std::make_unique<rav::ByteStream>(sin_1ms_wav);
     REQUIRE(bytes->size().value() == 1808);
 
-    rav::wav_audio_format::reader reader(std::move(bytes));
+    rav::WavAudioFormat::Reader reader(std::move(bytes));
     REQUIRE(reader.num_channels() == 2);
     REQUIRE(rav::is_within(reader.sample_rate(), 44100.0, 0.00001));
 
@@ -50,9 +50,9 @@ TEST_CASE("wav_audio_format | Read wav file", "[wav_audio_format]") {
 TEST_CASE("wav_audio_format | Write wav file", "[wav_audio_format]") {
     constexpr auto sin_1ms_wav_header_size = 44;
     const auto sin_1ms_wav_audio_data_size = sin_1ms_wav.size() - sin_1ms_wav_header_size;
-    rav::byte_stream bytes;
+    rav::ByteStream bytes;
     {
-        rav::wav_audio_format::writer writer(bytes, rav::wav_audio_format::format_code::pcm, 44100, 2, 16);
+        rav::WavAudioFormat::Writer writer(bytes, rav::WavAudioFormat::FormatCode::pcm, 44100, 2, 16);
         REQUIRE(writer.write_audio_data(sin_1ms_wav.data() + sin_1ms_wav_header_size, sin_1ms_wav_audio_data_size));
         // Let writer go out of scope to let it finalize the file (in the destructor).
     }

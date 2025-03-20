@@ -14,7 +14,7 @@
 
 TEST_CASE("ring_buffer") {
     SECTION("Basic operations") {
-        rav::ring_buffer<uint8_t> buffer(3);
+        rav::RingBuffer<uint8_t> buffer(3);
 
         REQUIRE(buffer.empty() == true);
         REQUIRE(buffer.full() == false);
@@ -79,13 +79,13 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Front and back") {
-        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        rav::RingBuffer<uint8_t> buffer({1, 2, 3});
         REQUIRE(buffer.front() == 1);
         REQUIRE(buffer.back() == 3);
     }
 
     SECTION("Copy construct") {
-        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        rav::RingBuffer<uint8_t> buffer({1, 2, 3});
         auto buffer2(buffer);  // NOLINT
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
@@ -94,7 +94,7 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Copy assign") {
-        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        rav::RingBuffer<uint8_t> buffer({1, 2, 3});
         auto buffer2 = buffer;  // NOLINT
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
@@ -103,7 +103,7 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Move construct") {
-        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        rav::RingBuffer<uint8_t> buffer({1, 2, 3});
         auto buffer2(std::move(buffer));
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
@@ -112,8 +112,8 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Move assign") {
-        rav::ring_buffer<uint8_t> buffer({1, 2, 3});
-        rav::ring_buffer<uint8_t> buffer2({4, 5, 6});
+        rav::RingBuffer<uint8_t> buffer({1, 2, 3});
+        rav::RingBuffer<uint8_t> buffer2({4, 5, 6});
         buffer2 = std::move(buffer);  // NOLINT
         REQUIRE(buffer2.size() == 3);
         REQUIRE(buffer2[0] == 1);
@@ -123,7 +123,7 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Iterator") {
-        rav::ring_buffer<uint8_t> buffer(3);
+        rav::RingBuffer<uint8_t> buffer(3);
         std::vector<uint8_t> values;
 
         SECTION("0") {
@@ -189,7 +189,7 @@ TEST_CASE("ring_buffer") {
     }
 
     SECTION("Const Iterator") {
-        const rav::ring_buffer<uint8_t> buffer({1, 2, 3});
+        const rav::RingBuffer<uint8_t> buffer({1, 2, 3});
         std::vector<uint8_t> values;
 
         for (auto& value : buffer) {

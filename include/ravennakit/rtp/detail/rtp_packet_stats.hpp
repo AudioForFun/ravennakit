@@ -71,7 +71,7 @@ class PacketStats {
      * @return Returns the total counts if changed.
      */
     std::optional<Counters> update(const uint16_t sequence_number) {
-        const auto packet_sequence_number = wrapping_uint16(sequence_number);
+        const auto packet_sequence_number = WrappingUint16(sequence_number);
 
         if (!most_recent_sequence_number_) {
             most_recent_sequence_number_ = packet_sequence_number;
@@ -119,7 +119,7 @@ class PacketStats {
         if (!most_recent_sequence_number_) {
             return;  // Can't mark a packet too late which never arrived
         }
-        if (wrapping_uint16(sequence_number) > *most_recent_sequence_number_) {
+        if (WrappingUint16(sequence_number) > *most_recent_sequence_number_) {
             return;  // Packet is newer, or older than half the range of uint16
         }
         totals_.too_late++;
@@ -142,7 +142,7 @@ class PacketStats {
     }
 
   private:
-    std::optional<wrapping_uint16> most_recent_sequence_number_ {};
+    std::optional<WrappingUint16> most_recent_sequence_number_ {};
     Counters totals_ {};
     bool dirty_ {};
     std::vector<uint16_t> dropped_packets_ {};
@@ -163,7 +163,7 @@ class PacketStats {
         const auto most_recent = *most_recent_sequence_number_;
         for (auto it = dropped_packets_.begin(); it != dropped_packets_.end();) {
             // If a packet is newer than the most recent packet, it's older than half the range of uint16.
-            if (wrapping_uint16(*it) > most_recent) {
+            if (WrappingUint16(*it) > most_recent) {
                 it = dropped_packets_.erase(it);
             } else {
                 ++it;

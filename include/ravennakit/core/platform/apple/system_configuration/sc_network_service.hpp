@@ -23,22 +23,22 @@ namespace rav {
 /**
  * An RAII wrapper around SCNetworkServiceRef.
  */
-class sc_network_service: public cf_type<SCNetworkServiceRef> {
+class ScNetworkService: public CfType<SCNetworkServiceRef> {
   public:
-    explicit sc_network_service(const SCNetworkServiceRef service, const bool retain) : cf_type(service, retain) {}
+    explicit ScNetworkService(const SCNetworkServiceRef service, const bool retain) : CfType(service, retain) {}
 
     /**
      * @return The name of the service.
      */
     [[nodiscard]] std::string get_name() const {
-        return cf_string::to_string(SCNetworkServiceGetName(get()));
+        return CfString::to_string(SCNetworkServiceGetName(get()));
     }
 
     /**
      * @return The interface of the service.
      */
-    [[nodiscard]] cf_array<SCNetworkProtocolRef> get_protocols() const {
-        return cf_array<SCNetworkProtocolRef>(SCNetworkServiceCopyProtocols(get()), false);
+    [[nodiscard]] CfArray<SCNetworkProtocolRef> get_protocols() const {
+        return CfArray<SCNetworkProtocolRef>(SCNetworkServiceCopyProtocols(get()), false);
     }
 };
 

@@ -16,24 +16,24 @@
 
 namespace rav {
 
-enum class safe_int_error { overflow, underflow, div_by_zero };
+enum class SafeIntError { overflow, underflow, div_by_zero };
 
 /**
  * A safe integer type that checks for overflow and underflow when performing arithmetic operations.
  * @tparam T The type of the integer.
  */
 template<class T>
-class safe_int {
+class SafeInt {
   public:
     static_assert(std::is_integral_v<T>, "T must be an integral type");
 
-    safe_int() = default;
+    SafeInt() = default;
 
     /**
      * Constructs a safe_int from a value.
      * @param value The value to store.
      */
-    explicit safe_int(T value) : value_ {value} {}
+    explicit SafeInt(T value) : value_ {value} {}
 
     /**
      * @return The value stored in the safe_int.
@@ -47,14 +47,14 @@ class safe_int {
      * @return The error state of the safe_int.
      * @throws When the value is not in an error state.
      */
-    [[nodiscard]] safe_int_error error() const {
+    [[nodiscard]] SafeIntError error() const {
         return value_.error();
     }
 
     /**
      * @return The value stored in the safe_int.
      */
-    tl::expected<T, safe_int_error> expected() const {
+    tl::expected<T, SafeIntError> expected() const {
         return value_;
     }
 
@@ -65,7 +65,7 @@ class safe_int {
      * @return A reference to the safe_int.
      */
     template<class U>
-    safe_int& operator+=(U b) {
+    SafeInt& operator+=(U b) {
         if (!value_) {
             return *this;
         }
@@ -80,8 +80,8 @@ class safe_int {
      * @return A new safe_int with the result.
      */
     template<class U>
-    safe_int operator+(U b) const {
-        safe_int r = *this;
+    SafeInt operator+(U b) const {
+        SafeInt r = *this;
         r += b;
         return r;
     }
@@ -93,7 +93,7 @@ class safe_int {
      * @return A reference to the safe_int.
      */
     template<class U>
-    safe_int& operator-=(U b) {
+    SafeInt& operator-=(U b) {
         if (!value_) {
             return *this;
         }
@@ -108,8 +108,8 @@ class safe_int {
      * @return A new safe_int with the result.
      */
     template<class U>
-    safe_int operator-(U b) const {
-        safe_int r = *this;
+    SafeInt operator-(U b) const {
+        SafeInt r = *this;
         r -= b;
         return r;
     }
@@ -121,7 +121,7 @@ class safe_int {
      * @return A reference to the safe_int.
      */
     template<class U>
-    safe_int& operator*=(U b) {
+    SafeInt& operator*=(U b) {
         if (!value_) {
             return *this;
         }
@@ -136,8 +136,8 @@ class safe_int {
      * @return A new safe_int with the result.
      */
     template<class U>
-    safe_int operator*(U b) const {
-        safe_int r = *this;
+    SafeInt operator*(U b) const {
+        SafeInt r = *this;
         r *= b;
         return r;
     }
@@ -149,7 +149,7 @@ class safe_int {
      * @return A reference to the safe_int.
      */
     template<class U>
-    safe_int& operator/=(U b) {
+    SafeInt& operator/=(U b) {
         if (!value_) {
             return *this;
         }
@@ -164,8 +164,8 @@ class safe_int {
      * @return A new safe_int with the result.
      */
     template<class U>
-    safe_int operator/(U b) const {
-        safe_int r = *this;
+    SafeInt operator/(U b) const {
+        SafeInt r = *this;
         r /= b;
         return r;
     }
@@ -178,12 +178,12 @@ class safe_int {
      * @return The sum of the two values, or an error if the operation would overflow or underflow.
      */
     template<class U>
-    static tl::expected<T, safe_int_error> add(T a, U b) {
+    static tl::expected<T, SafeIntError> add(T a, U b) {
         if (b > 0 && a > std::numeric_limits<T>::max() - b) {
-            return tl::unexpected(safe_int_error::overflow);
+            return tl::unexpected(SafeIntError::overflow);
         }
         if (b < 0 && a < std::numeric_limits<T>::min() - b) {
-            return tl::unexpected(safe_int_error::underflow);
+            return tl::unexpected(SafeIntError::underflow);
         }
         return a + b;
     }
@@ -196,12 +196,12 @@ class safe_int {
      * @return The difference of the two values, or an error if the operation would overflow or underflow.
      */
     template<class U>
-    static tl::expected<T, safe_int_error> sub(T a, U b) {
+    static tl::expected<T, SafeIntError> sub(T a, U b) {
         if (b < 0 && a > std::numeric_limits<T>::max() + b) {
-            return tl::unexpected(safe_int_error::overflow);
+            return tl::unexpected(SafeIntError::overflow);
         }
         if (b > 0 && a < std::numeric_limits<T>::min() + b) {
-            return tl::unexpected(safe_int_error::underflow);
+            return tl::unexpected(SafeIntError::underflow);
         }
         return a - b;
     }
@@ -214,7 +214,7 @@ class safe_int {
      * @return The product of the two values, or an error if the operation would overflow or underflow.
      */
     template<class U>
-    static tl::expected<T, safe_int_error> mul(T a, U b) {
+    static tl::expected<T, SafeIntError> mul(T a, U b) {
         // Handle zero cases early
         if (a == 0 || b == 0) {
             return T {0};
@@ -224,21 +224,21 @@ class safe_int {
         if (a > 0) {
             if (b > 0) {
                 if (a > std::numeric_limits<T>::max() / b) {
-                    return tl::unexpected(safe_int_error::overflow);
+                    return tl::unexpected(SafeIntError::overflow);
                 }
             } else {
                 if (b < std::numeric_limits<T>::min() / a) {
-                    return tl::unexpected(safe_int_error::underflow);
+                    return tl::unexpected(SafeIntError::underflow);
                 }
             }
         } else {
             if (b > 0) {
                 if (a < std::numeric_limits<T>::min() / b) {
-                    return tl::unexpected(safe_int_error::underflow);
+                    return tl::unexpected(SafeIntError::underflow);
                 }
             } else {
                 if (a < std::numeric_limits<T>::max() / b) {
-                    return tl::unexpected(safe_int_error::overflow);
+                    return tl::unexpected(SafeIntError::overflow);
                 }
             }
         }
@@ -255,16 +255,16 @@ class safe_int {
      * zero.
      */
     template<class U>
-    static tl::expected<T, safe_int_error> div(T a, U b) {
+    static tl::expected<T, SafeIntError> div(T a, U b) {
         // Check for division by zero
         if (b == 0) {
-            return tl::unexpected(safe_int_error::div_by_zero);
+            return tl::unexpected(SafeIntError::div_by_zero);
         }
 
         // Check for overflow when dividing the smallest negative value by -1
         if constexpr (std::is_signed_v<T>) {
             if (a == std::numeric_limits<T>::min() && b == -1) {
-                return tl::unexpected(safe_int_error::overflow);
+                return tl::unexpected(SafeIntError::overflow);
             }
         }
 
@@ -272,17 +272,17 @@ class safe_int {
     }
 
   private:
-    tl::expected<T, safe_int_error> value_ {};
+    tl::expected<T, SafeIntError> value_ {};
 };
 
 // Convenience aliases
-using safe_int8 = safe_int<int8_t>;
-using safe_int16 = safe_int<int16_t>;
-using safe_int32 = safe_int<int32_t>;
-using safe_int64 = safe_int<int64_t>;
-using safe_uint8 = safe_int<uint8_t>;
-using safe_uint16 = safe_int<uint16_t>;
-using safe_uint32 = safe_int<uint32_t>;
-using safe_uint64 = safe_int<uint64_t>;
+using SafeInt8 = SafeInt<int8_t>;
+using SafeInt16 = SafeInt<int16_t>;
+using SafeInt32 = SafeInt<int32_t>;
+using SafeInt64 = SafeInt<int64_t>;
+using SafeUint8 = SafeInt<uint8_t>;
+using SafeUint16 = SafeInt<uint16_t>;
+using SafeUint32 = SafeInt<uint32_t>;
+using SafeUint64 = SafeInt<uint64_t>;
 
 }  // namespace rav

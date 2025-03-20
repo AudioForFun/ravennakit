@@ -20,16 +20,16 @@
 namespace rav {
 
 template<class T>
-class audio_buffer: public audio_buffer_view<T> {
+class AudioBuffer: public AudioBufferView<T> {
   public:
-    audio_buffer() : audio_buffer_view<T>(nullptr, 0, 0) {}
+    AudioBuffer() : AudioBufferView<T>(nullptr, 0, 0) {}
 
     /**
      * Constructs an audio buffer with the given number of channels and frames.
      * @param num_channels The number of channels.
      * @param num_frames The number of frames.
      */
-    audio_buffer(const size_t num_channels, const size_t num_frames) : audio_buffer_view<T>(nullptr, 0, 0) {
+    AudioBuffer(const size_t num_channels, const size_t num_frames) : AudioBufferView<T>(nullptr, 0, 0) {
         resize(num_channels, num_frames);
     }
 
@@ -39,8 +39,8 @@ class audio_buffer: public audio_buffer_view<T> {
      * @param num_frames The number of frames.
      * @param value_to_fill_with The value to fill the buffer with.
      */
-    audio_buffer(const size_t num_channels, const size_t num_frames, T value_to_fill_with) :
-        audio_buffer_view<T>(nullptr, 0, 0) {
+    AudioBuffer(const size_t num_channels, const size_t num_frames, T value_to_fill_with) :
+        AudioBufferView<T>(nullptr, 0, 0) {
         resize(num_channels, num_frames);
         std::fill(data_.begin(), data_.end(), value_to_fill_with);
     }
@@ -49,7 +49,7 @@ class audio_buffer: public audio_buffer_view<T> {
      * Constructs an audio buffer by copying from another buffer.
      * @param other The other buffer to copy from.
      */
-    audio_buffer(const audio_buffer& other) : audio_buffer_view<T>(nullptr, 0, 0) {
+    AudioBuffer(const AudioBuffer& other) : AudioBufferView<T>(nullptr, 0, 0) {
         data_ = other.data_;
         channels_.resize(other.channels_.size());
         update_channel_pointers();
@@ -59,7 +59,7 @@ class audio_buffer: public audio_buffer_view<T> {
      * Constructs an audio buffer by moving from another buffer.
      * @param other The other buffer to move from.
      */
-    audio_buffer(audio_buffer&& other) noexcept : audio_buffer_view<T>(nullptr, 0, 0) {
+    AudioBuffer(AudioBuffer&& other) noexcept : AudioBufferView<T>(nullptr, 0, 0) {
         std::swap(data_, other.data_);
         std::swap(channels_, other.channels_);
         update_channel_pointers();
@@ -71,7 +71,7 @@ class audio_buffer: public audio_buffer_view<T> {
      * @param other The other buffer to copy from.
      * @return A reference to this buffer.
      */
-    audio_buffer& operator=(const audio_buffer& other) {
+    AudioBuffer& operator=(const AudioBuffer& other) {
         data_ = other.data_;
         channels_.resize(other.channels_.size());
         update_channel_pointers();
@@ -84,7 +84,7 @@ class audio_buffer: public audio_buffer_view<T> {
      * @param other The other buffer to move from.
      * @return A reference to this buffer.
      */
-    audio_buffer& operator=(audio_buffer&& other) noexcept {
+    AudioBuffer& operator=(AudioBuffer&& other) noexcept {
         std::swap(data_, other.data_);
         std::swap(channels_, other.channels_);
         update_channel_pointers();
@@ -124,7 +124,7 @@ class audio_buffer: public audio_buffer_view<T> {
             channels_[i] = data_.data() + i * data_.size() / channels_.size();
         }
         const auto num_frames = channels_.empty() ? 0 : data_.size() / channels_.size();
-        audio_buffer_view<T>::update(channels_.data(), channels_.size(), num_frames);
+        AudioBufferView<T>::update(channels_.data(), channels_.size(), num_frames);
     }
 };
 

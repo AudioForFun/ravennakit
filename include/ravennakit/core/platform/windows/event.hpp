@@ -28,7 +28,7 @@ class event {
   public:
     /**
      * Constructs an event.
-     * @throws rav::exception if CreateEvent fails.
+     * @throws rav::Exception if CreateEvent fails.
      */
     event() {
         HANDLE event = CreateEvent(nullptr, TRUE, FALSE, nullptr);
@@ -55,7 +55,7 @@ class event {
 
     /**
      * Signals the event (SetEvent).
-     * @throws rav::exception if SetEvent fails.
+     * @throws rav::Exception if SetEvent fails.
      */
     void signal() {
         if (!SetEvent(event_)) {

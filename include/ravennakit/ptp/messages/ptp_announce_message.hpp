@@ -34,7 +34,7 @@ struct AnnounceMessage {
      * @return A ptp_announce_message if the data is valid, otherwise a ptp_error.
      */
     static tl::expected<AnnounceMessage, Error>
-    from_data(const MessageHeader& header, buffer_view<const uint8_t> data);
+    from_data(const MessageHeader& header, BufferView<const uint8_t> data);
 
     /**
      * @returns A string representation of the ptp_announce_message.

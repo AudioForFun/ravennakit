@@ -19,15 +19,15 @@ namespace rav {
  * @tparam T The type of the numerator and denominator.
  */
 template<class T>
-struct fraction {
+struct Fraction {
     T numerator;
     T denominator;
 
-    friend bool operator==(const fraction& lhs, const fraction& rhs) {
+    friend bool operator==(const Fraction& lhs, const Fraction& rhs) {
         return std::tie(lhs.numerator, lhs.denominator) == std::tie(rhs.numerator, rhs.denominator);
     }
 
-    friend bool operator!=(const fraction& lhs, const fraction& rhs) {
+    friend bool operator!=(const Fraction& lhs, const Fraction& rhs) {
         return !(lhs == rhs);
     }
 };

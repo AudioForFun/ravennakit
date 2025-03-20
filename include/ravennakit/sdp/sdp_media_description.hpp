@@ -36,7 +36,7 @@ class MediaDescription {
     /// A type alias for a parse result.
     /// TODO: Replace with tl::expected
     template<class T>
-    using ParseResult = result<T, std::string>;
+    using ParseResult = Result<T, std::string>;
 
     /**
      * Parses a media description from a string (i.e. the line starting with m=*). Does not parse the connection
@@ -209,13 +209,13 @@ class MediaDescription {
     /**
      * @return The clock deviation of the stream. This is a RAVENNA-specific attribute extension.
      */
-    [[nodiscard]] const std::optional<fraction<uint32_t>>& clock_deviation() const;
+    [[nodiscard]] const std::optional<Fraction<uint32_t>>& clock_deviation() const;
 
     /**
      * Sets the clock deviation of the stream. This is a RAVENNA-specific attribute extension.
      * @param clock_deviation The clock deviation to set.
      */
-    void set_clock_deviation(std::optional<fraction<uint32_t>> clock_deviation);
+    void set_clock_deviation(std::optional<Fraction<uint32_t>> clock_deviation);
 
     /**
      * @returns The source filters of the media description.
@@ -286,7 +286,7 @@ class MediaDescription {
     std::optional<std::string> session_information_;
     std::optional<RavennaClockDomain> clock_domain_;   // RAVENNA-specific attribute
     std::optional<uint32_t> sync_time_;                  // RAVENNA-specific attribute
-    std::optional<fraction<uint32_t>> clock_deviation_;  // RAVENNA-specific attribute
+    std::optional<Fraction<uint32_t>> clock_deviation_;  // RAVENNA-specific attribute
     std::vector<SourceFilter> source_filters_;
     std::optional<uint32_t> framecount_;             // Legacy RAVENNA attribute, replaced by ptime
     std::map<std::string, std::string> attributes_;  // Remaining, unknown attributes

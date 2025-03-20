@@ -17,7 +17,7 @@
 
 namespace rav {
 
-class random {
+class Random {
   public:
     /**
      * Generates alphanumeric random string.

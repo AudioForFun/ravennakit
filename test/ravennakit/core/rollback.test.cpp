@@ -16,7 +16,7 @@ TEST_CASE("rollback::rollback()", "[rollback]") {
     int count = 0;
     SECTION("Rollback with initial function") {
         {
-            rav::rollback rollback([&count] {
+            rav::Rollback rollback([&count] {
                 count++;
             });
         }
@@ -25,7 +25,7 @@ TEST_CASE("rollback::rollback()", "[rollback]") {
 
     SECTION("Rollback with initial and added function") {
         {
-            rav::rollback rollback([&count] {
+            rav::Rollback rollback([&count] {
                 count++;
             });
             rollback.add([&count] {
@@ -37,7 +37,7 @@ TEST_CASE("rollback::rollback()", "[rollback]") {
 
     SECTION("Rollback won't happen when cancelled") {
         {
-            rav::rollback rollback([&count] {
+            rav::Rollback rollback([&count] {
                 count++;
             });
             rollback.add([&count] {

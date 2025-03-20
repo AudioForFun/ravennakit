@@ -21,14 +21,14 @@
 
 namespace rav {
 
-class wav_audio_format {
+class WavAudioFormat {
   public:
-    enum class format_code : uint16_t { pcm = 0x1, ieee_float = 0x3, alaw = 0x4, mulaw = 0x7, extensible = 0xfffe };
+    enum class FormatCode : uint16_t { pcm = 0x1, ieee_float = 0x3, alaw = 0x4, mulaw = 0x7, extensible = 0xfffe };
 
     /**
      * A struct representing the fmt chunk of a WAVE file.
      */
-    struct fmt_chunk {
+    struct FmtChunk {
         struct extension {
             /// The size of the extension (in bytes).
             uint16_t cb_size {};
@@ -41,7 +41,7 @@ class wav_audio_format {
         };
 
         /// A number indicating the WAVE format category of the file.
-        format_code format {};
+        FormatCode format {};
         /// The number of channels represented in the waveform data.
         uint16_t num_channels {};
         /// The sampling rate (in samples per second).
@@ -60,25 +60,25 @@ class wav_audio_format {
          * @param istream The input stream to read from.
          * @param chunk_size The size of the fmt chunk.
          */
-        void read(input_stream& istream, uint32_t chunk_size);
+        void read(InputStream& istream, uint32_t chunk_size);
 
         /**
          * Writes the fmt chunk to the output stream.
          * @param ostream The output stream to write to.
          * @return The number of bytes written.
          */
-        [[nodiscard]] tl::expected<size_t, output_stream::error> write(output_stream& ostream) const;
+        [[nodiscard]] tl::expected<size_t, OutputStream::Error> write(OutputStream& ostream) const;
 
         /**
          * @return The audio format represented by the fmt chunk.
          */
-        [[nodiscard]] std::optional<audio_format> to_audio_format() const;
+        [[nodiscard]] std::optional<AudioFormat> to_audio_format() const;
     };
 
     /**
      * A struct representing the data chunk of a WAVE file.
      */
-    struct data_chunk {
+    struct DataChunk {
         /// The beginning of the audio data in the file, relative to the beginning of the file. Might be 0 if the
         /// position is not yet known. Will be updated when the data is read or written.
         size_t data_begin {};
@@ -91,7 +91,7 @@ class wav_audio_format {
          * @param istream The input stream to read from.
          * @param chunk_size The size of the data chunk.
          */
-        [[nodiscard]] bool read(input_stream& istream, uint32_t chunk_size);
+        [[nodiscard]] bool read(InputStream& istream, uint32_t chunk_size);
 
         /**
          * Writes the data chunk to the output stream.
@@ -99,22 +99,22 @@ class wav_audio_format {
          * @param data_written The number of bytes of audio data written into the stream so far.
          * @return The number of bytes written (excluding the size of the data).
          */
-        [[nodiscard]] tl::expected<size_t, output_stream::error> write(output_stream& ostream, size_t data_written);
+        [[nodiscard]] tl::expected<size_t, OutputStream::Error> write(OutputStream& ostream, size_t data_written);
     };
 
     /**
      * A reader class which reads audio (meta)data from an input stream.
      */
-    class reader {
+    class Reader {
       public:
         /**
          * Constructs a new reader.
          * @param istream The input stream to read from. Must be valid.
          */
-        explicit reader(std::unique_ptr<input_stream> istream);
+        explicit Reader(std::unique_ptr<InputStream> istream);
 
-        reader(reader&&) noexcept = default;
-        reader& operator=(reader&&) noexcept = default;
+        Reader(Reader&&) noexcept = default;
+        Reader& operator=(Reader&&) noexcept = default;
 
         /**
          * Reads audio data from the input stream.
@@ -122,7 +122,7 @@ class wav_audio_format {
          * @param size The number of bytes to read.
          * @return The number of bytes read.
          */
-        [[nodiscard]] tl::expected<size_t, input_stream::error> read_audio_data(uint8_t* buffer, size_t size);
+        [[nodiscard]] tl::expected<size_t, InputStream::Error> read_audio_data(uint8_t* buffer, size_t size);
 
         /**
          * @return The number of bytes of audio data remaining in the stream.
@@ -148,24 +148,24 @@ class wav_audio_format {
         /**
          * @return The audio format of the audio data.
          */
-        [[nodiscard]] std::optional<audio_format> get_audio_format() const;
+        [[nodiscard]] std::optional<AudioFormat> get_audio_format() const;
 
       private:
-        std::unique_ptr<input_stream> istream_;
-        std::optional<fmt_chunk> fmt_chunk_;
-        std::optional<data_chunk> data_chunk_;
+        std::unique_ptr<InputStream> istream_;
+        std::optional<FmtChunk> fmt_chunk_;
+        std::optional<DataChunk> data_chunk_;
         size_t data_read_position_ {};
     };
 
     /**
      * A writer class which writes audio (meta)data to an output stream.
      */
-    class writer {
+    class Writer {
       public:
-        explicit writer(
-            output_stream& ostream, format_code format, double sample_rate, size_t num_channels, size_t bits_per_sample
+        explicit Writer(
+            OutputStream& ostream, FormatCode format, double sample_rate, size_t num_channels, size_t bits_per_sample
         );
-        ~writer();
+        ~Writer();
 
         /**
          * Writes audio data to the output stream.
@@ -173,7 +173,7 @@ class wav_audio_format {
          * @param size The number of bytes to write.
          * @return The number of bytes written.
          */
-        [[nodiscard]] tl::expected<void, output_stream::error> write_audio_data(const uint8_t* buffer, size_t size);
+        [[nodiscard]] tl::expected<void, OutputStream::Error> write_audio_data(const uint8_t* buffer, size_t size);
 
         /**
          * Finalizes the WAVE file by writing the header and flushing the output stream.
@@ -183,13 +183,13 @@ class wav_audio_format {
         [[nodiscard]] bool finalize();
 
       private:
-        output_stream& ostream_;
-        fmt_chunk fmt_chunk_;
-        data_chunk data_chunk_;
+        OutputStream& ostream_;
+        FmtChunk fmt_chunk_;
+        DataChunk data_chunk_;
         size_t audio_data_written_ {};
         size_t chunks_total_size_ {};
 
-        [[nodiscard]] tl::expected<void, rav::output_stream::error> write_header();
+        [[nodiscard]] tl::expected<void, rav::OutputStream::Error> write_header();
     };
 };
 

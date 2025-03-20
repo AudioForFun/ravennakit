@@ -20,25 +20,25 @@ namespace rav {
  * This serves as an alternative to the 'goto cleanup' pattern in C, providing a mechanism to roll back changes
  * if subsequent operations fail. The class is exception-safe.
  */
-class rollback {
+class Rollback {
   public:
     /**
      * Default constructor that initializes an empty rollback object.
      */
-    rollback() = default;
+    Rollback() = default;
 
     /**
      * Constructs a rollback object with an initial rollback function.
      * @param initial_rollback_function The function to execute upon destruction if not committed.
      */
-    explicit rollback(std::function<void()>&& initial_rollback_function) {
+    explicit Rollback(std::function<void()>&& initial_rollback_function) {
         rollback_functions_.push_back(std::move(initial_rollback_function));
     }
 
     /**
      * Destructor that executes all registered rollback functions if not committed.
      */
-    ~rollback() {
+    ~Rollback() {
         for (auto& func : rollback_functions_) {
             if (func) {
                 func();
@@ -46,8 +46,8 @@ class rollback {
         }
     }
 
-    rollback (const rollback&) = delete;
-    rollback& operator= (const rollback&) = delete;
+    Rollback (const Rollback&) = delete;
+    Rollback& operator= (const Rollback&) = delete;
 
     /**
      * Adds a function to the rollback stack.
