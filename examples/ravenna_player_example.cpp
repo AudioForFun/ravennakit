@@ -32,7 +32,7 @@
 class wav_file_player {
   public:
     explicit wav_file_player(
-        asio::io_context& io_context, rav::dnssd::dnssd_advertiser& advertiser, rav::rtsp_server& rtsp_server,
+        asio::io_context& io_context, rav::dnssd::dnssd_advertiser& advertiser, rav::rtsp::server& rtsp_server,
         rav::ptp_instance& ptp_instance, rav::rtp_transmitter& rtp_transmitter, rav::id::generator& id_generator,
         const asio::ip::address_v4& interface_address, const rav::file& file_to_play, const std::string& session_name
     ) {
@@ -114,7 +114,7 @@ int main(int const argc, char* argv[]) {
     std::vector<std::unique_ptr<wav_file_player>> wav_file_players;
 
     auto advertiser = rav::dnssd::dnssd_advertiser::create(io_context);
-    rav::rtsp_server rtsp_server(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
+    rav::rtsp::server rtsp_server(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
     rav::rtp_transmitter rtp_transmitter(io_context, interface_address);
 
     // PTP

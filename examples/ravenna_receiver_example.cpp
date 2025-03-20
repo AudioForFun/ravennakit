@@ -183,7 +183,7 @@ class ravenna_receiver_example: public rav::rtp_stream_receiver::subscriber {
         if (!ravenna_receiver_->subscribe(this)) {
             RAV_WARNING("Failed to add subscriber");
         }
-        ravenna_receiver_->subscribe_to_session(stream_name);
+        std::ignore = ravenna_receiver_->subscribe_to_session(stream_name);
     }
 
     ~ravenna_receiver_example() override {

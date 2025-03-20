@@ -38,7 +38,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber{
         if (!ravenna_receiver_->subscribe(this)) {
             RAV_WARNING("Failed to add subscriber");
         }
-        ravenna_receiver_->subscribe_to_session(stream_name_);
+        std::ignore = ravenna_receiver_->subscribe_to_session(stream_name_);
 
         advertiser_ = rav::dnssd::dnssd_advertiser::create(io_context_);
         if (advertiser_ == nullptr) {
@@ -46,7 +46,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber{
         }
 
         rtsp_server_ =
-            std::make_unique<rav::rtsp_server>(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
+            std::make_unique<rav::rtsp::server>(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
 
         rtp_transmitter_ = std::make_unique<rav::rtp_transmitter>(io_context_, interface_addr);
 
@@ -115,7 +115,7 @@ class loopback_example: public rav::rtp_stream_receiver::subscriber{
 
     // Sender components
     std::unique_ptr<rav::dnssd::dnssd_advertiser> advertiser_;
-    std::unique_ptr<rav::rtsp_server> rtsp_server_;
+    std::unique_ptr<rav::rtsp::server> rtsp_server_;
     std::unique_ptr<rav::rtp_transmitter> rtp_transmitter_;
     std::unique_ptr<rav::ptp_instance> ptp_instance_;
     std::unique_ptr<rav::ravenna_transmitter> transmitter_;

@@ -15,22 +15,22 @@
 
 #include <asio.hpp>
 
-namespace rav {
+namespace rav::rtsp {
 
-class rtsp_connection final: public std::enable_shared_from_this<rtsp_connection> {
+class connection final: public std::enable_shared_from_this<connection> {
   public:
     struct connect_event {
-        rtsp_connection& connection;
+        connection& connection;
     };
 
     struct request_event {
-        rtsp_connection& connection;
-        const rtsp_request& request;
+        connection& connection;
+        const request& request;
     };
 
     struct response_event {
-        rtsp_connection& connection;
-        const rtsp_response& response;
+        connection& connection;
+        const response& response;
     };
 
     /**
@@ -51,7 +51,7 @@ class rtsp_connection final: public std::enable_shared_from_this<rtsp_connection
          * Called when a connection is established.
          * @param connection The connection that was established.
          */
-        virtual void on_connect(rtsp_connection& connection) {
+        virtual void on_connect(connection& connection) {
             std::ignore = connection;
         }
 
@@ -60,7 +60,7 @@ class rtsp_connection final: public std::enable_shared_from_this<rtsp_connection
          * @param connection The connection on which the request was received.
          * @param request The request that was received.
          */
-        virtual void on_request(rtsp_connection& connection, const rtsp_request& request) {
+        virtual void on_request(connection& connection, const request& request) {
             std::ignore = connection;
             std::ignore = request;
         }
@@ -70,7 +70,7 @@ class rtsp_connection final: public std::enable_shared_from_this<rtsp_connection
          * @param connection The connection on which the response was received.
          * @param response The response that was received.
          */
-        virtual void on_response(rtsp_connection& connection, const rtsp_response& response) {
+        virtual void on_response(connection& connection, const response& response) {
             std::ignore = connection;
             std::ignore = response;
         }
@@ -79,34 +79,34 @@ class rtsp_connection final: public std::enable_shared_from_this<rtsp_connection
          * Called when a connection is disconnected.
          * @param connection The connection that was disconnected.
          */
-        virtual void on_disconnect(rtsp_connection& connection) {
+        virtual void on_disconnect(connection& connection) {
             std::ignore = connection;
         }
     };
 
-    static std::shared_ptr<rtsp_connection> create(asio::ip::tcp::socket socket) {
-        return std::shared_ptr<rtsp_connection>(new rtsp_connection(std::move(socket)));
+    static std::shared_ptr<connection> create(asio::ip::tcp::socket socket) {
+        return std::shared_ptr<connection>(new connection(std::move(socket)));
     }
 
-    ~rtsp_connection();
+    ~connection();
 
-    rtsp_connection(const rtsp_connection&) = delete;
-    rtsp_connection& operator=(const rtsp_connection&) = delete;
+    connection(const connection&) = delete;
+    connection& operator=(const connection&) = delete;
 
-    rtsp_connection(rtsp_connection&&) noexcept = default;
-    rtsp_connection& operator=(rtsp_connection&&) noexcept = default;
+    connection(connection&&) noexcept = default;
+    connection& operator=(connection&&) noexcept = default;
 
     /**
      * Sends given response to the server. Function is async and will return immediately.
      * @param response The response to send.
      */
-    void async_send_response(const rtsp_response& response);
+    void async_send_response(const response& response);
 
     /**
      * Sends given request to the server. Function is async and will return immediately.
      * @param request The request to send.
      */
-    void async_send_request(const rtsp_request& request);
+    void async_send_request(const request& request);
 
     /**
      * Shuts down the connection for both directions.
@@ -149,10 +149,10 @@ class rtsp_connection final: public std::enable_shared_from_this<rtsp_connection
     asio::ip::tcp::socket socket_;
     string_buffer input_buffer_;
     string_buffer output_buffer_;
-    rtsp_parser parser_;
+    parser parser_;
     subscriber* subscriber_ {};
 
-    explicit rtsp_connection(asio::ip::tcp::socket socket);
+    explicit connection(asio::ip::tcp::socket socket);
 
     void async_write();
     void async_read_some();

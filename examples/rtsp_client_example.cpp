@@ -39,18 +39,18 @@ int main(int const argc, char* argv[]) {
 
     asio::io_context io_context;
 
-    rav::rtsp_client client(io_context);
+    rav::rtsp::client client(io_context);
 
-    client.on<rav::rtsp_connection::connect_event>([path, &client](const rav::rtsp_connection::connect_event&) {
+    client.on<rav::rtsp::connection::connect_event>([path, &client](const rav::rtsp::connection::connect_event&) {
         RAV_INFO("Connected, send DESCRIBE request");
         client.async_describe(path);
     });
 
-    client.on<rav::rtsp_connection::request_event>([](const rav::rtsp_connection::request_event& event) {
+    client.on<rav::rtsp::connection::request_event>([](const rav::rtsp::connection::request_event& event) {
         RAV_INFO("{}\n{}", event.request.to_debug_string(true), rav::string_replace(event.request.data, "\r\n", "\n"));
     });
 
-    client.on<rav::rtsp_connection::response_event>([](const rav::rtsp_connection::response_event& event) {
+    client.on<rav::rtsp::connection::response_event>([](const rav::rtsp::connection::response_event& event) {
         RAV_INFO(
             "{}\n{}", event.response.to_debug_string(true), rav::string_replace(event.response.data, "\r\n", "\n")
         );

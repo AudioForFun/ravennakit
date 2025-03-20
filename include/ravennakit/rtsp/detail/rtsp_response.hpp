@@ -14,22 +14,22 @@
 
 #include <string>
 
-namespace rav {
+namespace rav::rtsp {
 
 /**
  * Structure that represents an RTSP response.
  */
-struct rtsp_response {
+struct response {
     int status_code {};
     std::string reason_phrase;
     int rtsp_version_major {1};
     int rtsp_version_minor {0};
-    rtsp_headers headers;
+    headers headers;
     std::string data;
 
-    rtsp_response() = default;
-    rtsp_response(int status, const std::string& reason);
-    rtsp_response(int status, std::string reason, std::string data_);
+    response() = default;
+    response(int status, const std::string& reason);
+    response(int status, std::string reason, std::string data_);
 
     /**
      * Resets the request to its initial state.
@@ -64,4 +64,4 @@ struct rtsp_response {
     [[nodiscard]] std::string to_debug_string(bool include_data) const;
 };
 
-}  // namespace rav
+}  // namespace rav::rtsp

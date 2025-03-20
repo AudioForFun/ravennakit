@@ -14,29 +14,29 @@
 #include "ravennakit/rtsp/detail/rtsp_request.hpp"
 #include "ravennakit/core/uri.hpp"
 
-rav::rtsp_client::rtsp_client(asio::io_context& io_context) :
-    resolver_(io_context), connection_(rtsp_connection::create(asio::ip::tcp::socket(io_context))) {}
+rav::rtsp::client::client(asio::io_context& io_context) :
+    resolver_(io_context), connection_(connection::create(asio::ip::tcp::socket(io_context))) {}
 
-rav::rtsp_client::~rtsp_client() {
+rav::rtsp::client::~client() {
     if (connection_ != nullptr) {
         connection_->set_subscriber(nullptr);
     }
 }
 
-void rav::rtsp_client::async_connect(const std::string& host, const uint16_t port) {
+void rav::rtsp::client::async_connect(const std::string& host, const uint16_t port) {
     async_resolve_connect(host, std::to_string(port), asio::ip::resolver_base::flags::numeric_service);
 }
 
-void rav::rtsp_client::async_connect(const std::string& host, const std::string& service) {
+void rav::rtsp::client::async_connect(const std::string& host, const std::string& service) {
     async_resolve_connect(host, service, asio::ip::resolver_base::flags());
 }
 
-void rav::rtsp_client::async_describe(const std::string& path, std::string data) const {
+void rav::rtsp::client::async_describe(const std::string& path, std::string data) const {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    rtsp_request request;
+    request request;
     request.method = "DESCRIBE";
     request.uri = uri::encode("rtsp", host_, path);
     request.headers.set("CSeq", "15");
@@ -46,12 +46,12 @@ void rav::rtsp_client::async_describe(const std::string& path, std::string data)
     connection_->async_send_request(request);
 }
 
-void rav::rtsp_client::async_setup(const std::string& path) const {
+void rav::rtsp::client::async_setup(const std::string& path) const {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    rtsp_request request;
+    request request;
     request.method = "SETUP";
     request.uri = uri::encode("rtsp", host_, path);
     request.headers.set("CSeq", "15");
@@ -60,12 +60,12 @@ void rav::rtsp_client::async_setup(const std::string& path) const {
     connection_->async_send_request(request);
 }
 
-void rav::rtsp_client::async_play(const std::string& path) const {
+void rav::rtsp::client::async_play(const std::string& path) const {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    rtsp_request request;
+    request request;
     request.method = "PLAY";
     request.uri = uri::encode("rtsp", host_, path);
     request.headers.set("CSeq", "15");
@@ -74,12 +74,12 @@ void rav::rtsp_client::async_play(const std::string& path) const {
     connection_->async_send_request(request);
 }
 
-void rav::rtsp_client::async_teardown(const std::string& path) const {
+void rav::rtsp::client::async_teardown(const std::string& path) const {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
 
-    rtsp_request request;
+    request request;
     request.method = "TEARDOWN";
     request.uri = uri::encode("rtsp", host_, path);
     request.headers.set("CSeq", "15");
@@ -87,27 +87,27 @@ void rav::rtsp_client::async_teardown(const std::string& path) const {
     connection_->async_send_request(request);
 }
 
-void rav::rtsp_client::async_send_response(const rtsp_response& response) const {
+void rav::rtsp::client::async_send_response(const response& response) const {
     connection_->async_send_response(response);
 }
 
-void rav::rtsp_client::async_send_request(const rtsp_request& request) const {
+void rav::rtsp::client::async_send_request(const request& request) const {
     connection_->async_send_request(request);
 }
 
-void rav::rtsp_client::on_connect(rtsp_connection& connection) {
-    events_.emit(rtsp_connection::connect_event {connection});
+void rav::rtsp::client::on_connect(connection& connection) {
+    events_.emit(connection::connect_event {connection});
 }
 
-void rav::rtsp_client::on_request(rtsp_connection& connection, const rtsp_request& request) {
-    events_.emit(rtsp_connection::request_event {connection, request});
+void rav::rtsp::client::on_request(connection& connection, const request& request) {
+    events_.emit(connection::request_event {connection, request});
 }
 
-void rav::rtsp_client::on_response(rtsp_connection& connection, const rtsp_response& response) {
-    events_.emit(rtsp_connection::response_event {connection, response});
+void rav::rtsp::client::on_response(connection& connection, const response& response) {
+    events_.emit(connection::response_event {connection, response});
 }
 
-void rav::rtsp_client::async_resolve_connect(
+void rav::rtsp::client::async_resolve_connect(
     const std::string& host, const std::string& service, const asio::ip::resolver_base::flags flags
 ) {
     host_ = host;

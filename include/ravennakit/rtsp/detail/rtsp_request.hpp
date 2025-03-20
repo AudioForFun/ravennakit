@@ -15,22 +15,22 @@
 
 #include <string>
 
-namespace rav {
+namespace rav::rtsp {
 
 /**
  * Structure that represents an RTSP request.
  */
-struct rtsp_request {
+struct request {
     std::string method;
     std::string uri;
     int rtsp_version_major {1};
     int rtsp_version_minor {0};
-    rtsp_headers headers;
+    headers headers;
     std::string data;
 
-    rtsp_request() = default;
+    request() = default;
 
-    rtsp_request(std::string request_method, std::string request_uri, std::string request_data = "") :
+    request(std::string request_method, std::string request_uri, std::string request_data = "") :
         method(std::move(request_method)), uri(std::move(request_uri)), data(std::move(request_data)) {}
 
     /**
@@ -57,4 +57,4 @@ struct rtsp_request {
     [[nodiscard]] std::string to_debug_string(bool include_data) const;
 };
 
-}  // namespace rav
+}  // namespace rav::rtsp

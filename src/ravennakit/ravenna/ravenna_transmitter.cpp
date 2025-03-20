@@ -17,7 +17,7 @@
 #endif
 
 rav::ravenna_transmitter::ravenna_transmitter(
-    asio::io_context& io_context, dnssd::dnssd_advertiser& advertiser, rtsp_server& rtsp_server,
+    asio::io_context& io_context, dnssd::dnssd_advertiser& advertiser, rtsp::server& rtsp_server,
     ptp_instance& ptp_instance, rtp_transmitter& rtp_transmitter, const id id, std::string session_name,
     asio::ip::address_v4 interface_address
 ) :
@@ -147,7 +147,7 @@ uint32_t rav::ravenna_transmitter::get_framecount() const {
     return ptime_.framecount(audio_format_.sample_rate);
 }
 
-void rav::ravenna_transmitter::on_request(rtsp_connection::request_event event) const {
+void rav::ravenna_transmitter::on_request(rtsp::connection::request_event event) const {
     const auto sdp = build_sdp();  // Should the SDP be cached and updated on changes?
     RAV_TRACE("SDP:\n{}", sdp.to_string("\n").value());
     const auto encoded = sdp.to_string();
@@ -155,7 +155,7 @@ void rav::ravenna_transmitter::on_request(rtsp_connection::request_event event) 
         RAV_ERROR("Failed to encode SDP");
         return;
     }
-    auto response = rtsp_response(200, "OK", *encoded);
+    auto response = rtsp::response(200, "OK", *encoded);
     if (const auto* cseq = event.request.headers.get("cseq")) {
         response.headers.set(*cseq);
     }
@@ -169,7 +169,7 @@ void rav::ravenna_transmitter::send_announce() const {
         RAV_ERROR("Failed to encode SDP: {}", sdp.error());
         return;
     }
-    rtsp_request request;
+    rtsp::request request;
     request.method = "ANNOUNCE";
     request.headers.set("content-type", "application/sdp");
     request.data = std::move(sdp.value());

@@ -18,15 +18,15 @@
 #include <asio.hpp>
 #include <unordered_map>
 
-namespace rav {
+namespace rav::rtsp {
 
 /**
  * Server for accepting RTSP connections.
  * This class assumes a single threaded io_context and no attempt to synchronise access and callbacks have been made.
  */
-class rtsp_server final: rtsp_connection::subscriber {
+class server final: connection::subscriber {
   public:
-    using request_handler = std::function<void(rtsp_connection::request_event)>;
+    using request_handler = std::function<void(connection::request_event)>;
 
     /**
      * Baseclass for other classes which need to handle requests for specific paths.
@@ -39,18 +39,18 @@ class rtsp_server final: rtsp_connection::subscriber {
          * Called when a request is received.
          * @param event The event containing the request.
          */
-        virtual void on_request([[maybe_unused]] rtsp_connection::request_event event) const {}
+        virtual void on_request([[maybe_unused]] connection::request_event event) const {}
 
         /**
          * Called when a response is received.
          * @param event The event containing the response.
          */
-        virtual void on_response([[maybe_unused]] rtsp_connection::response_event event) {}
+        virtual void on_response([[maybe_unused]] connection::response_event event) {}
     };
 
-    rtsp_server(asio::io_context& io_context, const asio::ip::tcp::endpoint& endpoint);
-    rtsp_server(asio::io_context& io_context, const char* address, uint16_t port);
-    ~rtsp_server() override;
+    server(asio::io_context& io_context, const asio::ip::tcp::endpoint& endpoint);
+    server(asio::io_context& io_context, const char* address, uint16_t port);
+    ~server() override;
 
     /**
      * @returns The port the server is listening on.
@@ -75,7 +75,7 @@ class rtsp_server final: rtsp_connection::subscriber {
      * @param path The path to send the request to.
      * @param request The request to send.
      */
-    void send_request(const std::string& path, const rtsp_request& request) const;
+    void send_request(const std::string& path, const request& request) const;
 
     /**
      * Closes the listening socket. Implies cancellation.
@@ -88,17 +88,17 @@ class rtsp_server final: rtsp_connection::subscriber {
     void reset() noexcept;
 
   protected:
-    void on_connect(rtsp_connection& connection) override;
-    void on_request(rtsp_connection& connection, const rtsp_request& request) override;
-    void on_response(rtsp_connection& connection, const rtsp_response& response) override;
-    void on_disconnect(rtsp_connection& connection) override;
+    void on_connect(connection& connection) override;
+    void on_request(connection& connection, const request& request) override;
+    void on_response(connection& connection, const response& response) override;
+    void on_disconnect(connection& connection) override;
 
   private:
     static constexpr auto k_special_path_all = "/all";
 
     struct path_context {
         path_handler* handler;
-        std::vector<std::shared_ptr<rtsp_connection>> connections;
+        std::vector<std::shared_ptr<connection>> connections;
     };
 
     asio::ip::tcp::acceptor acceptor_;

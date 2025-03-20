@@ -16,12 +16,12 @@
 #include <vector>
 #include "ravennakit/core/format.hpp"
 
-namespace rav {
+namespace rav::rtsp {
 
 /**
  * Class for holding RTSP headers.
  */
-class rtsp_headers {
+class headers {
   public:
     /**
      * Struct for holding a header name and value.
@@ -91,7 +91,7 @@ class rtsp_headers {
     /**
      * @return The headers.
      */
-    [[nodiscard]] const std::vector<header>& headers() const {
+    [[nodiscard]] const std::vector<header>& get_headers() const {
         return headers_;
     }
 

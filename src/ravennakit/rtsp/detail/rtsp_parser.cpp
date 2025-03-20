@@ -10,7 +10,7 @@
 
 #include "ravennakit/rtsp/detail/rtsp_parser.hpp"
 
-rav::rtsp_parser::result rav::rtsp_parser::parse(string_buffer& input) {
+rav::rtsp::parser::result rav::rtsp::parser::parse(string_buffer& input) {
     while (!input.exhausted()) {
         if (state_ == state::start) {
             const auto start_line = input.read_until_newline();
@@ -50,7 +50,7 @@ rav::rtsp_parser::result rav::rtsp_parser::parse(string_buffer& input) {
                     continue; // Next header line
                 }
 
-                rtsp_headers::header h;
+                headers::header h;
                 string_parser header_parser(*header_line);
 
                 // Header name
@@ -107,7 +107,7 @@ rav::rtsp_parser::result rav::rtsp_parser::parse(string_buffer& input) {
     return result::good;
 }
 
-void rav::rtsp_parser::reset() noexcept {
+void rav::rtsp::parser::reset() noexcept {
     events::reset();
     state_ = state::start;
     start_line_.clear();
@@ -117,7 +117,7 @@ void rav::rtsp_parser::reset() noexcept {
     response_.reset();
 }
 
-rav::rtsp_parser::result rav::rtsp_parser::handle_response() {
+rav::rtsp::parser::result rav::rtsp::parser::handle_response() {
     string_parser parser(start_line_);
     parser.skip("RTSP/");
     const auto version_major = parser.read_int<int32_t>();
@@ -160,7 +160,7 @@ rav::rtsp_parser::result rav::rtsp_parser::handle_response() {
     return result::good;
 }
 
-rav::rtsp_parser::result rav::rtsp_parser::handle_request() {
+rav::rtsp::parser::result rav::rtsp::parser::handle_request() {
     string_parser parser(start_line_);
     const auto method = parser.split(' ');
     if (!method) {
