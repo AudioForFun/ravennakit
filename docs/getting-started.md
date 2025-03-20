@@ -70,7 +70,7 @@ struct ravenna_node_subscriber final: rav::ravenna_node::subscriber, rav::rtp::r
 
 int main() {
     rav::log::set_level_from_env();
-    rav::system::do_system_checks();
+    rav::do_system_checks();
 
     rav::rtp::rtp_receiver::configuration config;
     config.interface_address = asio::ip::make_address("192.168.1.1");  // Fill in the address of the NIC to use

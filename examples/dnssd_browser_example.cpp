@@ -7,7 +7,7 @@
 
 int main(const int argc, char* argv[]) {
     rav::log::set_level_from_env();
-    rav::system::do_system_checks();
+    rav::do_system_checks();
 
     if (argc < 2) {
         std::cout << "Expected an argument which specifies the service type to browse for (example: _http._tcp)"

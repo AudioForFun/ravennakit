@@ -96,7 +96,7 @@ class wav_file_player {
  */
 int main(int const argc, char* argv[]) {
     rav::log::set_level_from_env();
-    rav::system::do_system_checks();
+    rav::do_system_checks();
 
     CLI::App app {"RAVENNA Player example"};
     argv = app.ensure_utf8(argv);

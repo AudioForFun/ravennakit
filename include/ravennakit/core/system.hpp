@@ -14,7 +14,7 @@
 
 #include <cstdint>
 
-namespace rav::system {
+namespace rav {
 
 inline void do_system_checks() {
     static_assert(sizeof(size_t) == sizeof(uint64_t), "size_t must be 64-bit");

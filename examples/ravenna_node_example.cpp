@@ -57,7 +57,7 @@ struct ravenna_node final: rav::ravenna_node::subscriber, rav::rtp::rtp_stream_r
 
 int main(int const argc, char* argv[]) {
     rav::log::set_level_from_env();
-    rav::system::do_system_checks();
+    rav::do_system_checks();
 
     CLI::App app {"RAVENNA Receiver example"};
     argv = app.ensure_utf8(argv);
