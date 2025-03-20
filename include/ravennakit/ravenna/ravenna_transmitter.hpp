@@ -70,7 +70,7 @@ class ravenna_transmitter: public rtsp::server::path_handler {
      * Sets the packet time.
      * @param packet_time The packet time.
      */
-    void set_packet_time(aes67_packet_time packet_time);
+    void set_packet_time(aes67::aes67_packet_time packet_time);
 
     /**
      * @return The packet time in milliseconds as signaled using SDP. If the packet time is 1ms and the sample
@@ -134,7 +134,7 @@ class ravenna_transmitter: public rtsp::server::path_handler {
     int32_t clock_domain_ {};
     audio_format audio_format_;
     sdp::format sdp_format_;  // I think we can compute this from audio_format_ each time we need it
-    aes67_packet_time ptime_ {aes67_packet_time::ms_1()};
+    aes67::aes67_packet_time ptime_ {aes67::aes67_packet_time::ms_1()};
     bool running_ {false};
     ptp::ptp_clock_identity grandmaster_identity_;
     rtp::rtp_packet rtp_packet_;

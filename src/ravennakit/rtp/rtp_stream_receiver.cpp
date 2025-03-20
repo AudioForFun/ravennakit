@@ -152,7 +152,7 @@ void rav::rtp::rtp_stream_receiver::update_sdp(const sdp::session_description& s
     uint16_t packet_time_frames = 0;
     const auto ptime = selected_media_description->ptime();
     if (ptime.has_value()) {
-        packet_time_frames = aes67_packet_time::framecount(*ptime, selected_audio_format->sample_rate);
+        packet_time_frames = aes67::aes67_packet_time::framecount(*ptime, selected_audio_format->sample_rate);
     }
 
     if (packet_time_frames == 0) {

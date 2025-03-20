@@ -16,7 +16,7 @@
 #include <cmath>
 #include <tuple>
 
-namespace rav {
+namespace rav::aes67 {
 
 /**
  * Represents packet time as specified in AES67-2023 Section 7.2.

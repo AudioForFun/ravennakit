@@ -105,7 +105,7 @@ bool rav::ravenna_transmitter::set_audio_format(const audio_format format) {
     return true;
 }
 
-void rav::ravenna_transmitter::set_packet_time(const aes67_packet_time packet_time) {
+void rav::ravenna_transmitter::set_packet_time(const aes67::aes67_packet_time packet_time) {
     if (ptime_ == packet_time) {
         return;
     }

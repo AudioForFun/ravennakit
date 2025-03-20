@@ -16,7 +16,7 @@
 TEST_CASE("aes67_packet_time") {
     constexpr float eps = 0.005f;
     SECTION("125 microseconds") {
-        const auto pt = rav::aes67_packet_time::us_125();
+        const auto pt = rav::aes67::aes67_packet_time::us_125();
         REQUIRE_THAT(pt.signaled_ptime(44'100), Catch::Matchers::WithinRel(0.136f, eps));
         REQUIRE_THAT(pt.signaled_ptime(48'000), Catch::Matchers::WithinRel(0.125f, eps));
         REQUIRE_THAT(pt.signaled_ptime(88'200), Catch::Matchers::WithinRel(0.136f, eps));
@@ -33,7 +33,7 @@ TEST_CASE("aes67_packet_time") {
     }
 
     SECTION("250 microseconds") {
-        const auto pt = rav::aes67_packet_time::us_250();
+        const auto pt = rav::aes67::aes67_packet_time::us_250();
         REQUIRE_THAT(pt.signaled_ptime(44'100), Catch::Matchers::WithinRel(0.272f, eps));
         REQUIRE_THAT(pt.signaled_ptime(48'000), Catch::Matchers::WithinRel(0.250f, eps));
         REQUIRE_THAT(pt.signaled_ptime(88'200), Catch::Matchers::WithinRel(0.272f, eps));
@@ -50,7 +50,7 @@ TEST_CASE("aes67_packet_time") {
     }
 
     SECTION("333 microseconds") {
-        const auto pt = rav::aes67_packet_time::us_333();
+        const auto pt = rav::aes67::aes67_packet_time::us_333();
         REQUIRE_THAT(pt.signaled_ptime(44'100), Catch::Matchers::WithinRel(0.363f, eps));
         REQUIRE_THAT(pt.signaled_ptime(48'000), Catch::Matchers::WithinRel(0.333f, eps));
         REQUIRE_THAT(pt.signaled_ptime(88'200), Catch::Matchers::WithinRel(0.363f, eps));
@@ -67,7 +67,7 @@ TEST_CASE("aes67_packet_time") {
     }
 
     SECTION("1 millisecond") {
-        const auto pt = rav::aes67_packet_time::ms_1();
+        const auto pt = rav::aes67::aes67_packet_time::ms_1();
         REQUIRE_THAT(pt.signaled_ptime(44'100), Catch::Matchers::WithinRel(1.088435411f, eps));
         REQUIRE_THAT(pt.signaled_ptime(48'000), Catch::Matchers::WithinRel(1.0f, eps));
         REQUIRE_THAT(pt.signaled_ptime(88'200), Catch::Matchers::WithinRel(1.088435411f, eps));
@@ -84,7 +84,7 @@ TEST_CASE("aes67_packet_time") {
     }
 
     SECTION("4 milliseconds") {
-        const auto pt = rav::aes67_packet_time::ms_4();
+        const auto pt = rav::aes67::aes67_packet_time::ms_4();
         REQUIRE_THAT(pt.signaled_ptime(44'100), Catch::Matchers::WithinRel(4.354f, eps));
         REQUIRE_THAT(pt.signaled_ptime(48'000), Catch::Matchers::WithinRel(4.f, eps));
         REQUIRE_THAT(pt.signaled_ptime(88'200), Catch::Matchers::WithinRel(4.354f, eps));
