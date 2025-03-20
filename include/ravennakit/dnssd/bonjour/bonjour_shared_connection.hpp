@@ -11,12 +11,12 @@ namespace rav::dnssd {
 /**
  * Represents a shared connection to the mdns responder.
  */
-class bonjour_shared_connection {
+class BonjourSharedConnection {
   public:
     /**
      * Constructor which will create a connection and store the DNSServiceRef under RAII fashion.
      */
-    bonjour_shared_connection();
+    BonjourSharedConnection();
 
     /**
      * @return Returns the DNSServiceRef held by this instance. The DNSServiceRef will still be owned by this class.
@@ -33,7 +33,7 @@ class bonjour_shared_connection {
     }
 
   private:
-    bonjour_scoped_dns_service_ref service_ref_;
+    BonjourScopedDnsServiceRef service_ref_;
 };
 
 }  // namespace rav::dnssd

@@ -6,38 +6,38 @@
 
     #include <utility>
 
-rav::dnssd::bonjour_scoped_dns_service_ref::~bonjour_scoped_dns_service_ref() {
+rav::dnssd::BonjourScopedDnsServiceRef::~BonjourScopedDnsServiceRef() {
     reset();
 }
 
-rav::dnssd::bonjour_scoped_dns_service_ref::bonjour_scoped_dns_service_ref(bonjour_scoped_dns_service_ref&& other
+rav::dnssd::BonjourScopedDnsServiceRef::BonjourScopedDnsServiceRef(BonjourScopedDnsServiceRef&& other
 ) noexcept {
     *this = std::move(other);
 }
 
-rav::dnssd::bonjour_scoped_dns_service_ref::bonjour_scoped_dns_service_ref(const DNSServiceRef& service_ref) noexcept :
+rav::dnssd::BonjourScopedDnsServiceRef::BonjourScopedDnsServiceRef(const DNSServiceRef& service_ref) noexcept :
     service_ref_(service_ref) {}
 
-rav::dnssd::bonjour_scoped_dns_service_ref&
-rav::dnssd::bonjour_scoped_dns_service_ref::operator=(bonjour_scoped_dns_service_ref&& other) noexcept {
+rav::dnssd::BonjourScopedDnsServiceRef&
+rav::dnssd::BonjourScopedDnsServiceRef::operator=(BonjourScopedDnsServiceRef&& other) noexcept {
     reset();
     service_ref_ = other.service_ref_;
     other.service_ref_ = nullptr;
     return *this;
 }
 
-rav::dnssd::bonjour_scoped_dns_service_ref&
-rav::dnssd::bonjour_scoped_dns_service_ref::operator=(DNSServiceRef service_ref) {
+rav::dnssd::BonjourScopedDnsServiceRef&
+rav::dnssd::BonjourScopedDnsServiceRef::operator=(DNSServiceRef service_ref) {
     reset();
     service_ref_ = service_ref;
     return *this;
 }
 
-DNSServiceRef rav::dnssd::bonjour_scoped_dns_service_ref::service_ref() const noexcept {
+DNSServiceRef rav::dnssd::BonjourScopedDnsServiceRef::service_ref() const noexcept {
     return service_ref_;
 }
 
-void rav::dnssd::bonjour_scoped_dns_service_ref::reset() noexcept {
+void rav::dnssd::BonjourScopedDnsServiceRef::reset() noexcept {
     if (service_ref_ != nullptr) {
         DNSServiceRefDeallocate(service_ref_);
         service_ref_ = nullptr;

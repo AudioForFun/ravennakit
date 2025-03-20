@@ -2,7 +2,7 @@
 
 #include "bonjour.hpp"
 #include "bonjour_shared_connection.hpp"
-#include "process_results_thread.hpp"
+#include "bonjour_process_results_thread.hpp"
 #include "ravennakit/core/util/id.hpp"
 
 #include <map>
@@ -13,14 +13,14 @@
 
     #include "bonjour_scoped_dns_service_ref.hpp"
     #include "ravennakit/dnssd/dnssd_advertiser.hpp"
-    #include "ravennakit/dnssd/service_description.hpp"
+    #include "ravennakit/dnssd/dnssd_service_description.hpp"
 
 namespace rav::dnssd {
 
 /**
  * Wrapper around dns_sd.h's DNSServiceRegister function.
  */
-class bonjour_advertiser: public dnssd_advertiser {
+class BonjourAdvertiser: public Advertiser {
   public:
     /**
      * Constructs a Bonjour advertiser.
@@ -28,14 +28,14 @@ class bonjour_advertiser: public dnssd_advertiser {
      * It is assumed that the io_context is run by a single thread.
      * @param io_context The context to use for the processing results.
      */
-    explicit bonjour_advertiser(asio::io_context& io_context);
+    explicit BonjourAdvertiser(asio::io_context& io_context);
 
     id register_service(
-        const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
+        const std::string& reg_type, const char* name, const char* domain, uint16_t port, const TxtRecord& txt_record,
         bool auto_rename, bool local_only
     ) override;
 
-    void update_txt_record(id id, const txt_record& txt_record) override;
+    void update_txt_record(id id, const TxtRecord& txt_record) override;
     void unregister_service(id id) override;
 
     void subscribe(subscriber& s) override;
@@ -43,11 +43,11 @@ class bonjour_advertiser: public dnssd_advertiser {
   private:
     struct registered_service {
         id id;
-        bonjour_scoped_dns_service_ref service_ref;
+        BonjourScopedDnsServiceRef service_ref;
     };
 
     asio::ip::tcp::socket service_socket_;
-    bonjour_shared_connection shared_connection_;
+    BonjourSharedConnection shared_connection_;
     id::generator id_generator_;
     std::vector<registered_service> registered_services_;
     size_t process_results_failed_attempts_ = 0;

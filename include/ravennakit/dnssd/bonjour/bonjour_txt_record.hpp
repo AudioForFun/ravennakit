@@ -4,9 +4,9 @@
 
 #if RAV_HAS_APPLE_DNSSD
 
-#include "ravennakit/dnssd/service_description.hpp"
+#include "ravennakit/dnssd/dnssd_service_description.hpp"
 
-#include <map>
+    #include <map>
 #include <string>
 
 namespace rav::dnssd
@@ -15,11 +15,11 @@ namespace rav::dnssd
 /**
  * Class for holding and working with a TXTRecordRef
  */
-class bonjour_txt_record
+class BonjourTxtRecord
 {
 public:
-    explicit bonjour_txt_record (const txt_record& txtRecord);
-    ~bonjour_txt_record();
+    explicit BonjourTxtRecord (const TxtRecord& txtRecord);
+    ~BonjourTxtRecord();
 
     /**
      * Sets a value inside the TXT record.
@@ -52,7 +52,7 @@ public:
      * @param txt_record_length The length of the txt record.
      * @return The filled TxtRecord.
      */
-    static txt_record get_txt_record_from_raw_bytes (const unsigned char* txt_record, uint16_t txt_record_length) noexcept;
+    static TxtRecord get_txt_record_from_raw_bytes (const unsigned char* txt_record, uint16_t txt_record_length) noexcept;
 
 private:
     TXTRecordRef txt_record_ref_{};

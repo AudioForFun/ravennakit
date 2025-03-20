@@ -8,23 +8,23 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/dnssd/mock/mock_browser.hpp"
+#include "ravennakit/dnssd/mock/dnssd_mock_browser.hpp"
 
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("mock_browser") {
     asio::io_context io_context;
-    rav::dnssd::mock_browser browser(io_context);
+    rav::dnssd::MockBrowser browser(io_context);
 
     SECTION("Mock discovering and removing service") {
-        std::vector<rav::dnssd::service_description> discovered_services;
-        std::vector<rav::dnssd::service_description> removed_services;
+        std::vector<rav::dnssd::ServiceDescription> discovered_services;
+        std::vector<rav::dnssd::ServiceDescription> removed_services;
 
-        rav::dnssd::dnssd_browser::subscriber subscriber;
-        subscriber->on<rav::dnssd::dnssd_browser::service_discovered>([&](const auto& event) {
+        rav::dnssd::Browser::subscriber subscriber;
+        subscriber->on<rav::dnssd::Browser::service_discovered>([&](const auto& event) {
             discovered_services.push_back(event.description);
         });
-        subscriber->on<rav::dnssd::dnssd_browser::service_removed>([&](const auto& event) {
+        subscriber->on<rav::dnssd::Browser::service_removed>([&](const auto& event) {
             removed_services.push_back(event.description);
         });
         browser.subscribe(subscriber);
@@ -49,10 +49,10 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Mock resolving a service") {
-        std::vector<rav::dnssd::service_description> resolved_services;
+        std::vector<rav::dnssd::ServiceDescription> resolved_services;
 
-        rav::dnssd::dnssd_browser::subscriber subscriber;
-        subscriber->on<rav::dnssd::dnssd_browser::service_resolved>([&](const auto& event) {
+        rav::dnssd::Browser::subscriber subscriber;
+        subscriber->on<rav::dnssd::Browser::service_resolved>([&](const auto& event) {
             resolved_services.push_back(event.description);
         });
         browser.subscribe(subscriber);
@@ -75,14 +75,14 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Mock adding removing address") {
-        std::vector<rav::dnssd::service_description> addresses_added;
-        std::vector<rav::dnssd::service_description> addresses_removed;
+        std::vector<rav::dnssd::ServiceDescription> addresses_added;
+        std::vector<rav::dnssd::ServiceDescription> addresses_removed;
 
-        rav::dnssd::dnssd_browser::subscriber subscriber;
-        subscriber->on<rav::dnssd::dnssd_browser::address_added>([&](const auto& event) {
+        rav::dnssd::Browser::subscriber subscriber;
+        subscriber->on<rav::dnssd::Browser::address_added>([&](const auto& event) {
             addresses_added.push_back(event.description);
         });
-        subscriber->on<rav::dnssd::dnssd_browser::address_removed>([&](const auto& event) {
+        subscriber->on<rav::dnssd::Browser::address_removed>([&](const auto& event) {
             addresses_removed.push_back(event.description);
         });
         browser.subscribe(subscriber);
@@ -151,18 +151,18 @@ TEST_CASE("mock_browser") {
 
         io_context.run();
 
-        std::vector<rav::dnssd::service_description> discovered_services;
-        std::vector<rav::dnssd::service_description> resolved_services;
-        std::vector<rav::dnssd::service_description> addresses_added;
+        std::vector<rav::dnssd::ServiceDescription> discovered_services;
+        std::vector<rav::dnssd::ServiceDescription> resolved_services;
+        std::vector<rav::dnssd::ServiceDescription> addresses_added;
 
-        rav::dnssd::dnssd_browser::subscriber subscriber;
-        subscriber->on<rav::dnssd::dnssd_browser::service_discovered>([&](const auto& event) {
+        rav::dnssd::Browser::subscriber subscriber;
+        subscriber->on<rav::dnssd::Browser::service_discovered>([&](const auto& event) {
             discovered_services.push_back(event.description);
         });
-        subscriber->on<rav::dnssd::dnssd_browser::service_resolved>([&](const auto& event) {
+        subscriber->on<rav::dnssd::Browser::service_resolved>([&](const auto& event) {
             resolved_services.push_back(event.description);
         });
-        subscriber->on<rav::dnssd::dnssd_browser::address_added>([&](const auto& event) {
+        subscriber->on<rav::dnssd::Browser::address_added>([&](const auto& event) {
             addresses_added.push_back(event.description);
         });
 

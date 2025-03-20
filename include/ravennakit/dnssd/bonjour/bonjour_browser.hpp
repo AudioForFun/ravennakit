@@ -6,7 +6,7 @@
 #include <thread>
 
 #include "bonjour.hpp"
-#include "process_results_thread.hpp"
+#include "bonjour_process_results_thread.hpp"
 
 #include <asio/io_context.hpp>
 
@@ -22,7 +22,7 @@ namespace rav::dnssd {
 /**
  * Apple Bonjour implementation of IBrowser. Works on macOS and Windows.
  */
-class bonjour_browser: public dnssd_browser {
+class BonjourBrowser: public Browser {
   public:
     /**
      * Represents a Bonjour service and holds state and methods for discovering and resolving services on the network.
@@ -37,7 +37,7 @@ class bonjour_browser: public dnssd_browser {
          * @param domain The domain of the service (i.e. local.).
          * @param owner A reference to the owning BonjourBrowser.
          */
-        service(const char* fullname, const char* name, const char* type, const char* domain, bonjour_browser& owner);
+        service(const char* fullname, const char* name, const char* type, const char* domain, BonjourBrowser& owner);
 
         /**
          * Called when a service was resolved.
@@ -55,13 +55,13 @@ class bonjour_browser: public dnssd_browser {
         /**
          * @return Returns the ServiceDescription.
          */
-        [[nodiscard]] const service_description& description() const noexcept;
+        [[nodiscard]] const ServiceDescription& description() const noexcept;
 
       private:
-        bonjour_browser& owner_;
-        std::map<uint32_t, bonjour_scoped_dns_service_ref> resolvers_;
-        std::map<uint32_t, bonjour_scoped_dns_service_ref> get_addrs_;
-        service_description description_;
+        BonjourBrowser& owner_;
+        std::map<uint32_t, BonjourScopedDnsServiceRef> resolvers_;
+        std::map<uint32_t, BonjourScopedDnsServiceRef> get_addrs_;
+        ServiceDescription description_;
 
         /**
          * Called by dns_sd callbacks when a service was resolved.
@@ -106,18 +106,18 @@ class bonjour_browser: public dnssd_browser {
         );
     };
 
-    explicit bonjour_browser(asio::io_context& io_context);
+    explicit BonjourBrowser(asio::io_context& io_context);
     void browse_for(const std::string& service) override;
-    [[nodiscard]] const service_description* find_service(const std::string& service_name) const override;
-    [[nodiscard]] std::vector<service_description> get_services() const override;
+    [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
+    [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
 
     void subscribe(subscriber& s) override;
 
   private:
     asio::ip::tcp::socket service_socket_;
-    bonjour_shared_connection shared_connection_;
+    BonjourSharedConnection shared_connection_;
     std::map<std::string, service> services_;                         // fullname -> service
-    std::map<std::string, bonjour_scoped_dns_service_ref> browsers_;  // reg_type -> DNSServiceRef
+    std::map<std::string, BonjourScopedDnsServiceRef> browsers_;  // reg_type -> DNSServiceRef
     size_t process_results_failed_attempts_ = 0;
     subscriber subscribers_;
 

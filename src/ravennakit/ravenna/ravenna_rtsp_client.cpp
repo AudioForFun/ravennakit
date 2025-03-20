@@ -72,7 +72,7 @@ bool rav::ravenna_rtsp_client::unsubscribe_from_all_sessions(subscriber* subscri
     return count > 0;
 }
 
-void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) {
+void rav::ravenna_rtsp_client::ravenna_session_discovered(const dnssd::Browser::service_resolved& event) {
     RAV_TRACE("RAVENNA session resolved: {}", event.description.to_string());
     for (auto& session : sessions_) {
         if (event.description.name == session.session_name) {
@@ -185,7 +185,7 @@ rav::ravenna_rtsp_client::find_connection(const std::string& host_target, const 
 }
 
 void rav::ravenna_rtsp_client::update_session_with_service(
-    session_context& session, const dnssd::service_description& service
+    session_context& session, const dnssd::ServiceDescription& service
 ) {
     session.host_target = service.host_target;
     session.port = service.port;

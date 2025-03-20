@@ -3,7 +3,7 @@
 #include <utility>
 #include <memory>
 
-#include "service_description.hpp"
+#include "dnssd_service_description.hpp"
 #include "ravennakit/core/events.hpp"
 #include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/core/result.hpp"
@@ -16,7 +16,7 @@ namespace rav::dnssd {
 /**
  * Interface class which represents a dnssd advertiser object, which is able to present itself onto the network.
  */
-class dnssd_advertiser {
+class Advertiser {
   public:
     /**
      * Event for when a service was discovered.
@@ -35,8 +35,8 @@ class dnssd_advertiser {
 
     using subscriber = linked_node<events<advertiser_error, name_conflict>>;
 
-    explicit dnssd_advertiser() = default;
-    virtual ~dnssd_advertiser() = default;
+    explicit Advertiser() = default;
+    virtual ~Advertiser() = default;
 
     /**
      * Registers a service with given arguments.
@@ -58,7 +58,7 @@ class dnssd_advertiser {
      * @throws When an error occurs during registration.
      */
     virtual id register_service(
-        const std::string& reg_type, const char* name, const char* domain, uint16_t port, const txt_record& txt_record,
+        const std::string& reg_type, const char* name, const char* domain, uint16_t port, const TxtRecord& txt_record,
         bool auto_rename, bool local_only
     ) = 0;
 
@@ -70,7 +70,7 @@ class dnssd_advertiser {
      * @param txt_record The new TXT record.
      * @throws When an error occurs during updating.
      */
-    virtual void update_txt_record(id id, const txt_record& txt_record) = 0;
+    virtual void update_txt_record(id id, const TxtRecord& txt_record) = 0;
 
     /**
      * Unregisters this service from the mDnsResponder, after which the service will no longer be found on the network.
@@ -82,7 +82,7 @@ class dnssd_advertiser {
      * Creates the most appropriate dnssd_advertiser implementation for the platform.
      * @return The created dnssd_advertiser instance, or nullptr if no implementation is available.
      */
-    static std::unique_ptr<dnssd_advertiser> create(asio::io_context& io_context);
+    static std::unique_ptr<Advertiser> create(asio::io_context& io_context);
 
     /**
      * Subscribes given subscriber to the advertiser. The subscriber will receive future events.

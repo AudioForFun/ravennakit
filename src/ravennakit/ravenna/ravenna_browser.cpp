@@ -13,36 +13,36 @@
 #include "ravennakit/core/log.hpp"
 
 rav::ravenna_browser::ravenna_browser(asio::io_context& io_context) {
-    node_browser_ = dnssd::dnssd_browser::create(io_context);
+    node_browser_ = dnssd::Browser::create(io_context);
 
     if (node_browser_ == nullptr) {
         RAV_THROW_EXCEPTION("No dnssd browser available");
     }
 
-    session_browser_ = dnssd::dnssd_browser::create(io_context);
+    session_browser_ = dnssd::Browser::create(io_context);
 
     if (session_browser_ == nullptr) {
         RAV_THROW_EXCEPTION("No dnssd browser available");
     }
 
-    node_browser_subscriber_->on<dnssd::dnssd_browser::service_resolved>([this](const auto& event) {
+    node_browser_subscriber_->on<dnssd::Browser::service_resolved>([this](const auto& event) {
         for (auto* s : subscribers_) {
             s->ravenna_node_discovered(event);
         }
     });
-    node_browser_subscriber_->on<dnssd::dnssd_browser::service_removed>([this](const auto& event) {
+    node_browser_subscriber_->on<dnssd::Browser::service_removed>([this](const auto& event) {
         for (auto* s : subscribers_) {
             s->ravenna_node_removed(event);
         }
     });
     node_browser_->subscribe(node_browser_subscriber_);
 
-    session_browser_subscriber_->on<dnssd::dnssd_browser::service_resolved>([this](const auto& event) {
+    session_browser_subscriber_->on<dnssd::Browser::service_resolved>([this](const auto& event) {
         for (auto* s : subscribers_) {
             s->ravenna_session_discovered(event);
         }
     });
-    session_browser_subscriber_->on<dnssd::dnssd_browser::service_removed>([this](const auto& event) {
+    session_browser_subscriber_->on<dnssd::Browser::service_removed>([this](const auto& event) {
         for (auto* s : subscribers_) {
             s->ravenna_session_removed(event);
         }
@@ -53,13 +53,13 @@ rav::ravenna_browser::ravenna_browser(asio::io_context& io_context) {
     session_browser_->browse_for("_rtsp._tcp,_ravenna_session");
 }
 
-const rav::dnssd::service_description* rav::ravenna_browser::find_session(const std::string& session_name) const {
+const rav::dnssd::ServiceDescription* rav::ravenna_browser::find_session(const std::string& session_name) const {
     RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
     RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
     return session_browser_->find_service(session_name);
 }
 
-const rav::dnssd::service_description* rav::ravenna_browser::find_node(const std::string& node_name) const {
+const rav::dnssd::ServiceDescription* rav::ravenna_browser::find_node(const std::string& node_name) const {
     RAV_ASSERT(node_browser_ != nullptr, "Invalid node browser");
     RAV_ASSERT(session_browser_ != nullptr, "Invalid session browser");
     return node_browser_->find_service(node_name);

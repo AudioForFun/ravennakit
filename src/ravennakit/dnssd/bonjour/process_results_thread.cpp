@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/dnssd/bonjour/process_results_thread.hpp"
+#include "ravennakit/dnssd/bonjour/bonjour_process_results_thread.hpp"
 
 #include "ravennakit/core/assert.hpp"
 #include "ravennakit/core/log.hpp"
@@ -16,11 +16,11 @@
 
 #if RAV_HAS_APPLE_DNSSD
 
-rav::dnssd::process_results_thread::~process_results_thread() {
+rav::dnssd::ProcessResultsThread::~ProcessResultsThread() {
     stop();
 }
 
-void rav::dnssd::process_results_thread::start(DNSServiceRef service_ref) {
+void rav::dnssd::ProcessResultsThread::start(DNSServiceRef service_ref) {
     if (is_running()) {
         RAV_ERROR("Thread is already running");
         return;
@@ -37,7 +37,7 @@ void rav::dnssd::process_results_thread::start(DNSServiceRef service_ref) {
     });
 }
 
-void rav::dnssd::process_results_thread::stop() {
+void rav::dnssd::ProcessResultsThread::stop() {
     using namespace std::chrono_literals;
 
     if (future_.valid()) {
@@ -64,7 +64,7 @@ void rav::dnssd::process_results_thread::stop() {
     }
 }
 
-bool rav::dnssd::process_results_thread::is_running() {
+bool rav::dnssd::ProcessResultsThread::is_running() {
     using namespace std::chrono_literals;
     std::lock_guard guard(lock_);
     if (future_.valid()) {
@@ -73,11 +73,11 @@ bool rav::dnssd::process_results_thread::is_running() {
     return false;
 }
 
-std::lock_guard<std::mutex> rav::dnssd::process_results_thread::lock() {
+std::lock_guard<std::mutex> rav::dnssd::ProcessResultsThread::lock() {
     return std::lock_guard(lock_);
 }
 
-void rav::dnssd::process_results_thread::run(DNSServiceRef service_ref, const int service_fd) {
+void rav::dnssd::ProcessResultsThread::run(DNSServiceRef service_ref, const int service_fd) {
     RAV_TRACE("Start DNS-SD processing thread");
 
     #if RAV_POSIX

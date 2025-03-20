@@ -8,15 +8,15 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/dnssd/service_description.hpp"
+#include "ravennakit/dnssd/dnssd_service_description.hpp"
 
 #include <sstream>
 
-bool rav::dnssd::service_description::resolved() const {
+bool rav::dnssd::ServiceDescription::resolved() const {
     return host_target.empty() == false && port != 0;
 }
 
-std::string rav::dnssd::service_description::to_string() const noexcept {
+std::string rav::dnssd::ServiceDescription::to_string() const noexcept {
     std::string txtRecordDescription;
 
     for (auto& kv : txt)

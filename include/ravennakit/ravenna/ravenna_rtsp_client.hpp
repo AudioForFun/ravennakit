@@ -87,7 +87,7 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
     [[nodiscard]] asio::io_context& get_io_context() const;
 
     // ravenna_browser::subscriber overrides
-    void ravenna_session_discovered(const dnssd::dnssd_browser::service_resolved& event) override;
+    void ravenna_session_discovered(const dnssd::Browser::service_resolved& event) override;
 
   private:
     struct session_context {
@@ -112,7 +112,7 @@ class ravenna_rtsp_client: public ravenna_browser::subscriber {
 
     connection_context& find_or_create_connection(const std::string& host_target, uint16_t port);
     connection_context* find_connection(const std::string& host_target, uint16_t port);
-    void update_session_with_service(session_context& session, const dnssd::service_description& service);
+    void update_session_with_service(session_context& session, const dnssd::ServiceDescription& service);
     void do_maintenance();
     void handle_incoming_sdp(const std::string& sdp_text);
 };

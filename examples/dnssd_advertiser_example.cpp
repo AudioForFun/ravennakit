@@ -1,6 +1,6 @@
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/system.hpp"
-#include "ravennakit/dnssd/service_description.hpp"
+#include "ravennakit/dnssd/dnssd_service_description.hpp"
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 
 #include <iostream>
@@ -11,7 +11,7 @@
 
 namespace examples {
 
-static bool parse_txt_record(rav::dnssd::txt_record& txt_record, const std::string& string_value) {
+static bool parse_txt_record(rav::dnssd::TxtRecord& txt_record, const std::string& string_value) {
     if (string_value.empty())
         return false;
 
@@ -53,27 +53,27 @@ int main(int const argc, char* argv[]) {
     }
 
     // Parse remaining arguments as TxtRecord
-    rav::dnssd::txt_record txt_record;
+    rav::dnssd::TxtRecord txt_record;
     for (auto it = args.begin() + 2; it != args.end(); ++it) {
         examples::parse_txt_record(txt_record, *it);
     }
 
     asio::io_context io_context;
 
-    const auto advertiser = rav::dnssd::dnssd_advertiser::create(io_context);
+    const auto advertiser = rav::dnssd::Advertiser::create(io_context);
 
     if (advertiser == nullptr) {
         RAV_ERROR("Error: no dnssd advertiser implementation available for this platform");
         return -1;
     }
 
-    rav::dnssd::dnssd_advertiser::subscriber subscriber;
+    rav::dnssd::Advertiser::subscriber subscriber;
 
-    subscriber->on<rav::dnssd::dnssd_advertiser::advertiser_error>([](const auto& event) {
+    subscriber->on<rav::dnssd::Advertiser::advertiser_error>([](const auto& event) {
         RAV_ERROR("Advertiser error: {}", event.error_message);
     });
 
-    subscriber->on<rav::dnssd::dnssd_advertiser::name_conflict>([](const auto& event) {
+    subscriber->on<rav::dnssd::Advertiser::name_conflict>([](const auto& event) {
         RAV_CRITICAL("Name conflict: {} {}", event.reg_type, event.name);
     });
 

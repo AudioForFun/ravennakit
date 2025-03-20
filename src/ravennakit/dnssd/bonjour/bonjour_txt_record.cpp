@@ -8,37 +8,37 @@
     #include <dns_sd.h>
     #include <map>
 
-rav::dnssd::bonjour_txt_record::bonjour_txt_record(const txt_record& txtRecord) {
+rav::dnssd::BonjourTxtRecord::BonjourTxtRecord(const TxtRecord& txtRecord) {
     // By passing 0 and nullptr, TXTRecordCreate will arrange allocation for a buffer.
     TXTRecordCreate(&txt_record_ref_, 0, nullptr);
 
     for (auto& kv : txtRecord) set_value(kv.first, kv.second);
 }
 
-rav::dnssd::bonjour_txt_record::~bonjour_txt_record() {
+rav::dnssd::BonjourTxtRecord::~BonjourTxtRecord() {
     TXTRecordDeallocate(&txt_record_ref_);
 }
 
-void rav::dnssd::bonjour_txt_record::set_value(const std::string& key, const std::string& value) {
+void rav::dnssd::BonjourTxtRecord::set_value(const std::string& key, const std::string& value) {
     DNSSD_THROW_IF_ERROR(
         TXTRecordSetValue(&txt_record_ref_, key.c_str(), static_cast<uint8_t>(value.length()), value.c_str()),
         "Failed to set txt record value"
     );
 }
 
-void rav::dnssd::bonjour_txt_record::set_value(const std::string& key) {
+void rav::dnssd::BonjourTxtRecord::set_value(const std::string& key) {
     DNSSD_THROW_IF_ERROR(TXTRecordSetValue(&txt_record_ref_, key.c_str(), 0, nullptr), "Failed to set txt record key");
 }
 
-uint16_t rav::dnssd::bonjour_txt_record::length() const noexcept {
+uint16_t rav::dnssd::BonjourTxtRecord::length() const noexcept {
     return TXTRecordGetLength(&txt_record_ref_);
 }
 
-const void* rav::dnssd::bonjour_txt_record::bytes_ptr() const noexcept {
+const void* rav::dnssd::BonjourTxtRecord::bytes_ptr() const noexcept {
     return TXTRecordGetBytesPtr(&txt_record_ref_);
 }
 
-std::map<std::string, std::string> rav::dnssd::bonjour_txt_record::get_txt_record_from_raw_bytes(
+std::map<std::string, std::string> rav::dnssd::BonjourTxtRecord::get_txt_record_from_raw_bytes(
     const unsigned char* txt_record, const uint16_t txt_record_length
 ) noexcept {
     std::map<std::string, std::string> txtRecord;

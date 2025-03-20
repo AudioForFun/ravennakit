@@ -17,36 +17,36 @@ int main(const int argc, char* argv[]) {
 
     asio::io_context io_context;  // NOLINT
 
-    const auto browser = rav::dnssd::dnssd_browser::create(io_context);
+    const auto browser = rav::dnssd::Browser::create(io_context);
 
     if (browser == nullptr) {
         std::cout << "No browser implementation available for this platform" << std::endl;
         exit(-1);
     }
 
-    rav::dnssd::dnssd_browser::subscriber subscriber;
+    rav::dnssd::Browser::subscriber subscriber;
 
-    subscriber->on<rav::dnssd::dnssd_browser::service_discovered>([](const auto& event) {
+    subscriber->on<rav::dnssd::Browser::service_discovered>([](const auto& event) {
         RAV_INFO("Service discovered: {}", event.description.to_string());
     });
 
-    subscriber->on<rav::dnssd::dnssd_browser::service_removed>([](const auto& event) {
+    subscriber->on<rav::dnssd::Browser::service_removed>([](const auto& event) {
         RAV_INFO("Service removed: {}", event.description.to_string());
     });
 
-    subscriber->on<rav::dnssd::dnssd_browser::service_resolved>([](const auto& event) {
+    subscriber->on<rav::dnssd::Browser::service_resolved>([](const auto& event) {
         RAV_INFO("Service resolved: {}", event.description.to_string());
     });
 
-    subscriber->on<rav::dnssd::dnssd_browser::address_added>([](const auto& event) {
+    subscriber->on<rav::dnssd::Browser::address_added>([](const auto& event) {
         RAV_INFO("Address added ({}): {}", event.address, event.description.to_string());
     });
 
-    subscriber->on<rav::dnssd::dnssd_browser::address_removed>([](const auto& event) {
+    subscriber->on<rav::dnssd::Browser::address_removed>([](const auto& event) {
         RAV_INFO("Address removed ({}): {}", event.address, event.description.to_string());
     });
 
-    subscriber->on<rav::dnssd::dnssd_browser::browse_error>([](const auto& event) {
+    subscriber->on<rav::dnssd::Browser::browse_error>([](const auto& event) {
         RAV_ERROR("{}", event.error_message);
     });
 

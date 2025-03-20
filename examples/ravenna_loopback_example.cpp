@@ -35,7 +35,7 @@ class loopback: public rav::rtp::rtp_stream_receiver::subscriber {
         }
         std::ignore = ravenna_receiver_->subscribe_to_session(stream_name_);
 
-        advertiser_ = rav::dnssd::dnssd_advertiser::create(io_context_);
+        advertiser_ = rav::dnssd::Advertiser::create(io_context_);
         if (advertiser_ == nullptr) {
             RAV_THROW_EXCEPTION("No dnssd advertiser available");
         }
@@ -110,7 +110,7 @@ class loopback: public rav::rtp::rtp_stream_receiver::subscriber {
     std::unique_ptr<rav::ravenna_receiver> ravenna_receiver_;
 
     // Sender components
-    std::unique_ptr<rav::dnssd::dnssd_advertiser> advertiser_;
+    std::unique_ptr<rav::dnssd::Advertiser> advertiser_;
     std::unique_ptr<rav::rtsp::server> rtsp_server_;
     std::unique_ptr<rav::rtp::rtp_transmitter> rtp_transmitter_;
     std::unique_ptr<rav::ptp::ptp_instance> ptp_instance_;

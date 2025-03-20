@@ -13,10 +13,10 @@
 
 namespace rav::dnssd {
 
-class mock_browser final: public dnssd_browser {
+class MockBrowser final: public Browser {
   public:
-    explicit mock_browser(asio::io_context& io_context);
-    ~mock_browser() override = default;
+    explicit MockBrowser(asio::io_context& io_context);
+    ~MockBrowser() override = default;
 
     /**
      * Mocks discovering a service.
@@ -34,7 +34,7 @@ class mock_browser final: public dnssd_browser {
      * @param port The port of the service.
      * @param txt_record The txt record of the service.
      */
-    void mock_resolved_service(const std::string& fullname, const std::string& host_target, uint16_t port, const txt_record& txt_record);
+    void mock_resolved_service(const std::string& fullname, const std::string& host_target, uint16_t port, const TxtRecord& txt_record);
 
     /**
      * Mocks adding an address to a service. Requires calling mock_discovered_service before.
@@ -60,13 +60,13 @@ class mock_browser final: public dnssd_browser {
 
     // dnssd_browser overrides
     void browse_for(const std::string& service_type) override;
-    [[nodiscard]] const service_description* find_service(const std::string& service_name) const override;
-    [[nodiscard]] std::vector<service_description> get_services() const override;
+    [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
+    [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
     void subscribe(subscriber& s) override;
 
   private:
     asio::io_context& io_context_;
-    std::map<std::string, service_description> services_;  // fullname -> service description
+    std::map<std::string, ServiceDescription> services_;  // fullname -> service description
     std::set<std::string> browsers_; // reg_type
     subscriber subscribers_;
 

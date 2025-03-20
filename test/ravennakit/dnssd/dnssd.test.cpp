@@ -42,29 +42,29 @@ TEST_CASE("dnssd | Browse and advertise") {
 #endif
         asio::io_context io_context;
 
-        std::vector<rav::dnssd::service_description> discovered_services;
-        std::vector<rav::dnssd::service_description> resolved_services;
-        std::vector<rav::dnssd::service_description> removed_services;
+        std::vector<rav::dnssd::ServiceDescription> discovered_services;
+        std::vector<rav::dnssd::ServiceDescription> resolved_services;
+        std::vector<rav::dnssd::ServiceDescription> removed_services;
 
-        auto advertiser = rav::dnssd::dnssd_advertiser::create(io_context);
+        auto advertiser = rav::dnssd::Advertiser::create(io_context);
         REQUIRE(advertiser);
-        const rav::dnssd::txt_record txt_record {{"key1", "value1"}, {"key2", "value2"}};
+        const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
         auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, txt_record, false, true);
 
-        rav::dnssd::dnssd_browser::subscriber subscriber;
-        subscriber->on<rav::dnssd::dnssd_browser::service_discovered>([&](const auto& event) {
+        rav::dnssd::Browser::subscriber subscriber;
+        subscriber->on<rav::dnssd::Browser::service_discovered>([&](const auto& event) {
             discovered_services.push_back(event.description);
         });
-        subscriber->on<rav::dnssd::dnssd_browser::service_resolved>([&](const auto& event) {
+        subscriber->on<rav::dnssd::Browser::service_resolved>([&](const auto& event) {
             resolved_services.push_back(event.description);
             advertiser->unregister_service(id);
         });
-        subscriber->on<rav::dnssd::dnssd_browser::service_removed>([&](const auto& event) {
+        subscriber->on<rav::dnssd::Browser::service_removed>([&](const auto& event) {
             removed_services.push_back(event.description);
             io_context.stop();
         });
 
-        auto browser = rav::dnssd::dnssd_browser::create(io_context);
+        auto browser = rav::dnssd::Browser::create(io_context);
         REQUIRE(browser);
 
         browser->subscribe(subscriber);
@@ -108,18 +108,18 @@ TEST_CASE("dnssd | Update a txt record") {
     const auto reg_type = generate_random_reg_type();
 
     asio::io_context io_context;
-    std::optional<rav::dnssd::service_description> updated_service;
+    std::optional<rav::dnssd::ServiceDescription> updated_service;
 
-    const auto advertiser = rav::dnssd::dnssd_advertiser::create(io_context);
+    const auto advertiser = rav::dnssd::Advertiser::create(io_context);
     RAV_ASSERT(advertiser, "Expected a dnssd advertiser");
-    const rav::dnssd::txt_record txt_record {{"key1", "value1"}, {"key2", "value2"}};
+    const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
     const auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false, true);
 
-    const auto browser = rav::dnssd::dnssd_browser::create(io_context);
+    const auto browser = rav::dnssd::Browser::create(io_context);
     RAV_ASSERT(browser, "Expected a dnssd browser");
     bool updated = false;
-    rav::dnssd::dnssd_browser::subscriber subscriber;
-    subscriber->on<rav::dnssd::dnssd_browser::service_resolved>([&](const auto& event) {
+    rav::dnssd::Browser::subscriber subscriber;
+    subscriber->on<rav::dnssd::Browser::service_resolved>([&](const auto& event) {
         if (event.description.txt.empty() && !updated) {
             advertiser->update_txt_record(id, txt_record);
             updated = true;

@@ -9,12 +9,12 @@ namespace rav::dnssd
 {
 
 /// Simple typedef for representing a TXT record.
-using txt_record = std::map<std::string, std::string>;
+using TxtRecord = std::map<std::string, std::string>;
 
 /**
  * A struct containing data which represents a service on the network.
  */
-struct service_description
+struct ServiceDescription
 {
     /// The full service domain name.
     std::string fullname;
@@ -35,7 +35,7 @@ struct service_description
     uint16_t port{};
 
     /// The TXT record of the service, represented as a map of keys and values.
-    txt_record txt;
+    TxtRecord txt;
 
     /// The resolved addresses of this service.
     std::map<uint32_t, std::set<std::string>> interfaces; // interfaceIndex, addresses

@@ -26,9 +26,9 @@ namespace rav::dnssd {
  * Note: at the moment this class is not used because the browser and advertiser classes process the results on an asio
  * io_context.
  */
-class process_results_thread {
+class ProcessResultsThread {
   public:
-    ~process_results_thread();
+    ~ProcessResultsThread();
 
     /**
      * Starts the thread to process the results of a DNSServiceRef. Thread must not already be running.
