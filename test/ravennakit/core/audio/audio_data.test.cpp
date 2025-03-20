@@ -17,8 +17,6 @@
 #include "ravennakit/core/containers/vector_buffer.hpp"
 #include "ravennakit/core/util.hpp"
 
-using namespace rav::audio_data;
-
 namespace {
 constexpr float f32_tolerance = 0.00004f;
 constexpr double f64_tolerance = 0.00004;
@@ -34,8 +32,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::le,
-                    interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int16_t,
+                    rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst == std::array<int16_t, 4> {1, 2, 3, 4});
@@ -47,8 +47,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int32_t, byte_order::le, interleaving::interleaved, int32_t, byte_order::le,
-                    interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int32_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int32_t,
+                    rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst == std::array<int32_t, 4> {1, 2, 3, 4});
@@ -60,8 +62,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int16_t, byte_order::le, interleaving::noninterleaved, int16_t, byte_order::le,
-                    interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved, int16_t,
+                    rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst == std::array<int16_t, 4> {1, 2, 3, 4});
@@ -72,8 +76,10 @@ TEST_CASE("audio_data") {
             std::array<int32_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                int32_t, byte_order::le, interleaving::noninterleaved, int32_t, byte_order::le,
-                interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int32_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved, int32_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst == std::array<int32_t, 4> {1, 2, 3, 4});
@@ -84,8 +90,10 @@ TEST_CASE("audio_data") {
             std::array<int16_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::le,
-                interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst == std::array<int16_t, 4> {1, 3, 2, 4});
@@ -96,8 +104,10 @@ TEST_CASE("audio_data") {
             std::array<int32_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                int32_t, byte_order::le, interleaving::interleaved, int32_t, byte_order::le,
-                interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int32_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int32_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst == std::array<int32_t, 4> {1, 3, 2, 4});
@@ -108,8 +118,10 @@ TEST_CASE("audio_data") {
             std::array<int16_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::le, interleaving::noninterleaved, int16_t, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved, int16_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst == std::array<int16_t, 4> {1, 3, 2, 4});
@@ -120,8 +132,10 @@ TEST_CASE("audio_data") {
             std::array<int32_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                int32_t, byte_order::le, interleaving::noninterleaved, int32_t, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int32_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved, int32_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst == std::array<int32_t, 4> {1, 3, 2, 4});
@@ -134,8 +148,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int32_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::le, interleaving::noninterleaved, int32_t, byte_order::le,
-                interleaving::noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved, int32_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::noninterleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read() == -2147483648LL);
@@ -155,8 +171,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int16_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::le,
-                    interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                    rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst.read_le() == 1);
@@ -172,8 +190,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int16_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::ne,
-                    interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                    rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst.read() == 1);
@@ -189,8 +209,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int16_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::be,
-                    interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                    rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst.read_be() == 1);
@@ -206,8 +228,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::be,
-                    interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int16_t,
+                    rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst.read_be() == 1);
@@ -223,8 +247,10 @@ TEST_CASE("audio_data") {
 
             REQUIRE(
                 rav::audio_data::convert<
-                    int16_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::ne,
-                    interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2)
+                    int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int16_t,
+                    rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+                    src.data(), src.size(), dst.data(), dst.size(), 2
+                )
             );
 
             REQUIRE(dst.read() == 1);
@@ -241,7 +267,8 @@ TEST_CASE("audio_data") {
             constexpr int16_t src = std::numeric_limits<int16_t>::min();
             int16_t dst {};
 
-            rav::audio_data::convert_sample<int16_t, byte_order::be, int16_t, byte_order::le>(&src, &dst);
+            rav::audio_data::convert_sample<
+                int16_t, rav::audio_data::byte_order::be, int16_t, rav::audio_data::byte_order::le>(&src, &dst);
 
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[0] == 0x80);
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[1] == 0x0);
@@ -251,7 +278,8 @@ TEST_CASE("audio_data") {
             constexpr int16_t src = std::numeric_limits<int16_t>::max();
             int16_t dst {};
 
-            rav::audio_data::convert_sample<int16_t, byte_order::be, int16_t, byte_order::le>(&src, &dst);
+            rav::audio_data::convert_sample<
+                int16_t, rav::audio_data::byte_order::be, int16_t, rav::audio_data::byte_order::le>(&src, &dst);
 
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[0] == 0x7f);
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[1] == 0xff);
@@ -266,7 +294,8 @@ TEST_CASE("audio_data") {
             std::array<int8_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                uint8_t, byte_order::be, interleaving::interleaved, int8_t, byte_order::be, interleaving::interleaved>(
+                uint8_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int8_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -279,7 +308,8 @@ TEST_CASE("audio_data") {
             std::array<int8_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                uint8_t, byte_order::be, interleaving::interleaved, int8_t, byte_order::le, interleaving::interleaved>(
+                uint8_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int8_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -292,7 +322,8 @@ TEST_CASE("audio_data") {
             std::array<int8_t, 4> dst {};
 
             auto result = rav::audio_data::convert<
-                uint8_t, byte_order::be, interleaving::interleaved, int8_t, byte_order::le, interleaving::interleaved>(
+                uint8_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int8_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -308,7 +339,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int8_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::be, interleaving::interleaved>(
+                int8_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -325,7 +357,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int8_t, byte_order::le, interleaving::interleaved, int16_t, byte_order::be, interleaving::interleaved>(
+                int8_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -342,7 +375,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int8_t, byte_order::be, interleaving::interleaved, int16_t, byte_order::le, interleaving::interleaved>(
+                int8_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -361,8 +395,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_be() == -8388608);
@@ -377,8 +413,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::le, interleaving::interleaved, rav::int24_t, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_be() == -8388608);
@@ -393,8 +431,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_le() == -8388608);
@@ -411,7 +451,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int32_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, int32_t, byte_order::be, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int32_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -428,7 +469,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int32_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, int32_t, byte_order::le, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int32_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -445,7 +487,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int32_t> dst(4);
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::le, interleaving::interleaved, int32_t, byte_order::be, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int32_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
@@ -464,7 +507,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<float> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, float, byte_order::be, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, float,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -482,7 +526,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<float> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, float, byte_order::le, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, float,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -500,7 +545,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<float> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, float, byte_order::ne, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, float,
+                rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -520,8 +566,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<float> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                rav::int24_t, byte_order::be, interleaving::interleaved, float, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                rav::int24_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, float,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_be(), -1.f, f32_tolerance));
@@ -537,8 +585,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<float> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                rav::int24_t, byte_order::be, interleaving::interleaved, float, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                rav::int24_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, float,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_le(), -1.f, f32_tolerance));
@@ -554,8 +604,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<float> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                rav::int24_t, byte_order::be, interleaving::interleaved, float, byte_order::ne,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                rav::int24_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, float,
+                rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(rav::is_within(dst.read(), -1.f, f32_tolerance));
@@ -573,7 +625,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<double> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, double, byte_order::be, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, double,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -591,7 +644,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<double> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, double, byte_order::le, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, double,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -609,7 +663,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<double> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                int16_t, byte_order::be, interleaving::interleaved, double, byte_order::ne, interleaving::interleaved>(
+                int16_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, double,
+                rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -629,8 +684,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<double> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                rav::int24_t, byte_order::be, interleaving::interleaved, double, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                rav::int24_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, double,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_be(), -1.0, f64_tolerance));
@@ -646,8 +703,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<double> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                rav::int24_t, byte_order::be, interleaving::interleaved, double, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                rav::int24_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, double,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_le(), -1.0, f64_tolerance));
@@ -663,8 +722,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<double> dst(src.size());
 
             auto result = rav::audio_data::convert<
-                rav::int24_t, byte_order::be, interleaving::interleaved, double, byte_order::ne,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                rav::int24_t, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, double,
+                rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(rav::is_within(dst.read(), -1.0, f64_tolerance));
@@ -682,7 +743,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                float, byte_order::be, interleaving::interleaved, int16_t, byte_order::be, interleaving::interleaved>(
+                float, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -698,7 +760,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                float, byte_order::be, interleaving::interleaved, int16_t, byte_order::le, interleaving::interleaved>(
+                float, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -714,7 +777,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                float, byte_order::le, interleaving::interleaved, int16_t, byte_order::be, interleaving::interleaved>(
+                float, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -732,8 +796,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                float, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                float, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
@@ -747,8 +813,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                float, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                float, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_le() == -8388607);
@@ -762,8 +830,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                float, byte_order::le, interleaving::interleaved, rav::int24_t, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                float, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
@@ -779,7 +849,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                double, byte_order::be, interleaving::interleaved, int16_t, byte_order::be, interleaving::interleaved>(
+                double, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -795,7 +866,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                double, byte_order::be, interleaving::interleaved, int16_t, byte_order::le, interleaving::interleaved>(
+                double, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -811,7 +883,8 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<int16_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                double, byte_order::le, interleaving::interleaved, int16_t, byte_order::be, interleaving::interleaved>(
+                double, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
@@ -829,8 +902,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                double, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                double, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
@@ -844,8 +919,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                double, byte_order::be, interleaving::interleaved, rav::int24_t, byte_order::le,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                double, rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_le() == -8388607);
@@ -859,8 +936,10 @@ TEST_CASE("audio_data") {
             rav::vector_buffer<rav::int24_t> dst(3);
 
             auto result = rav::audio_data::convert<
-                double, byte_order::le, interleaving::interleaved, rav::int24_t, byte_order::be,
-                interleaving::interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
+                double, rav::audio_data::byte_order::le, rav::audio_data::interleaving::interleaved, rav::int24_t,
+                rav::audio_data::byte_order::be, rav::audio_data::interleaving::interleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 1
+            );
 
             REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
@@ -876,9 +955,9 @@ TEST_CASE("audio_data") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::audio_buffer<int16_t> dst(2, 3);
 
-            auto result = convert<int16_t, byte_order::ne, interleaving::interleaved, int16_t, byte_order::ne>(
-                src.data(), 3, 2, dst.data()
-            );
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::ne>(src.data(), 3, 2, dst.data());
 
             REQUIRE(result);
             REQUIRE(dst[0][0] == 1);
@@ -893,9 +972,9 @@ TEST_CASE("audio_data") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::audio_buffer<int16_t> dst(2, 4);
 
-            auto result = convert<int16_t, byte_order::ne, interleaving::interleaved, int16_t, byte_order::ne>(
-                src.data(), 3, 2, dst.data(), 0, 1
-            );
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::ne>(src.data(), 3, 2, dst.data(), 0, 1);
 
             REQUIRE(result);
             REQUIRE(dst[0][0] == 0);
@@ -912,9 +991,9 @@ TEST_CASE("audio_data") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6, 7, 8};
             rav::audio_buffer<int16_t> dst(2, 3);
 
-            auto result = convert<int16_t, byte_order::ne, interleaving::interleaved, int16_t, byte_order::ne>(
-                src.data(), 3, 2, dst.data(), 1, 0
-            );
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::interleaved, int16_t,
+                rav::audio_data::byte_order::ne>(src.data(), 3, 2, dst.data(), 1, 0);
 
             REQUIRE(result);
             REQUIRE(dst[0][0] == 3);
@@ -929,9 +1008,9 @@ TEST_CASE("audio_data") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::audio_buffer<int16_t> dst(2, 3);
 
-            auto result = convert<int16_t, byte_order::ne, interleaving::noninterleaved, int16_t, byte_order::ne>(
-                src.data(), 3, 2, dst.data()
-            );
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::noninterleaved, int16_t,
+                rav::audio_data::byte_order::ne>(src.data(), 3, 2, dst.data());
 
             REQUIRE(result);
             REQUIRE(dst[0][0] == 1);
@@ -946,9 +1025,9 @@ TEST_CASE("audio_data") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::audio_buffer<int16_t> dst(2, 4);
 
-            auto result = convert<int16_t, byte_order::ne, interleaving::noninterleaved, int16_t, byte_order::ne>(
-                src.data(), 3, 2, dst.data(), 0, 1
-            );
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::noninterleaved, int16_t,
+                rav::audio_data::byte_order::ne>(src.data(), 3, 2, dst.data(), 0, 1);
 
             REQUIRE(result);
             REQUIRE(dst[0][0] == 0);
@@ -965,9 +1044,9 @@ TEST_CASE("audio_data") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6, 7, 8};
             rav::audio_buffer<int16_t> dst(2, 3);
 
-            auto result = convert<int16_t, byte_order::ne, interleaving::noninterleaved, int16_t, byte_order::ne>(
-                src.data(), 3, 2, dst.data(), 1, 0
-            );
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, rav::audio_data::interleaving::noninterleaved, int16_t,
+                rav::audio_data::byte_order::ne>(src.data(), 3, 2, dst.data(), 1, 0);
 
             REQUIRE(result);
             REQUIRE(dst[0][0] == 3);
@@ -991,7 +1070,9 @@ TEST_CASE("audio_data") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = convert<int16_t, byte_order::ne, int16_t, byte_order::ne, interleaving::interleaved>(
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, int16_t, rav::audio_data::byte_order::ne,
+                rav::audio_data::interleaving::interleaved>(
                 src.data(), src.num_frames(), src.num_channels(), dst.data(), 0
             );
 
@@ -1017,7 +1098,9 @@ TEST_CASE("audio_data") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = convert<int16_t, byte_order::ne, int16_t, byte_order::ne, interleaving::interleaved>(
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, int16_t, rav::audio_data::byte_order::ne,
+                rav::audio_data::interleaving::interleaved>(
                 src.data(), src.num_frames() - 1, src.num_channels(), dst.data(), 1
             );
 
@@ -1041,7 +1124,9 @@ TEST_CASE("audio_data") {
 
             std::vector<int16_t> dst(8);
 
-            auto result = convert<int16_t, byte_order::ne, int16_t, byte_order::ne, interleaving::interleaved>(
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, int16_t, rav::audio_data::byte_order::ne,
+                rav::audio_data::interleaving::interleaved>(
                 src.data(), src.num_frames(), src.num_channels(), dst.data(), 0, 1
             );
 
@@ -1067,7 +1152,9 @@ TEST_CASE("audio_data") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = convert<int16_t, byte_order::ne, int16_t, byte_order::ne, interleaving::noninterleaved>(
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, int16_t, rav::audio_data::byte_order::ne,
+                rav::audio_data::interleaving::noninterleaved>(
                 src.data(), src.num_frames(), src.num_channels(), dst.data(), 0
             );
 
@@ -1093,7 +1180,9 @@ TEST_CASE("audio_data") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = convert<int16_t, byte_order::ne, int16_t, byte_order::ne, interleaving::noninterleaved>(
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, int16_t, rav::audio_data::byte_order::ne,
+                rav::audio_data::interleaving::noninterleaved>(
                 src.data(), src.num_frames() - 1, src.num_channels(), dst.data(), 1
             );
 
@@ -1117,7 +1206,9 @@ TEST_CASE("audio_data") {
 
             std::vector<int16_t> dst(8);
 
-            auto result = convert<int16_t, byte_order::ne, int16_t, byte_order::ne, interleaving::noninterleaved>(
+            auto result = rav::audio_data::convert<
+                int16_t, rav::audio_data::byte_order::ne, int16_t, rav::audio_data::byte_order::ne,
+                rav::audio_data::interleaving::noninterleaved>(
                 src.data(), src.num_frames(), src.num_channels(), dst.data(), 0, 1
             );
 
@@ -1137,13 +1228,13 @@ TEST_CASE("audio_data") {
         std::vector<int16_t> interleaved {1, 2, 3, 4, 5, 6};
         std::vector<int16_t> de_interleaved {1, 3, 5, 2, 4, 6};
         std::vector<int16_t> buffer {0, 0, 0, 0, 0, 0};
-        de_interleave(
+        rav::audio_data::de_interleave(
             rav::buffer_view(interleaved).reinterpret<uint8_t>(), rav::buffer_view(buffer).reinterpret<uint8_t>(), 2,
             sizeof(int16_t)
         );
         REQUIRE(buffer == de_interleaved);
 
-        interleave(
+       rav::audio_data::interleave(
             rav::buffer_view(de_interleaved).reinterpret<uint8_t>(), rav::buffer_view(buffer).reinterpret<uint8_t>(), 2,
             sizeof(int16_t), 3
         );
