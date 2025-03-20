@@ -19,7 +19,7 @@
 
 namespace rav {
 
-template<class T, class F = fifo::single>
+template<class T, class F = Fifo::Single>
 class audio_fifo_buffer {
   public:
     audio_fifo_buffer() = default;

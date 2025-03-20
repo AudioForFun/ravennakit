@@ -63,7 +63,7 @@ class rtp_receive_buffer {
             return false;
         }
 
-        const fifo::position position(
+        const Fifo::Position position(
             static_cast<size_t>(at_timestamp) * bytes_per_frame_, buffer_.size(), payload.size()
         );
 
@@ -104,7 +104,7 @@ class rtp_receive_buffer {
             return false;
         }
 
-        const fifo::position position(
+        const Fifo::Position position(
             static_cast<size_t>(at_timestamp) * bytes_per_frame_, buffer_.size(), buffer_size
         );
 
@@ -130,7 +130,7 @@ class rtp_receive_buffer {
 
         const auto number_of_elements = (wrapping_uint32(at_timestamp) - next_ts_.value()).value() * bytes_per_frame_;
 
-        const fifo::position position(
+        const Fifo::Position position(
             next_ts_.value() * bytes_per_frame_, buffer_.size(),
             std::min(static_cast<size_t>(number_of_elements), buffer_.size())
         );

@@ -11,11 +11,11 @@
 #include "ravennakit/core/assert.hpp"
 #include "ravennakit/core/containers/detail/fifo.hpp"
 
-rav::fifo::position::position(const size_t timestamp, const size_t capacity, const size_t number_of_elements) {
+rav::Fifo::Position::Position(const size_t timestamp, const size_t capacity, const size_t number_of_elements) {
     update(timestamp, capacity, number_of_elements);
 }
 
-void rav::fifo::position::update(const size_t timestamp, const size_t capacity, const size_t number_of_elements) {
+void rav::Fifo::Position::update(const size_t timestamp, const size_t capacity, const size_t number_of_elements) {
     RAV_ASSERT(number_of_elements <= capacity, "Number of elements must be less than or equal to capacity.");
     index1 = timestamp % capacity;
     size1 = number_of_elements;
@@ -27,94 +27,94 @@ void rav::fifo::position::update(const size_t timestamp, const size_t capacity, 
     }
 }
 
-size_t rav::fifo::spmc::size() const {
+size_t rav::Fifo::Spmc::size() const {
     return write_ts_.load() - read_ts_.load();
 }
 
-rav::fifo::single::lock rav::fifo::single::prepare_for_write(const size_t number_of_elements) {
+rav::Fifo::Single::Lock rav::Fifo::Single::prepare_for_write(const size_t number_of_elements) {
     if (write_ts_ - read_ts_ + number_of_elements > capacity_) {
         return {};
     }
 
-    lock write_lock([this, number_of_elements] {
+    Lock write_lock([this, number_of_elements] {
         write_ts_ += number_of_elements;
     });
     write_lock.position.update(write_ts_, capacity_, number_of_elements);
     return write_lock;
 }
 
-rav::fifo::single::lock rav::fifo::single::prepare_for_read(const size_t number_of_elements) {
+rav::Fifo::Single::Lock rav::Fifo::Single::prepare_for_read(const size_t number_of_elements) {
     if (write_ts_ - read_ts_ < number_of_elements) {
         return {};
     }
 
-    lock read_lock([this, number_of_elements] {
+    Lock read_lock([this, number_of_elements] {
         read_ts_ += number_of_elements;
     });
     read_lock.position.update(read_ts_, capacity_, number_of_elements);
     return read_lock;
 }
 
-size_t rav::fifo::single::size() const {
+size_t rav::Fifo::Single::size() const {
     return write_ts_ - read_ts_;
 }
 
-void rav::fifo::single::resize(const size_t capacity) {
+void rav::Fifo::Single::resize(const size_t capacity) {
     reset();
     capacity_ = capacity;
 }
 
-void rav::fifo::single::reset() {
+void rav::Fifo::Single::reset() {
     read_ts_ = 0;
     write_ts_ = 0;
 }
 
-rav::fifo::spsc::lock rav::fifo::spsc::prepare_for_write(const size_t number_of_elements) {
+rav::Fifo::Spsc::Lock rav::Fifo::Spsc::prepare_for_write(const size_t number_of_elements) {
     if (write_ts_.load() - read_ts_.load() + number_of_elements > capacity_) {
         return {};  // Not enough free space in buffer.
     }
 
-    lock write_lock([this, number_of_elements] {
+    Lock write_lock([this, number_of_elements] {
         write_ts_.fetch_add(number_of_elements);
     });
     write_lock.position.update(write_ts_, capacity_, number_of_elements);
     return write_lock;
 }
 
-rav::fifo::spsc::lock rav::fifo::spsc::prepare_for_read(const size_t number_of_elements) {
+rav::Fifo::Spsc::Lock rav::Fifo::Spsc::prepare_for_read(const size_t number_of_elements) {
     if (write_ts_.load() - read_ts_.load() < number_of_elements) {
         return {};  // Not enough data available.
     }
 
-    lock read_lock([this, number_of_elements] {
+    Lock read_lock([this, number_of_elements] {
         read_ts_.fetch_add(number_of_elements);
     });
     read_lock.position.update(read_ts_, capacity_, number_of_elements);
     return read_lock;
 }
 
-size_t rav::fifo::spsc::size() const {
+size_t rav::Fifo::Spsc::size() const {
     return write_ts_.load() - read_ts_.load();
 }
 
-void rav::fifo::spsc::resize(const size_t capacity) {
+void rav::Fifo::Spsc::resize(const size_t capacity) {
     reset();
     capacity_ = capacity;
 }
 
-void rav::fifo::spsc::reset() {
+void rav::Fifo::Spsc::reset() {
     read_ts_ = 0;
     write_ts_ = 0;
 }
 
-rav::fifo::mpsc::lock rav::fifo::mpsc::prepare_for_write(const size_t number_of_elements) {
+rav::Fifo::Mpsc::Lock rav::Fifo::Mpsc::prepare_for_write(const size_t number_of_elements) {
     std::unique_lock guard(mutex_);
 
     if (write_ts_.load() - read_ts_.load() + number_of_elements > capacity_) {
         return {};  // Not enough free space in buffer.
     }
 
-    lock write_lock(
+    Lock write_lock(
         [this, number_of_elements] {
             write_ts_.fetch_add(number_of_elements);
         },
@@ -124,51 +124,51 @@ rav::fifo::mpsc::lock rav::fifo::mpsc::prepare_for_write(const size_t number_of_
     return write_lock;
 }
 
-rav::fifo::mpsc::lock rav::fifo::mpsc::prepare_for_read(const size_t number_of_elements) {
+rav::Fifo::Mpsc::Lock rav::Fifo::Mpsc::prepare_for_read(const size_t number_of_elements) {
     if (write_ts_.load() - read_ts_.load() < number_of_elements) {
         return {};  // Not enough data available.
     }
-    lock read_lock([this, number_of_elements] {
+    Lock read_lock([this, number_of_elements] {
         read_ts_.fetch_add(number_of_elements);
     });
     read_lock.position.update(read_ts_, capacity_, number_of_elements);
     return read_lock;
 }
 
-size_t rav::fifo::mpsc::size() const {
+size_t rav::Fifo::Mpsc::size() const {
     return write_ts_.load() - read_ts_.load();
 }
 
-void rav::fifo::mpsc::resize(const size_t capacity) {
+void rav::Fifo::Mpsc::resize(const size_t capacity) {
     reset();
     capacity_ = capacity;
 }
 
-void rav::fifo::mpsc::reset() {
+void rav::Fifo::Mpsc::reset() {
     read_ts_ = 0;
     write_ts_ = 0;
 }
 
-rav::fifo::spmc::lock rav::fifo::spmc::prepare_for_write(const size_t number_of_elements) {
+rav::Fifo::Spmc::Lock rav::Fifo::Spmc::prepare_for_write(const size_t number_of_elements) {
     if (write_ts_.load() - read_ts_.load() + number_of_elements > capacity_) {
         return {};  // Not enough free space in buffer.
     }
 
-    lock write_lock([this, number_of_elements] {
+    Lock write_lock([this, number_of_elements] {
         write_ts_.fetch_add(number_of_elements);
     });
     write_lock.position.update(write_ts_, capacity_, number_of_elements);
     return write_lock;
 }
 
-rav::fifo::spmc::lock rav::fifo::spmc::prepare_for_read(const size_t number_of_elements) {
+rav::Fifo::Spmc::Lock rav::Fifo::Spmc::prepare_for_read(const size_t number_of_elements) {
     std::unique_lock guard(mutex_);
 
     if (write_ts_.load() - read_ts_.load() < number_of_elements) {
         return {};  // Not enough data available.
     }
 
-    lock read_lock(
+    Lock read_lock(
         [this, number_of_elements] {
             read_ts_.fetch_add(number_of_elements);
         },
@@ -178,24 +178,24 @@ rav::fifo::spmc::lock rav::fifo::spmc::prepare_for_read(const size_t number_of_e
     return read_lock;
 }
 
-void rav::fifo::spmc::resize(const size_t capacity) {
+void rav::Fifo::Spmc::resize(const size_t capacity) {
     reset();
     capacity_ = capacity;
 }
 
-void rav::fifo::spmc::reset() {
+void rav::Fifo::Spmc::reset() {
     read_ts_ = 0;
     write_ts_ = 0;
 }
 
-rav::fifo::mpmc::lock rav::fifo::mpmc::prepare_for_write(const size_t number_of_elements) {
+rav::Fifo::Mpmc::Lock rav::Fifo::Mpmc::prepare_for_write(const size_t number_of_elements) {
     std::unique_lock guard(mutex_);
 
     if (write_ts_ - read_ts_ + number_of_elements > capacity_) {
         return {};  // Not enough free space in buffer.
     }
 
-    lock write_lock(
+    Lock write_lock(
         [this, number_of_elements] {
             write_ts_ += number_of_elements;
         },
@@ -205,14 +205,14 @@ rav::fifo::mpmc::lock rav::fifo::mpmc::prepare_for_write(const size_t number_of_
     return write_lock;
 }
 
-rav::fifo::mpmc::lock rav::fifo::mpmc::prepare_for_read(const size_t number_of_elements) {
+rav::Fifo::Mpmc::Lock rav::Fifo::Mpmc::prepare_for_read(const size_t number_of_elements) {
     std::unique_lock guard(mutex_);
 
     if (write_ts_ - read_ts_ < number_of_elements) {
         return {};  // Not enough data available.
     }
 
-    lock read_lock(
+    Lock read_lock(
         [this, number_of_elements] {
             read_ts_ += number_of_elements;
         },
@@ -222,17 +222,17 @@ rav::fifo::mpmc::lock rav::fifo::mpmc::prepare_for_read(const size_t number_of_e
     return read_lock;
 }
 
-size_t rav::fifo::mpmc::size() {
+size_t rav::Fifo::Mpmc::size() {
     std::unique_lock guard(mutex_);
     return write_ts_ - read_ts_;
 }
 
-void rav::fifo::mpmc::resize(const size_t capacity) {
+void rav::Fifo::Mpmc::resize(const size_t capacity) {
     reset();
     capacity_ = capacity;
 }
 
-void rav::fifo::mpmc::reset() {
+void rav::Fifo::Mpmc::reset() {
     read_ts_ = 0;
     write_ts_ = 0;
 }

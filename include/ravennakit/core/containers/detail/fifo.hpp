@@ -16,18 +16,18 @@
 
 namespace rav {
 
-struct fifo {
+struct Fifo {
     /**
      * Encapsulates the regions of a FIFO buffer that are being read or written to.
      */
-    struct position {
+    struct Position {
         size_t index1 {};
         size_t size1 {};
         size_t size2 {};
 
-        position() = default;
+        Position() = default;
 
-        position(size_t timestamp, size_t capacity, size_t number_of_elements);
+        Position(size_t timestamp, size_t capacity, size_t number_of_elements);
 
         /**
          * Updates the position with the given parameters.
@@ -41,16 +41,16 @@ struct fifo {
     /**
      * A fifo without any synchronization. Can be used in single-threaded environments.
      */
-    struct single {
+    struct Single {
         /**
          * A lock returned by a prepared operation.
          */
-        struct lock {
-            fifo::position position {};
+        struct Lock {
+            Fifo::Position position {};
 
-            lock() = default;
+            Lock() = default;
 
-            explicit lock(std::function<void()>&& commit) : commit_(std::move(commit)) {}
+            explicit Lock(std::function<void()>&& commit) : commit_(std::move(commit)) {}
 
             /**
              * Returns true if this lock is valid, or false if not.
@@ -84,7 +84,7 @@ struct fifo {
          * @param number_of_elements The number of elements to write.
          * @return A valid lock if space is available; otherwise, an invalid lock.
          */
-        lock prepare_for_write(size_t number_of_elements);
+        Lock prepare_for_write(size_t number_of_elements);
 
         /**
          * Prepares for reading.
@@ -99,7 +99,7 @@ struct fifo {
          * @param number_of_elements The number of elements to read.
          * @return A valid lock if sufficient data is available; otherwise, an invalid lock.
          */
-        lock prepare_for_read(size_t number_of_elements);
+        Lock prepare_for_read(size_t number_of_elements);
 
         /**
          * Thread safe: no
@@ -132,13 +132,13 @@ struct fifo {
     /**
      * A fifo which a single producer and single consumer thread can simultaneously read and write to.
      */
-    struct spsc {
-        struct lock {
-            fifo::position position {};
+    struct Spsc {
+        struct Lock {
+            Fifo::Position position {};
 
-            lock() = default;
+            Lock() = default;
 
-            explicit lock(std::function<void()>&& commit) : commit_(std::move(commit)) {}
+            explicit Lock(std::function<void()>&& commit) : commit_(std::move(commit)) {}
 
             /**
              * Returns true if this lock is valid, or false if not.
@@ -172,7 +172,7 @@ struct fifo {
          * @param number_of_elements The number of elements to write.
          * @return A valid lock if space is available; otherwise, an invalid lock.
          */
-        lock prepare_for_write(size_t number_of_elements);
+        Lock prepare_for_write(size_t number_of_elements);
 
         /**
          * Prepares for reading.
@@ -187,7 +187,7 @@ struct fifo {
          * @param number_of_elements The number of elements to read.
          * @return A valid lock if sufficient data is available; otherwise, an invalid lock.
          */
-        lock prepare_for_read(size_t number_of_elements);
+        Lock prepare_for_read(size_t number_of_elements);
 
         /**
          * Thread safe: yes
@@ -219,15 +219,15 @@ struct fifo {
      * A fifo where multiple producer threads can write to the buffer, but only a single consumer thread can read from
      * it.
      */
-    struct mpsc {
-        struct lock {
-            fifo::position position {};
+    struct Mpsc {
+        struct Lock {
+            Fifo::Position position {};
 
-            lock() = default;
+            Lock() = default;
 
-            explicit lock(std::function<void()>&& commit) : commit_(commit) {}
+            explicit Lock(std::function<void()>&& commit) : commit_(commit) {}
 
-            explicit lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
+            explicit Lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
                 commit_(commit), lock_(std::move(unique_lock)) {}
 
             /**
@@ -263,7 +263,7 @@ struct fifo {
          * @param number_of_elements The number of elements to write.
          * @return A valid lock if space is available; otherwise, an invalid lock.
          */
-        lock prepare_for_write(size_t number_of_elements);
+        Lock prepare_for_write(size_t number_of_elements);
 
         /**
          * Prepares for reading.
@@ -278,7 +278,7 @@ struct fifo {
          * @param number_of_elements The number of elements to read.
          * @return A valid lock if sufficient data is available; otherwise, an invalid lock.
          */
-        lock prepare_for_read(size_t number_of_elements);
+        Lock prepare_for_read(size_t number_of_elements);
 
         /**
          * Thread safe: yes
@@ -311,15 +311,15 @@ struct fifo {
      * A fifo where a single producer thread and multiple consumer threads can simultaneously read and write to the
      * buffer.
      */
-    struct spmc {
-        struct lock {
-            fifo::position position {};
+    struct Spmc {
+        struct Lock {
+            Fifo::Position position {};
 
-            lock() = default;
+            Lock() = default;
 
-            explicit lock(std::function<void()>&& commit) : commit_(commit) {}
+            explicit Lock(std::function<void()>&& commit) : commit_(commit) {}
 
-            explicit lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
+            explicit Lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
                 commit_(commit), lock_(std::move(unique_lock)) {}
 
             /**
@@ -355,7 +355,7 @@ struct fifo {
          * @param number_of_elements The number of elements to write.
          * @return A valid lock if space is available; otherwise, an invalid lock.
          */
-        lock prepare_for_write(size_t number_of_elements);
+        Lock prepare_for_write(size_t number_of_elements);
 
         /**
          * Prepares for reading.
@@ -370,7 +370,7 @@ struct fifo {
          * @param number_of_elements The number of elements to read.
          * @return A valid lock if sufficient data is available; otherwise, an invalid lock.
          */
-        lock prepare_for_read(size_t number_of_elements);
+        Lock prepare_for_read(size_t number_of_elements);
 
         /**
          * Thread safe: yes
@@ -402,13 +402,13 @@ struct fifo {
     /**
      * A fifo where multiple producer and multiple consumer threads can simultaneously read and write to the buffer.
      */
-    struct mpmc {
-        struct lock {
-            fifo::position position {};
+    struct Mpmc {
+        struct Lock {
+            Fifo::Position position {};
 
-            lock() = default;
+            Lock() = default;
 
-            explicit lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
+            explicit Lock(std::function<void()>&& commit, std::unique_lock<std::mutex>&& unique_lock) :
                 commit_(commit), lock_(std::move(unique_lock)) {}
 
             /**
@@ -444,7 +444,7 @@ struct fifo {
          * @param number_of_elements The number of elements to write.
          * @return A valid lock if space is available; otherwise, an invalid lock.
          */
-        lock prepare_for_write(size_t number_of_elements);
+        Lock prepare_for_write(size_t number_of_elements);
 
         /**
          * Prepares for reading.
@@ -459,7 +459,7 @@ struct fifo {
          * @param number_of_elements The number of elements to read.
          * @return A valid lock if sufficient data is available; otherwise, an invalid lock.
          */
-        lock prepare_for_read(size_t number_of_elements);
+        Lock prepare_for_read(size_t number_of_elements);
 
         /**
          * Thread safe: yes

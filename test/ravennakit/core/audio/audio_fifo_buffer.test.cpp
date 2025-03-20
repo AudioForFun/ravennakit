@@ -118,76 +118,76 @@ void test_circular_buffer_read_write() {
 
 TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Buffers holding different types should be able to be created") {
-        instantiate_buffer<int, rav::fifo::single>();
-        instantiate_buffer<int, rav::fifo::spsc>();
-        instantiate_buffer<int, rav::fifo::mpsc>();
-        instantiate_buffer<int, rav::fifo::spmc>();
-        instantiate_buffer<int, rav::fifo::mpmc>();
+        instantiate_buffer<int, rav::Fifo::Single>();
+        instantiate_buffer<int, rav::Fifo::Spsc>();
+        instantiate_buffer<int, rav::Fifo::Mpsc>();
+        instantiate_buffer<int, rav::Fifo::Spmc>();
+        instantiate_buffer<int, rav::Fifo::Mpmc>();
 
-        instantiate_buffer<float, rav::fifo::single>();
-        instantiate_buffer<float, rav::fifo::spsc>();
-        instantiate_buffer<float, rav::fifo::mpsc>();
-        instantiate_buffer<float, rav::fifo::spmc>();
-        instantiate_buffer<float, rav::fifo::mpmc>();
+        instantiate_buffer<float, rav::Fifo::Single>();
+        instantiate_buffer<float, rav::Fifo::Spsc>();
+        instantiate_buffer<float, rav::Fifo::Mpsc>();
+        instantiate_buffer<float, rav::Fifo::Spmc>();
+        instantiate_buffer<float, rav::Fifo::Mpmc>();
 
-        instantiate_buffer<double, rav::fifo::single>();
-        instantiate_buffer<double, rav::fifo::spsc>();
-        instantiate_buffer<double, rav::fifo::mpsc>();
-        instantiate_buffer<double, rav::fifo::spmc>();
-        instantiate_buffer<double, rav::fifo::mpmc>();
+        instantiate_buffer<double, rav::Fifo::Single>();
+        instantiate_buffer<double, rav::Fifo::Spsc>();
+        instantiate_buffer<double, rav::Fifo::Mpsc>();
+        instantiate_buffer<double, rav::Fifo::Spmc>();
+        instantiate_buffer<double, rav::Fifo::Mpmc>();
     }
 
     SECTION("Basic read write tests") {
-        test_circular_buffer_read_write<uint8_t, rav::fifo::single>();
-        test_circular_buffer_read_write<uint16_t, rav::fifo::single>();
-        test_circular_buffer_read_write<uint32_t, rav::fifo::single>();
-        test_circular_buffer_read_write<uint64_t, rav::fifo::single>();
-        test_circular_buffer_read_write<int8_t, rav::fifo::single>();
-        test_circular_buffer_read_write<int16_t, rav::fifo::single>();
-        test_circular_buffer_read_write<int32_t, rav::fifo::single>();
-        test_circular_buffer_read_write<int64_t, rav::fifo::single>();
+        test_circular_buffer_read_write<uint8_t, rav::Fifo::Single>();
+        test_circular_buffer_read_write<uint16_t, rav::Fifo::Single>();
+        test_circular_buffer_read_write<uint32_t, rav::Fifo::Single>();
+        test_circular_buffer_read_write<uint64_t, rav::Fifo::Single>();
+        test_circular_buffer_read_write<int8_t, rav::Fifo::Single>();
+        test_circular_buffer_read_write<int16_t, rav::Fifo::Single>();
+        test_circular_buffer_read_write<int32_t, rav::Fifo::Single>();
+        test_circular_buffer_read_write<int64_t, rav::Fifo::Single>();
 
-        test_circular_buffer_read_write<uint8_t, rav::fifo::spsc>();
-        test_circular_buffer_read_write<uint16_t, rav::fifo::spsc>();
-        test_circular_buffer_read_write<uint32_t, rav::fifo::spsc>();
-        test_circular_buffer_read_write<uint64_t, rav::fifo::spsc>();
-        test_circular_buffer_read_write<int8_t, rav::fifo::spsc>();
-        test_circular_buffer_read_write<int16_t, rav::fifo::spsc>();
-        test_circular_buffer_read_write<int32_t, rav::fifo::spsc>();
-        test_circular_buffer_read_write<int64_t, rav::fifo::spsc>();
+        test_circular_buffer_read_write<uint8_t, rav::Fifo::Spsc>();
+        test_circular_buffer_read_write<uint16_t, rav::Fifo::Spsc>();
+        test_circular_buffer_read_write<uint32_t, rav::Fifo::Spsc>();
+        test_circular_buffer_read_write<uint64_t, rav::Fifo::Spsc>();
+        test_circular_buffer_read_write<int8_t, rav::Fifo::Spsc>();
+        test_circular_buffer_read_write<int16_t, rav::Fifo::Spsc>();
+        test_circular_buffer_read_write<int32_t, rav::Fifo::Spsc>();
+        test_circular_buffer_read_write<int64_t, rav::Fifo::Spsc>();
 
-        test_circular_buffer_read_write<uint8_t, rav::fifo::mpsc>();
-        test_circular_buffer_read_write<uint16_t, rav::fifo::mpsc>();
-        test_circular_buffer_read_write<uint32_t, rav::fifo::mpsc>();
-        test_circular_buffer_read_write<uint64_t, rav::fifo::mpsc>();
-        test_circular_buffer_read_write<int8_t, rav::fifo::mpsc>();
-        test_circular_buffer_read_write<int16_t, rav::fifo::mpsc>();
-        test_circular_buffer_read_write<int32_t, rav::fifo::mpsc>();
-        test_circular_buffer_read_write<int64_t, rav::fifo::mpsc>();
+        test_circular_buffer_read_write<uint8_t, rav::Fifo::Mpsc>();
+        test_circular_buffer_read_write<uint16_t, rav::Fifo::Mpsc>();
+        test_circular_buffer_read_write<uint32_t, rav::Fifo::Mpsc>();
+        test_circular_buffer_read_write<uint64_t, rav::Fifo::Mpsc>();
+        test_circular_buffer_read_write<int8_t, rav::Fifo::Mpsc>();
+        test_circular_buffer_read_write<int16_t, rav::Fifo::Mpsc>();
+        test_circular_buffer_read_write<int32_t, rav::Fifo::Mpsc>();
+        test_circular_buffer_read_write<int64_t, rav::Fifo::Mpsc>();
 
-        test_circular_buffer_read_write<uint8_t, rav::fifo::spmc>();
-        test_circular_buffer_read_write<uint16_t, rav::fifo::spmc>();
-        test_circular_buffer_read_write<uint32_t, rav::fifo::spmc>();
-        test_circular_buffer_read_write<uint64_t, rav::fifo::spmc>();
-        test_circular_buffer_read_write<int8_t, rav::fifo::spmc>();
-        test_circular_buffer_read_write<int16_t, rav::fifo::spmc>();
-        test_circular_buffer_read_write<int32_t, rav::fifo::spmc>();
-        test_circular_buffer_read_write<int64_t, rav::fifo::spmc>();
+        test_circular_buffer_read_write<uint8_t, rav::Fifo::Spmc>();
+        test_circular_buffer_read_write<uint16_t, rav::Fifo::Spmc>();
+        test_circular_buffer_read_write<uint32_t, rav::Fifo::Spmc>();
+        test_circular_buffer_read_write<uint64_t, rav::Fifo::Spmc>();
+        test_circular_buffer_read_write<int8_t, rav::Fifo::Spmc>();
+        test_circular_buffer_read_write<int16_t, rav::Fifo::Spmc>();
+        test_circular_buffer_read_write<int32_t, rav::Fifo::Spmc>();
+        test_circular_buffer_read_write<int64_t, rav::Fifo::Spmc>();
 
-        test_circular_buffer_read_write<uint8_t, rav::fifo::mpmc>();
-        test_circular_buffer_read_write<uint16_t, rav::fifo::mpmc>();
-        test_circular_buffer_read_write<uint32_t, rav::fifo::mpmc>();
-        test_circular_buffer_read_write<uint64_t, rav::fifo::mpmc>();
-        test_circular_buffer_read_write<int8_t, rav::fifo::mpmc>();
-        test_circular_buffer_read_write<int16_t, rav::fifo::mpmc>();
-        test_circular_buffer_read_write<int32_t, rav::fifo::mpmc>();
-        test_circular_buffer_read_write<int64_t, rav::fifo::mpmc>();
+        test_circular_buffer_read_write<uint8_t, rav::Fifo::Mpmc>();
+        test_circular_buffer_read_write<uint16_t, rav::Fifo::Mpmc>();
+        test_circular_buffer_read_write<uint32_t, rav::Fifo::Mpmc>();
+        test_circular_buffer_read_write<uint64_t, rav::Fifo::Mpmc>();
+        test_circular_buffer_read_write<int8_t, rav::Fifo::Mpmc>();
+        test_circular_buffer_read_write<int16_t, rav::Fifo::Mpmc>();
+        test_circular_buffer_read_write<int32_t, rav::Fifo::Mpmc>();
+        test_circular_buffer_read_write<int64_t, rav::Fifo::Mpmc>();
     }
 
     SECTION("Test single producer single consumer") {
         int64_t expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::fifo::spsc> buffer(2, 10);
+        rav::audio_fifo_buffer<int, rav::Fifo::Spsc> buffer(2, 10);
 
         std::thread writer([&] {
             const auto src = get_filled_audio_buffer<int>(2, 3);
@@ -221,7 +221,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Test multi producer single consumer") {
         std::atomic<int64_t> expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::fifo::mpsc> buffer(2, 10);
+        rav::audio_fifo_buffer<int, rav::Fifo::Mpsc> buffer(2, 10);
 
         std::vector<std::thread> writers;
         writers.reserve(k_num_writer_threads);
@@ -262,7 +262,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Test single producer multi consumer") {
         int64_t expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::fifo::spmc> buffer(2, 10);
+        rav::audio_fifo_buffer<int, rav::Fifo::Spmc> buffer(2, 10);
 
         std::thread writer([&] {
             const auto src = get_filled_audio_buffer<int>(2, 3);
@@ -303,7 +303,7 @@ TEST_CASE("circular_audio_buffer", "[circular_audio_buffer]") {
     SECTION("Test multi producer multi consumer") {
         std::atomic<int64_t> expected_total = 0;
 
-        rav::audio_fifo_buffer<int, rav::fifo::mpmc> buffer(2, 10);
+        rav::audio_fifo_buffer<int, rav::Fifo::Mpmc> buffer(2, 10);
 
         std::vector<std::thread> writers;
         writers.reserve(k_num_writer_threads);
