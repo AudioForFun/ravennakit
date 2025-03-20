@@ -70,7 +70,7 @@ class byte_buffer {
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
     void write_be(const Type value) {
-        write_ne(byte_order::swap_if_le(value));
+        write_ne(swap_if_le(value));
     }
 
     /**
@@ -81,7 +81,7 @@ class byte_buffer {
      */
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
     void write_le(const Type value) {
-        return write_ne(byte_order::swap_if_be(value));
+        return write_ne(swap_if_be(value));
     }
 
   private:

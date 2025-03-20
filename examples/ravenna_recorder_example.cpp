@@ -80,7 +80,7 @@ class stream_recorder: public rav::rtp::rtp_stream_receiver::subscriber {
             return;
         }
         if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
-            rav::byte_order::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
+            rav::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
         }
         if (!wav_writer_->write_audio_data(audio_data_.data(), audio_data_.size())) {
             RAV_ERROR("Failed to write audio data");

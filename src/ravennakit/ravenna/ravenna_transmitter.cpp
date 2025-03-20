@@ -287,9 +287,7 @@ void rav::ravenna_transmitter::send_data() {
         );
 
         if (audio_format_.byte_order == audio_format::byte_order::le) {
-            byte_order::swap_bytes(
-                packet_intermediate_buffer_.data(), required_amount_of_data, audio_format_.bytes_per_sample()
-            );
+            swap_bytes(packet_intermediate_buffer_.data(), required_amount_of_data, audio_format_.bytes_per_sample());
         }
 
         send_buffer_.clear();

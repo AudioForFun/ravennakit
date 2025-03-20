@@ -52,7 +52,7 @@ static constexpr bool big_endian = false;
     #error "Unsupported compiler"
 #endif
 
-namespace rav::byte_order {
+namespace rav {
 
 /**
  * Swaps given amount of bytes in the given data, in place.

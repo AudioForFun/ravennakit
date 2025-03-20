@@ -244,7 +244,7 @@ class ravenna_receiver: public rav::rtp::rtp_stream_receiver::subscriber {
         }
 
         if (audio_format_.byte_order == rav::audio_format::byte_order::be) {
-            rav::byte_order::swap_bytes(static_cast<uint8_t*>(output), buffer_size, audio_format_.bytes_per_sample());
+            rav::swap_bytes(static_cast<uint8_t*>(output), buffer_size, audio_format_.bytes_per_sample());
         }
 
         return paContinue;

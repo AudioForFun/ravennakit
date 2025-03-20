@@ -64,7 +64,7 @@ class vector_buffer {
      * @param value The value to write.
      */
     void push_back_be(T value) {
-        push_back(byte_order::swap_if_le(value));
+        push_back(swap_if_le(value));
     }
 
     /**
@@ -85,7 +85,7 @@ class vector_buffer {
      * @return True if the value was written successfully, false otherwise.
      */
     void push_back_le(T value) {
-        push_back(byte_order::swap_if_be(value));
+        push_back(swap_if_be(value));
     }
 
     /**
@@ -117,7 +117,7 @@ class vector_buffer {
      * @return The value read from the stream, or a default-constructed value if the read failed.
      */
     T read_be() {
-        return byte_order::swap_if_le(read());
+        return swap_if_le(read());
     }
 
     /**
@@ -126,7 +126,7 @@ class vector_buffer {
      * @return The value read from the stream, or a default-constructed value if the read failed.
      */
     T read_le() {
-        return byte_order::swap_if_be(read());
+        return swap_if_be(read());
     }
 
     /**

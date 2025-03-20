@@ -60,7 +60,7 @@ uint16_t rav::rtp::rtp_packet_view::sequence_number() const {
         return 0;
     }
 
-    return byte_order::read_be<uint16_t>(&data_[kOffset]);
+    return read_be<uint16_t>(&data_[kOffset]);
 }
 
 uint32_t rav::rtp::rtp_packet_view::timestamp() const {
@@ -69,7 +69,7 @@ uint32_t rav::rtp::rtp_packet_view::timestamp() const {
     if (size_bytes_ < kOffset + sizeof(uint32_t)) {
         return 0;
     }
-    return byte_order::read_be<uint32_t>(&data_[kOffset]);
+    return read_be<uint32_t>(&data_[kOffset]);
 }
 
 uint32_t rav::rtp::rtp_packet_view::ssrc() const {
@@ -78,7 +78,7 @@ uint32_t rav::rtp::rtp_packet_view::ssrc() const {
     if (size_bytes_ < kOffset + sizeof(uint32_t)) {
         return 0;
     }
-    return byte_order::read_be<uint32_t>(&data_[kOffset]);
+    return read_be<uint32_t>(&data_[kOffset]);
 }
 
 uint8_t rav::rtp::rtp_packet_view::version() const {
@@ -117,7 +117,7 @@ uint32_t rav::rtp::rtp_packet_view::csrc(const uint32_t index) const {
     if (index >= csrc_count()) {
         return 0;
     }
-    return byte_order::read_be<uint32_t>(&data_[kRtpHeaderBaseLengthOctets + index * sizeof(uint32_t)]);
+    return read_be<uint32_t>(&data_[kRtpHeaderBaseLengthOctets + index * sizeof(uint32_t)]);
 }
 
 uint16_t rav::rtp::rtp_packet_view::get_header_extension_defined_by_profile() const {
@@ -138,7 +138,7 @@ rav::buffer_view<const uint8_t> rav::rtp::rtp_packet_view::get_header_extension_
 
     const auto header_extension_start_index = kRtpHeaderBaseLengthOctets + csrc_count() * sizeof(uint32_t);
 
-    const auto num_32bit_words = byte_order::read_be<uint16_t>(&data_[header_extension_start_index + sizeof(uint16_t)]);
+    const auto num_32bit_words = read_be<uint16_t>(&data_[header_extension_start_index + sizeof(uint16_t)]);
     const auto data_start_index = header_extension_start_index + kHeaderExtensionLengthOctets;
     return {&data_[data_start_index], num_32bit_words * sizeof(uint32_t)};
 }

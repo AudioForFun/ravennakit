@@ -43,7 +43,7 @@ struct ptp_port_identity {
         }
         ptp_port_identity port_identity;
         port_identity.clock_identity = ptp_clock_identity::from_data(data);
-        port_identity.port_number = rav::byte_order::read_be<uint16_t>(data.data() + 8);
+        port_identity.port_number = rav::read_be<uint16_t>(data.data() + 8);
         return port_identity;
     }
 

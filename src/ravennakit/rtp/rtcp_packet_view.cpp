@@ -95,7 +95,7 @@ uint16_t rav::rtcp::rtcp_packet_view::length() const {
         return 0;
     }
 
-    return byte_order::read_be<uint16_t>(&data_[kOffset]) + 1;
+    return read_be<uint16_t>(&data_[kOffset]) + 1;
 }
 
 uint32_t rav::rtcp::rtcp_packet_view::ssrc() const {
@@ -103,7 +103,7 @@ uint32_t rav::rtcp::rtcp_packet_view::ssrc() const {
     if (size_bytes_ < kOffset + sizeof(uint32_t)) {
         return 0;
     }
-    return byte_order::read_be<uint32_t>(&data_[kOffset]);
+    return read_be<uint32_t>(&data_[kOffset]);
 }
 
 rav::ntp::timestamp rav::rtcp::rtcp_packet_view::ntp_timestamp() const {
@@ -116,8 +116,8 @@ rav::ntp::timestamp rav::rtcp::rtcp_packet_view::ntp_timestamp() const {
     }
 
     return {
-        byte_order::read_be<uint32_t>(data_ + kHeaderLength),
-        byte_order::read_be<uint32_t>(data_ + kHeaderLength + kSenderReportNtpTimestampHalfLength)
+        read_be<uint32_t>(data_ + kHeaderLength),
+        read_be<uint32_t>(data_ + kHeaderLength + kSenderReportNtpTimestampHalfLength)
     };
 }
 
@@ -131,7 +131,7 @@ uint32_t rav::rtcp::rtcp_packet_view::rtp_timestamp() const {
         return {};
     }
 
-    return byte_order::read_be<uint32_t>(data_ + offset);
+    return read_be<uint32_t>(data_ + offset);
 }
 
 uint32_t rav::rtcp::rtcp_packet_view::packet_count() const {
@@ -144,7 +144,7 @@ uint32_t rav::rtcp::rtcp_packet_view::packet_count() const {
         return {};
     }
 
-    return byte_order::read_be<uint32_t>(data_ + offset);
+    return read_be<uint32_t>(data_ + offset);
 }
 
 uint32_t rav::rtcp::rtcp_packet_view::octet_count() const {
@@ -158,7 +158,7 @@ uint32_t rav::rtcp::rtcp_packet_view::octet_count() const {
         return {};
     }
 
-    return byte_order::read_be<uint32_t>(data_ + offset);
+    return read_be<uint32_t>(data_ + offset);
 }
 
 rav::rtcp::rtcp_report_block_view rav::rtcp::rtcp_packet_view::get_report_block(const size_t index) const {

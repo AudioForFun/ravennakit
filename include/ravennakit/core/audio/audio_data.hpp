@@ -50,7 +50,7 @@ class audio_data {
                 uint64_t value {};
                 std::memcpy(std::addressof(value), data, sizeof(T));
                 if constexpr (big_endian) {
-                    value = rav::byte_order::swap_bytes(value);
+                    value = rav::swap_bytes(value);
                 }
                 return value;
             }
@@ -67,7 +67,7 @@ class audio_data {
             static void write(DstType* data, const size_t size, T value) {
                 RAV_ASSERT(size <= sizeof(value), "size should be smaller or equal to the size of the type");
                 if constexpr (big_endian) {
-                    value = rav::byte_order::swap_bytes(value);
+                    value = rav::swap_bytes(value);
                 }
                 std::memcpy(reinterpret_cast<uint8_t*>(data), std::addressof(value), size);
             }
@@ -88,7 +88,7 @@ class audio_data {
                     std::memcpy(
                         reinterpret_cast<uint8_t*>(std::addressof(value)) + (sizeof(value) - sizeof(T)), data, sizeof(T)
                     );
-                    value = rav::byte_order::swap_bytes(value);
+                    value = rav::swap_bytes(value);
                 } else {
                     std::memcpy(std::addressof(value), data, sizeof(T));
                 }
@@ -107,7 +107,7 @@ class audio_data {
             static void write(DstType* data, const size_t size, T value) {
                 RAV_ASSERT(size <= sizeof(value), "size should be smaller or equal to the size of the type");
                 if constexpr (little_endian) {
-                    value = rav::byte_order::swap_bytes(value);
+                    value = rav::swap_bytes(value);
                     std::memcpy(data, reinterpret_cast<uint8_t*>(std::addressof(value)) + (sizeof(value) - size), size);
                 } else {
                     std::memcpy(std::addressof(value), data, size);
@@ -282,7 +282,7 @@ class audio_data {
                 return true;  // No need for swapping (at this point we already know interleaving is the same)
             }
             for (size_t i = 0; i < dst_size; ++i) {
-                dst[i] = rav::byte_order::swap_bytes(dst[i]);
+                dst[i] = rav::swap_bytes(dst[i]);
             }
             return true;
         }

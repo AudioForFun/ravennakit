@@ -33,7 +33,7 @@ bool rav::rtcp::rtcp_report_block_view::validate() const {
 }
 
 uint32_t rav::rtcp::rtcp_report_block_view::ssrc() const {
-    return byte_order::read_be<uint32_t>(data_);
+    return read_be<uint32_t>(data_);
 }
 
 uint8_t rav::rtcp::rtcp_report_block_view::fraction_lost() const {
@@ -42,23 +42,23 @@ uint8_t rav::rtcp::rtcp_report_block_view::fraction_lost() const {
 
 uint32_t rav::rtcp::rtcp_report_block_view::number_of_packets_lost() const {
     const std::array<uint8_t, 4> packets_lost {0, data_[5], data_[6], data_[7]};
-    return byte_order::read_be<uint32_t>(packets_lost.data());
+    return read_be<uint32_t>(packets_lost.data());
 }
 
 uint32_t rav::rtcp::rtcp_report_block_view::extended_highest_sequence_number_received() const {
-    return byte_order::read_be<uint32_t>(data_ + 8);
+    return read_be<uint32_t>(data_ + 8);
 }
 
 uint32_t rav::rtcp::rtcp_report_block_view::inter_arrival_jitter() const {
-    return byte_order::read_be<uint32_t>(data_ + 12);
+    return read_be<uint32_t>(data_ + 12);
 }
 
 rav::ntp::timestamp rav::rtcp::rtcp_report_block_view::last_sr_timestamp() const {
-    return ntp::timestamp::from_compact(byte_order::read_be<uint32_t>(data_ + 16));
+    return ntp::timestamp::from_compact(read_be<uint32_t>(data_ + 16));
 }
 
 uint32_t rav::rtcp::rtcp_report_block_view::delay_since_last_sr() const {
-    return byte_order::read_be<uint32_t>(data_ + 20);
+    return read_be<uint32_t>(data_ + 20);
 }
 
 const uint8_t* rav::rtcp::rtcp_report_block_view::data() const {

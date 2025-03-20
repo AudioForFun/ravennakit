@@ -111,7 +111,7 @@ class input_stream {
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
     [[nodiscard]] tl::expected<Type, error> read_be() {
         return read_ne<Type>().map([](Type value) {
-            return byte_order::swap_if_le(value);
+            return swap_if_le(value);
         });
     }
 
@@ -123,7 +123,7 @@ class input_stream {
     template<typename Type, std::enable_if_t<std::is_trivially_copyable_v<Type>, bool> = true>
     [[nodiscard]] tl::expected<Type, error> read_le() {
         return read_ne<Type>().map([](Type value) {
-            return byte_order::swap_if_be(value);
+            return swap_if_be(value);
         });
     }
 
