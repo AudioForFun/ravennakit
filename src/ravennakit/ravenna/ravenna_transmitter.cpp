@@ -8,7 +8,7 @@
  * Copyright (c) 2025 Owllab. All rights reserved.
  */
 
-#include "ravennakit/ravenna/ravenna_transmitter.hpp"
+#include "ravennakit/ravenna/ravenna_sender.hpp"
 
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 
@@ -16,7 +16,7 @@
     #include <timeapi.h>
 #endif
 
-rav::RavennaTransmitter::RavennaTransmitter(
+rav::RavennaSender::RavennaSender(
     asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
     ptp::Instance& ptp_instance, rtp::Transmitter& rtp_transmitter, const Id id, std::string session_name,
     asio::ip::address_v4 interface_address
@@ -62,7 +62,7 @@ rav::RavennaTransmitter::RavennaTransmitter(
 #endif
 }
 
-rav::RavennaTransmitter::~RavennaTransmitter() {
+rav::RavennaSender::~RavennaSender() {
 #if RAV_WINDOWS
     timeEndPeriod(1);
 #endif
@@ -76,15 +76,15 @@ rav::RavennaTransmitter::~RavennaTransmitter() {
     rtsp_server_.unregister_handler(this);
 }
 
-rav::Id rav::RavennaTransmitter::get_id() const {
+rav::Id rav::RavennaSender::get_id() const {
     return id_;
 }
 
-std::string rav::RavennaTransmitter::session_name() const {
+std::string rav::RavennaSender::session_name() const {
     return session_name_;
 }
 
-bool rav::RavennaTransmitter::set_audio_format(const AudioFormat format) {
+bool rav::RavennaSender::set_audio_format(const AudioFormat format) {
     const auto sdp_format = sdp::Format::from_audio_format(format);
     if (!sdp_format) {
         RAV_ERROR("Failed to convert audio format to SDP format");
@@ -105,7 +105,7 @@ bool rav::RavennaTransmitter::set_audio_format(const AudioFormat format) {
     return true;
 }
 
-void rav::RavennaTransmitter::set_packet_time(const aes67::PacketTime packet_time) {
+void rav::RavennaSender::set_packet_time(const aes67::PacketTime packet_time) {
     if (ptime_ == packet_time) {
         return;
     }
@@ -113,11 +113,11 @@ void rav::RavennaTransmitter::set_packet_time(const aes67::PacketTime packet_tim
     resize_internal_buffers();
 }
 
-float rav::RavennaTransmitter::get_signaled_ptime() const {
+float rav::RavennaSender::get_signaled_ptime() const {
     return ptime_.signaled_ptime(audio_format_.sample_rate);
 }
 
-void rav::RavennaTransmitter::start(const uint32_t timestamp_samples) {
+void rav::RavennaSender::start(const uint32_t timestamp_samples) {
     if (running_) {
         return;
     }
@@ -128,26 +128,26 @@ void rav::RavennaTransmitter::start(const uint32_t timestamp_samples) {
     RAV_TRACE("Start transmitting at timestamp: {}", timestamp_samples);
 }
 
-void rav::RavennaTransmitter::start(const ptp::Timestamp timestamp) {
+void rav::RavennaSender::start(const ptp::Timestamp timestamp) {
     start(static_cast<uint32_t>(timestamp.to_samples(audio_format_.sample_rate)));
 }
 
-void rav::RavennaTransmitter::stop() {
+void rav::RavennaSender::stop() {
     if (!running_) {
         return;
     }
     running_ = false;
 }
 
-bool rav::RavennaTransmitter::is_running() const {
+bool rav::RavennaSender::is_running() const {
     return running_;
 }
 
-uint32_t rav::RavennaTransmitter::get_framecount() const {
+uint32_t rav::RavennaSender::get_framecount() const {
     return ptime_.framecount(audio_format_.sample_rate);
 }
 
-void rav::RavennaTransmitter::on_request(rtsp::Connection::RequestEvent event) const {
+void rav::RavennaSender::on_request(rtsp::Connection::RequestEvent event) const {
     const auto sdp = build_sdp();  // Should the SDP be cached and updated on changes?
     RAV_TRACE("SDP:\n{}", sdp.to_string("\n").value());
     const auto encoded = sdp.to_string();
@@ -163,7 +163,7 @@ void rav::RavennaTransmitter::on_request(rtsp::Connection::RequestEvent event) c
     event.rtsp_connection.async_send_response(response);
 }
 
-void rav::RavennaTransmitter::send_announce() const {
+void rav::RavennaSender::send_announce() const {
     auto sdp = build_sdp().to_string();
     if (!sdp) {
         RAV_ERROR("Failed to encode SDP: {}", sdp.error());
@@ -182,7 +182,7 @@ void rav::RavennaTransmitter::send_announce() const {
     rtsp_server_.send_request(path_by_name_, request);
 }
 
-rav::sdp::SessionDescription rav::RavennaTransmitter::build_sdp() const {
+rav::sdp::SessionDescription rav::RavennaSender::build_sdp() const {
     // Connection info
     const sdp::ConnectionInfoField connection_info {
         sdp::NetwType::internet, sdp::AddrType::ipv4, destination_address_.to_string(), 15, {}
@@ -239,7 +239,7 @@ rav::sdp::SessionDescription rav::RavennaTransmitter::build_sdp() const {
     return sdp;
 }
 
-void rav::RavennaTransmitter::start_timer() {
+void rav::RavennaSender::start_timer() {
     TRACY_ZONE_SCOPED;
 
 #if RAV_WINDOWS
@@ -265,7 +265,7 @@ void rav::RavennaTransmitter::start_timer() {
     });
 }
 
-void rav::RavennaTransmitter::send_data() {
+void rav::RavennaSender::send_data() {
     TRACY_ZONE_SCOPED;
 
     if (!running_) {
@@ -298,7 +298,7 @@ void rav::RavennaTransmitter::send_data() {
     }
 }
 
-void rav::RavennaTransmitter::resize_internal_buffers() {
+void rav::RavennaSender::resize_internal_buffers() {
     const auto bytes_per_packet = get_framecount() * audio_format_.bytes_per_frame();
     packet_intermediate_buffer_.resize(bytes_per_packet);
 }

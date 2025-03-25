@@ -13,7 +13,7 @@
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
 #include "ravennakit/ravenna/ravenna_receiver.hpp"
-#include "ravennakit/ravenna/ravenna_transmitter.hpp"
+#include "ravennakit/ravenna/ravenna_sender.hpp"
 #include "ravennakit/rtp/detail/rtp_transmitter.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"
 
@@ -59,12 +59,12 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
             }
         });
 
-        transmitter_ = std::make_unique<rav::RavennaTransmitter>(
+        sender_ = std::make_unique<rav::RavennaSender>(
             io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, *rtp_transmitter_, rav::Id(1),
             stream_name_ + "_loopback", interface_addr
         );
 
-        transmitter_->on<rav::RavennaTransmitter::OnDataRequestedEvent>([this](auto event) {
+        sender_->on<rav::RavennaSender::OnDataRequestedEvent>([this](auto event) {
             std::ignore = ravenna_receiver_->read_data_realtime(
                 event.buffer.data(), event.buffer.size(), event.timestamp - ravenna_receiver_->get_delay()
             );
@@ -81,7 +81,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
 
     void rtp_stream_receiver_updated(const rav::rtp::StreamReceiver::StreamUpdatedEvent& event) override {
         buffer_.resize(event.selected_audio_format.bytes_per_frame() * event.packet_time_frames);
-        if (!transmitter_->set_audio_format(event.selected_audio_format)) {
+        if (!sender_->set_audio_format(event.selected_audio_format)) {
             RAV_ERROR("Format not supported by transmitter");
             return;
         }
@@ -114,7 +114,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
     std::unique_ptr<rav::rtsp::Server> rtsp_server_;
     std::unique_ptr<rav::rtp::Transmitter> rtp_transmitter_;
     std::unique_ptr<rav::ptp::Instance> ptp_instance_;
-    std::unique_ptr<rav::RavennaTransmitter> transmitter_;
+    std::unique_ptr<rav::RavennaSender> sender_;
     rav::EventSlot<rav::ptp::Instance::PortChangedStateEventEvent> ptp_port_changed_event_slot_;
 
     /**
@@ -123,7 +123,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
      */
     void start_transmitting() const {
         if (ptp_clock_stable_ && most_recent_timestamp_) {
-            transmitter_->start(most_recent_timestamp_->value());
+            sender_->start(most_recent_timestamp_->value());
         }
     }
 };

@@ -15,7 +15,7 @@
 #include "ravennakit/core/streams/file_input_stream.hpp"
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
-#include "ravennakit/ravenna/ravenna_transmitter.hpp"
+#include "ravennakit/ravenna/ravenna_sender.hpp"
 
 #include <CLI/App.hpp>
 #include <asio/io_context.hpp>
@@ -36,7 +36,7 @@ class wav_file_player {
             throw std::runtime_error("File does not exist: " + file_to_play.path().string());
         }
 
-        auto transmitter = std::make_unique<rav::RavennaTransmitter>(
+        auto sender = std::make_unique<rav::RavennaSender>(
             io_context, advertiser, rtsp_server, ptp_instance, rtp_transmitter, id_generator.next(), session_name,
             interface_address
         );
@@ -49,14 +49,14 @@ class wav_file_player {
             throw std::runtime_error("Failed to read audio format from file: " + file_to_play.path().string());
         }
 
-        if (!transmitter->set_audio_format(*format)) {
+        if (!sender->set_audio_format(*format)) {
             throw std::runtime_error("Unsupported audio format for transmitter: " + file_to_play.path().string());
         }
 
         reader_ = std::move(reader);
-        transmitter_ = std::move(transmitter);
+        sender_ = std::move(sender);
 
-        transmitter_->on<rav::RavennaTransmitter::OnDataRequestedEvent>([this](auto event) {
+        sender_->on<rav::RavennaSender::OnDataRequestedEvent>([this](auto event) {
             TRACY_ZONE_SCOPED;
 
             if (reader_->remaining_audio_data() == 0) {
@@ -80,12 +80,12 @@ class wav_file_player {
     }
 
     void start(const rav::ptp::Timestamp at) const {
-        transmitter_->start(at);
+        sender_->start(at);
     }
 
   private:
     std::unique_ptr<rav::WavAudioFormat::Reader> reader_;
-    std::unique_ptr<rav::RavennaTransmitter> transmitter_;
+    std::unique_ptr<rav::RavennaSender> sender_;
 };
 
 }  // namespace examples
