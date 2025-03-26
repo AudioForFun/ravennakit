@@ -56,26 +56,28 @@ class wav_file_player {
         reader_ = std::move(reader);
         sender_ = std::move(sender);
 
-        sender_->on<rav::RavennaSender::OnDataRequestedEvent>([this](auto event) {
+        sender_->on_data_requested([this](uint32_t timestamp, rav::BufferView<uint8_t> buffer) {
             TRACY_ZONE_SCOPED;
 
             if (reader_->remaining_audio_data() == 0) {
                 reader_->set_read_position(0);
             }
 
-            auto result = reader_->read_audio_data(event.buffer.data(), event.buffer.size_bytes());
+            auto result = reader_->read_audio_data(buffer.data(), buffer.size_bytes());
             if (!result) {
                 RAV_ERROR("Failed to read audio data: {}", rav::InputStream::to_string(result.error()));
-                return;
+                return false;
             }
-            auto read = result.value();
+            const auto read = result.value();
             if (read == 0) {
                 RAV_ERROR("No bytes read");
             }
-            if (read < event.buffer.size_bytes()) {
+            if (read < buffer.size_bytes()) {
                 // Clear the part of the buffer where we didn't write any data
-                std::fill(event.buffer.data() + read, event.buffer.data() + event.buffer.size_bytes(), 0);
+                std::fill(buffer.data() + read, buffer.data() + buffer.size_bytes(), 0);
             }
+
+            return true;
         });
     }
 
@@ -145,8 +147,8 @@ int main(int const argc, char* argv[]) {
 
         wav_file_players.emplace_back(
             std::make_unique<examples::wav_file_player>(
-                io_context, *advertiser, rtsp_server, ptp_instance, rtp_sender, id_generator, interface_address,
-                file, file_session_name + " " + std::to_string(wav_file_players.size() + 1)
+                io_context, *advertiser, rtsp_server, ptp_instance, rtp_sender, id_generator, interface_address, file,
+                file_session_name + " " + std::to_string(wav_file_players.size() + 1)
             )
         );
     }

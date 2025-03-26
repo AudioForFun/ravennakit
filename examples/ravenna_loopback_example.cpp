@@ -64,10 +64,13 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
             stream_name_ + "_loopback", interface_addr
         );
 
-        sender_->on<rav::RavennaSender::OnDataRequestedEvent>([this](auto event) {
-            std::ignore = ravenna_receiver_->read_data_realtime(
-                event.buffer.data(), event.buffer.size(), event.timestamp - ravenna_receiver_->get_delay()
-            );
+        sender_->on_data_requested([this](const uint32_t timestamp, rav::BufferView<uint8_t> buffer) {
+            if (ravenna_receiver_
+                    ->read_data_realtime(buffer.data(), buffer.size(), timestamp - ravenna_receiver_->get_delay())
+                    .has_value()) {
+                return true;
+            }
+            return false;
         });
     }
 

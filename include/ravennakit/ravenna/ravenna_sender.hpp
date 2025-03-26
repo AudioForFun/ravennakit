@@ -25,12 +25,17 @@ namespace rav {
 
 class RavennaSender: public rtsp::Server::PathHandler {
   public:
-    struct OnDataRequestedEvent {
-        uint32_t timestamp;  // RTP timestamp
-        BufferView<uint8_t> buffer;
-    };
+    /**
+     * Handler for when data is requested. The handler should fill the buffer with audio data and return true if the
+     * whole buffer was filled, or false if not enough data is available (in which case sending will happen on the next
+     * round).
+     */
+    using OnDataRequestedHandler = std::function<bool(uint32_t timestamp, BufferView<uint8_t> buffer)>;
 
-    using EventsType = Events<OnDataRequestedEvent>;
+    class Subscriber {
+      public:
+        virtual ~Subscriber() = default;
+    };
 
     RavennaSender(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
@@ -93,7 +98,21 @@ class RavennaSender: public rtsp::Server::PathHandler {
     void stop();
 
     /**
-     * @return True if the transmitter is running, false otherwise.
+     * Subscribes to the sender.
+     * @param subscriber The subscriber to subscribe.
+     * @return True if the subscriber was successfully subscribed, false otherwise.
+     */
+    bool subscribe(Subscriber* subscriber);
+
+    /**
+     * Unsubscribes from the sender.
+     * @param subscriber The subscriber to unsubscribe.
+     * @return
+     */
+    bool unsubscribe(Subscriber* subscriber);
+
+    /**
+     * @return True if the sender is running, false otherwise.
      */
     [[nodiscard]] bool is_running() const;
 
@@ -103,14 +122,11 @@ class RavennaSender: public rtsp::Server::PathHandler {
     [[nodiscard]] uint32_t get_framecount() const;
 
     /**
-     * Registers a handler for a specific event.
-     * @tparam T The event type.
-     * @param handler The handler to register.
+     * Sets a handler for when data is requested. The handler should fill the buffer with audio data and return true if
+     * the buffer was filled, or false if not enough data is available.
+     * @param handler The handler to install.
      */
-    template<class T>
-    void on(EventsType::handler<T> handler) {
-        events_.on(handler);
-    }
+    void on_data_requested(OnDataRequestedHandler handler);
 
     // rtsp_server::handler overrides
     void on_request(rtsp::Connection::RequestEvent event) const override;
@@ -137,9 +153,10 @@ class RavennaSender: public rtsp::Server::PathHandler {
     rtp::Packet rtp_packet_;
     std::vector<uint8_t> packet_intermediate_buffer_;
     asio::high_resolution_timer timer_;
-    EventsType events_;
+    OnDataRequestedHandler on_data_requested_handler_;
     ByteBuffer send_buffer_;
     EventSlot<ptp::Instance::ParentChangedEvent> ptp_parent_changed_slot_;
+    SubscriberList<Subscriber> subscribers_;
 
     /**
      * Sends an announce request to all connected clients.

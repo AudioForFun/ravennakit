@@ -17,9 +17,8 @@
 #endif
 
 rav::RavennaSender::RavennaSender(
-    asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-    ptp::Instance& ptp_instance, rtp::Sender& rtp_transmitter, const Id id, std::string session_name,
-    asio::ip::address_v4 interface_address
+    asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server, ptp::Instance& ptp_instance,
+    rtp::Sender& rtp_transmitter, const Id id, std::string session_name, asio::ip::address_v4 interface_address
 ) :
     advertiser_(advertiser),
     rtsp_server_(rtsp_server),
@@ -139,12 +138,24 @@ void rav::RavennaSender::stop() {
     running_ = false;
 }
 
+bool rav::RavennaSender::subscribe(Subscriber* subscriber) {
+    return subscribers_.add(subscriber);
+}
+
+bool rav::RavennaSender::unsubscribe(Subscriber* subscriber) {
+    return subscribers_.remove(subscriber);
+}
+
 bool rav::RavennaSender::is_running() const {
     return running_;
 }
 
 uint32_t rav::RavennaSender::get_framecount() const {
     return ptime_.framecount(audio_format_.sample_rate);
+}
+
+void rav::RavennaSender::on_data_requested(OnDataRequestedHandler handler) {
+    on_data_requested_handler_ = std::move(handler);
 }
 
 void rav::RavennaSender::on_request(rtsp::Connection::RequestEvent event) const {
@@ -272,19 +283,24 @@ void rav::RavennaSender::send_data() {
         return;
     }
 
+    if (!on_data_requested_handler_) {
+        RAV_WARNING("No data handler installed");
+        return;
+    }
+
     const auto framecount = get_framecount();
     const auto required_amount_of_data = framecount * audio_format_.bytes_per_frame();
     RAV_ASSERT(packet_intermediate_buffer_.size() == required_amount_of_data, "Buffer size mismatch");
 
-    for (auto i = 0; i < 1000; i++) {
+    for (auto i = 0; i < 10; i++) {
         const auto now_samples = ptp_instance_.get_local_ptp_time().to_samples(audio_format_.sample_rate);
         if (WrappingUint(static_cast<uint32_t>(now_samples)) < rtp_packet_.timestamp()) {
             break;
         }
 
-        events_.emit(
-            OnDataRequestedEvent {rtp_packet_.timestamp().value(), BufferView(packet_intermediate_buffer_)}
-        );
+        if (!on_data_requested_handler_(rtp_packet_.timestamp().value(), BufferView(packet_intermediate_buffer_))) {
+            return; // No data was provided
+        }
 
         if (audio_format_.byte_order == AudioFormat::ByteOrder::le) {
             swap_bytes(packet_intermediate_buffer_.data(), required_amount_of_data, audio_format_.bytes_per_sample());
