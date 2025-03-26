@@ -18,35 +18,14 @@
 
 rav::RavennaSender::RavennaSender(
     asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server, ptp::Instance& ptp_instance,
-    rtp::Sender& rtp_transmitter, const Id id, std::string session_name, asio::ip::address_v4 interface_address
+    rtp::Sender& rtp_sender, const Id id
 ) :
     advertiser_(advertiser),
     rtsp_server_(rtsp_server),
     ptp_instance_(ptp_instance),
-    rtp_sender_(rtp_transmitter),
+    rtp_sender_(rtp_sender),
     id_(id),
-    session_name_(std::move(session_name)),
-    interface_address_(std::move(interface_address)),
     timer_(io_context) {
-    RAV_ASSERT(!interface_address_.is_unspecified(), "Address should be specified");
-
-    // Construct a multicast address from the interface address
-    const auto interface_address_bytes = interface_address_.to_bytes();
-    destination_address_ = asio::ip::address_v4(
-        {239, interface_address_bytes[2], interface_address_bytes[3], static_cast<uint8_t>(id.value() % 0xff)}
-    );
-
-    // Register handlers for the paths
-    path_by_name_ = fmt::format("/by-name/{}", session_name_);
-    path_by_id_ = fmt::format("/by-id/{}", id_.to_string());
-
-    rtsp_server_.register_handler(path_by_name_, this);
-    rtsp_server_.register_handler(path_by_id_, this);
-
-    advertisement_id_ = advertiser_.register_service(
-        "_rtsp._tcp,_ravenna_session", session_name_.c_str(), nullptr, rtsp_server.port(), {}, false, false
-    );
-
     ptp_parent_changed_slot_ =
         ptp_instance.on_parent_changed.subscribe([this](const ptp::Instance::ParentChangedEvent& event) {
             if (grandmaster_identity_ == event.parent.grandmaster_identity) {
@@ -79,8 +58,64 @@ rav::Id rav::RavennaSender::get_id() const {
     return id_;
 }
 
-const std::string& rav::RavennaSender::get_session_name() const {
-    return session_name_;
+void rav::RavennaSender::update_configuration(const Configuration& configuration) {
+    bool register_rtsp = false;
+    bool advertise_session = false;
+    if (configuration.session_name.has_value()) {
+        if (configuration.session_name != configuration_.session_name) {
+            if (!rtsp_path_by_name_.empty()) {
+                rtsp_server_.unregister_handler(this);
+            }
+            if (advertisement_id_.is_valid()) {
+                advertiser_.unregister_service(advertisement_id_);
+            }
+
+            configuration_.session_name = configuration.session_name;
+
+            if (configuration_.session_name.has_value() && !configuration_.session_name->empty()) {
+                register_rtsp = true;
+                advertise_session = true;
+            }
+        }
+    }
+
+    if (!configuration_.destination_address.has_value()) {
+        // Construct a multicast address from the interface address
+        const auto interface_address_bytes = rtp_sender_.get_interface_address().to_bytes();
+        configuration_.destination_address = asio::ip::address_v4(
+            {239, interface_address_bytes[2], interface_address_bytes[3], static_cast<uint8_t>(id_.value() % 0xff)}
+        );
+    }
+
+    if (!configuration_.enabled.has_value() || configuration_.enabled == false) {
+        return; // Not active.
+    }
+
+    if (register_rtsp) {
+        RAV_ASSERT(configuration_.session_name.has_value(), "Session name not set");
+        RAV_ASSERT(!configuration_.session_name->empty(), "Session name not set");
+
+        // Register handlers for the paths
+        rtsp_path_by_name_ = fmt::format("/by-name/{}", *configuration_.session_name);
+        rtsp_path_by_id_ = fmt::format("/by-id/{}", id_.to_string());
+
+        rtsp_server_.register_handler(rtsp_path_by_name_, this);
+        rtsp_server_.register_handler(rtsp_path_by_id_, this);
+    }
+
+    if (advertise_session) {
+        RAV_ASSERT(configuration_.session_name.has_value(), "Session name not set");
+        RAV_ASSERT(!configuration_.session_name->empty(), "Session name not set");
+
+        advertisement_id_ = advertiser_.register_service(
+            "_rtsp._tcp,_ravenna_session", configuration_.session_name->c_str(), nullptr, rtsp_server_.port(), {},
+            false, false
+        );
+    }
+}
+
+const rav::RavennaSender::Configuration& rav::RavennaSender::get_configuration() const {
+    return configuration_;
 }
 
 bool rav::RavennaSender::set_audio_format(const AudioFormat format) {
@@ -143,7 +178,11 @@ bool rav::RavennaSender::subscribe(Subscriber* subscriber) {
 }
 
 bool rav::RavennaSender::unsubscribe(Subscriber* subscriber) {
-    return subscribers_.remove(subscriber);
+    if (subscribers_.remove(subscriber)) {
+        subscriber->ravenna_sender_configuration_updated(id_, configuration_);
+        return true;
+    }
+    return false;
 }
 
 bool rav::RavennaSender::is_running() const {
@@ -180,29 +219,41 @@ void rav::RavennaSender::send_announce() const {
         RAV_ERROR("Failed to encode SDP: {}", sdp.error());
         return;
     }
+
+    auto interface_address_string = rtp_sender_.get_interface_address().to_string();
+
     rtsp::Request request;
     request.method = "ANNOUNCE";
     request.rtsp_headers.set("content-type", "application/sdp");
     request.data = std::move(sdp.value());
-    request.uri = Uri::encode(
-        "rtsp://", interface_address_.to_string() + ":" + std::to_string(rtsp_server_.port()), path_by_name_
-    );
-    rtsp_server_.send_request(path_by_name_, request);
     request.uri =
-        Uri::encode("rtsp://", interface_address_.to_string() + ":" + std::to_string(rtsp_server_.port()), path_by_id_);
-    rtsp_server_.send_request(path_by_name_, request);
+        Uri::encode("rtsp://", interface_address_string + ":" + std::to_string(rtsp_server_.port()), rtsp_path_by_name_);
+    rtsp_server_.send_request(rtsp_path_by_name_, request);
+    request.uri =
+        Uri::encode("rtsp://", interface_address_string + ":" + std::to_string(rtsp_server_.port()), rtsp_path_by_id_);
+    rtsp_server_.send_request(rtsp_path_by_name_, request);
 }
 
 rav::sdp::SessionDescription rav::RavennaSender::build_sdp() const {
+    if (!configuration_.destination_address.has_value()) {
+        RAV_ERROR("Destination address not set");
+        return {};
+    }
+
+    if (!configuration_.session_name || configuration_.session_name->empty()) {
+        RAV_ERROR("Session name not set");
+        return {};
+    }
+
     // Connection info
     const sdp::ConnectionInfoField connection_info {
-        sdp::NetwType::internet, sdp::AddrType::ipv4, destination_address_.to_string(), 15, {}
+        sdp::NetwType::internet, sdp::AddrType::ipv4, configuration_.destination_address->to_string(), 15, {}
     };
 
     // Source filter
     sdp::SourceFilter filter(
-        sdp::FilterMode::include, sdp::NetwType::internet, sdp::AddrType::ipv4, destination_address_.to_string(),
-        {interface_address_.to_string()}
+        sdp::FilterMode::include, sdp::NetwType::internet, sdp::AddrType::ipv4,
+        configuration_.destination_address->to_string(), {rtp_sender_.get_interface_address().to_string()}
     );
 
     // Reference clock
@@ -235,12 +286,17 @@ rav::sdp::SessionDescription rav::RavennaSender::build_sdp() const {
 
     // Origin
     const sdp::OriginField origin {
-        "-", id_.to_string(), 0, sdp::NetwType::internet, sdp::AddrType::ipv4, interface_address_.to_string()
+        "-",
+        id_.to_string(),
+        0,
+        sdp::NetwType::internet,
+        sdp::AddrType::ipv4,
+        rtp_sender_.get_interface_address().to_string(),
     };
     sdp.set_origin(origin);
 
     // Session name
-    sdp.set_session_name(session_name_);
+    sdp.set_session_name(*configuration_.session_name);
     sdp.set_connection_info(connection_info);
     sdp.set_clock_domain(clock_domain);
     sdp.set_ref_clock(ref_clock);
@@ -288,6 +344,11 @@ void rav::RavennaSender::send_data() {
         return;
     }
 
+    if (!configuration_.destination_address.has_value()) {
+        RAV_ERROR("Destination address not set");
+        return;
+    }
+
     const auto framecount = get_framecount();
     const auto required_amount_of_data = framecount * audio_format_.bytes_per_frame();
     RAV_ASSERT(packet_intermediate_buffer_.size() == required_amount_of_data, "Buffer size mismatch");
@@ -299,7 +360,7 @@ void rav::RavennaSender::send_data() {
         }
 
         if (!on_data_requested_handler_(rtp_packet_.timestamp().value(), BufferView(packet_intermediate_buffer_))) {
-            return; // No data was provided
+            return;  // No data was provided
         }
 
         if (audio_format_.byte_order == AudioFormat::ByteOrder::le) {
@@ -310,7 +371,7 @@ void rav::RavennaSender::send_data() {
         rtp_packet_.encode(packet_intermediate_buffer_.data(), required_amount_of_data, send_buffer_);
         rtp_packet_.sequence_number_inc(1);
         rtp_packet_.timestamp_inc(framecount);
-        rtp_sender_.send_to(send_buffer_, {destination_address_, 5004});
+        rtp_sender_.send_to(send_buffer_, {*configuration_.destination_address, 5004});
     }
 }
 

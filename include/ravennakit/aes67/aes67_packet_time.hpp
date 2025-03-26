@@ -49,6 +49,19 @@ class PacketTime {
     }
 
     /**
+     * @returns True if the packet time is valid, false otherwise.
+     */
+    [[nodiscard]] bool is_valid() const {
+        if (fraction_.denominator() == 0) {
+            return false;
+        }
+        if (fraction_.numerator == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Calculates the amount of frames for a given signaled packet time.
      * @param signaled_ptime The signaled packet time in milliseconds.
      * @param sample_rate The sample rate of the audio.
@@ -105,4 +118,4 @@ class PacketTime {
     Fraction<uint8_t> fraction_ {};
 };
 
-}  // namespace rav
+}  // namespace rav::aes67

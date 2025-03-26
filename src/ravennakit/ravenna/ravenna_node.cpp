@@ -12,7 +12,6 @@
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
 rav::RavennaNode::RavennaNode(rtp::Receiver::Configuration config) :
-    interface_address_(config.interface_address),
     rtsp_server_(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 0)),
     ptp_instance_(io_context_),
     rtp_sender_(io_context_, config.interface_address.to_v4()) {
@@ -105,8 +104,7 @@ std::future<rav::Id> rav::RavennaNode::create_sender(const std::string& session_
         }
 
         auto new_sender = std::make_unique<RavennaSender>(
-            io_context_, *advertiser_, rtsp_server_, ptp_instance_, rtp_sender_, Id::next_process_wide_unique_id(),
-            session_name, interface_address_.to_v4()
+            io_context_, *advertiser_, rtsp_server_, ptp_instance_, rtp_sender_, Id::get_next_process_wide_unique_id()
         );
         const auto& it = senders_.emplace_back(std::move(new_sender));
         for (const auto& s : subscribers_) {
@@ -127,7 +125,7 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
                 // Extend the lifetime until after the realtime context is updated:
                 const std::unique_ptr<RavennaSender> tmp = std::move(*it);
                 RAV_ASSERT(tmp != nullptr, "Receiver expected to be valid");
-                senders_.erase(it); // It is empty by now
+                senders_.erase(it);  // It is empty by now
                 for (const auto& s : subscribers_) {
                     s->ravenna_sender_removed(sender_id);
                 }
@@ -142,63 +140,92 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber_to_add) {
-    RAV_ASSERT(subscriber_to_add != nullptr, "Subscriber must be valid");
-    auto work = [this, subscriber_to_add] {
-        if (!subscribers_.add(subscriber_to_add)) {
+std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
+    RAV_ASSERT(subscriber != nullptr, "Subscriber must be valid");
+    auto work = [this, subscriber] {
+        if (!subscribers_.add(subscriber)) {
             RAV_WARNING("Failed to add subscriber to node");
         }
-        if (!browser_.subscribe(subscriber_to_add)) {
+        if (!browser_.subscribe(subscriber)) {
             RAV_WARNING("Failed to add subscriber to browser");
         }
         for (const auto& receiver : receivers_) {
-            subscriber_to_add->ravenna_receiver_added(*receiver);
+            subscriber->ravenna_receiver_added(*receiver);
         }
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber_to_remove) {
-    RAV_ASSERT(subscriber_to_remove != nullptr, "Subscriber must be valid");
-    auto work = [this, subscriber_to_remove] {
-        if (!browser_.unsubscribe(subscriber_to_remove)) {
+std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber) {
+    RAV_ASSERT(subscriber != nullptr, "Subscriber must be valid");
+    auto work = [this, subscriber] {
+        if (!browser_.unsubscribe(subscriber)) {
             RAV_WARNING("Failed to remove subscriber from browser");
         }
-        if (!subscribers_.remove(subscriber_to_remove)) {
+        if (!subscribers_.remove(subscriber)) {
             RAV_WARNING("Failed to remove subscriber from node");
         }
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void>
-rav::RavennaNode::subscribe_to_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_add) {
-    auto work = [this, receiver_id, subscriber_to_add] {
+std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber) {
+    auto work = [this, receiver_id, subscriber] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                if (!receiver->subscribe(subscriber_to_add)) {
+                if (!receiver->subscribe(subscriber)) {
                     RAV_WARNING("Already subscribed");
                 }
                 return;
             }
         }
-        RAV_WARNING("Stream not found");
+        RAV_WARNING("Receiver not found");
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
 std::future<void>
-rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_remove) {
-    auto work = [this, receiver_id, subscriber_to_remove] {
+rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber) {
+    auto work = [this, receiver_id, subscriber] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                if (!receiver->unsubscribe(subscriber_to_remove)) {
+                if (!receiver->unsubscribe(subscriber)) {
                     RAV_WARNING("Not subscribed");
                 }
                 return;
             }
         }
-        // Don't warn about not finding the stream, as the stream might have already been removed.
+        // Don't warn about not finding the receiver, as the receiver might have already been removed.
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<void> rav::RavennaNode::subscribe_to_sender(Id sender_id, RavennaSender::Subscriber* subscriber) {
+    auto work = [this, sender_id, subscriber] {
+        for (const auto& sender : senders_) {
+            if (sender->get_id() == sender_id) {
+                if (!sender->subscribe(subscriber)) {
+                    RAV_WARNING("Already subscribed");
+                }
+                return;
+            }
+        }
+        RAV_WARNING("Sender not found");
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, RavennaSender::Subscriber* subscriber) {
+    auto work = [this, sender_id, subscriber] {
+        for (const auto& sender : senders_) {
+            if (sender->get_id() == sender_id) {
+                if (!sender->unsubscribe(subscriber)) {
+                    RAV_WARNING("Not subscribed");
+                }
+                return;
+            }
+        }
+        // Don't warn about not finding the sender, as the sender might have already been removed.
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }

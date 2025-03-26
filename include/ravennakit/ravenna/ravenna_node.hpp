@@ -124,34 +124,50 @@ class RavennaNode {
     /**
      * Adds a subscriber to the node.
      * This method can be called from any thread, and will wait until the operation is complete.
-     * @param subscriber_to_add The subscriber to add.
+     * @param subscriber The subscriber to add.
      */
-    [[nodiscard]] std::future<void> subscribe(Subscriber* subscriber_to_add);
+    [[nodiscard]] std::future<void> subscribe(Subscriber* subscriber);
 
     /**
      * Removes a subscriber from the node.
      * This method can be called from any thread, and will wait until the operation is complete.
-     * @param subscriber_to_remove The subscriber to remove.
+     * @param subscriber The subscriber to remove.
      */
-    [[nodiscard]] std::future<void> unsubscribe(Subscriber* subscriber_to_remove);
+    [[nodiscard]] std::future<void> unsubscribe(Subscriber* subscriber);
 
     /**
      * Adds a subscriber to the receiver with the given id.
      * @param receiver_id The id of the stream to add the subscriber to.
-     * @param subscriber_to_add The subscriber to add.
+     * @param subscriber The subscriber to add.
      * @return A future that will be set when the operation is complete.
      */
     [[nodiscard]] std::future<void>
-    subscribe_to_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_add);
+    subscribe_to_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber);
 
     /**
      * Removes a subscriber from the receiver with the given id.
      * @param receiver_id The id of the stream to remove the subscriber from.
-     * @param subscriber_to_remove The subscriber to remove.
+     * @param subscriber The subscriber to remove.
      * @return A future that will be set when the operation is complete.
      */
     [[nodiscard]] std::future<void>
-    unsubscribe_from_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber_to_remove);
+    unsubscribe_from_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber);
+
+    /**
+     * Adds a subscriber to the sender with the given id.
+     * @param sender_id The id of the stream to add the subscriber to.
+     * @param subscriber The subscriber to add.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> subscribe_to_sender(Id sender_id, RavennaSender::Subscriber* subscriber);
+
+    /**
+     * Removes a subscriber from the sender with the given id.
+     * @param sender_id The id of the stream to remove the subscriber from.
+     * @param subscriber The subscriber to remove.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> unsubscribe_from_sender(Id sender_id, RavennaSender::Subscriber* subscriber);
 
     /**
      * Get the packet statistics for the given stream, if the stream for the given ID exists.
@@ -259,7 +275,6 @@ class RavennaNode {
     asio::io_context io_context_;
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
-    asio::ip::address interface_address_;
 
     RavennaBrowser browser_ {io_context_};
     RavennaRtspClient rtsp_client_ {io_context_, browser_};

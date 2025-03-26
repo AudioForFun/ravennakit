@@ -93,7 +93,7 @@ class Id {
      * This function is thread safe and can be safely called from any thread at any time.
      * @return The next id.
      */
-    static Id next_process_wide_unique_id() noexcept {
+    static Id get_next_process_wide_unique_id() noexcept {
         static Generator gen;
         return gen.next();
     }

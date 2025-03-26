@@ -32,15 +32,34 @@ class RavennaSender: public rtsp::Server::PathHandler {
      */
     using OnDataRequestedHandler = std::function<bool(uint32_t timestamp, BufferView<uint8_t> buffer)>;
 
+    /**
+     * Contains the configuration for the sender.
+     */
+    struct Configuration {
+        std::optional<std::string> session_name;
+        std::optional<asio::ip::address_v4> destination_address;
+        std::optional<int32_t> ttl;
+        std::optional<uint8_t> payload_type;
+        std::optional<AudioEncoding> audio_encoding;
+        std::optional<aes67::PacketTime> packet_time;
+        std::optional<bool> enabled;
+
+        [[nodiscard]] bool is_valid() const;
+    };
+
     class Subscriber {
       public:
         virtual ~Subscriber() = default;
+
+        virtual void ravenna_sender_configuration_updated(Id sender_id, const Configuration& configuration) {
+            std::ignore = sender_id;
+            std::ignore = configuration;
+        }
     };
 
     RavennaSender(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-        ptp::Instance& ptp_instance, rtp::Sender& rtp_sender, Id id, std::string session_name,
-        asio::ip::address_v4 interface_address
+        ptp::Instance& ptp_instance, rtp::Sender& rtp_sender, Id id
     );
 
     ~RavennaSender() override;
@@ -52,17 +71,24 @@ class RavennaSender: public rtsp::Server::PathHandler {
     RavennaSender& operator=(RavennaSender&& other) noexcept = delete;
 
     /**
-     * @return The transmitter ID.
+     * @return The sender ID.
      */
     [[nodiscard]] Id get_id() const;
 
     /**
-     * @return The session name.
+     * Updates the configuration of the sender. Only takes into account the fields in the configuration that are set.
+     * This allows to update only a subset of the configuration.
+     * @param configuration The configuration to update.
      */
-    [[nodiscard]] const std::string& get_session_name() const;
+    void update_configuration(const Configuration& configuration);
 
     /**
-     * Sets the audio format for the transmitter.
+     * @returns The current configuration of the sender.
+     */
+    [[nodiscard]] const Configuration& get_configuration() const;
+
+    /**
+     * Sets the audio format for the sender.
      * @param format The audio format to set.
      * @return True if the audio format is supported, false otherwise.
      */
@@ -138,11 +164,9 @@ class RavennaSender: public rtsp::Server::PathHandler {
     rtp::Sender& rtp_sender_;
 
     Id id_;
-    std::string session_name_;
-    asio::ip::address_v4 interface_address_;
-    asio::ip::address_v4 destination_address_;
-    std::string path_by_name_;
-    std::string path_by_id_;
+    Configuration configuration_;
+    std::string rtsp_path_by_name_;
+    std::string rtsp_path_by_id_;
     Id advertisement_id_;
     int32_t clock_domain_ {};
     AudioFormat audio_format_;

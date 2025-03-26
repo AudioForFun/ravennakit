@@ -236,7 +236,7 @@ class StreamReceiver: public Receiver::Subscriber {
     };
 
     Receiver& rtp_receiver_;
-    Id id_ {Id::next_process_wide_unique_id()};
+    Id id_ {Id::get_next_process_wide_unique_id()};
     std::atomic<uint32_t> delay_ = 480;  // 100ms at 48KHz
     ReceiverState state_ {ReceiverState::idle};
     std::vector<MediaStream> media_streams_;

@@ -21,7 +21,8 @@ namespace rav::rtp {
  */
 class Sender {
   public:
-    Sender(asio::io_context& io_context, const asio::ip::address_v4& interface_address) : socket_(io_context) {
+    Sender(asio::io_context& io_context, const asio::ip::address_v4& interface_address) :
+        socket_(io_context), interface_address_(interface_address) {
         socket_.open(asio::ip::udp::v4());
         socket_.set_option(asio::ip::multicast::outbound_interface(interface_address));
         socket_.set_option(asio::ip::multicast::enable_loopback(false));
@@ -39,9 +40,16 @@ class Sender {
         socket_.send_to(asio::buffer(packet.data(), packet.size()), endpoint);
     }
 
+    /**
+     * @return The interface address used by the sender.
+     */
+    [[nodiscard]] const asio::ip::address_v4& get_interface_address() const {
+        return interface_address_;
+    }
+
   private:
-    ByteBuffer buffer_;
     asio::ip::udp::socket socket_;
+    asio::ip::address_v4 interface_address_;
 };
 
-}  // namespace rav
+}  // namespace rav::rtp
