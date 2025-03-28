@@ -36,12 +36,12 @@ class Instance {
         const ParentDs& parent;
     };
 
-    struct PortChangedStateEventEvent {
+    struct PortChangedStateEvent {
         const Port& port;
     };
 
     EventEmitter<ParentChangedEvent> on_parent_changed;
-    EventEmitter<PortChangedStateEventEvent> on_port_changed_state;
+    EventEmitter<PortChangedStateEvent> on_port_changed_state;
 
     /**
      * Constructs a PTP instance.

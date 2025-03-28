@@ -29,7 +29,7 @@ class wav_file_player {
   public:
     explicit wav_file_player(
         asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
-        rav::ptp::Instance& ptp_instance, rav::rtp::Sender& rtp_sender, rav::Id::Generator& id_generator,
+        rav::ptp::Instance& ptp_instance, rav::Id::Generator& id_generator,
         const asio::ip::address_v4& interface_address, const rav::File& file_to_play, const std::string& session_name
     ) {
         if (!file_to_play.exists()) {
@@ -37,7 +37,7 @@ class wav_file_player {
         }
 
         auto sender = std::make_unique<rav::RavennaSender>(
-            io_context, advertiser, rtsp_server, ptp_instance, rtp_sender, id_generator.next()
+            io_context, advertiser, rtsp_server, ptp_instance, id_generator.next(), interface_address
         );
 
         auto file_input_stream = std::make_unique<rav::FileInputStream>(file_to_play);
@@ -62,16 +62,18 @@ class wav_file_player {
         sender_->on_data_requested([this](uint32_t timestamp, rav::BufferView<uint8_t> buffer) {
             TRACY_ZONE_SCOPED;
 
+            std::ignore = timestamp;
+
             if (reader_->remaining_audio_data() == 0) {
                 reader_->set_read_position(0);
             }
 
-            auto result = reader_->read_audio_data(buffer.data(), buffer.size_bytes());
-            if (!result) {
-                RAV_ERROR("Failed to read audio data: {}", rav::InputStream::to_string(result.error()));
+            auto result2 = reader_->read_audio_data(buffer.data(), buffer.size_bytes());
+            if (!result2) {
+                RAV_ERROR("Failed to read audio data: {}", rav::InputStream::to_string(result2.error()));
                 return false;
             }
-            const auto read = result.value();
+            const auto read = result2.value();
             if (read == 0) {
                 RAV_ERROR("No bytes read");
             }
@@ -122,7 +124,6 @@ int main(int const argc, char* argv[]) {
 
     auto advertiser = rav::dnssd::Advertiser::create(io_context);
     rav::rtsp::Server rtsp_server(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
-    rav::rtp::Sender rtp_sender(io_context, interface_address);
 
     // PTP
     rav::ptp::Instance ptp_instance(io_context);
@@ -150,7 +151,7 @@ int main(int const argc, char* argv[]) {
 
         wav_file_players.emplace_back(
             std::make_unique<examples::wav_file_player>(
-                io_context, *advertiser, rtsp_server, ptp_instance, rtp_sender, id_generator, interface_address, file,
+                io_context, *advertiser, rtsp_server, ptp_instance, id_generator, interface_address, file,
                 file_session_name + " " + std::to_string(wav_file_players.size() + 1)
             )
         );

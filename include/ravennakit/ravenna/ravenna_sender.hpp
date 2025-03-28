@@ -20,13 +20,14 @@
 #include "ravennakit/ptp/ptp_instance.hpp"
 #include "ravennakit/ptp/types/ptp_timestamp.hpp"
 #include "ravennakit/rtp/rtp_packet.hpp"
+#include "ravennakit/rtp/rtp_stream_sender.hpp"
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
 
 namespace rav {
 
-class RavennaSender: public rtsp::Server::PathHandler {
+class RavennaSender: public rtp::StreamSender, public rtsp::Server::PathHandler {
   public:
     /// The number of packet buffers available for sending. This value means that n packets worth of data can be queued
     /// for sending.
@@ -78,7 +79,7 @@ class RavennaSender: public rtsp::Server::PathHandler {
 
     RavennaSender(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-        ptp::Instance& ptp_instance, rtp::Sender& rtp_sender, Id id
+        ptp::Instance& ptp_instance, Id id, const asio::ip::address_v4& interface_address
     );
 
     ~RavennaSender() override;
@@ -138,7 +139,7 @@ class RavennaSender: public rtsp::Server::PathHandler {
      * @param timestamp The timestamp of the buffer.
      * @returns True if the buffer was sent, or false if something went wrong.
      */
-    bool send_data_realtime(BufferView<uint8_t> buffer, uint32_t timestamp);
+    bool send_data_realtime(BufferView<uint8_t> buffer, std::optional<uint32_t> timestamp);
 
     /**
      * Schedules audio data for sending. A call to this function is realtime safe and thread safe as long as only one
@@ -147,7 +148,7 @@ class RavennaSender: public rtsp::Server::PathHandler {
      * @param timestamp The timestamp of the buffer.
      * @return True if the buffer was sent, or false if something went wrong.
      */
-    bool send_audio_data_realtime(const AudioBufferView<const float>& input_buffer, uint32_t timestamp);
+    bool send_audio_data_realtime(const AudioBufferView<const float>& input_buffer, std::optional<uint32_t> timestamp);
 
     /**
      * Sets a handler for when data is requested. The handler should fill the buffer with audio data and return true if
@@ -160,10 +161,14 @@ class RavennaSender: public rtsp::Server::PathHandler {
     void on_request(rtsp::Connection::RequestEvent event) const override;
 
   private:
+    enum class State {
+        Initial,
+        Sending,
+    };
+
     dnssd::Advertiser& advertiser_;
     rtsp::Server& rtsp_server_;
     ptp::Instance& ptp_instance_;
-    rtp::Sender& rtp_sender_;
 
     Id id_;
     Configuration configuration_;
@@ -172,11 +177,15 @@ class RavennaSender: public rtsp::Server::PathHandler {
     Id advertisement_id_;
     int32_t clock_domain_ {};
     ptp::ClockIdentity grandmaster_identity_;
+
+    State state_ {State::Initial};
     rtp::Packet rtp_packet_;
     asio::high_resolution_timer timer_;
     OnDataRequestedHandler on_data_requested_handler_;
     EventSlot<ptp::Instance::ParentChangedEvent> ptp_parent_changed_slot_;
+    EventSlot<ptp::Instance::PortChangedStateEvent> ptp_port_changed_state_event_slot_;
     SubscriberList<Subscriber> subscribers_;
+    std::atomic<bool> ptp_stable_ {false};
 
     struct RealtimeContext {
         asio::ip::udp::endpoint destination_endpoint;

@@ -20,12 +20,12 @@
 
 rav::RavennaSender::RavennaSender(
     asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server, ptp::Instance& ptp_instance,
-    rtp::Sender& rtp_sender, const Id id
+    const Id id, const asio::ip::address_v4& interface_address
 ) :
+    StreamSender(io_context, interface_address),
     advertiser_(advertiser),
     rtsp_server_(rtsp_server),
     ptp_instance_(ptp_instance),
-    rtp_sender_(rtp_sender),
     id_(id),
     timer_(io_context) {
     // Set defaults
@@ -41,7 +41,7 @@ rav::RavennaSender::RavennaSender(
     configuration_.enabled = false;
 
     // Construct a multicast address from the interface address
-    const auto interface_address_bytes = rtp_sender_.get_interface_address().to_bytes();
+    const auto interface_address_bytes = interface_address.to_bytes();
     configuration_.destination_address = asio::ip::address_v4(
         {239, interface_address_bytes[2], interface_address_bytes[3], static_cast<uint8_t>(id_.value() % 0xff)}
     );
@@ -53,6 +53,11 @@ rav::RavennaSender::RavennaSender(
             }
             grandmaster_identity_ = event.parent.grandmaster_identity;
             send_announce();
+        });
+
+    ptp_port_changed_state_event_slot_ =
+        ptp_instance.on_port_changed_state.subscribe([this](const ptp::Instance::PortChangedStateEvent& event) {
+            ptp_stable_ = event.port.state() == ptp::State::slave || event.port.state() == ptp::State::master;
         });
 
 #if RAV_WINDOWS
@@ -264,24 +269,54 @@ uint32_t rav::RavennaSender::get_framecount() const {
     return configuration_.packet_time.framecount(configuration_.audio_format.sample_rate);
 }
 
-bool rav::RavennaSender::send_data_realtime(BufferView<uint8_t> buffer, uint32_t timestamp) {
+bool rav::RavennaSender::send_data_realtime(BufferView<uint8_t> buffer, const std::optional<uint32_t> timestamp) {
     // TODO: Handle timestamp
+
+    if (!ptp_stable_) {
+        return false;
+    }
 
     if (auto lock = audio_thread_reader_.lock_realtime()) {
         const auto framecount = lock->packet_time_frames;
         const auto size_per_packet = framecount * lock->audio_format.bytes_per_frame();
 
+        if (state_ == State::Initial) {
+            rtp_packet_.timestamp(
+                static_cast<uint32_t>(ptp_instance_.get_local_ptp_time().to_samples(lock->audio_format.sample_rate))
+            );
+            state_ = State::Sending;
+        }
+
         RAV_ASSERT(lock->outgoing_packet_buffer_.size() >= size_per_packet, "Buffer size mismatch");
 
         lock->outgoing_data_.write(buffer.data(), buffer.size_bytes());
+
+        const auto ptp_ts =
+            static_cast<uint32_t>(ptp_instance_.get_local_ptp_time().to_samples(lock->audio_format.sample_rate));
+
+        TRACY_PLOT("ts diff", static_cast<int64_t>(WrappingUint32(ptp_ts).diff(rtp_packet_.timestamp())));
+
+        if (rtp_packet_.timestamp() < WrappingUint32(ptp_ts)) {
+            rtp_packet_.timestamp(ptp_ts);
+            RAV_TRACE("Timestamp updated to {}", ptp_ts);
+        }
 
         while (lock->outgoing_data_.size() >= size_per_packet) {
             lock->outgoing_data_.read(lock->outgoing_packet_buffer_.data(), size_per_packet);
 
             lock->send_buffer_.clear();
+
+            if (timestamp.has_value()) {
+                rtp_packet_.timestamp(*timestamp);
+            }
+
+            if (rtp_packet_.timestamp() < WrappingUint32(ptp_ts)) {
+                RAV_WARNING("Timestamp is in the future: {}", (rtp_packet_.timestamp() - ptp_ts).value());
+            }
+
             rtp_packet_.encode(lock->outgoing_packet_buffer_.data(), size_per_packet, lock->send_buffer_);
             rtp_packet_.sequence_number_inc(1);
-            rtp_packet_.timestamp_inc(framecount);  // TODO: Timestamp
+            rtp_packet_.timestamp_inc(framecount);
 
             if (lock->send_buffer_.size() > aes67::constants::k_max_payload) {
                 RAV_ERROR("Exceeding max payload: {}", lock->send_buffer_.size());
@@ -299,7 +334,7 @@ bool rav::RavennaSender::send_data_realtime(BufferView<uint8_t> buffer, uint32_t
 }
 
 bool rav::RavennaSender::send_audio_data_realtime(
-    const AudioBufferView<const float>& input_buffer, uint32_t const timestamp
+    const AudioBufferView<const float>& input_buffer, const std::optional<uint32_t> timestamp
 ) {
     if (auto realtime_lock = audio_thread_reader_.lock_realtime()) {
         auto audio_format = realtime_lock->audio_format;
@@ -375,9 +410,8 @@ void rav::RavennaSender::send_announce() const {
     request.method = "ANNOUNCE";
     request.rtsp_headers.set("content-type", "application/sdp");
     request.data = std::move(sdp.value());
-    request.uri = Uri::encode(
-        "rtsp", interface_address_string + ":" + std::to_string(rtsp_server_.port()), rtsp_path_by_name_
-    );
+    request.uri =
+        Uri::encode("rtsp", interface_address_string + ":" + std::to_string(rtsp_server_.port()), rtsp_path_by_name_);
     rtsp_server_.send_request(rtsp_path_by_name_, request);
     RAV_TRACE("Announced session: {}", request.uri);
 

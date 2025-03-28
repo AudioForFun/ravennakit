@@ -81,7 +81,7 @@ class RavennaNode {
         virtual void ravenna_sender_removed([[maybe_unused]] Id sender_id) {}
     };
 
-    explicit RavennaNode(rtp::Receiver::Configuration config);
+    explicit RavennaNode(asio::ip::address_v4 interface_address);
     ~RavennaNode();
 
     /**
@@ -109,10 +109,9 @@ class RavennaNode {
 
     /**
      * Creates a sender for the given session.
-     * @param session_name The name of the session to create a sender for.
      * @return The ID of the created sender, which might be invalid if the sender couldn't be created.
      */
-    std::future<Id> create_sender(const std::string& session_name);
+    std::future<Id> create_sender();
 
     /**
      * Removes the sender with the given id.
@@ -247,7 +246,9 @@ class RavennaNode {
      * @param timestamp The timestamp of the data.
      * @return True if the data was sent, false if something went wrong.
      */
-    [[nodiscard]] bool send_audio_data_realtime(Id sender_id, const AudioBufferView<const float>& buffer, uint32_t timestamp);
+    [[nodiscard]] bool send_audio_data_realtime(
+        Id sender_id, const AudioBufferView<const float>& buffer, std::optional<uint32_t> timestamp
+    );
 
     /**
      * @return True if this method is called on the maintenance thread, false otherwise.
@@ -301,6 +302,7 @@ class RavennaNode {
     asio::io_context io_context_;
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
+    asio::ip::address_v4 interface_address_;
 
     RavennaBrowser browser_ {io_context_};
     RavennaRtspClient rtsp_client_ {io_context_, browser_};
@@ -310,7 +312,6 @@ class RavennaNode {
     std::unique_ptr<dnssd::Advertiser> advertiser_;
     rtsp::Server rtsp_server_;
     ptp::Instance ptp_instance_;
-    rtp::Sender rtp_sender_;
     std::vector<std::unique_ptr<RavennaSender>> senders_;
 
     SubscriberList<Subscriber> subscribers_;

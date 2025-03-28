@@ -44,8 +44,6 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
             io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005)
         );
 
-        rtp_sender_ = std::make_unique<rav::rtp::Sender>(io_context_, interface_addr);
-
         ptp_instance_ = std::make_unique<rav::ptp::Instance>(io_context_);
         if (const auto result = ptp_instance_->add_port(interface_addr); !result) {
             RAV_THROW_EXCEPTION("Failed to add PTP port: {}", to_string(result.error()));
@@ -61,7 +59,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
         // stream_name_ + "_loopback"
 
         sender_ = std::make_unique<rav::RavennaSender>(
-            io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, *rtp_sender_, rav::Id(1)
+            io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, rav::Id(1), interface_addr
         );
 
         sender_->on_data_requested([this](const uint32_t timestamp, rav::BufferView<uint8_t> buffer) {
@@ -122,10 +120,9 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber {
     // Sender components
     std::unique_ptr<rav::dnssd::Advertiser> advertiser_;
     std::unique_ptr<rav::rtsp::Server> rtsp_server_;
-    std::unique_ptr<rav::rtp::Sender> rtp_sender_;
     std::unique_ptr<rav::ptp::Instance> ptp_instance_;
     std::unique_ptr<rav::RavennaSender> sender_;
-    rav::EventSlot<rav::ptp::Instance::PortChangedStateEventEvent> ptp_port_changed_event_slot_;
+    rav::EventSlot<rav::ptp::Instance::PortChangedStateEvent> ptp_port_changed_event_slot_;
 
     /**
      * Starts transmitting if the PTP clock is stable and a timestamp is available and transmitter is not already

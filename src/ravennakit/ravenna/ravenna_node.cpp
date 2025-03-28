@@ -9,13 +9,19 @@
  */
 
 #include "ravennakit/ravenna/ravenna_node.hpp"
+
+#include <utility>
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
-rav::RavennaNode::RavennaNode(rtp::Receiver::Configuration config) :
+rav::RavennaNode::RavennaNode(asio::ip::address_v4 interface_address) :
+    interface_address_(std::move(interface_address)),
     rtsp_server_(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 0)),
-    ptp_instance_(io_context_),
-    rtp_sender_(io_context_, config.interface_address.to_v4()) {
+    ptp_instance_(io_context_) {
+    rtp::Receiver::Configuration config;
+    config.interface_address = interface_address_;
     rtp_receiver_ = std::make_unique<rtp::Receiver>(io_context_, std::move(config));
+
+    ptp_instance_.add_port(interface_address_);
 
     std::promise<std::thread::id> promise;
     auto f = promise.get_future();
@@ -26,7 +32,12 @@ rav::RavennaNode::RavennaNode(rtp::Receiver::Configuration config) :
 #endif
         while (true) {
             try {
-                io_context_.run();
+                while (true) {
+                    io_context_.poll();
+                    if (io_context_.stopped()) {
+                        break;
+                    }
+                }
                 break;
             } catch (const std::exception& e) {
                 RAV_ERROR("Unhandled exception in maintenance thread: {}", e.what());
@@ -97,14 +108,15 @@ std::future<bool> rav::RavennaNode::set_receiver_delay(Id receiver_id, uint32_t 
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<rav::Id> rav::RavennaNode::create_sender(const std::string& session_name) {
-    auto work = [this, session_name]() mutable {
+std::future<rav::Id> rav::RavennaNode::create_sender() {
+    auto work = [this]() mutable {
         if (advertiser_ == nullptr) {
             advertiser_ = dnssd::Advertiser::create(io_context_);
         }
 
         auto new_sender = std::make_unique<RavennaSender>(
-            io_context_, *advertiser_, rtsp_server_, ptp_instance_, rtp_sender_, Id::get_next_process_wide_unique_id()
+            io_context_, *advertiser_, rtsp_server_, ptp_instance_, Id::get_next_process_wide_unique_id(),
+            interface_address_
         );
         const auto& it = senders_.emplace_back(std::move(new_sender));
         for (const auto& s : subscribers_) {
@@ -342,7 +354,7 @@ bool rav::RavennaNode::send_data_realtime(
 }
 
 bool rav::RavennaNode::send_audio_data_realtime(
-    const Id sender_id, const AudioBufferView<const float>& buffer, const uint32_t timestamp
+    const Id sender_id, const AudioBufferView<const float>& buffer, const std::optional<uint32_t> timestamp
 ) {
     const auto lock = realtime_shared_context_.lock_realtime();
 
