@@ -33,6 +33,10 @@ class RavennaSender: public rtp::StreamSender, public rtsp::Server::PathHandler 
     /// for sending.
     static constexpr uint32_t k_buffer_num_packets = 20;
 
+    /// The max number of frames to feed into the sender (using send_audio_data_realtime). This will usually correspond
+    /// to an audio device buffer size.
+    static constexpr uint32_t k_max_num_frames = 4096;
+
     /**
      * Handler for when data is requested. The handler should fill the buffer with audio data and return true if the
      * whole buffer was filled, or false if not enough data is available (in which case sending will happen on the next
@@ -192,9 +196,9 @@ class RavennaSender: public rtp::StreamSender, public rtsp::Server::PathHandler 
         AudioFormat audio_format;
         uint32_t packet_time_frames;
         FifoBuffer<uint8_t, Fifo::Single> outgoing_data_;
-        std::vector<uint8_t> packet_intermediate_buffer;
-        ByteBuffer send_buffer_;
-        std::vector<uint8_t> outgoing_packet_buffer_;
+        std::vector<uint8_t> intermediate_audio_buffer;
+        std::vector<uint8_t> intermediate_send_buffer;
+        ByteBuffer rtp_packet_buffer;
     };
 
     Rcu<RealtimeContext> realtime_context_;

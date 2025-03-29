@@ -280,34 +280,34 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_data_realtime(
 ) {
     TRACY_ZONE_SCOPED;
 
-    if (auto state = audio_thread_reader_.lock_realtime()) {
+    if (auto lock = audio_thread_reader_.lock_realtime()) {
         RAV_ASSERT_EXCLUSIVE_ACCESS(realtime_access_guard_);
         RAV_ASSERT(buffer_size != 0, "Buffer size must be greater than 0");
         RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr");
 
         do_realtime_maintenance();
 
-        if (buffer_size > state->read_buffer.size()) {
+        if (buffer_size > lock->read_buffer.size()) {
             RAV_WARNING("Buffer size is larger than the read buffer size");
             return std::nullopt;
         }
 
-        if (!state->first_packet_timestamp.has_value()) {
+        if (!lock->first_packet_timestamp.has_value()) {
             return std::nullopt;
         }
 
         if (at_timestamp.has_value()) {
-            state->next_ts = *at_timestamp;
+            lock->next_ts = *at_timestamp;
         }
 
-        const auto num_frames = static_cast<uint32_t>(buffer_size) / state->selected_audio_format.bytes_per_frame();
+        const auto num_frames = static_cast<uint32_t>(buffer_size) / lock->selected_audio_format.bytes_per_frame();
 
-        const auto read_at = state->next_ts.value();
-        if (!state->receiver_buffer.read(read_at, buffer, buffer_size)) {
+        const auto read_at = lock->next_ts.value();
+        if (!lock->receiver_buffer.read(read_at, buffer, buffer_size)) {
             return std::nullopt;
         }
 
-        state->next_ts += num_frames;
+        lock->next_ts += num_frames;
 
         return read_at;
     }
@@ -322,8 +322,8 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_audio_data_realtime(
 
     RAV_ASSERT(output_buffer.is_valid(), "Buffer must be valid");
 
-    if (auto state = audio_thread_reader_.lock_realtime()) {
-        const auto format = state->selected_audio_format;
+    if (auto lock = audio_thread_reader_.lock_realtime()) {
+        const auto format = lock->selected_audio_format;
 
         if (format.byte_order != AudioFormat::ByteOrder::be) {
             RAV_ERROR("Unexpected byte order");
@@ -340,7 +340,7 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_audio_data_realtime(
             return std::nullopt;
         }
 
-        auto& buffer = state->read_buffer;
+        auto& buffer = lock->read_buffer;
         const auto read_at =
             read_data_realtime(buffer.data(), output_buffer.num_frames() * format.bytes_per_frame(), at_timestamp);
 

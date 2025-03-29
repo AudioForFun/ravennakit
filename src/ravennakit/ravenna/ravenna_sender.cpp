@@ -84,7 +84,7 @@ rav::Id rav::RavennaSender::get_id() const {
 }
 
 tl::expected<void, std::string> rav::RavennaSender::update_configuration(const ConfigurationUpdate& update) {
-    std::ignore = realtime_context_.reclaim(); // TODO: Do somewhere else, maybe on a timer or something.
+    std::ignore = realtime_context_.reclaim();  // TODO: Do somewhere else, maybe on a timer or something.
 
     // Session name
     if (update.session_name.has_value()) {
@@ -273,8 +273,6 @@ uint32_t rav::RavennaSender::get_framecount() const {
 }
 
 bool rav::RavennaSender::send_data_realtime(BufferView<uint8_t> buffer, const std::optional<uint32_t> timestamp) {
-    // TODO: Handle timestamp
-
     if (!ptp_stable_) {
         return false;
     }
@@ -283,7 +281,7 @@ bool rav::RavennaSender::send_data_realtime(BufferView<uint8_t> buffer, const st
         const auto framecount = lock->packet_time_frames;
         const auto size_per_packet = framecount * lock->audio_format.bytes_per_frame();
 
-        RAV_ASSERT(lock->outgoing_packet_buffer_.size() >= size_per_packet, "Buffer size mismatch");
+        RAV_ASSERT(lock->intermediate_send_buffer.size() >= size_per_packet, "Buffer size mismatch");
 
         lock->outgoing_data_.write(buffer.data(), buffer.size_bytes());
 
@@ -302,29 +300,29 @@ bool rav::RavennaSender::send_data_realtime(BufferView<uint8_t> buffer, const st
                 rtp_packet_.timestamp_inc(framecount);
             }
 
-            lock->outgoing_data_.read(lock->outgoing_packet_buffer_.data(), size_per_packet);
+            lock->outgoing_data_.read(lock->intermediate_send_buffer.data(), size_per_packet);
 
             if (rtp_packet_.timestamp() > WrappingUint32(ptp_ts) + framecount) {
                 continue;  // Skip this packet to time align
             }
 
-            lock->send_buffer_.clear();
+            lock->rtp_packet_buffer.clear();
 
             if (timestamp.has_value()) {
                 rtp_packet_.timestamp(*timestamp);
             }
 
-            rtp_packet_.encode(lock->outgoing_packet_buffer_.data(), size_per_packet, lock->send_buffer_);
+            rtp_packet_.encode(lock->intermediate_send_buffer.data(), size_per_packet, lock->rtp_packet_buffer);
             rtp_packet_.sequence_number_inc(1);
             rtp_packet_.timestamp_inc(framecount);
 
-            if (lock->send_buffer_.size() > aes67::constants::k_max_payload) {
-                RAV_ERROR("Exceeding max payload: {}", lock->send_buffer_.size());
+            if (lock->rtp_packet_buffer.size() > aes67::constants::k_max_payload) {
+                RAV_ERROR("Exceeding max payload: {}", lock->rtp_packet_buffer.size());
                 return false;
             }
 
             // TODO: Defer to another thread to make the call to this method realtime safe
-            rtp_sender_.send_to(lock->send_buffer_, lock->destination_endpoint);
+            rtp_sender_.send_to(lock->rtp_packet_buffer, lock->destination_endpoint);
         }
 
         return true;
@@ -340,16 +338,19 @@ bool rav::RavennaSender::send_audio_data_realtime(
         RAV_WARNING("Audio overload");
     }
 
-    if (auto realtime_lock = audio_thread_reader_.lock_realtime()) {
-        auto audio_format = realtime_lock->audio_format;
+    if (input_buffer.num_frames() > k_max_num_frames) {
+        RAV_WARNING("Input buffer size exceeds maximum size");
+        return false;
+    }
+
+    if (auto lock = audio_thread_reader_.lock_realtime()) {
+        auto audio_format = lock->audio_format;
         if (audio_format.num_channels != input_buffer.num_channels()) {
             RAV_ERROR("Channel mismatch: expected {}, got {}", audio_format.num_channels, input_buffer.num_channels());
             return false;
         }
 
-        auto& intermediate_buffer = realtime_lock->packet_intermediate_buffer;
-        // TODO: Preallocate to avoid reallocations here (how to determine the size for the buffer?)
-        intermediate_buffer.resize(input_buffer.num_frames() * audio_format.bytes_per_frame());
+        auto& intermediate_buffer = lock->intermediate_audio_buffer;
 
         if (audio_format.encoding == AudioEncoding::pcm_s16) {
             const auto ok = AudioData::convert<
@@ -376,8 +377,9 @@ bool rav::RavennaSender::send_audio_data_realtime(
             return false;
         }
 
-        return send_data_realtime(BufferView(intermediate_buffer), timestamp);
+        return send_data_realtime(BufferView(intermediate_buffer).subview(0, input_buffer.num_frames() * audio_format.bytes_per_frame()), timestamp);
     }
+
     return false;
 }
 
@@ -385,7 +387,7 @@ void rav::RavennaSender::on_data_requested(OnDataRequestedHandler handler) {
     on_data_requested_handler_ = std::move(handler);
 }
 
-void rav::RavennaSender::on_request(rtsp::Connection::RequestEvent event) const {
+void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) const {
     const auto sdp = build_sdp();  // Should the SDP be cached and updated on changes?
     RAV_TRACE("SDP:\n{}", sdp.to_string("\n").value());
     const auto encoded = sdp.to_string();
@@ -538,8 +540,8 @@ void rav::RavennaSender::update_realtime_context() {
     new_context->destination_endpoint = {configuration_.destination_address, 5004};
     new_context->packet_time_frames = get_framecount();
     new_context->outgoing_data_.resize(packet_size_bytes * k_buffer_num_packets);
-    new_context->packet_intermediate_buffer.resize(packet_size_bytes);
-    new_context->send_buffer_ = ByteBuffer(packet_size_bytes);
-    new_context->outgoing_packet_buffer_.resize(packet_size_bytes);
+    new_context->intermediate_audio_buffer.resize(k_max_num_frames * audio_format.bytes_per_frame());
+    new_context->rtp_packet_buffer = ByteBuffer(packet_size_bytes);
+    new_context->intermediate_send_buffer.resize(packet_size_bytes);
     realtime_context_.update(std::move(new_context));
 }
