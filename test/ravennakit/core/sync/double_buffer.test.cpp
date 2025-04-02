@@ -28,7 +28,9 @@ TEST_CASE("DoubleBuffer") {
         int prev = -1;
         for (int i = 0; i < k_num_iterations; ++i) {
             if (auto value = buffer.get()) {
-                REQUIRE(*value > prev);
+                if (value <= prev) {
+                    throw std::runtime_error("Out of order value");
+                }
                 prev = *value;
             }
         }
