@@ -6,6 +6,7 @@ This project requires the following dependencies:
 - [fmt](https://github.com/fmtlib/fmt) (MIT License)
 - [asio](https://github.com/chriskohlhoff/asio) (Boost Software License)
 - [tl-expected](https://github.com/TartanLlama/expected) (CC0 1.0 Universal)
+- [nanobench](https://github.com/martinus/nanobench) (MIT License)
 
 Optional:
 
