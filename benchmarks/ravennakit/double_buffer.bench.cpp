@@ -17,7 +17,11 @@
 
 TEST_CASE("DoubleBuffer Benchmark") {
     ankerl::nanobench::Bench b;
-    b.title("DoubleBuffer Benchmark").warmup(100).relative(false).minEpochIterations(23704458).performanceCounters(true);
+    b.title("DoubleBuffer Benchmark")
+        .warmup(100)
+        .relative(false)
+        .minEpochIterations(1'000'000)
+        .performanceCounters(true);
 
     {
         rav::DoubleBuffer<uint64_t> buffer;
@@ -30,17 +34,14 @@ TEST_CASE("DoubleBuffer Benchmark") {
             }
         });
 
-        std::thread producer([&] {
-            uint64_t i = 0;
+        uint64_t i = 0;
 
-            b.run("Producer", [&] {
-                buffer.update(i++);
-            });
-
-            keep_going = false;
+        b.run("Producer", [&] {
+            buffer.update(i++);
         });
 
-        producer.join();
+        keep_going = false;
+
         consumer.join();
     }
 
@@ -56,14 +57,11 @@ TEST_CASE("DoubleBuffer Benchmark") {
             }
         });
 
-        std::thread consumer([&] {
-            b.run("Consumer", [&] {
-                ankerl::nanobench::doNotOptimizeAway(buffer.get());
-            });
-            keep_going = false;
+        b.run("Consumer", [&] {
+            ankerl::nanobench::doNotOptimizeAway(buffer.get());
         });
+        keep_going = false;
 
         producer.join();
-        consumer.join();
     }
 }

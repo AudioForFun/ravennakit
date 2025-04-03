@@ -86,8 +86,8 @@ def build_macos(args, build_config: Config, subfolder: str, spdlog: bool = False
     cmake.option('CMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM', args.macos_development_team)
     cmake.option('BUILD_NUMBER', args.build_number)
 
-    # Crash the program when an assertion gets hit
     cmake.option('RAV_ABORT_ON_ASSERT', 'ON')
+    cmake.option('RAV_BENCHMARKS', 'ON')
 
     if spdlog:
         cmake.option('RAV_ENABLE_SPDLOG', 'ON')
@@ -123,6 +123,9 @@ def build_windows(args, arch, build_config: Config, subfolder: str, spdlog: bool
     cmake.option('BUILD_NUMBER', args.build_number)
     cmake.option('RAV_WINDOWS_VERSION', args.windows_version)
 
+    cmake.option('RAV_ABORT_ON_ASSERT', 'ON')
+    cmake.option('RAV_BENCHMARKS', 'ON')
+
     if spdlog:
         cmake.option('RAV_ENABLE_SPDLOG', 'ON')
 
@@ -150,6 +153,9 @@ def build_linux(args, arch, build_config: Config, subfolder: str, spdlog: bool =
     cmake.option('CMAKE_TOOLCHAIN_FILE', 'submodules/vcpkg/scripts/buildsystems/vcpkg.cmake')
     cmake.option('VCPKG_TARGET_TRIPLET', arch + '-linux')
     cmake.option('BUILD_NUMBER', args.build_number)
+
+    cmake.option('RAV_ABORT_ON_ASSERT', 'ON')
+    cmake.option('RAV_BENCHMARKS', 'ON')
 
     if spdlog:
         cmake.option('RAV_ENABLE_SPDLOG', 'ON')
