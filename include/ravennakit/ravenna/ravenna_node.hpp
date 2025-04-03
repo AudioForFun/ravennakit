@@ -177,6 +177,20 @@ class RavennaNode {
     std::future<void> unsubscribe_from_sender(Id sender_id, RavennaSender::Subscriber* subscriber);
 
     /**
+     * Adds a subscriber to the PTP instance.
+     * @param subscriber The subscriber to add.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> subscribe_to_ptp_instance(ptp::Instance::Subscriber* subscriber);
+
+    /**
+     * Removes a subscriber from the PTP instance.
+     * @param subscriber The subscriber to remove.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> unsubscribe_from_ptp_instance(ptp::Instance::Subscriber* subscriber);
+
+    /**
      * Get the packet statistics for the given stream, if the stream for the given ID exists.
      * @param receiver_id The ID of the stream to get the packet statistics for.
      * @return The packet statistics for the stream, or an empty structure if the stream doesn't exist.

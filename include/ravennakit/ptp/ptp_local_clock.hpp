@@ -55,6 +55,7 @@ class LocalClock {
         constexpr double max_ratio = 0.5;  // +/-
         const auto nominal_ratio = 0.001 * std::pow(-offset_from_master, 3) + 1.0;
         frequency_ratio_ = std::clamp(nominal_ratio, 1.0 - max_ratio, 1 + max_ratio);
+        adjustments_since_last_step_++;
     }
 
     /**
@@ -67,6 +68,7 @@ class LocalClock {
         last_sync_ = system_monotonic_now();
         shift_ = -offset_from_master;
         frequency_ratio_ = 1.0;
+        adjustments_since_last_step_ = 0;
     }
 
     /**
@@ -84,10 +86,46 @@ class LocalClock {
         return shift_;
     }
 
+    /**
+     * @return True if the clock is valid, false otherwise. It does this by checking if the last sync time is valid.
+     */
+    bool is_valid() const {
+        return last_sync_.valid();
+    }
+
+    /**
+     * @return True when the clock is locked, false otherwise. A clock is considered locked when it has received enough
+     * adjustments. When a clock steps, the adjustments are reset.
+     */
+    [[nodiscard]] bool is_locked() const {
+        TRACY_ZONE_SCOPED;
+        return adjustments_since_last_step_ >= k_lock_threshold;
+    }
+
+    /**
+     * Sets the calibrated state of the clock. A clock is considered calibrated when it has received enough adjustments
+     * and is within the calibrated threshold.
+     */
+    void set_calibrated(const bool calibrated) {
+        calibrated_ = calibrated;
+    }
+
+    /**
+     * @return True if the clock is calibrated, false otherwise. A clock is considered calibrated when it has received
+     * enough adjustments and is within the calibrated threshold.
+     */
+    [[nodiscard]] bool is_calibrated() const {
+        return is_locked() && calibrated_;
+    }
+
   private:
-    Timestamp last_sync_ = system_monotonic_now();
+    constexpr static size_t k_lock_threshold = 10;
+
+    Timestamp last_sync_ {};
     double shift_ {};
     double frequency_ratio_ = 1.0;
+    size_t adjustments_since_last_step_ {};
+    bool calibrated_ = false;
 
     static Timestamp system_monotonic_now() {
         return Timestamp(HighResolutionClock::now());

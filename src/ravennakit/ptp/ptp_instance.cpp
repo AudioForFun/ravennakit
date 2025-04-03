@@ -14,11 +14,39 @@
 #include "ravennakit/core/net/interfaces/network_interface_list.hpp"
 #include "ravennakit/ptp/ptp_constants.hpp"
 
+const rav::ptp::LocalClock& rav::ptp::Instance::Subscriber::get_local_clock() {
+    if (const auto value = local_clock_buffer_.get()) {
+        local_clock_ = *value;
+    }
+    return local_clock_;
+}
+
 rav::ptp::Instance::Instance(asio::io_context& io_context) :
     io_context_(io_context), state_decision_timer_(io_context), default_ds_(true), parent_ds_(default_ds_) {}
 
 rav::ptp::Instance::~Instance() {
     state_decision_timer_.cancel();
+}
+
+bool rav::ptp::Instance::subscribe(Subscriber* subscriber) {
+    if (subscribers_.add(subscriber)) {
+        if (!parent_ds_.parent_port_identity.is_valid()) {
+            return true; // No parent yet
+        }
+        subscriber->ptp_parent_changed(parent_ds_);
+        for (auto& port : ports_) {
+            subscriber->ptp_port_changed_state(*port);
+        }
+        if (local_ptp_clock_.is_calibrated()) {
+            subscriber->local_clock_buffer_.update(local_clock_);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool rav::ptp::Instance::unsubscribe(Subscriber* subscriber) {
+    return subscribers_.remove(subscriber);
 }
 
 tl::expected<void, rav::ptp::Error> rav::ptp::Instance::add_port(const asio::ip::address& interface_address) {
@@ -224,6 +252,11 @@ void rav::ptp::Instance::update_local_ptp_clock(const Measurement<double>& measu
     current_ds_.mean_delay = TimeInterval::to_fractional_interval(measurement.mean_delay);
     current_ds_.offset_from_master = TimeInterval::to_fractional_interval(measurement.offset_from_master);
     local_ptp_clock_.update(measurement);
+    if (local_ptp_clock_.is_calibrated()) {
+        for (auto* s : subscribers_) {
+            s->local_clock_buffer_.update(local_clock_);
+        }
+    }
 }
 
 uint16_t rav::ptp::Instance::get_next_available_port_number() const {

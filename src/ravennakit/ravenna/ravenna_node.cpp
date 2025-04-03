@@ -255,6 +255,24 @@ std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, Ravenn
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
+std::future<void> rav::RavennaNode::subscribe_to_ptp_instance(ptp::Instance::Subscriber* subscriber) {
+    auto work = [this, subscriber] {
+        if (!ptp_instance_.subscribe(subscriber)) {
+            RAV_ERROR("Failed to add subscriber to PTP instance");
+        }
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance::Subscriber* subscriber) {
+    auto work = [this, subscriber] {
+        if (!ptp_instance_.unsubscribe(subscriber)) {
+            RAV_ERROR("Failed to remove subscriber from PTP instance");
+        }
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
 std::future<rav::rtp::StreamReceiver::StreamStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id) {
     auto work = [this, receiver_id] {
         for (const auto& receiver : receivers_) {

@@ -64,6 +64,15 @@ struct PortIdentity {
     }
 
     /**
+     * Checks if the port identity is valid. A port identity is valid if the port number is in the range [1, 0xfffe] and
+     * the clock identity is valid.
+     * @return True if valid, or false otherwise.
+     */
+    bool is_valid() const {
+        return port_number >= k_port_number_min && port_number <= k_port_number_max && clock_identity.is_valid();
+    }
+
+    /**
      * Checks the internal state of this object according to IEEE1588-2019. Asserts when something is wrong.
      */
     void assert_valid_state() const {
@@ -81,4 +90,4 @@ struct PortIdentity {
     }
 };
 
-}  // namespace rav
+}  // namespace rav::ptp

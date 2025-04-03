@@ -46,7 +46,7 @@ class LocalPtpClock {
      */
     [[nodiscard]] bool is_calibrated() const {
         TRACY_ZONE_SCOPED;
-        return is_locked() && is_between(offset_stats_.median(), -k_calibrated_threshold, k_calibrated_threshold);
+        return local_clock_.is_calibrated();
     }
 
     /**
@@ -55,7 +55,7 @@ class LocalPtpClock {
      */
     [[nodiscard]] bool is_locked() const {
         TRACY_ZONE_SCOPED;
-        return adjustments_since_last_step_ >= k_lock_threshold;
+        return local_clock_.is_locked();
     }
 
     /**
@@ -79,9 +79,10 @@ class LocalPtpClock {
         }
 
         filtered_offset_stats_.add(measurement.offset_from_master);
-
         local_clock_.adjust(measurement.offset_from_master);
-        adjustments_since_last_step_++;
+
+        // Note: I wonder whether we should move this to the local clock, based on the actual (non-median) offset.
+        local_clock_.set_calibrated(is_between(offset_stats_.median(), -k_calibrated_threshold, k_calibrated_threshold));
 
         TRACY_PLOT("Offset from master median (ms)", offset_stats_.median() * 1000.0);
         TRACY_PLOT("Offset from master outliers", 0.0);
@@ -105,8 +106,8 @@ class LocalPtpClock {
         TRACY_ZONE_SCOPED;
 
         local_clock_.step(offset_from_master_seconds);
+        local_clock_.set_calibrated(false);
         offset_stats_.reset();
-        adjustments_since_last_step_ = 0;
 
         RAV_TRACE("Stepping clock: offset_from_master={}", offset_from_master_seconds);
     }
@@ -131,7 +132,6 @@ class LocalPtpClock {
     }
 
   private:
-    constexpr static size_t k_lock_threshold = 10;
     constexpr static double k_calibrated_threshold = 0.0018;
     constexpr static int64_t k_clock_step_threshold_seconds = 1;
 
@@ -139,7 +139,6 @@ class LocalPtpClock {
 
     SlidingStats offset_stats_ {51};
     SlidingStats filtered_offset_stats_ {51};
-    size_t adjustments_since_last_step_ {};
     Throttle<void> trace_adjustments_throttle_ {std::chrono::seconds(5)};
 };
 

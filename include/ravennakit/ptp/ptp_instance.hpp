@@ -55,27 +55,10 @@ class Instance {
         }
 
         /**
-         * @return The best estimate of 'now' in the timescale of the grand master clock. Safe to call from any single
-         * consumer thread.
+         * @returns A local copy of the local clock which received updates from the ptp::Instance.
+         * Thread safe and wait-free when called from a single consumer thread.
          */
-        [[nodiscard]] Timestamp now() {
-            if (const auto value = local_clock_buffer_.get()) {
-                local_clock_ = *value;
-            }
-            return local_clock_.now();
-        }
-
-        /**
-         * Returns the adjusted time of the clock, which is the time in the timescale of the grand master clock.
-         * @param system_time The system time to adjust.
-         * @return The adjusted time in the timescale of the grand master clock.
-         */
-        [[nodiscard]] Timestamp get_adjusted_time(const Timestamp system_time) {
-            if (const auto value = local_clock_buffer_.get()) {
-                local_clock_ = *value;
-            }
-            return local_clock_.get_adjusted_time(system_time);
-        }
+        const LocalClock& get_local_clock();
 
       private:
         friend class Instance;
@@ -97,15 +80,7 @@ class Instance {
      * @param subscriber The subscriber to add.
      * @return True if the subscriber was added successfully, false if the subscriber was already added.
      */
-    [[nodiscard]] bool subscribe(Subscriber* subscriber) {
-        if (subscribers_.add(subscriber)) {
-            subscriber->ptp_parent_changed(parent_ds_);
-            subscriber->ptp_port_changed_state(*ports_.front());
-            subscriber->local_clock_buffer_.update(local_clock_);
-            return true;
-        }
-        return false;
-    }
+    [[nodiscard]] bool subscribe(Subscriber* subscriber);
 
     /**
      * Removes a subscriber from the PTP instance. The subscriber will no longer be notified of events related to the
@@ -113,9 +88,7 @@ class Instance {
      * @param subscriber The subscriber to remove.
      * @return True if the subscriber was removed successfully, false if the subscriber was not found.
      */
-    [[nodiscard]] bool unsubscribe(Subscriber* subscriber) {
-        return subscribers_.remove(subscriber);
-    }
+    [[nodiscard]] bool unsubscribe(Subscriber* subscriber);
 
     /**
      * Adds a port to the PTP instance. The port will be used to send and receive PTP messages. The clock identity of
