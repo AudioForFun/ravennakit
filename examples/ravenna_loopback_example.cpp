@@ -109,11 +109,8 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber, public rav::ptp::In
     }
 
     void run() {
-        while (true) {
+        while (!io_context_.stopped()) {
             io_context_.poll();
-            if (io_context_.stopped()) {
-                break;
-            }
         }
     }
 

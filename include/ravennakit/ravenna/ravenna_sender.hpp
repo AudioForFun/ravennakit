@@ -21,7 +21,6 @@
 #include "ravennakit/ptp/ptp_instance.hpp"
 #include "ravennakit/ptp/types/ptp_timestamp.hpp"
 #include "ravennakit/rtp/rtp_packet.hpp"
-#include "ravennakit/rtp/rtp_stream_sender.hpp"
 #include "ravennakit/rtp/detail/rtp_buffer.hpp"
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"
@@ -29,7 +28,7 @@
 
 namespace rav {
 
-class RavennaSender: public rtp::StreamSender, public rtsp::Server::PathHandler, public ptp::Instance::Subscriber {
+class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Subscriber {
   public:
     /// The number of packet buffers available for sending. This value means that n packets worth of data can be queued
     /// for sending.
@@ -178,6 +177,7 @@ class RavennaSender: public rtp::StreamSender, public rtsp::Server::PathHandler,
     int32_t clock_domain_ {};
     ptp::ClockIdentity grandmaster_identity_;
     std::mutex timer_mutex_;
+    rtp::Sender rtp_sender_;
 
     asio::high_resolution_timer timer_;
     SubscriberList<Subscriber> subscribers_;

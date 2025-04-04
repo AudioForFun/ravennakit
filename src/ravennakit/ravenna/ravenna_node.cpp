@@ -32,11 +32,8 @@ rav::RavennaNode::RavennaNode(asio::ip::address_v4 interface_address) :
 #endif
         while (true) {
             try {
-                while (true) {
+                while (!io_context_.stopped()) {
                     io_context_.poll();
-                    if (io_context_.stopped()) {
-                        break;
-                    }
                 }
                 break;
             } catch (const std::exception& e) {

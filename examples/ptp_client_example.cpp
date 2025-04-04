@@ -43,11 +43,8 @@ int main(int const argc, char* argv[]) {
         return 1;
     }
 
-    while (true) {
+    while (!io_context.stopped()) {
         io_context.poll();
-        if (io_context.stopped()) {
-            break;
-        }
     }
 
     return 0;

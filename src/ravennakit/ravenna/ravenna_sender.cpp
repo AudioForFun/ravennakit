@@ -22,11 +22,11 @@ rav::RavennaSender::RavennaSender(
     asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server, ptp::Instance& ptp_instance,
     const Id id, const asio::ip::address_v4& interface_address, ConfigurationUpdate initial_config
 ) :
-    StreamSender(io_context, interface_address),
     advertiser_(advertiser),
     rtsp_server_(rtsp_server),
     ptp_instance_(ptp_instance),
     id_(id),
+    rtp_sender_(io_context, interface_address),
     timer_(io_context) {
     if (!initial_config.session_name.has_value()) {
         initial_config.session_name = "Sender " + id_.to_string();
