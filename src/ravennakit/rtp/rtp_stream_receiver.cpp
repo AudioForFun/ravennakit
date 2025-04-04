@@ -446,7 +446,7 @@ void rav::rtp::StreamReceiver::restart() {
     shared_state_.update(std::move(new_state));
 
     for (auto& stream : media_streams_) {
-        stream.first_packet_timestamp.reset();
+        stream.rtp_ts.reset();
         stream.packet_stats.reset();
         if (!rtp_receiver_.subscribe(this, stream.session, stream.filter)) {
             RAV_ERROR("Failed to add subscriber");
@@ -476,9 +476,9 @@ void rav::rtp::StreamReceiver::handle_rtp_packet_event_for_session(
 
     const WrappingUint32 packet_timestamp(event.packet.timestamp());
 
-    if (!stream.first_packet_timestamp.has_value()) {
+    if (!stream.rtp_ts.has_value()) {
         stream.seq = event.packet.sequence_number();
-        stream.first_packet_timestamp = event.packet.timestamp();
+        stream.rtp_ts = event.packet.timestamp();
         stream.last_packet_time_ns = event.recv_time;
     }
 
@@ -541,7 +541,7 @@ void rav::rtp::StreamReceiver::handle_rtp_packet_event_for_session(
             }
         }
 
-        if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
+        if (packet_timestamp - delay_ >= *stream.rtp_ts) {
             // Make sure to call with the correct timestamps for the missing packets
             for (uint16_t i = 0; i < *diff; ++i) {
                 for (const auto& c : subscribers_) {

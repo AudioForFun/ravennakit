@@ -228,7 +228,7 @@ class StreamReceiver: public Receiver::Subscriber {
         AudioFormat selected_format;
         uint16_t packet_time_frames = 0;
         WrappingUint16 seq;
-        std::optional<WrappingUint32> first_packet_timestamp;
+        std::optional<WrappingUint32> rtp_ts;
         PacketStats packet_stats;
         Throttle<PacketStats::Counters> packet_stats_throttle {std::chrono::seconds(5)};
         WrappingUint64 last_packet_time_ns;

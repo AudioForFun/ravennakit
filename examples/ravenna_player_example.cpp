@@ -161,7 +161,7 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
 
         TRACY_PLOT("drift", static_cast<int64_t>(drift));
 
-        if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::be) {
+        if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::le) {
             // Convert to big endian
             rav::swap_bytes(audio_buffer_.data(), num_read, audio_format_.bytes_per_sample());
         }
