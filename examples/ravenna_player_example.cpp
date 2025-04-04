@@ -115,7 +115,7 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
         auto expires_after = std::chrono::milliseconds(k_frames_per_read / audio_format_.sample_rate * 1000 / 10);
 #endif
 
-        timer_.expires_after(std::chrono::milliseconds(expires_after));
+        timer_.expires_after(expires_after);
         timer_.async_wait([this](const asio::error_code ec) {
             if (ec == asio::error::operation_aborted) {
                 return;
@@ -170,7 +170,7 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
             RAV_ERROR("Failed to send audio data");
         }
 
-        rtp_ts_ += num_read / audio_format_.bytes_per_frame();
+        rtp_ts_ += static_cast<uint32_t>(num_read) / audio_format_.bytes_per_frame();
     }
 };
 
