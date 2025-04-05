@@ -247,7 +247,7 @@ tl::expected<void, std::string> rav::RavennaSender::update_configuration(const C
         send_announce();
     }
 
-    update_realtime_context();
+    update_shared_context();
 
     return {};
 }
@@ -269,11 +269,7 @@ bool rav::RavennaSender::subscribe(Subscriber* subscriber) {
 }
 
 bool rav::RavennaSender::unsubscribe(Subscriber* subscriber) {
-    if (subscribers_.remove(subscriber)) {
-        subscriber->ravenna_sender_configuration_updated(id_, configuration_);
-        return true;
-    }
-    return false;
+    return subscribers_.remove(subscriber);
 }
 
 uint32_t rav::RavennaSender::get_framecount() const {
@@ -583,7 +579,7 @@ void rav::RavennaSender::send_outgoing_data() {
     }
 }
 
-void rav::RavennaSender::update_realtime_context() {
+void rav::RavennaSender::update_shared_context() {
     // TODO: Implement proper SSRC generation
     const auto ssrc = static_cast<uint32_t>(Random().get_random_int(0, std::numeric_limits<int>::max()));
 

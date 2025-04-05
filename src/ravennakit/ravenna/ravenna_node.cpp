@@ -53,11 +53,9 @@ rav::RavennaNode::~RavennaNode() {
 
 std::future<rav::Id> rav::RavennaNode::create_receiver(const std::string& session_name) {
     auto work = [this, session_name]() mutable {
-        auto new_receiver = std::make_unique<RavennaReceiver>(rtsp_client_, *rtp_receiver_);
-        if (!new_receiver->subscribe_to_session(session_name)) {
-            RAV_ERROR("Failed to subscribe to session: {}", session_name);
-            return Id {};
-        }
+        RavennaReceiver::ConfigurationUpdate config;
+        config.session_name = session_name;
+        auto new_receiver = std::make_unique<RavennaReceiver>(rtsp_client_, *rtp_receiver_, config);
         const auto& it = receivers_.emplace_back(std::move(new_receiver));
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
@@ -92,15 +90,15 @@ std::future<void> rav::RavennaNode::remove_receiver(Id receiver_id) {
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<bool> rav::RavennaNode::set_receiver_delay(Id receiver_id, uint32_t delay_samples) {
-    auto work = [this, receiver_id, delay_samples] {
+std::future<tl::expected<void, std::string>>
+rav::RavennaNode::update_receiver_configuration(Id receiver_id, RavennaReceiver::ConfigurationUpdate update) {
+    auto work = [this, receiver_id, u = std::move(update)]() -> tl::expected<void, std::string> {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                receiver->set_delay(delay_samples);
-                return true;
+                return receiver->update_configuration(u);
             }
         }
-        return false;
+        return tl::unexpected("Sender not found");
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
@@ -150,10 +148,10 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
 }
 
 std::future<tl::expected<void, std::string>>
-rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update) {
-    auto work = [this, sender_id, u = std::move(update)]() -> tl::expected<void, std::string> {
+rav::RavennaNode::update_sender_configuration(Id receiver_id, RavennaSender::ConfigurationUpdate update) {
+    auto work = [this, receiver_id, u = std::move(update)]() -> tl::expected<void, std::string> {
         for (const auto& sender : senders_) {
-            if (sender->get_id() == sender_id) {
+            if (sender->get_id() == receiver_id) {
                 return sender->update_configuration(u);
             }
         }
@@ -191,7 +189,7 @@ std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber) {
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber) {
+std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
     auto work = [this, receiver_id, subscriber] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -207,7 +205,7 @@ std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, rtp::S
 }
 
 std::future<void>
-rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber) {
+rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
     auto work = [this, receiver_id, subscriber] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -270,14 +268,14 @@ std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance:
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<rav::rtp::StreamReceiver::StreamStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id) {
+std::future<rav::RavennaReceiver::StreamStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id) {
     auto work = [this, receiver_id] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                return receiver->get_session_stats();
+                return receiver->get_stream_stats();
             }
         }
-        return rtp::StreamReceiver::StreamStats {};
+        return RavennaReceiver::StreamStats {};
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }

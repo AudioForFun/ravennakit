@@ -86,7 +86,7 @@ class RavennaNode {
 
     /**
      * Creates a new receiver for the given session.
-     * @param session_name The name of the session to create a receiver for.
+     * @param session_name The name of the session to create a receiver for. May be empty.
      * @return The ID of the created receiver, which might be invalid if the receiver couldn't be created.
      */
     [[nodiscard]] std::future<Id> create_receiver(const std::string& session_name);
@@ -99,13 +99,13 @@ class RavennaNode {
     [[nodiscard]] std::future<void> remove_receiver(Id receiver_id);
 
     /**
-     * Sets the delay for the receiver with the given id.
-     * @param receiver_id The id of the receiver to set the delay for.
-     * @param delay_samples The delay in samples.
-     * @return A future that will be set when the operation is complete. True if the delay was set, false if the
-     * receiver was not found.
+     * Updates the configuration of the receiver with the given id.
+     * @param receiver_id The id of the receiver to update.
+     * @param update The configuration changes to apply.
+     * @return A future that will be set when the operation is complete.
      */
-    [[nodiscard]] std::future<bool> set_receiver_delay(Id receiver_id, uint32_t delay_samples);
+    std::future<tl::expected<void, std::string>>
+    update_receiver_configuration(Id receiver_id, RavennaReceiver::ConfigurationUpdate update);
 
     /**
      * Creates a sender for the given session.
@@ -122,12 +122,12 @@ class RavennaNode {
 
     /**
      * Updates the configuration of the sender with the given id.
-     * @param sender_id
+     * @param receiver_id The id of the sender to update.
      * @param update The configuration changes to apply.
      * @return A future that will be set when the operation is complete.
      */
     std::future<tl::expected<void, std::string>>
-    update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update);
+    update_sender_configuration(Id receiver_id, RavennaSender::ConfigurationUpdate update);
 
     /**
      * Adds a subscriber to the node.
@@ -149,7 +149,7 @@ class RavennaNode {
      * @param subscriber The subscriber to add.
      * @return A future that will be set when the operation is complete.
      */
-    [[nodiscard]] std::future<void> subscribe_to_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber);
+    [[nodiscard]] std::future<void> subscribe_to_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber);
 
     /**
      * Removes a subscriber from the receiver with the given id.
@@ -158,7 +158,7 @@ class RavennaNode {
      * @return A future that will be set when the operation is complete.
      */
     [[nodiscard]] std::future<void>
-    unsubscribe_from_receiver(Id receiver_id, rtp::StreamReceiver::Subscriber* subscriber);
+    unsubscribe_from_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber);
 
     /**
      * Adds a subscriber to the sender with the given id.
@@ -195,7 +195,7 @@ class RavennaNode {
      * @param receiver_id The ID of the stream to get the packet statistics for.
      * @return The packet statistics for the stream, or an empty structure if the stream doesn't exist.
      */
-    [[nodiscard]] std::future<rtp::StreamReceiver::StreamStats> get_stats_for_receiver(Id receiver_id);
+    [[nodiscard]] std::future<RavennaReceiver::StreamStats> get_stats_for_receiver(Id receiver_id);
 
     /**
      * Calls back with the ravenna receiver for the given receiver id. If the stream is not found, the callback will not

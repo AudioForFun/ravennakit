@@ -18,7 +18,7 @@
 
 namespace examples {
 
-struct ravenna_node final: rav::RavennaNode::Subscriber, rav::rtp::StreamReceiver::Subscriber {
+struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::Subscriber {
     explicit ravenna_node(asio::ip::address_v4 interface_addr) : node(std::move(interface_addr)) {
         node.subscribe(this).wait();
     }
@@ -43,12 +43,31 @@ struct ravenna_node final: rav::RavennaNode::Subscriber, rav::rtp::StreamReceive
         RAV_INFO("RAVENNA session removed: {}", event.description.to_string());
     }
 
-    void ravenna_receiver_added(const rav::RavennaReceiver& receiver) override {
-        RAV_INFO("RAVENNA receiver added for: {}", receiver.get_session_name());
+    void ravenna_sender_added(const rav::RavennaSender& sender) override {
+        RAV_INFO("RAVENNA sender added for: {}", sender.get_configuration().session_name);
     }
 
-    void on_rtp_stream_receiver_updated(const rav::rtp::StreamReceiver::StreamUpdatedEvent& event) override {
-        RAV_INFO("Stream updated: {}", event.to_string());
+    void ravenna_sender_removed(const rav::Id sender_id) override {
+        RAV_INFO("RAVENNA sender removed: {}", sender_id.value());
+    }
+
+    void ravenna_receiver_added(const rav::RavennaReceiver& receiver) override {
+        RAV_INFO("RAVENNA receiver added for: {}", receiver.get_configuration().session_name);
+    }
+
+    void ravenna_receiver_removed(const rav::Id receiver_id) override {
+        RAV_INFO("RAVENNA receiver removed: {}", receiver_id.value());
+    }
+
+    void ravenna_receiver_configuration_updated(
+        const rav::Id receiver_id, const rav::RavennaReceiver::Configuration& configuration
+    ) override {
+        RAV_INFO("RAVENNA configuration updated for receiver {}", receiver_id.value());
+        std::ignore = configuration;
+    }
+
+    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& parameters) override {
+        RAV_INFO("RAVENNA Stream updated: {}", parameters.to_string());
     }
 
     rav::RavennaNode node;
