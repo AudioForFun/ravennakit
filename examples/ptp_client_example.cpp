@@ -43,7 +43,9 @@ int main(int const argc, char* argv[]) {
         return 1;
     }
 
-    io_context.run();
+    while (!io_context.stopped()) {
+        io_context.poll();
+    }
 
     return 0;
 }

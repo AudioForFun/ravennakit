@@ -21,7 +21,7 @@
 #include "ravennakit/ptp/types/ptp_time_interval.hpp"
 
 #include <cstdint>
-#include <tl/expected.hpp>
+#include "ravennakit/core/expected.hpp"
 
 namespace rav::ptp {
 

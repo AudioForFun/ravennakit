@@ -14,7 +14,7 @@
 #include "ravennakit/ptp/types/ptp_port_identity.hpp"
 #include "ravennakit/ptp/types/ptp_timestamp.hpp"
 
-#include <tl/expected.hpp>
+#include "ravennakit/core/expected.hpp"
 
 namespace rav::ptp {
 

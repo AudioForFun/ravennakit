@@ -23,11 +23,11 @@ rav::WrappingUint<unsigned short> rav::rtp::Packet::sequence_number_inc(const ui
     return sequence_number_;
 }
 
-void rav::rtp::Packet::timestamp(const uint32_t value) {
+void rav::rtp::Packet::set_timestamp(const uint32_t value) {
     timestamp_ = value;
 }
 
-rav::WrappingUint<unsigned> rav::rtp::Packet::timestamp_inc(const uint32_t value) {
+rav::WrappingUint<unsigned> rav::rtp::Packet::inc_timestamp(const uint32_t value) {
     timestamp_ += value;
     return timestamp_;
 }

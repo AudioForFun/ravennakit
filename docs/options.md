@@ -1,6 +1,6 @@
 # Options
 
-Several variables can be set to influence how the library is built or run. 
+Several variables can be set to influence how the library is built or run.
 The following tables lists the available options:
 
 ## CMake options
@@ -13,6 +13,7 @@ These are options which influence the CMake configuration.
 | -DRAV_WITH_THREAD_SANITIZER=ON/OFF  | When enabled, the thread sanitizer will be engaged.  |
 | -DRAV_EXAMPLES=ON/OFF               | When ON (default), examples will be build            |
 | -DRAV_TESTS=ON/OFF                  | When ON (default), tests will be build               |
+| -DRAV_BENCHMARKS=ON/OFF             | When ON, benchmarks will be build                    |
 
 ### CMake options and compile constants
 

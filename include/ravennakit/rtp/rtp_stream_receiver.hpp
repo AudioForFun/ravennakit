@@ -12,8 +12,9 @@
 
 #include "detail/rtp_filter.hpp"
 #include "detail/rtp_packet_stats.hpp"
-#include "detail/rtp_receive_buffer.hpp"
+#include "detail/rtp_buffer.hpp"
 #include "detail/rtp_receiver.hpp"
+#include "ravennakit/aes67/aes67_constants.hpp"
 #include "ravennakit/core/exclusive_access_guard.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
@@ -89,7 +90,7 @@ class StreamReceiver: public Receiver::Subscriber {
          *
          * @param event The event.
          */
-        virtual void rtp_stream_receiver_updated([[maybe_unused]] const StreamUpdatedEvent& event) {}
+        virtual void on_rtp_stream_receiver_updated([[maybe_unused]] const StreamUpdatedEvent& event) {}
 
         /**
          * Called when new data has been received.
@@ -227,7 +228,7 @@ class StreamReceiver: public Receiver::Subscriber {
         AudioFormat selected_format;
         uint16_t packet_time_frames = 0;
         WrappingUint16 seq;
-        std::optional<WrappingUint32> first_packet_timestamp;
+        std::optional<WrappingUint32> rtp_ts;
         PacketStats packet_stats;
         Throttle<PacketStats::Counters> packet_stats_throttle {std::chrono::seconds(5)};
         WrappingUint64 last_packet_time_ns;
@@ -236,7 +237,7 @@ class StreamReceiver: public Receiver::Subscriber {
     };
 
     Receiver& rtp_receiver_;
-    Id id_ {Id::next_process_wide_unique_id()};
+    Id id_ {Id::get_next_process_wide_unique_id()};
     std::atomic<uint32_t> delay_ = 480;  // 100ms at 48KHz
     ReceiverState state_ {ReceiverState::idle};
     std::vector<MediaStream> media_streams_;
@@ -252,11 +253,11 @@ class StreamReceiver: public Receiver::Subscriber {
         uint16_t seq;
         uint16_t data_len;
         uint16_t packet_time_frames;
-        std::array<uint8_t, 1500> data;  // MTU
+        std::array<uint8_t, aes67::constants::k_max_payload> data;
     };
 
     struct SharedState {
-        ReceiveBuffer receiver_buffer;
+        Buffer receiver_buffer;
         std::vector<uint8_t> read_buffer;
         FifoBuffer<IntermediatePacket, Fifo::Spsc> fifo;
         FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;
@@ -284,4 +285,4 @@ class StreamReceiver: public Receiver::Subscriber {
     void do_realtime_maintenance();
 };
 
-}  // namespace rav
+}  // namespace rav::rtp

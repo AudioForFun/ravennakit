@@ -19,7 +19,7 @@ TEST_CASE("rtp_packet") {
         rav::rtp::Packet packet;
         packet.payload_type(0xff);
         packet.sequence_number(0x0012);
-        packet.timestamp(0x00003456);
+        packet.set_timestamp(0x00003456);
         packet.ssrc(0x0000789a);
 
         std::vector<uint8_t> payload = {0x01, 0x02, 0x03, 0x04, 0x05};
@@ -46,7 +46,7 @@ TEST_CASE("rtp_packet") {
 
         payload = {0x06, 0x07, 0x08, 0x09};
         packet.sequence_number_inc(1);
-        packet.timestamp_inc(2);
+        packet.inc_timestamp(2);
 
         buffer.clear();
         packet.encode(payload.data(), payload.size(), buffer);

@@ -64,9 +64,25 @@ class RealtimeSharedObject {
         /**
          * @return A reference to the contained object. Reference is only valid if the value is not nullptr.
          */
+        T& operator*() {
+            RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+            return *value_;
+        }
+
+        /**
+         * @return A reference to the contained object. Reference is only valid if the value is not nullptr.
+         */
         const T& operator*() const {
             RAV_ASSERT(value_ != nullptr, "Value is nullptr");
             return *value_;
+        }
+
+        /**
+         * @return A pointer to the contained object, or nullptr if the value is nullptr.
+         */
+        T* operator->() {
+            RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+            return value_;
         }
 
         /**

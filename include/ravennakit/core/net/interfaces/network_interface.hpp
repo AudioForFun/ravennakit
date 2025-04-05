@@ -14,7 +14,7 @@
 #include "ravennakit/core/platform.hpp"
 #include <vector>
 #include <asio/ip/address.hpp>
-#include <tl/expected.hpp>
+#include "ravennakit/core/expected.hpp"
 #include <optional>
 
 #if RAV_WINDOWS

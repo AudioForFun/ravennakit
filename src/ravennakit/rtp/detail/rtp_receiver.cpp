@@ -18,7 +18,7 @@
 #include "ravennakit/core/subscription.hpp"
 
 #include <fmt/core.h>
-#include <tl/expected.hpp>
+#include "ravennakit/core/expected.hpp"
 
 #include <utility>
 

@@ -21,9 +21,10 @@
 #include "ravennakit/core/subscriber_list.hpp"
 #include "ravennakit/core/events/event_emitter.hpp"
 #include "ravennakit/core/net/interfaces/network_interface_list.hpp"
+#include "ravennakit/core/expected.hpp"
+#include "ravennakit/core/sync/realtime_shared_object.hpp"
 
 #include <asio/ip/address.hpp>
-#include <tl/expected.hpp>
 
 namespace rav::ptp {
 
@@ -32,16 +33,37 @@ namespace rav::ptp {
  */
 class Instance {
   public:
-    struct ParentChangedEvent {
-        const ParentDs& parent;
-    };
+    class Subscriber {
+      public:
+        virtual ~Subscriber() = default;
 
-    struct PortChangedStateEventEvent {
-        const Port& port;
-    };
+        /**
+         * Called when the parent of the PTP instance changes.
+         * @param parent The new parent data set.
+         */
+        virtual void ptp_parent_changed(const ParentDs& parent) {
+            std::ignore = parent;
+        }
 
-    EventEmitter<ParentChangedEvent> on_parent_changed;
-    EventEmitter<PortChangedStateEventEvent> on_port_changed_state;
+        /**
+         * Called when the state of a port changes.
+         * @param port The port that changed state.
+         */
+        virtual void ptp_port_changed_state(const Port& port) {
+            std::ignore = port;
+        }
+
+        /**
+         * @returns A local copy of the local clock which received updates from the ptp::Instance.
+         * Thread safe and wait-free when called from a single consumer thread.
+         */
+        const LocalClock& get_local_clock();
+
+      private:
+        friend class Instance;
+        TripleBuffer<LocalClock> local_clock_buffer_;
+        LocalClock local_clock_;
+    };
 
     /**
      * Constructs a PTP instance.
@@ -51,6 +73,21 @@ class Instance {
     explicit Instance(asio::io_context& io_context);
 
     ~Instance();
+
+    /**
+     * Adds a subscriber to the PTP instance. The subscriber will be notified of events related to the PTP instance.
+     * @param subscriber The subscriber to add.
+     * @return True if the subscriber was added successfully, false if the subscriber was already added.
+     */
+    [[nodiscard]] bool subscribe(Subscriber* subscriber);
+
+    /**
+     * Removes a subscriber from the PTP instance. The subscriber will no longer be notified of events related to the
+     * PTP instance.
+     * @param subscriber The subscriber to remove.
+     * @return True if the subscriber was removed successfully, false if the subscriber was not found.
+     */
+    [[nodiscard]] bool unsubscribe(Subscriber* subscriber);
 
     /**
      * Adds a port to the PTP instance. The port will be used to send and receive PTP messages. The clock identity of
@@ -105,23 +142,10 @@ class Instance {
     [[nodiscard]] Timestamp get_local_ptp_time() const;
 
     /**
-     * Returns the PTP time for given local timestamp.
-     * @param local_timestamp The local timestamp.
-     * @return The PTP time.
-     */
-    [[nodiscard]] Timestamp get_local_ptp_time(Timestamp local_timestamp) const;
-
-    /**
      * Adjusts the PTP clock of the PTP instance based on the mean delay and offset from the master.
      * @param measurement The measurement data.
      */
     void update_local_ptp_clock(const Measurement<double>& measurement);
-
-    /**
-     * Force updates the local PTP clock to the given timestamp.
-     * @param timestamp The timestamp to set the clock to.
-     */
-    void force_update_local_ptp_clock(Timestamp timestamp);
 
   private:
     asio::io_context& io_context_;
@@ -132,10 +156,12 @@ class Instance {
     TimePropertiesDs time_properties_ds_;
     std::vector<std::unique_ptr<Port>> ports_;
     network_interface_list network_interfaces_;
-    LocalPtpClockClock local_ptp_clock_;
+    LocalClock local_clock_;
+    LocalPtpClock local_ptp_clock_ {local_clock_};
+    SubscriberList<Subscriber> subscribers_;
 
     [[nodiscard]] uint16_t get_next_available_port_number() const;
     void schedule_state_decision_timer();
 };
 
-}  // namespace rav
+}  // namespace rav::ptp

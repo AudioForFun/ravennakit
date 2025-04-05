@@ -8,13 +8,13 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/rtp/detail/rtp_receive_buffer.hpp"
+#include "ravennakit/rtp/detail/rtp_buffer.hpp"
 
 #include <catch2/catch_all.hpp>
 
-TEST_CASE("rtp_receive_buffer") {
+TEST_CASE("rtp_buffer") {
     SECTION("Read with wraparound") {
-        rav::rtp::ReceiveBuffer buffer;
+        rav::rtp::Buffer buffer;
         buffer.resize(10, 2);
 
         std::array<const uint8_t, 4> input = {0x0, 0x1, 0x2, 0x3};
@@ -22,7 +22,7 @@ TEST_CASE("rtp_receive_buffer") {
 
         const rav::BufferView buffer_view(input.data(), input.size());
         buffer.write(4, buffer_view);
-        REQUIRE(buffer.next_ts().value() == 6);
+        REQUIRE(buffer.get_next_ts().value() == 6);
 
         buffer.read(0, output.data(), output.size());
         REQUIRE(output == std::array<uint8_t, 4> {0x0, 0x0, 0x0, 0x0});
@@ -52,7 +52,7 @@ TEST_CASE("rtp_receive_buffer") {
     }
 
     SECTION("Fill buffer in one go") {
-        rav::rtp::ReceiveBuffer buffer;
+        rav::rtp::Buffer buffer;
         buffer.resize(4, 2);
 
         std::array<const uint8_t, 8> input = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8};
@@ -60,7 +60,7 @@ TEST_CASE("rtp_receive_buffer") {
 
         const rav::BufferView buffer_view(input.data(), input.size());
         buffer.write(2, buffer_view);
-        REQUIRE(buffer.next_ts().value() == 6);
+        REQUIRE(buffer.get_next_ts().value() == 6);
 
         buffer.read(2, output.data(), output.size());
         REQUIRE(output == std::array<uint8_t, 4> {0x1, 0x2, 0x3, 0x4});
@@ -69,7 +69,7 @@ TEST_CASE("rtp_receive_buffer") {
     }
 
     SECTION("Clear until") {
-        rav::rtp::ReceiveBuffer buffer;
+        rav::rtp::Buffer buffer;
         buffer.resize(4, 2);
 
         std::array<const uint8_t, 8> input = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8};
@@ -77,7 +77,7 @@ TEST_CASE("rtp_receive_buffer") {
 
         const rav::BufferView buffer_view(input.data(), input.size());
         buffer.write(2, buffer_view);
-        REQUIRE(buffer.next_ts().value() == 6);
+        REQUIRE(buffer.get_next_ts().value() == 6);
 
         buffer.read(2, output.data(), output.size());
         REQUIRE(output == std::array<uint8_t, 8> {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8});
@@ -98,13 +98,13 @@ TEST_CASE("rtp_receive_buffer") {
     }
 
     SECTION("Clear until some high timestamp") {
-        rav::rtp::ReceiveBuffer buffer;
+        rav::rtp::Buffer buffer;
         buffer.resize(480, 2);
         buffer.clear_until(1000);
     }
 
     SECTION("Clear until some crazy high timestamp") {
-        rav::rtp::ReceiveBuffer buffer;
+        rav::rtp::Buffer buffer;
         buffer.resize(480, 2);
         buffer.clear_until(253366016);
     }

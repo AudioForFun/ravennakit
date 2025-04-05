@@ -14,11 +14,12 @@
 #include "ravennakit/ravenna/ravenna_node.hpp"
 
 #include <CLI/App.hpp>
+#include <utility>
 
 namespace examples {
 
 struct ravenna_node final: rav::RavennaNode::Subscriber, rav::rtp::StreamReceiver::Subscriber {
-    explicit ravenna_node(const rav::rtp::Receiver::Configuration& config) : node(config) {
+    explicit ravenna_node(asio::ip::address_v4 interface_addr) : node(std::move(interface_addr)) {
         node.subscribe(this).wait();
     }
 
@@ -46,7 +47,7 @@ struct ravenna_node final: rav::RavennaNode::Subscriber, rav::rtp::StreamReceive
         RAV_INFO("RAVENNA receiver added for: {}", receiver.get_session_name());
     }
 
-    void rtp_stream_receiver_updated(const rav::rtp::StreamReceiver::StreamUpdatedEvent& event) override {
+    void on_rtp_stream_receiver_updated(const rav::rtp::StreamReceiver::StreamUpdatedEvent& event) override {
         RAV_INFO("Stream updated: {}", event.to_string());
     }
 
@@ -70,10 +71,7 @@ int main(int const argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    rav::rtp::Receiver::Configuration config;
-    config.interface_address = asio::ip::make_address(interface_address);
-
-    examples::ravenna_node node_example(config);
+    examples::ravenna_node node_example(asio::ip::make_address_v4(interface_address));
 
     for (auto& session : stream_names) {
         node_example.node.create_receiver(session).wait();

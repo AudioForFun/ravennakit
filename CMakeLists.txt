@@ -17,6 +17,7 @@ option(RAV_WITH_ADDRESS_SANITIZER "Enable Address Sanitizer" OFF)
 option(RAV_WITH_THREAD_SANITIZER "Enable Thread Sanitizer" OFF)
 option(RAV_EXAMPLES "Build the examples" ON)
 option(RAV_TESTS "Build the tests" ON)
+option(RAV_BENCHMARKS "Build the benchmarks" OFF)
 
 set(RAV_TRACY_PATH "C:/tracy-0.11.1" CACHE STRING "Path to Tracy")
 set(RAV_WINDOWS_VERSION "0x0A00" CACHE STRING "The minimum supported version of Windows")
@@ -49,6 +50,7 @@ find_package(CLI11 CONFIG REQUIRED)
 find_package(portaudio CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
 target_compile_definitions(asio::asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
+find_package(nanobench CONFIG REQUIRED)
 
 #########
 # Tracy #
@@ -187,6 +189,26 @@ if (${RAV_TESTS})
             rav_recommended_lto_flags
             ravennakit
             PRIVATE
+            Catch2::Catch2
+    )
+endif ()
+
+##############
+# Benchmarks #
+##############
+
+if (${RAV_BENCHMARKS})
+    file(GLOB_RECURSE BENCHMARK_SOURCE_FILES benchmarks/*.bench.cpp)
+
+    add_executable(ravennakit_benchmarks ${BENCHMARK_SOURCE_FILES})
+
+    target_link_libraries(ravennakit_benchmarks
+            PUBLIC
+            rav_recommended_warning_flags
+            rav_recommended_lto_flags
+            ravennakit
+            PRIVATE
+            nanobench::nanobench
             Catch2::Catch2
     )
 endif ()

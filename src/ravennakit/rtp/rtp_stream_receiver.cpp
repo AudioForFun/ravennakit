@@ -240,7 +240,7 @@ void rav::rtp::StreamReceiver::update_sdp(const sdp::SessionDescription& sdp) {
     if (should_restart || was_changed) {
         auto event = make_updated_event();
         for (auto& s : subscribers_) {
-            s->rtp_stream_receiver_updated(event);
+            s->on_rtp_stream_receiver_updated(event);
         }
     }
 }
@@ -255,7 +255,7 @@ void rav::rtp::StreamReceiver::set_delay(const uint32_t delay) {
 
     const auto event = make_updated_event();
     for (auto* s : subscribers_) {
-        s->rtp_stream_receiver_updated(event);
+        s->on_rtp_stream_receiver_updated(event);
     }
 }
 
@@ -265,7 +265,7 @@ uint32_t rav::rtp::StreamReceiver::get_delay() const {
 
 bool rav::rtp::StreamReceiver::subscribe(Subscriber* subscriber_to_add) {
     if (subscribers_.add(subscriber_to_add)) {
-        subscriber_to_add->rtp_stream_receiver_updated(make_updated_event());
+        subscriber_to_add->on_rtp_stream_receiver_updated(make_updated_event());
         return true;
     }
     return false;
@@ -280,34 +280,30 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_data_realtime(
 ) {
     TRACY_ZONE_SCOPED;
 
-    if (auto state = audio_thread_reader_.lock_realtime()) {
+    if (auto lock = audio_thread_reader_.lock_realtime()) {
         RAV_ASSERT_EXCLUSIVE_ACCESS(realtime_access_guard_);
         RAV_ASSERT(buffer_size != 0, "Buffer size must be greater than 0");
         RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr");
 
         do_realtime_maintenance();
 
-        if (buffer_size > state->read_buffer.size()) {
+        if (buffer_size > lock->read_buffer.size()) {
             RAV_WARNING("Buffer size is larger than the read buffer size");
             return std::nullopt;
         }
 
-        if (!state->first_packet_timestamp.has_value()) {
-            return std::nullopt;
-        }
-
         if (at_timestamp.has_value()) {
-            state->next_ts = *at_timestamp;
+            lock->next_ts = *at_timestamp;
         }
 
-        const auto num_frames = static_cast<uint32_t>(buffer_size) / state->selected_audio_format.bytes_per_frame();
+        const auto num_frames = static_cast<uint32_t>(buffer_size) / lock->selected_audio_format.bytes_per_frame();
 
-        const auto read_at = state->next_ts.value();
-        if (!state->receiver_buffer.read(read_at, buffer, buffer_size)) {
+        const auto read_at = lock->next_ts.value();
+        if (!lock->receiver_buffer.read(read_at, buffer, buffer_size)) {
             return std::nullopt;
         }
 
-        state->next_ts += num_frames;
+        lock->next_ts += num_frames;
 
         return read_at;
     }
@@ -322,8 +318,8 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_audio_data_realtime(
 
     RAV_ASSERT(output_buffer.is_valid(), "Buffer must be valid");
 
-    if (auto state = audio_thread_reader_.lock_realtime()) {
-        const auto format = state->selected_audio_format;
+    if (auto lock = audio_thread_reader_.lock_realtime()) {
+        const auto format = lock->selected_audio_format;
 
         if (format.byte_order != AudioFormat::ByteOrder::be) {
             RAV_ERROR("Unexpected byte order");
@@ -340,7 +336,7 @@ std::optional<uint32_t> rav::rtp::StreamReceiver::read_audio_data_realtime(
             return std::nullopt;
         }
 
-        auto& buffer = state->read_buffer;
+        auto& buffer = lock->read_buffer;
         const auto read_at =
             read_data_realtime(buffer.data(), output_buffer.num_frames() * format.bytes_per_frame(), at_timestamp);
 
@@ -449,9 +445,8 @@ void rav::rtp::StreamReceiver::restart() {
 
     shared_state_.update(std::move(new_state));
 
-    // TODO: Synchronize with the network thread
     for (auto& stream : media_streams_) {
-        stream.first_packet_timestamp.reset();
+        stream.rtp_ts.reset();
         stream.packet_stats.reset();
         if (!rtp_receiver_.subscribe(this, stream.session, stream.filter)) {
             RAV_ERROR("Failed to add subscriber");
@@ -481,9 +476,9 @@ void rav::rtp::StreamReceiver::handle_rtp_packet_event_for_session(
 
     const WrappingUint32 packet_timestamp(event.packet.timestamp());
 
-    if (!stream.first_packet_timestamp.has_value()) {
+    if (!stream.rtp_ts.has_value()) {
         stream.seq = event.packet.sequence_number();
-        stream.first_packet_timestamp = event.packet.timestamp();
+        stream.rtp_ts = event.packet.timestamp();
         stream.last_packet_time_ns = event.recv_time;
     }
 
@@ -546,7 +541,7 @@ void rav::rtp::StreamReceiver::handle_rtp_packet_event_for_session(
             }
         }
 
-        if (packet_timestamp - delay_ >= *stream.first_packet_timestamp) {
+        if (packet_timestamp - delay_ >= *stream.rtp_ts) {
             // Make sure to call with the correct timestamps for the missing packets
             for (uint16_t i = 0; i < *diff; ++i) {
                 for (const auto& c : subscribers_) {
@@ -566,7 +561,7 @@ void rav::rtp::StreamReceiver::set_state(const ReceiverState new_state, const bo
     if (notify_subscribers) {
         const auto event = make_updated_event();
         for (auto* s : subscribers_) {
-            s->rtp_stream_receiver_updated(event);
+            s->on_rtp_stream_receiver_updated(event);
         }
     }
 }
@@ -659,7 +654,7 @@ void rav::rtp::StreamReceiver::do_realtime_maintenance() {
 
         TRACY_PLOT(
             "available_frames",
-            static_cast<int64_t>(state->next_ts.diff(state->receiver_buffer.next_ts()))
+            static_cast<int64_t>(state->next_ts.diff(state->receiver_buffer.get_next_ts()))
         );
     }
 }

@@ -45,20 +45,27 @@ class Packet {
      * Sets the timestamp.
      * @param value The timestamp value.
      */
-    void timestamp(uint32_t value);
+    void set_timestamp(uint32_t value);
 
     /**
      * Increases the timestamp by the given value.
      * @param value The value to add.
      * @return The new timestamp.
      */
-    WrappingUint<uint32_t> timestamp_inc(uint32_t value);
+    WrappingUint<uint32_t> inc_timestamp(uint32_t value);
 
     /**
      * @return The timestamp.
      */
-    [[nodiscard]] WrappingUint<uint32_t> timestamp() const {
+    [[nodiscard]] WrappingUint<uint32_t> get_timestamp() const {
         return timestamp_;
+    }
+
+    /**
+     * @return The sequence number.
+     */
+    [[nodiscard]] WrappingUint<uint16_t> get_sequence_number() const {
+        return sequence_number_;
     }
 
     /**

@@ -14,11 +14,41 @@
 #include "ravennakit/core/net/interfaces/network_interface_list.hpp"
 #include "ravennakit/ptp/ptp_constants.hpp"
 
+const rav::ptp::LocalClock& rav::ptp::Instance::Subscriber::get_local_clock() {
+    static_assert(std::is_trivially_copyable_v<LocalClock>);
+    if (const auto value = local_clock_buffer_.get()) {
+        local_clock_ = *value;
+    }
+    return local_clock_;
+}
+
 rav::ptp::Instance::Instance(asio::io_context& io_context) :
     io_context_(io_context), state_decision_timer_(io_context), default_ds_(true), parent_ds_(default_ds_) {}
 
 rav::ptp::Instance::~Instance() {
     state_decision_timer_.cancel();
+}
+
+bool rav::ptp::Instance::subscribe(Subscriber* subscriber) {
+    if (subscribers_.add(subscriber)) {
+        if (!parent_ds_.parent_port_identity.is_valid()) {
+            return true;  // No parent yet
+        }
+        subscriber->ptp_parent_changed(parent_ds_);
+        for (auto& port : ports_) {
+            subscriber->ptp_port_changed_state(*port);
+        }
+        if (local_ptp_clock_.is_calibrated()) {
+            static_assert(std::is_trivially_copyable_v<LocalClock>);
+            subscriber->local_clock_buffer_.update(local_clock_);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool rav::ptp::Instance::unsubscribe(Subscriber* subscriber) {
+    return subscribers_.remove(subscriber);
 }
 
 tl::expected<void, rav::ptp::Error> rav::ptp::Instance::add_port(const asio::ip::address& interface_address) {
@@ -51,8 +81,14 @@ tl::expected<void, rav::ptp::Error> rav::ptp::Instance::add_port(const asio::ip:
     port_identity.clock_identity = default_ds_.clock_identity;
     port_identity.port_number = get_next_available_port_number();
 
-    ports_.emplace_back(std::make_unique<Port>(*this, io_context_, interface_address, port_identity))
-        ->assert_valid_state(DefaultProfile1);
+    auto new_port = std::make_unique<Port>(*this, io_context_, interface_address, port_identity);
+    new_port->on_state_changed([this](const Port& port) {
+        for (auto* s : subscribers_) {
+            s->ptp_port_changed_state(port);
+        }
+    });
+
+    ports_.emplace_back(std::move(new_port))->assert_valid_state(DefaultProfile1);
 
     default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
 
@@ -122,7 +158,9 @@ bool rav::ptp::Instance::set_recommended_state(
 
         if (parent_changed || gm_changed) {
             RAV_INFO("{}", parent_ds_.to_string());
-            on_parent_changed({parent_ds_});
+            for (auto* s : subscribers_) {
+                s->ptp_parent_changed(parent_ds_);
+            }
         }
 
         return true;
@@ -209,21 +247,18 @@ rav::ptp::State rav::ptp::Instance::get_state_for_decision_code(const StateDecis
 }
 
 rav::ptp::Timestamp rav::ptp::Instance::get_local_ptp_time() const {
-    return local_ptp_clock_.now();
-}
-
-rav::ptp::Timestamp rav::ptp::Instance::get_local_ptp_time(const Timestamp local_timestamp) const {
-    return local_ptp_clock_.system_to_ptp_time(local_timestamp);
+    return local_clock_.now();
 }
 
 void rav::ptp::Instance::update_local_ptp_clock(const Measurement<double>& measurement) {
     current_ds_.mean_delay = TimeInterval::to_fractional_interval(measurement.mean_delay);
     current_ds_.offset_from_master = TimeInterval::to_fractional_interval(measurement.offset_from_master);
     local_ptp_clock_.update(measurement);
-}
-
-void rav::ptp::Instance::force_update_local_ptp_clock(const Timestamp timestamp) {
-    local_ptp_clock_.force_update_time(timestamp);
+    if (local_ptp_clock_.is_calibrated()) {
+        for (auto* s : subscribers_) {
+            s->local_clock_buffer_.update(local_clock_);
+        }
+    }
 }
 
 uint16_t rav::ptp::Instance::get_next_available_port_number() const {

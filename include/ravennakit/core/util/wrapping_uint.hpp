@@ -63,14 +63,14 @@ class WrappingUint {
     /**
      * @returns The value of the sequence number.
      */
-    explicit operator T() const {
+    [[nodiscard]] explicit operator T() const {
         return value_;
     }
 
     /**
      * @returns The value of the sequence number.
      */
-    T value() const {
+    [[nodiscard]] T value() const {
         return value_;
     }
 
@@ -109,7 +109,7 @@ class WrappingUint {
      * @param value The value to increment by.
      * @return A new sequence number instance.
      */
-    WrappingUint operator+(const T value) const {
+    [[nodiscard]] WrappingUint operator+(const T value) const {
         return WrappingUint(value_ + value);
     }
 
@@ -118,7 +118,7 @@ class WrappingUint {
      * @param value The value to decrement by.
      * @return A new sequence number instance.
      */
-    WrappingUint operator-(const T value) const {
+    [[nodiscard]] WrappingUint operator-(const T value) const {
         return WrappingUint(value_ - value);
     }
 
@@ -127,7 +127,7 @@ class WrappingUint {
      * @param other The value to compare with.
      * @return True if the sequence number is equal to the given value, false otherwise.
      */
-    bool operator==(T other) {
+    [[nodiscard]] bool operator==(T other) {
         return value_ == other;
     }
 
@@ -136,7 +136,7 @@ class WrappingUint {
      * @param other The value to compare with.
      * @return True if the sequence number is not equal to the given value, false otherwise.
      */
-    bool operator!=(T other) {
+    [[nodiscard]] bool operator!=(T other) {
         return value_ != other;
     }
 
@@ -202,10 +202,12 @@ class WrappingUint {
 
     /**
      * Calculates the difference between two sequence numbers, taking into account wraparound.
+     * The value will be positive if the other sequence number is newer than this one, and negative if this one is
+     * newer.
      * @param other The other sequence number.
      * @return The difference between the two sequence numbers.
      */
-    std::make_signed_t<T> diff(const WrappingUint& other) const {
+    [[nodiscard]] std::make_signed_t<T> diff(const WrappingUint& other) const {
         // 1 -> 0
         if (is_older_than(other.value_, value_)) {
             return static_cast<std::make_signed_t<T>>(value_ - other.value_) * -1;

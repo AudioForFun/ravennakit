@@ -23,9 +23,9 @@ namespace rav::rtp {
  * packets with older packets. The reason for this is to allow different readers with different delay settings to use
  * the same buffer.
  */
-class ReceiveBuffer {
+class Buffer {
   public:
-    explicit ReceiveBuffer() = default;
+    explicit Buffer() = default;
 
     /**
      * Resizes the buffer.
@@ -38,8 +38,8 @@ class ReceiveBuffer {
             return;  // Nothing to do here
         }
         bytes_per_frame_ = bytes_per_frame;
-        buffer_.resize(buffer_capacity_frames * bytes_per_frame_, clear_value_);
-        std::fill(buffer_.begin(), buffer_.end(), clear_value_);
+        buffer_.resize(buffer_capacity_frames * bytes_per_frame_, ground_value_);
+        std::fill(buffer_.begin(), buffer_.end(), ground_value_);
     }
 
     /**
@@ -47,7 +47,8 @@ class ReceiveBuffer {
      * they might overwrite newer packets (as a result of circular buffering).
      * @param at_timestamp Places the data at this timestamp.
      * @param payload The data to write to the buffer.
-     * @return true if the data was written, false if the buffer is full or the timestamp is too old.
+     * @return true if the data was written, false if the payload is not a multiple of bytes_per_frame_ or if the
+     * payload is larger than the buffer size.
      */
     bool write(const uint32_t at_timestamp, const BufferView<const uint8_t>& payload) {
         RAV_ASSERT(payload.data() != nullptr, "Payload data must not be nullptr.");
@@ -135,10 +136,10 @@ class ReceiveBuffer {
             std::min(static_cast<size_t>(number_of_elements), buffer_.size())
         );
 
-        std::memset(buffer_.data() + position.index1, clear_value_, position.size1);
+        std::memset(buffer_.data() + position.index1, ground_value_, position.size1);
 
         if (position.size2 > 0) {
-            std::memset(buffer_.data(), clear_value_, position.size2);
+            std::memset(buffer_.data(), ground_value_, position.size2);
         }
 
         next_ts_ = at_timestamp;
@@ -148,7 +149,7 @@ class ReceiveBuffer {
     /**
      * @returns the timestamp following the most recent data (packet start ts + packet size).
      */
-    [[nodiscard]] WrappingUint32 next_ts() const {
+    [[nodiscard]] WrappingUint32 get_next_ts() const {
         return next_ts_;
     }
 
@@ -166,7 +167,7 @@ class ReceiveBuffer {
      * @param ground_value The value to clear the buffer with.
      */
     void set_ground_value(const uint8_t ground_value) {
-        clear_value_ = ground_value;
+        ground_value_ = ground_value;
     }
 
     /**
@@ -193,12 +194,10 @@ class ReceiveBuffer {
     }
 
   private:
-    static constexpr size_t k_buffer_size_delay_factor = 2;  // The buffer size is twice the delay.
-
     uint32_t bytes_per_frame_ = 0;  // Number of bytes (octets) per frame
-    WrappingUint32 next_ts_;       // Producer ts
+    WrappingUint32 next_ts_;        // Producer ts
     std::vector<uint8_t> buffer_;   // Stores the actual data
-    uint8_t clear_value_ = 0;       // Value to clear the buffer with. TODO: Make configurable
+    uint8_t ground_value_ = 0;      // Value to clear the buffer with.
 };
 
-}  // namespace rav
+}  // namespace rav::rtp

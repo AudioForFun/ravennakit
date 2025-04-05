@@ -264,6 +264,34 @@ class AudioBufferView {
     }
 
     /**
+     * @return The maximum absolute value of all the samples in the audio buffer.
+     */
+    T find_max_abs() const {
+        std::remove_const_t<T> max_value = channels_[0][0];
+        for (size_t ch = 0; ch < num_channels_; ++ch) {
+            for (size_t frame = 0; frame < num_frames_; ++frame) {
+                max_value = std::max(max_value, std::fabs(channels_[ch][frame]));
+            }
+        }
+        return max_value;
+    }
+
+    /**
+     * @channel_index The index of the channel to find the maximum value for.
+     * @return The maximum absolute value of all the samples in the audio buffer.
+     */
+    T find_max_abs(const size_t channel_index) const {
+        if (channel_index >= num_channels_) {
+            return {};
+        }
+        std::remove_const_t<T> max_value = channels_[channel_index][0];
+        for (size_t frame = 0; frame < num_frames_; ++frame) {
+            max_value = std::max(max_value, std::fabs(channels_[channel_index][frame]));
+        }
+        return max_value;
+    }
+
+    /**
      * Returns a copy of this view with given number of channels.
      * @param num_channels The number of channels.
      * @return A copy of this view with the given number of channels.
