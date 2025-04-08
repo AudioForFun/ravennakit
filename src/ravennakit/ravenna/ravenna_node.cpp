@@ -146,10 +146,10 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
 }
 
 std::future<tl::expected<void, std::string>>
-rav::RavennaNode::update_sender_configuration(Id receiver_id, RavennaSender::ConfigurationUpdate update) {
-    auto work = [this, receiver_id, u = std::move(update)]() -> tl::expected<void, std::string> {
+rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update) {
+    auto work = [this, sender_id, u = std::move(update)]() -> tl::expected<void, std::string> {
         for (const auto& sender : senders_) {
-            if (sender->get_id() == receiver_id) {
+            if (sender->get_id() == sender_id) {
                 return sender->update_configuration(u);
             }
         }

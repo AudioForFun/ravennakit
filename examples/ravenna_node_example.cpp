@@ -75,6 +75,10 @@ struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::S
 
 }  // namespace examples
 
+/**
+ * This example demonstrates the use of the RavennaNode class to implement a virtual RAVENNA node.
+ * Warning! This example is not complete and is not intended to be used as-is.
+ */
 int main(int const argc, char* argv[]) {
     rav::set_log_level_from_env();
     rav::do_system_checks();

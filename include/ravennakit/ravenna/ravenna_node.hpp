@@ -122,12 +122,12 @@ class RavennaNode {
 
     /**
      * Updates the configuration of the sender with the given id.
-     * @param receiver_id The id of the sender to update.
+     * @param sender_id The id of the sender to update.
      * @param update The configuration changes to apply.
      * @return A future that will be set when the operation is complete.
      */
     std::future<tl::expected<void, std::string>>
-    update_sender_configuration(Id receiver_id, RavennaSender::ConfigurationUpdate update);
+    update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update);
 
     /**
      * Adds a subscriber to the node.
