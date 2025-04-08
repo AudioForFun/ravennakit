@@ -39,13 +39,6 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     static constexpr uint32_t k_max_num_frames = 4096;
 
     /**
-     * Handler for when data is requested. The handler should fill the buffer with audio data and return true if the
-     * whole buffer was filled, or false if not enough data is available (in which case sending will happen on the next
-     * round).
-     */
-    using OnDataRequestedHandler = std::function<bool(uint32_t timestamp, BufferView<uint8_t> buffer)>;
-
-    /**
      * Defines the configuration for the sender.
      */
     struct Configuration {
@@ -218,7 +211,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     void start_timer();
     void stop_timer();
     void send_outgoing_data();
-    void update_realtime_context();
+    void update_shared_context();
 };
 
 }  // namespace rav

@@ -20,7 +20,7 @@
 #include <CLI/App.hpp>
 
 namespace examples {
-class loopback: public rav::rtp::StreamReceiver::Subscriber, public rav::ptp::Instance::Subscriber {
+class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instance::Subscriber {
   public:
     explicit loopback(std::string stream_name, const asio::ip::address_v4& interface_addr) :
         stream_name_(std::move(stream_name)) {
@@ -50,12 +50,17 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber, public rav::ptp::In
         auto config = rav::rtp::Receiver::Configuration {interface_addr};
         rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(io_context_, config);
 
+        rav::RavennaReceiver::ConfigurationUpdate update;
+        update.delay_frames = 480;  // 10ms at 48KHz
+        update.enabled = true;
+        update.session_name = stream_name_;
+
         ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(*rtsp_client_, *rtp_receiver_);
-        ravenna_receiver_->set_delay(480);  // 10ms @ 48kHz
-        if (!ravenna_receiver_->subscribe(this)) {
-            RAV_WARNING("Failed to add subscriber");
+        auto result = ravenna_receiver_->update_configuration(update);
+        if (!result) {
+            RAV_ERROR("Failed to update configuration: {}", result.error());
+            return;
         }
-        std::ignore = ravenna_receiver_->subscribe_to_session(stream_name_);
     }
 
     ~loopback() override {
@@ -72,17 +77,14 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber, public rav::ptp::In
         }
     }
 
-    void on_rtp_stream_receiver_updated(const rav::rtp::StreamReceiver::StreamUpdatedEvent& event) override {
-        if (event.state == rav::rtp::StreamReceiver::ReceiverState::idle) {
-            // TODO: Stop sending
-            return;
-        }
+    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& parameters) override {
+        RAV_ASSERT(parameters.audio_format.is_valid(), "Invalid audio format");
 
-        buffer_.resize(event.selected_audio_format.bytes_per_frame() * event.packet_time_frames);
+        buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.packet_time_frames);
 
         rav::RavennaSender::ConfigurationUpdate update;
         update.session_name = stream_name_ + "_loopback";
-        update.audio_format = event.selected_audio_format;
+        update.audio_format = parameters.audio_format;
         update.enabled = true;
 
         auto result = sender_->update_configuration(update);
@@ -97,7 +99,7 @@ class loopback: public rav::rtp::StreamReceiver::Subscriber, public rav::ptp::In
             return;
         }
 
-        timestamp += ravenna_receiver_->get_delay();
+        timestamp += ravenna_receiver_->get_configuration().delay_frames;
         std::ignore = sender_->send_data_realtime(rav::BufferView(buffer_).const_view(), timestamp.value());
     }
 

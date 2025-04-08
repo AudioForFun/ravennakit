@@ -22,17 +22,17 @@ using EventSlot = LinkedNode<std::function<void(Args...)>>;
 
 /**
  * An event emitter which can be used to subscribe to and emit events of a given type.
- * The way this class is designed makes it easy to use without thinking about memory management. When the event_slot
+ * The way this class is designed makes it easy to use without thinking about memory management. When the EventSlot
  * goes out of scope it will unsubscribe itself from the event emitter (by removing itself from the internal linked
- * list) and when the event_emitter goes out of scope while there are existing event_slots, it removes itself from the
- * list after which it cannot be dereferenced anymore. Another advantage of this class is having the ability to
- * subscribe to events while avoiding inheritance.
+ * list) and when the EventSlot goes out of scope while there are existing EventSlot, it removes itself from the
+ * list after which it cannot be dereferenced anymore. This class enables composition-based design, eliminating the need
+ * for inheritance.
  * @tparam Args List of arguments to be emitted.
  */
 template<typename... Args>
 class EventEmitter {
   public:
-    using Handle = LinkedNode<std::function<void(Args...)>>;
+    using Node = LinkedNode<std::function<void(Args...)>>;
 
     /**
      * Emits an event to all subscribers.
@@ -46,8 +46,8 @@ class EventEmitter {
      * Connects a handle to the event emitter. The handle will be automatically removed when it goes out of scope.
      * @param h The handle to connect.
      */
-    void connect(Handle& h) {
-        subscribers_.push_back(h);
+    void connect(Node& h) {
+        nodes_.push_back(h);
     }
 
     /**
@@ -57,8 +57,8 @@ class EventEmitter {
      * @return A handle to the subscription.
      */
     [[nodiscard]] EventSlot<Args...> subscribe(std::function<void(Args...)> f) {
-        Handle node(std::move(f));
-        subscribers_.push_back(node);
+        Node node(std::move(f));
+        nodes_.push_back(node);
         return node;
     }
 
@@ -67,7 +67,7 @@ class EventEmitter {
      * @param args The arguments to pass to the subscribers.
      */
     void emit(Args... args) {
-        for (auto& s : subscribers_) {
+        for (auto& s : nodes_) {
             auto& f = s.value();
             if (f == nullptr) {
                 continue;
@@ -77,7 +77,7 @@ class EventEmitter {
     }
 
   private:
-    Handle subscribers_;
+    Node nodes_;
 };
 
 }  // namespace rav

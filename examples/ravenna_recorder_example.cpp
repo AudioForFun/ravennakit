@@ -25,7 +25,7 @@ namespace examples {
 /**
  * A class that is a subscriber to a rtp_stream_receiver and writes the audio data to a wav file.
  */
-class stream_recorder: public rav::rtp::StreamReceiver::Subscriber {
+class stream_recorder: public rav::RavennaReceiver::Subscriber {
   public:
     explicit stream_recorder(std::unique_ptr<rav::RavennaReceiver> receiver) : receiver_(std::move(receiver)) {
         if (receiver_) {
@@ -56,8 +56,8 @@ class stream_recorder: public rav::rtp::StreamReceiver::Subscriber {
         }
     }
 
-    void on_rtp_stream_receiver_updated(const rav::rtp::StreamReceiver::StreamUpdatedEvent& event) override {
-        if (!event.selected_audio_format.is_valid() || !event.session.valid()) {
+    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& event) override {
+        if (!event.audio_format.is_valid() || !event.session.valid()) {
             return;
         }
 
@@ -68,11 +68,11 @@ class stream_recorder: public rav::rtp::StreamReceiver::Subscriber {
             return;
         }
 
-        auto file_path = rav::File(receiver_->get_session_name() + ".wav").absolute();
+        auto file_path = rav::File(receiver_->get_configuration().session_name + ".wav").absolute();
 
-        RAV_INFO("Recording stream: {} to file: {}", receiver_->get_session_name(), file_path.to_string());
+        RAV_INFO("Recording stream: {} to file: {}", receiver_->get_configuration().session_name, file_path.to_string());
 
-        audio_format_ = event.selected_audio_format;
+        audio_format_ = event.audio_format;
         file_output_stream_ = std::make_unique<rav::FileOutputStream>(file_path);
         wav_writer_ = std::make_unique<rav::WavAudioFormat::Writer>(
             *file_output_stream_, rav::WavAudioFormat::FormatCode::pcm, audio_format_.sample_rate,
@@ -118,10 +118,15 @@ class ravenna_recorder {
     ~ravenna_recorder() = default;
 
     void add_stream(const std::string& stream_name) {
+        rav::RavennaReceiver::ConfigurationUpdate update;
+        update.delay_frames = 480;  // 10ms at 48KHz
+        update.enabled = true;
+        update.session_name = stream_name;
+
         auto receiver = std::make_unique<rav::RavennaReceiver>(*rtsp_client_, *rtp_receiver_);
-        receiver->set_delay(480);  // 10ms @ 48kHz
-        if (!receiver->subscribe_to_session(stream_name)) {
-            RAV_ERROR("Failed to subscribe to session");
+        auto result = receiver->update_configuration(update);
+        if (!result) {
+            RAV_ERROR("Failed to update configuration: {}", result.error());
             return;
         }
         recorders_.emplace_back(std::make_unique<stream_recorder>(std::move(receiver)));

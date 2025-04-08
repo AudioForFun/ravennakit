@@ -159,7 +159,7 @@ class portaudio_stream {
     }
 };
 
-class ravenna_receiver: public rav::rtp::StreamReceiver::Subscriber {
+class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
   public:
     explicit ravenna_receiver(
         const std::string& stream_name, std::string audio_device_name, const std::string& interface_address
@@ -171,12 +171,20 @@ class ravenna_receiver: public rav::rtp::StreamReceiver::Subscriber {
         config.interface_address = asio::ip::make_address(interface_address);
         rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(io_context_, config);
 
+        rav::RavennaReceiver::ConfigurationUpdate update;
+        update.delay_frames = 480;  // 10ms at 48KHz
+        update.enabled = true;
+        update.session_name = stream_name;
+
         ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(*rtsp_client_, *rtp_receiver_);
-        ravenna_receiver_->set_delay(480);
+        auto result = ravenna_receiver_->update_configuration(update);
+        if (!result) {
+            RAV_ERROR("Failed to update configuration: {}", result.error());
+            return;
+        }
         if (!ravenna_receiver_->subscribe(this)) {
             RAV_WARNING("Failed to add subscriber");
         }
-        std::ignore = ravenna_receiver_->subscribe_to_session(stream_name);
     }
 
     ~ravenna_receiver() override {
@@ -196,12 +204,12 @@ class ravenna_receiver: public rav::rtp::StreamReceiver::Subscriber {
         portaudio_stream_.stop();
     }
 
-    void on_rtp_stream_receiver_updated(const rav::rtp::StreamReceiver::StreamUpdatedEvent& event) override {
-        if (!event.selected_audio_format.is_valid() || audio_format_ == event.selected_audio_format) {
+    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& event) override {
+        if (!event.audio_format.is_valid() || audio_format_ == event.audio_format) {
             return;
         }
 
-        audio_format_ = event.selected_audio_format;
+        audio_format_ = event.audio_format;
         const auto sample_format = get_sample_format_for_audio_format(audio_format_);
         if (!sample_format.has_value()) {
             RAV_TRACE("Skipping stream update because audio format is invalid: {}", audio_format_.to_string());
