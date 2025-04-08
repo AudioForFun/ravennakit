@@ -125,7 +125,7 @@ class NetworkInterface {
     /**
      * @returns A description of the network interface as string.
      */
-    std::string to_string();
+    [[nodiscard]] std::string to_string() const;
 
     /**
      * Converts the given type to a string.

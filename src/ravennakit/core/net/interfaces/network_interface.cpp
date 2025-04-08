@@ -142,7 +142,7 @@ std::optional<uint32_t> rav::NetworkInterface::interface_index() const {
 #endif
 }
 
-std::string rav::NetworkInterface::to_string() {
+std::string rav::NetworkInterface::to_string() const {
     std::string output = fmt::format("{}\n", identifier_);
 
     if (!display_name_.empty()) {
