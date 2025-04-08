@@ -93,7 +93,10 @@ int main(int const argc, char* argv[]) {
     examples::ravenna_node node_example(asio::ip::make_address_v4(interface_address));
 
     for (auto& session : stream_names) {
-        node_example.node.create_receiver(session).wait();
+        rav::RavennaReceiver::ConfigurationUpdate config;
+        config.session_name = session;
+        config.enabled = true;
+        node_example.node.create_receiver(config).wait();
     }
 
     fmt::println("Press return key to stop...");
