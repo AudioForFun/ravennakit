@@ -13,7 +13,7 @@
 #include "ravennakit/core/log.hpp"
 
 rav::network_interface_list::network_interface_list() {
-    refresh();
+    refresh_system_interfaces();
 }
 
 const rav::NetworkInterface* rav::network_interface_list::find_by_string(const std::string& search_string) const {
@@ -23,21 +23,21 @@ const rav::NetworkInterface* rav::network_interface_list::find_by_string(const s
 
     // Match identifier
     for (auto& interface : interfaces_) {
-        if (interface.identifier() == search_string) {
+        if (interface.get_identifier() == search_string) {
             return &interface;
         }
     }
 
     // Match display name
     for (auto& interface : interfaces_) {
-        if (interface.display_name() == search_string) {
+        if (interface.get_display_name() == search_string) {
             return &interface;
         }
     }
 
     // Match description
     for (auto& interface : interfaces_) {
-        if (interface.description() == search_string) {
+        if (interface.get_description() == search_string) {
             return &interface;
         }
     }
@@ -52,7 +52,7 @@ const rav::NetworkInterface* rav::network_interface_list::find_by_string(const s
 
     // Match address
     for (auto& interface : interfaces_) {
-        for (const auto& address : interface.addresses()) {
+        for (const auto& address : interface.get_addresses()) {
             if (address.to_string() == search_string) {
                 return &interface;
             }
@@ -64,7 +64,7 @@ const rav::NetworkInterface* rav::network_interface_list::find_by_string(const s
 
 const rav::NetworkInterface* rav::network_interface_list::find_by_address(const asio::ip::address& address) const {
     for (auto& interface : interfaces_) {
-        for (const auto& addr : interface.addresses()) {
+        for (const auto& addr : interface.get_addresses()) {
             if (addr == address) {
                 return &interface;
             }
@@ -73,7 +73,7 @@ const rav::NetworkInterface* rav::network_interface_list::find_by_address(const 
     return nullptr;
 }
 
-void rav::network_interface_list::refresh() {
+void rav::network_interface_list::refresh_system_interfaces() {
     auto result = NetworkInterface::get_all();
     if (!result) {
         RAV_ERROR("Failed to get network interfaces: {}", result.error());

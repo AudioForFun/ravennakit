@@ -24,7 +24,7 @@ class network_interface_list {
     /**
      * Refreshes the list with interfaces on the system.
      */
-    void refresh();
+    void refresh_system_interfaces();
 
     /**
      * Finds a network interface by the given string. The string can be the identifier, display name, description, MAC

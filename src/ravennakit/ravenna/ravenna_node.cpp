@@ -170,6 +170,10 @@ std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
         for (const auto& receiver : receivers_) {
             subscriber->ravenna_receiver_added(*receiver);
         }
+        for (const auto& sender : senders_) {
+            subscriber->ravenna_sender_added(*sender);
+        }
+        subscriber->network_interface_config_updated(config_.get_network_interface_config());
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
@@ -202,8 +206,7 @@ std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, Ravenn
     return asio::dispatch(io_context_, asio::use_future(work));
 }
 
-std::future<void>
-rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
+std::future<void> rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
     auto work = [this, receiver_id, subscriber] {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
@@ -274,21 +277,6 @@ std::future<rav::RavennaReceiver::StreamStats> rav::RavennaNode::get_stats_for_r
             }
         }
         return RavennaReceiver::StreamStats {};
-    };
-    return asio::dispatch(io_context_, asio::use_future(work));
-}
-
-std::future<bool>
-rav::RavennaNode::get_receiver(Id receiver_id, std::function<void(RavennaReceiver&)> update_function) {
-    RAV_ASSERT(update_function != nullptr, "Function must be valid");
-    auto work = [this, receiver_id, f = std::move(update_function)] {
-        for (const auto& receiver : receivers_) {
-            if (receiver->get_id() == receiver_id) {
-                f(*receiver);
-                return true;
-            }
-        }
-        return false;
     };
     return asio::dispatch(io_context_, asio::use_future(work));
 }
@@ -376,6 +364,22 @@ bool rav::RavennaNode::send_audio_data_realtime(
     }
 
     return false;
+}
+
+std::future<void>
+rav::RavennaNode::set_network_interface_config(RavennaConfig::NetworkInterfaceConfig interface_config) {
+    auto work = [this, config = std::move(interface_config)] {
+        if (config_.set_network_interface_config(config)) {
+            // TODO: Update senders
+            // TODO: Update receivers
+            // TODO: Update PTP instance
+            for (const auto& subscriber : subscribers_) {
+                subscriber->network_interface_config_updated(config);
+            }
+            RAV_TRACE("{}", config.to_string());
+        }
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
 }
 
 bool rav::RavennaNode::is_maintenance_thread() const {
