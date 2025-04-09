@@ -12,10 +12,6 @@
 
 #include "ravennakit/core/log.hpp"
 
-rav::NetworkInterfaceList::NetworkInterfaceList() {
-    repopulate_with_system_interfaces();
-}
-
 rav::NetworkInterfaceList::NetworkInterfaceList(std::vector<NetworkInterface> interfaces) :
     interfaces_(std::move(interfaces)) {}
 

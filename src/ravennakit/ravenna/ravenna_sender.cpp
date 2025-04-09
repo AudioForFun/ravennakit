@@ -149,7 +149,7 @@ tl::expected<void, std::string> rav::RavennaSender::update_configuration(const C
     }
 
     // Generate a multicast address if not set
-    if (configuration_.destination_address.is_unspecified()) {
+    if (configuration_.destination_address.is_unspecified() && !rtp_sender_.get_interface_address().is_unspecified()) {
         // Construct a multicast address from the interface address
         const auto interface_address_bytes = rtp_sender_.get_interface_address().to_bytes();
         configuration_.destination_address = asio::ip::address_v4(
@@ -401,6 +401,7 @@ bool rav::RavennaSender::send_audio_data_realtime(
 
 void rav::RavennaSender::set_interface(const asio::ip::address_v4& interface_address) {
     rtp_sender_.set_interface(interface_address);
+    update_configuration({}); // Trigger an update to generate a destination address if necessary
 }
 
 void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) const {

@@ -19,7 +19,7 @@ namespace rav {
  */
 class NetworkInterfaceList {
   public:
-    NetworkInterfaceList();
+    NetworkInterfaceList() = default;
 
     /**
      * Constructor that takes a vector of network interfaces.
@@ -57,7 +57,7 @@ class NetworkInterfaceList {
     /**
      * @return The list of network interface identifiers.
      */
-    std::vector<NetworkInterface::Identifier> get_interface_identifiers() const;
+    [[nodiscard]] std::vector<NetworkInterface::Identifier> get_interface_identifiers() const;
 
     /**
      * Retrieves the list of network interfaces on the system. This is a static function that returns a singleton
