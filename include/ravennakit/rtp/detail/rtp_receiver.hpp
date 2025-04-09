@@ -43,10 +43,6 @@ class Receiver {
         const asio::ip::udp::endpoint& src_endpoint;
     };
 
-    struct Configuration {
-        asio::ip::address interface_address {};
-    };
-
     /**
      * Baseclass for other classes that want to subscribe to receiving RTP and RTCP packets.
      * The class provides several facilities to filter the traffic.
@@ -143,6 +139,10 @@ class Receiver {
         std::shared_ptr<UdpSenderReceiver> rtcp_sender_receiver;
         Subscription rtp_multicast_subscription;
         Subscription rtcp_multicast_subscription;
+    };
+
+    struct Configuration {
+        asio::ip::address interface_address {};
     };
 
     asio::io_context& io_context_;
