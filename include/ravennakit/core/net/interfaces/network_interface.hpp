@@ -42,6 +42,9 @@ namespace rav {
  */
 class NetworkInterface {
   public:
+    /// The identifier of a network interface (e.g. "en0", "eth0").
+    using Identifier = std::string;
+
     /// The type of the network interface.
     enum class Type {
         undefined,
@@ -75,7 +78,7 @@ class NetworkInterface {
      * interface, and should be the BSD name on BSD-style platforms and the AdapterName on Windows platforms.
      * @param identifier The unique identifier of the network interface.
      */
-    explicit NetworkInterface(std::string identifier) : identifier_(std::move(identifier)) {
+    explicit NetworkInterface(Identifier identifier) : identifier_(std::move(identifier)) {
         RAV_ASSERT(!identifier_.empty(), "Identifier cannot be empty");
     }
 
@@ -83,7 +86,7 @@ class NetworkInterface {
      *
      * @return The name of the network interface.
      */
-    [[nodiscard]] const std::string& get_identifier() const;
+    [[nodiscard]] const Identifier& get_identifier() const;
 
     /**
      * @return The display name of the network interface.
@@ -180,7 +183,7 @@ class NetworkInterface {
     }
 
   private:
-    std::string identifier_;
+    Identifier identifier_;
     std::string display_name_;
     std::string description_;
     std::optional<MacAddress> mac_address_;

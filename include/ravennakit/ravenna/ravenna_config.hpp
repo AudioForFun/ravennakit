@@ -21,17 +21,16 @@ namespace rav {
 class RavennaConfig {
   public:
     struct NetworkInterfaceConfig {
-        std::optional<NetworkInterface> primary_interface;
-        std::optional<NetworkInterface> secondary_interface;
+        std::optional<NetworkInterface::Identifier> primary_interface;
+        std::optional<NetworkInterface::Identifier> secondary_interface;
 
         /**
          * @return A string representation of the network interface configuration.
          */
         [[nodiscard]] std::string to_string() const {
             return fmt::format(
-                R"(Network interface configuration: primary: "{}", secondary: "{}")",
-                primary_interface ? primary_interface->get_extended_display_name() : "none",
-                secondary_interface ? secondary_interface->get_extended_display_name() : "none"
+                R"(Network interface configuration: primary={}, secondary={})",
+                primary_interface ? *primary_interface : "none", secondary_interface ? *secondary_interface : "none"
             );
         }
     };

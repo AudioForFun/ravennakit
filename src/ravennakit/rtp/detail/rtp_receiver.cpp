@@ -213,8 +213,6 @@ void rav::rtp::Receiver::handle_incoming_rtp_data(const UdpSenderReceiver::recv_
             }
         }
     }
-
-    // TODO: Process the packet
 }
 
 void rav::rtp::Receiver::handle_incoming_rtcp_data(const UdpSenderReceiver::recv_event& event) {

@@ -399,6 +399,6 @@ std::string rav::NetworkInterface::Capabilities::to_string() const {
     return output;
 }
 
-const std::string& rav::NetworkInterface::get_identifier() const {
+const rav::NetworkInterface::Identifier& rav::NetworkInterface::get_identifier() const {
     return identifier_;
 }

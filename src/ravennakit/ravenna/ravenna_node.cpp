@@ -376,7 +376,7 @@ rav::RavennaNode::set_network_interface_config(RavennaConfig::NetworkInterfaceCo
             for (const auto& subscriber : subscribers_) {
                 subscriber->network_interface_config_updated(config);
             }
-            RAV_TRACE("{}", config.to_string());
+            RAV_INFO("{}", config.to_string());
         }
     };
     return asio::dispatch(io_context_, asio::use_future(work));

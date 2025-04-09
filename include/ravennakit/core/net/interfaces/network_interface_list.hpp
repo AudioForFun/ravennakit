@@ -28,8 +28,15 @@ class NetworkInterfaceList {
     explicit NetworkInterfaceList(std::vector<NetworkInterface> interfaces);
 
     /**
+     * Gets a network interface by the given identifier.
+     * @param identifier The string to search for.
+     * @return The network interface if found, otherwise nullptr.
+     */
+    [[nodiscard]] const NetworkInterface* get_interface(const NetworkInterface::Identifier& identifier) const;
+
+    /**
      * Finds a network interface by the given string. The string can be the identifier, display name, description, MAC
-     * or an ip address. It's meant as convenience function for the user.
+     * or an ip address. It's meant as convenience function for the user. The search is case-insensitive.
      * @param search_string The string to search for.
      * @return The network interface if found, otherwise nullptr.
      */
@@ -45,7 +52,12 @@ class NetworkInterfaceList {
     /**
      * @returns The list of network interfaces.
      */
-    [[nodiscard]] const std::vector<NetworkInterface>& interfaces() const;
+    [[nodiscard]] const std::vector<NetworkInterface>& get_interfaces() const;
+
+    /**
+     * @return The list of network interface identifiers.
+     */
+    std::vector<NetworkInterface::Identifier> get_interface_identifiers() const;
 
     /**
      * Retrieves the list of network interfaces on the system. This is a static function that returns a singleton
