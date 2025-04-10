@@ -407,6 +407,32 @@ bool rav::RavennaNode::is_maintenance_thread() const {
     return maintenance_thread_id_ == std::this_thread::get_id();
 }
 
+std::future<nlohmann::json> rav::RavennaNode::to_json() {
+    auto work = [this] {
+        nlohmann::json j;
+        j["config"] = config_.to_json();
+        return j;
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
+std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json(const nlohmann::json& json) {
+    auto work = [this, json]() -> tl::expected<void, std::string> {
+        try {
+            auto ravenna_config = RavennaConfig::from_json(json.at("config"));
+            if (!ravenna_config) {
+                return tl::unexpected(ravenna_config.error());
+            }
+            set_network_interface_config(ravenna_config->network_interfaces).get();
+        } catch (const std::exception& e) {
+            return tl::unexpected(fmt::format("Failed to parse RavennaNode JSON: {}", e.what()));
+        }
+
+        return {};
+    };
+    return asio::dispatch(io_context_, asio::use_future(work));
+}
+
 bool rav::RavennaNode::update_realtime_shared_context() {
     auto new_context = std::make_unique<realtime_shared_context>();
     for (auto& receiver : receivers_) {

@@ -23,6 +23,8 @@
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <string>
 
 /**
@@ -78,7 +80,7 @@ class RavennaNode {
          * Called from the maintenance thread.
          * @param sender_id The id of the sender.
          */
-        virtual void ravenna_sender_removed(Id sender_id) {
+        virtual void ravenna_sender_removed(const Id sender_id) {
             std::ignore = sender_id;
         }
 
@@ -274,6 +276,18 @@ class RavennaNode {
      * @return True if this method is called on the maintenance thread, false otherwise.
      */
     [[nodiscard]] bool is_maintenance_thread() const;
+
+    /**
+     * @returns A JSON representation of the node.
+     */
+    std::future<nlohmann::json> to_json();
+
+    /**
+     * Restores the node from a JSON representation.
+     * @param json The JSON representation of the node.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<tl::expected<void, std::string>> restore_from_json(const nlohmann::json& json);
 
     /**
      * Schedules some work on the maintenance thread using asio::dispatch. This is useful for synchronizing with

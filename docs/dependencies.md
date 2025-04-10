@@ -7,6 +7,8 @@ This project requires the following dependencies:
 - [asio](https://github.com/chriskohlhoff/asio) (Boost Software License)
 - [tl-expected](https://github.com/TartanLlama/expected) (CC0 1.0 Universal)
 - [nanobench](https://github.com/martinus/nanobench) (MIT License)
+- [Bonjour SDK for Windows](https://developer.apple.com/bonjour/) (Apache 2.0 License)
+- [nlohmann-json](https://github.com/nlohmann/json) (MIT License)
 
 Optional:
 
