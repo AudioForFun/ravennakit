@@ -63,9 +63,9 @@ std::string rav::RavennaReceiver::StreamParameters::to_string() const {
 }
 
 rav::RavennaReceiver::RavennaReceiver(
-    RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, ConfigurationUpdate initial_config
+    RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id, ConfigurationUpdate initial_config
 ) :
-    rtp_receiver_(rtp_receiver), rtsp_client_(rtsp_client), maintenance_timer_(rtp_receiver.get_io_context()) {
+    rtp_receiver_(rtp_receiver), rtsp_client_(rtsp_client), id_(id), maintenance_timer_(rtp_receiver.get_io_context()) {
     if (!initial_config.delay_frames) {
         initial_config.delay_frames = 480;  // 10ms at 48KHz
     }

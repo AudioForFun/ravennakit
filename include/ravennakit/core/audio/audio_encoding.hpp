@@ -89,4 +89,35 @@ inline const char* audio_encoding_to_string(const AudioEncoding encoding) {
     }
 }
 
+inline std::optional<AudioEncoding> audio_encoding_from_string(const char* str) {
+    if (!str) {
+        return std::nullopt;
+    }
+    if (strcmp(str, "pcm_s8") == 0) {
+        return AudioEncoding::pcm_s8;
+    }
+    if (strcmp(str, "pcm_u8") == 0) {
+        return AudioEncoding::pcm_u8;
+    }
+    if (strcmp(str, "pcm_s16") == 0) {
+        return AudioEncoding::pcm_s16;
+    }
+    if (strcmp(str, "pcm_s24") == 0) {
+        return AudioEncoding::pcm_s24;
+    }
+    if (strcmp(str, "pcm_s32") == 0) {
+        return AudioEncoding::pcm_s32;
+    }
+    if (strcmp(str, "pcm_f32") == 0) {
+        return AudioEncoding::pcm_f32;
+    }
+    if (strcmp(str, "pcm_f64") == 0) {
+        return AudioEncoding::pcm_f64;
+    }
+    if (strcmp(str, "undefined") == 0) {
+        return AudioEncoding::undefined;
+    }
+    return std::nullopt;
+}
+
 }  // namespace rav

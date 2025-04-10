@@ -336,6 +336,7 @@ class RavennaNode {
     asio::io_context io_context_;
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
+    Id::Generator id_generator_;
 
     RavennaBrowser browser_ {io_context_};
     RavennaRtspClient rtsp_client_ {io_context_, browser_};
@@ -352,6 +353,7 @@ class RavennaNode {
     RavennaConfig config_;
 
     [[nodiscard]] bool update_realtime_shared_context();
+    uint32_t generate_unique_session_id() const;
 };
 
 }  // namespace rav

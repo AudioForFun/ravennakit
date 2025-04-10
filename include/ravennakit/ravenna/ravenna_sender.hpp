@@ -13,6 +13,7 @@
 #include "ravennakit/aes67/aes67_constants.hpp"
 #include "ravennakit/aes67/aes67_packet_time.hpp"
 #include "ravennakit/core/uri.hpp"
+#include "ravennakit/core/json.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/containers/fifo_buffer.hpp"
 #include "ravennakit/core/sync/rcu.hpp"
@@ -49,6 +50,11 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
         AudioFormat audio_format;
         aes67::PacketTime packet_time;
         bool enabled {};
+
+        /**
+         * @return The configuration as a JSON object.
+         */
+        nlohmann::json to_json() const;
     };
 
     /**
@@ -63,13 +69,20 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
         std::optional<AudioFormat> audio_format;
         std::optional<aes67::PacketTime> packet_time;
         std::optional<bool> enabled;
+
+        /**
+         * Creates a configuration update from a JSON object.
+         * @param json The JSON object to convert.
+         * @return A configuration update object if the JSON is valid, otherwise an error message.
+         */
+        static tl::expected<ConfigurationUpdate, std::string> from_json(const nlohmann::json& json);
     };
 
     class Subscriber {
       public:
         virtual ~Subscriber() = default;
 
-        virtual void ravenna_sender_configuration_updated(Id sender_id, const Configuration& configuration) {
+        virtual void ravenna_sender_configuration_updated(const Id sender_id, const Configuration& configuration) {
             std::ignore = sender_id;
             std::ignore = configuration;
         }
@@ -77,7 +90,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
 
     RavennaSender(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-        ptp::Instance& ptp_instance, Id id, const asio::ip::address_v4& interface_address,
+        ptp::Instance& ptp_instance, Id id, uint32_t session_id, const asio::ip::address_v4& interface_address,
         ConfigurationUpdate initial_config = {}
     );
 
@@ -95,11 +108,18 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     [[nodiscard]] Id get_id() const;
 
     /**
+     * @return The session ID of the sender.
+     */
+    [[nodiscard]] uint32_t get_session_id() const {
+        return session_id_;
+    }
+
+    /**
      * Updates the configuration of the sender. Only takes into account the fields in the configuration that are set.
      * This allows to update only a subset of the configuration.
      * @param update The configuration to update.
      */
-    tl::expected<void, std::string> update_configuration(const ConfigurationUpdate& update);
+    [[nodiscard]] tl::expected<void, std::string> update_configuration(const ConfigurationUpdate& update);
 
     /**
      * @returns The current configuration of the sender.
@@ -147,14 +167,19 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      * @param timestamp The timestamp of the buffer.
      * @return True if the buffer was sent, or false if something went wrong.
      */
-    [[nodiscard]] bool
-    send_audio_data_realtime(const AudioBufferView<const float>& input_buffer, uint32_t timestamp);
+    [[nodiscard]] bool send_audio_data_realtime(const AudioBufferView<const float>& input_buffer, uint32_t timestamp);
 
     /**
      * Sets the interface to use for this sender.
      * @param interface_address The address of the interface to use.
      */
     void set_interface(const asio::ip::address_v4& interface_address);
+
+    /**
+     *
+     * @return A JSON representation of the sender.
+     */
+    nlohmann::json to_json() const;
 
     // rtsp_server::handler overrides
     void on_request(rtsp::Connection::RequestEvent event) const override;
@@ -164,11 +189,13 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     void ptp_port_changed_state(const ptp::Port& port) override;
 
   private:
+    [[maybe_unused]] asio::io_context& io_context_;
     dnssd::Advertiser& advertiser_;
     rtsp::Server& rtsp_server_;
     ptp::Instance& ptp_instance_;
 
     Id id_;
+    uint32_t session_id_{};
     Configuration configuration_;
     std::string rtsp_path_by_name_;
     std::string rtsp_path_by_id_;

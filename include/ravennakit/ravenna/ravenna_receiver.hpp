@@ -118,7 +118,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
          * @param receiver_id The id of the receiver.
          * @param configuration The new configuration.
          */
-        virtual void ravenna_receiver_configuration_updated(Id receiver_id, const Configuration& configuration) {
+        virtual void ravenna_receiver_configuration_updated(const Id receiver_id, const Configuration& configuration) {
             std::ignore = receiver_id;
             std::ignore = configuration;
         }
@@ -132,7 +132,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
          *
          * @param timestamp The timestamp of newly received the data.
          */
-        virtual void on_data_received(WrappingUint32 timestamp) {
+        virtual void on_data_received(const WrappingUint32 timestamp) {
             std::ignore = timestamp;
         }
 
@@ -148,13 +148,13 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
          *
          * @param timestamp The timestamp of the packet which triggered this event, ** minus the delay **.
          */
-        virtual void on_data_ready(WrappingUint32 timestamp) {
+        virtual void on_data_ready(const WrappingUint32 timestamp) {
             std::ignore = timestamp;
         }
     };
 
     explicit RavennaReceiver(
-        RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, ConfigurationUpdate initial_config = {}
+        RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id, ConfigurationUpdate initial_config = {}
     );
     ~RavennaReceiver() override;
 
@@ -330,7 +330,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     Configuration configuration_;
     SubscriberList<Subscriber> subscribers_;
 
-    Id id_ {Id::get_next_process_wide_unique_id()};
+    Id id_;
     std::vector<std::unique_ptr<MediaStream>> media_streams_;
     asio::steady_timer maintenance_timer_;
     ExclusiveAccessGuard realtime_access_guard_;

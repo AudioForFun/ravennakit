@@ -16,6 +16,7 @@
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
     rtp_receiver_ = std::make_unique<rtp::Receiver>(io_context_);
+    advertiser_ = dnssd::Advertiser::create(io_context_);
 
     std::promise<std::thread::id> promise;
     auto f = promise.get_future();
@@ -47,7 +48,8 @@ rav::RavennaNode::~RavennaNode() {
 
 std::future<rav::Id> rav::RavennaNode::create_receiver(const RavennaReceiver::ConfigurationUpdate& initial_config) {
     auto work = [this, initial_config]() mutable {
-        auto new_receiver = std::make_unique<RavennaReceiver>(rtsp_client_, *rtp_receiver_, initial_config);
+        auto new_receiver =
+            std::make_unique<RavennaReceiver>(rtsp_client_, *rtp_receiver_, id_generator_.next(), initial_config);
         const auto& it = receivers_.emplace_back(std::move(new_receiver));
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
@@ -97,14 +99,11 @@ rav::RavennaNode::update_receiver_configuration(Id receiver_id, RavennaReceiver:
 
 std::future<rav::Id> rav::RavennaNode::create_sender(const RavennaSender::ConfigurationUpdate& initial_config) {
     auto work = [this, initial_config]() mutable {
-        if (advertiser_ == nullptr) {
-            advertiser_ = dnssd::Advertiser::create(io_context_);
-        }
-
+        auto interface_address =
+            config_.network_interfaces.get_ipv4_address(RavennaConfig::NetworkInterfaceConfig::Rank::primary);
         auto new_sender = std::make_unique<RavennaSender>(
-            io_context_, *advertiser_, rtsp_server_, ptp_instance_, Id::get_next_process_wide_unique_id(),
-            config_.network_interfaces.get_ipv4_address(RavennaConfig::NetworkInterfaceConfig::Rank::primary),
-            std::move(initial_config)
+            io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(),
+            generate_unique_session_id(), interface_address, std::move(initial_config)
         );
         const auto& it = senders_.emplace_back(std::move(new_sender));
         for (const auto& s : subscribers_) {
@@ -409,8 +408,13 @@ bool rav::RavennaNode::is_maintenance_thread() const {
 
 std::future<nlohmann::json> rav::RavennaNode::to_json() {
     auto work = [this] {
+        auto senders = nlohmann::json::array();
+        for (const auto& sender : senders_) {
+            senders.push_back(sender->to_json());
+        }
         nlohmann::json root;
         root["config"] = config_.to_json();
+        root["senders"] = senders;
         return root;
     };
     return asio::dispatch(io_context_, asio::use_future(work));
@@ -423,9 +427,50 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json
             if (!ravenna_config) {
                 return tl::unexpected(ravenna_config.error());
             }
-            set_network_interface_config(ravenna_config->network_interfaces).get();
+
+            set_network_interface_config(ravenna_config->network_interfaces).wait();
+
+            auto senders = json.at("senders");
+            std::vector<std::unique_ptr<RavennaSender>> new_senders;
+
+            for (auto& sender : senders) {
+                auto config = RavennaSender::ConfigurationUpdate::from_json(sender.at("configuration"));
+                if (!config) {
+                    return tl::unexpected(config.error());
+                }
+                auto session_id = sender.at("session_id").get<uint32_t>();
+                auto interface_address =
+                    config_.network_interfaces.get_ipv4_address(RavennaConfig::NetworkInterfaceConfig::Rank::primary);
+                auto new_sender = std::make_unique<RavennaSender>(
+                    io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), session_id,
+                    interface_address, *config
+                );
+                new_senders.push_back(std::move(new_sender));
+            }
+
+
+            for (const auto& sender : senders_) {
+                for (auto* s : subscribers_) {
+                    RAV_ASSERT(s != nullptr, "Subscriber must be valid");
+                    s->ravenna_sender_removed(sender->get_id());
+                }
+            }
+
+            std::swap(senders_, new_senders);
+
+            for (const auto& sender : senders_) {
+                for (auto* s : subscribers_) {
+                    RAV_ASSERT(s != nullptr, "Subscriber must be valid");
+                    s->ravenna_sender_added(*sender);
+                }
+            }
+
         } catch (const std::exception& e) {
             return tl::unexpected(fmt::format("Failed to parse RavennaNode JSON: {}", e.what()));
+        }
+
+        if (!update_realtime_shared_context()) {
+            RAV_ERROR("Failed to update realtime shared context");
         }
 
         return {};
@@ -442,4 +487,12 @@ bool rav::RavennaNode::update_realtime_shared_context() {
         new_context->senders.emplace_back(sender.get());
     }
     return realtime_shared_context_.update(std::move(new_context));
+}
+
+uint32_t rav::RavennaNode::generate_unique_session_id() const {
+    uint32_t highest_session_id = 0;
+    for (auto& sender : senders_) {
+        highest_session_id = std::max(highest_session_id, sender->get_session_id());
+    }
+    return highest_session_id + 1;
 }
