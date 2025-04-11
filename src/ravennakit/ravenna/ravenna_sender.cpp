@@ -618,20 +618,19 @@ void rav::RavennaSender::start_timer() {
 }
 
 void rav::RavennaSender::stop_timer() {
-    asio::dispatch(
-        io_context_, asio::use_future([this] {
-            // Break the timer chain by replacing the completion token with a dummy one
-            timer_.async_wait([](asio::error_code) {});
-            timer_.cancel();
-        })
-    ).wait();
+    timer_.expires_after(std::chrono::hours(24));
+    timer_.async_wait([](asio::error_code) {});
+    const auto num_canceled = timer_.cancel();
+    if (num_canceled == 0) {
+        RAV_WARNING("No timer handlers canceled");
+    }
 }
 
 void rav::RavennaSender::send_outgoing_data() {
     if (auto lock = send_outgoing_data_reader_.lock_realtime()) {
         TRACY_ZONE_SCOPED;
 
-        // Allow to send 10 extra packets which come in during the loop, but otherwise keep the loop bounded
+        // Allow to send 100 extra packets which come in during the loop, but otherwise keep the loop bounded
         for (size_t i = 0; i < lock->outgoing_data.size() + 100; ++i) {
             const auto packet = lock->outgoing_data.pop();
 

@@ -197,7 +197,7 @@ def build_android(args, arch, build_config: Config, subfolder: str, spdlog: bool
     cmake.option('VCPKG_CHAINLOAD_TOOLCHAIN_FILE', f'{android_ndk_home}/build/cmake/android.toolchain.cmake')
     cmake.option('VCPKG_TARGET_TRIPLET', triplet)
     cmake.option('ANDROID_ABI', arch)
-    cmake.option('ANDROID_PLATFORM', 'android-21')
+    cmake.option('ANDROID_PLATFORM', 'android-29')
     cmake.option('BUILD_NUMBER', args.build_number)
 
     if spdlog:
