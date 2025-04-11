@@ -12,7 +12,7 @@
 
 #include "ravennakit/core/net/interfaces/network_interface.hpp"
 #include "ravennakit/core/net/interfaces/network_interface_list.hpp"
-#include "ravennakit/core/util/rank.hpp"
+#include "ravennakit/core/json.hpp"
 
 namespace rav {
 
@@ -34,7 +34,7 @@ struct RavennaConfig {
          * @return The first IPv4 address of one of the network interfaces. The address will be empty if the interface
          * is not found or if it has no IPv4 address.
          */
-        asio::ip::address_v4 get_ipv4_address(const Rank rank) const {
+        [[nodiscard]] asio::ip::address_v4 get_ipv4_address(const Rank rank) const {
             if (rank == Rank::primary && primary) {
                 if (auto* interface = NetworkInterfaceList::get_system_interfaces().get_interface(*primary)) {
                     return interface->get_first_ipv4_address();
@@ -57,6 +57,39 @@ struct RavennaConfig {
                 secondary ? *secondary : "none"
             );
         }
+
+        /**
+         * @returns A JSON representation of the network interface configuration.
+         */
+        [[nodiscard]] nlohmann::json to_json() const {
+            nlohmann::json j;
+            j["primary"] = primary.has_value() ? nlohmann::json(*primary) : nlohmann::json {};
+            j["secondary"] = secondary.has_value() ? nlohmann::json(*secondary) : nlohmann::json {};
+            return j;
+        }
+
+        /**
+         * Creates a NetworkInterfaceConfig from a JSON object.
+         * @param json
+         * @return A newly constructed NetworkInterfaceConfig object.
+         */
+        static tl::expected<NetworkInterfaceConfig, std::string> from_json(const nlohmann::json& json) {
+            NetworkInterfaceConfig config;
+            try {
+                const auto& pri = json.at("primary");
+                if (!pri.is_null()) {
+                    config.primary = pri.get<NetworkInterface::Identifier>();
+                }
+
+                const auto& sec = json.at("secondary");
+                if (!sec.is_null()) {
+                    config.secondary = sec.get<NetworkInterface::Identifier>();
+                }
+            } catch (const std::exception& e) {
+                return tl::unexpected(fmt::format("Failed to parse NetworkInterfaceConfig: {}", e.what()));
+            }
+            return config;
+        }
     };
 
     /**
@@ -64,6 +97,34 @@ struct RavennaConfig {
      */
     [[nodiscard]] std::string to_string() const {
         return fmt::format("RAVENNA Configuration: {}", network_interfaces.to_string());
+    }
+
+    /**
+     * @returns A JSON representation of the configuration.
+     */
+    [[nodiscard]] nlohmann::json to_json() const {
+        nlohmann::json j;
+        j["network_config"] = network_interfaces.to_json();
+        return j;
+    }
+
+    /**
+     * Creates a RavennaConfig from a JSON object.
+     * @param json The JSON object to parse.
+     * @return A newly constructed RavennaConfig object.
+     */
+    static tl::expected<RavennaConfig, std::string> from_json(const nlohmann::json& json) {
+        try {
+            RavennaConfig config;
+            auto result = NetworkInterfaceConfig::from_json(json.at("network_config"));
+            if (!result) {
+                return tl::unexpected(result.error());
+            }
+            config.network_interfaces = result.value();
+            return config;
+        } catch (const std::exception& e) {
+            return tl::unexpected(fmt::format("Failed to parse RavennaConfig: {}", e.what()));
+        }
     }
 
     NetworkInterfaceConfig network_interfaces;

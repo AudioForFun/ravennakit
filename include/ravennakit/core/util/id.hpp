@@ -27,6 +27,12 @@ class Id {
       public:
         Generator() = default;
 
+        Generator(const Generator&) = delete;
+        Generator& operator=(const Generator&) = delete;
+
+        Generator(Generator&&) = delete;
+        Generator& operator=(Generator&&) = delete;
+
         /**
          * This function is thread safe and can be safely called from any thread at any time.
          * @return The next unique ID
@@ -35,6 +41,15 @@ class Id {
             RAV_ASSERT(next_id_ != 0, "Next ID is 0, which is reserved for invalid IDs");
             RAV_ASSERT(next_id_ != std::numeric_limits<uint64_t>::max(), "The next ID is at the maximum value");
             return Id(next_id_.fetch_add(1));
+        }
+
+        /**
+         * Resets the ID generator to start at 1 again.
+         * WARNING: Make sure that no IDs are in use when calling this function, as resetting might result in multiple
+         * IDs being the same.
+         */
+        void reset() {
+            next_id_ = 1;
         }
 
       private:
@@ -50,9 +65,9 @@ class Id {
     explicit Id(const uint64_t int_id) : id_(int_id) {}
 
     Id(const Id& other) = default;
-    Id(Id&& other) noexcept = default;
-
     Id& operator=(const Id& other) = default;
+
+    Id(Id&& other) noexcept = default;
     Id& operator=(Id&& other) noexcept = default;
 
     /**
@@ -102,4 +117,4 @@ class Id {
     uint64_t id_ {};
 };
 
-}  // namespace rav::util
+}  // namespace rav

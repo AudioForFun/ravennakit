@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ravennakit/core/math/fraction.hpp"
+#include "ravennakit/core/json.hpp"
 
 #include <cstdint>
 #include <cmath>
@@ -113,6 +114,32 @@ class PacketTime {
     friend bool operator!=(const PacketTime& lhs, const PacketTime& rhs) {
         return !(lhs == rhs);
     }
+
+#if RAV_HAS_NLOHMANN_JSON
+
+    /**
+     * @return A JSON object representing this AudioFormat.
+     */
+    [[nodiscard]] nlohmann::json to_json() const {
+        return nlohmann::json {fraction_.numerator, fraction_.denominator};
+    }
+
+    /**
+     * Restores the packet time from a JSON representation.
+     * @param json The JSON representation of the packet time.
+     * @return A PacketTime object if the JSON is valid, otherwise std::nullopt.
+     */
+    static std::optional<PacketTime> from_json(const nlohmann::json& json) {
+        try {
+            const auto numerator = json.at(0).get<uint8_t>();
+            const auto denominator = json.at(1).get<uint8_t>();
+            return PacketTime {numerator, denominator};
+        } catch (const std::exception&) {
+            return std::nullopt;
+        }
+    }
+
+#endif
 
   private:
     Fraction<uint8_t> fraction_ {};

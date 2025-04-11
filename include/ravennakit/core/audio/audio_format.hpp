@@ -12,10 +12,11 @@
 
 #include "audio_encoding.hpp"
 #include "ravennakit/core/byte_order.hpp"
-
-#include <string>
-#include <tuple>
 #include "ravennakit/core/format.hpp"
+#include "ravennakit/core/json.hpp"
+
+#include <tuple>
+#include <string>
 
 namespace rav {
 
@@ -75,12 +76,32 @@ struct AudioFormat {
         return little_endian == (byte_order == ByteOrder::le);
     }
 
-    static const char* to_string(const enum ByteOrder order) {
+    static const char* to_string(const ByteOrder order) {
         return order == ByteOrder::le ? "le" : "be";
     }
 
     static const char* to_string(const ChannelOrdering order) {
         return order == ChannelOrdering::interleaved ? "interleaved" : "noninterleaved";
+    }
+
+    static std::optional<ByteOrder> byte_order_from_string(const std::string& str) {
+        if (str == "le") {
+            return ByteOrder::le;
+        }
+        if (str == "be") {
+            return ByteOrder::be;
+        }
+        return std::nullopt;
+    }
+
+    static std::optional<ChannelOrdering> channel_ordering_from_string(const std::string& str) {
+        if (str == "interleaved") {
+            return ChannelOrdering::interleaved;
+        }
+        if (str == "noninterleaved") {
+            return ChannelOrdering::noninterleaved;
+        }
+        return std::nullopt;
     }
 
     /**
@@ -90,6 +111,61 @@ struct AudioFormat {
     [[nodiscard]] AudioFormat with_byte_order(const ByteOrder order) const {
         return {order, encoding, ordering, sample_rate, num_channels};
     }
+
+#if RAV_HAS_NLOHMANN_JSON
+
+    /**
+     * @return A JSON object representing this AudioFormat.
+     */
+    nlohmann::json to_json() const {
+        return nlohmann::json {
+            {"encoding", audio_encoding_to_string(encoding)},
+            {"sample_rate", sample_rate},
+            {"num_channels", num_channels},
+            {"byte_order", to_string(byte_order)},
+            {"channel_ordering", to_string(ordering)}
+        };
+    }
+
+    /**
+     * Converts a JSON object to an AudioFormat object.
+     * @param json The JSON object to convert.
+     * @return An AudioFormat object, or an error message if the conversion fails.
+     */
+    static tl::expected<AudioFormat, std::string> from_json(nlohmann::json json) {
+        try {
+            const auto encoding = audio_encoding_from_string(json.at("encoding").get<std::string>().c_str());
+            if (!encoding) {
+                return tl::unexpected(
+                    fmt::format("Invalid audio encoding: {}", json.at("encoding").get<std::string>())
+                );
+            }
+
+            const auto byte_order = byte_order_from_string(json.at("byte_order").get<std::string>());
+            if (!byte_order) {
+                return tl::unexpected(fmt::format("Invalid byte order: {}", json.at("byte_order").get<std::string>()));
+            }
+
+            const auto channel_ordering = channel_ordering_from_string(json.at("channel_ordering").get<std::string>());
+            if (!channel_ordering) {
+                return tl::unexpected(
+                    fmt::format("Invalid channel ordering: {}", json.at("channel_ordering").get<std::string>())
+                );
+            }
+
+            AudioFormat format;
+            format.encoding = *encoding;
+            format.sample_rate = json.at("sample_rate").get<uint32_t>();
+            format.num_channels = json.at("num_channels").get<uint32_t>();
+            format.byte_order = *byte_order;
+            format.ordering = *channel_ordering;
+            return format;
+        } catch (const std::exception& e) {
+            return tl::unexpected(fmt::format("Failed to parse AudioFormat JSON: {}", e.what()));
+        }
+    }
+
+#endif
 };
 
 }  // namespace rav

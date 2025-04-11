@@ -36,9 +36,9 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE INTERNAL "")
 endif ()
 
-#########
-# VCPKG #
-#########
+################
+# Dependencies #
+################
 
 if (RAV_ENABLE_SPDLOG)
     find_package(spdlog CONFIG REQUIRED)
@@ -51,6 +51,7 @@ find_package(portaudio CONFIG REQUIRED)
 find_package(asio CONFIG REQUIRED)
 target_compile_definitions(asio::asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
 find_package(nanobench CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 #########
 # Tracy #
@@ -93,6 +94,7 @@ target_link_libraries(ravennakit
         PUBLIC
         asio::asio
         fmt::fmt
+        nlohmann_json::nlohmann_json
         $<$<BOOL:${RAV_ENABLE_SPDLOG}>:spdlog::spdlog>
 )
 

@@ -23,6 +23,8 @@
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"
 
+#include <nlohmann/json.hpp>
+
 #include <string>
 
 /**
@@ -78,7 +80,7 @@ class RavennaNode {
          * Called from the maintenance thread.
          * @param sender_id The id of the sender.
          */
-        virtual void ravenna_sender_removed(Id sender_id) {
+        virtual void ravenna_sender_removed(const Id sender_id) {
             std::ignore = sender_id;
         }
 
@@ -276,6 +278,18 @@ class RavennaNode {
     [[nodiscard]] bool is_maintenance_thread() const;
 
     /**
+     * @returns A JSON representation of the node.
+     */
+    std::future<nlohmann::json> to_json();
+
+    /**
+     * Restores the node from a JSON representation.
+     * @param json The JSON representation of the node.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<tl::expected<void, std::string>> restore_from_json(const nlohmann::json& json);
+
+    /**
      * Schedules some work on the maintenance thread using asio::dispatch. This is useful for synchronizing with
      * callbacks from the node and to offload work from the main (UI) thread. If passing using asio::use_future, the
      * future will be set when the work is complete.
@@ -322,6 +336,7 @@ class RavennaNode {
     asio::io_context io_context_;
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
+    Id::Generator id_generator_;
 
     RavennaBrowser browser_ {io_context_};
     RavennaRtspClient rtsp_client_ {io_context_, browser_};
@@ -338,6 +353,7 @@ class RavennaNode {
     RavennaConfig config_;
 
     [[nodiscard]] bool update_realtime_shared_context();
+    uint32_t generate_unique_session_id() const;
 };
 
 }  // namespace rav

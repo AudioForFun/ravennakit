@@ -18,18 +18,61 @@
     #include <timeapi.h>
 #endif
 
+nlohmann::json rav::RavennaSender::Configuration::to_json() const {
+    return nlohmann::json {
+        {"session_name", session_name},
+        {"destination_address", destination_address.to_string()},
+        {"ttl", ttl},
+        {"payload_type", payload_type},
+        {"audio_format", audio_format.to_json()},
+        {"packet_time", packet_time.to_json()},
+        {"enabled", enabled}
+    };
+}
+
+tl::expected<rav::RavennaSender::ConfigurationUpdate, std::string>
+rav::RavennaSender::ConfigurationUpdate::from_json(const nlohmann::json& json) {
+    try {
+        ConfigurationUpdate update {};
+        update.session_name = json.at("session_name").get<std::string>();
+        update.destination_address = asio::ip::make_address_v4(json.at("destination_address").get<std::string>());
+        update.ttl = json.at("ttl").get<int32_t>();
+        update.payload_type = json.at("payload_type").get<uint8_t>();
+        auto audio_format = AudioFormat::from_json(json.at("audio_format"));
+        if (!audio_format) {
+            return tl::unexpected(audio_format.error());
+        }
+        update.audio_format = *audio_format;
+        const auto packet_time = aes67::PacketTime::from_json(json.at("packet_time"));
+        if (!packet_time) {
+            return tl::unexpected("Invalid packet time");
+        }
+        update.packet_time = *packet_time;
+        update.enabled = json.at("enabled").get<bool>();
+        return update;
+    } catch (const std::exception& e) {
+        return tl::unexpected(e.what());
+    }
+}
+
 rav::RavennaSender::RavennaSender(
     asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server, ptp::Instance& ptp_instance,
-    const Id id, const asio::ip::address_v4& interface_address, ConfigurationUpdate initial_config
+    const Id id, const uint32_t session_id, const asio::ip::address_v4& interface_address,
+    ConfigurationUpdate initial_config
 ) :
+    io_context_(io_context),
     advertiser_(advertiser),
     rtsp_server_(rtsp_server),
     ptp_instance_(ptp_instance),
     id_(id),
+    session_id_(session_id),
     rtp_sender_(io_context, interface_address),
     timer_(io_context) {
+    RAV_ASSERT(id_.is_valid(), "Sender ID must be valid");
+    RAV_ASSERT(session_id != 0, "Session ID must be valid");
+
     if (!initial_config.session_name.has_value()) {
-        initial_config.session_name = "Sender " + id_.to_string();
+        initial_config.session_name = "Sender " + std::to_string(session_id_);
     }
 
     if (!initial_config.ttl.has_value()) {
@@ -62,10 +105,14 @@ rav::RavennaSender::RavennaSender(
     timeBeginPeriod(1);
 #endif
 
-    update_configuration(initial_config);
+    if (auto result = update_configuration(initial_config); !result) {
+        RAV_ERROR("Failed to update sender configuration: {}", result.error());
+    }
 }
 
 rav::RavennaSender::~RavennaSender() {
+    stop_timer();
+
     if (!ptp_instance_.unsubscribe(this)) {
         RAV_ERROR("Failed to unsubscribe from PTP instance");
     }
@@ -401,7 +448,17 @@ bool rav::RavennaSender::send_audio_data_realtime(
 
 void rav::RavennaSender::set_interface(const asio::ip::address_v4& interface_address) {
     rtp_sender_.set_interface(interface_address);
-    update_configuration({}); // Trigger an update to generate a destination address if necessary
+    // Trigger an update to generate a destination address if necessary
+    if (auto result = update_configuration({}); !result) {
+        RAV_ERROR("Failed to update sender configuration: {}", result.error());
+    }
+}
+
+nlohmann::json rav::RavennaSender::to_json() const {
+    nlohmann::json root;
+    root["session_id"] = session_id_;
+    root["configuration"] = configuration_.to_json();
+    return root;
 }
 
 void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) const {
@@ -515,7 +572,7 @@ rav::sdp::SessionDescription rav::RavennaSender::build_sdp() const {
     // Origin
     const sdp::OriginField origin {
         "-",
-        id_.to_string(),
+        std::to_string(session_id_),
         0,
         sdp::NetwType::internet,
         sdp::AddrType::ipv4,
@@ -555,22 +612,25 @@ void rav::RavennaSender::start_timer() {
             RAV_ERROR("Timer error: {}", ec.message());
             return;
         }
-        std::lock_guard lock(timer_mutex_);
         send_outgoing_data();
         start_timer();
     });
 }
 
 void rav::RavennaSender::stop_timer() {
-    std::lock_guard lock(timer_mutex_);
-    timer_.cancel();
+    timer_.expires_after(std::chrono::hours(24));
+    timer_.async_wait([](asio::error_code) {});
+    const auto num_canceled = timer_.cancel();
+    if (num_canceled == 0) {
+        RAV_WARNING("No timer handlers canceled");
+    }
 }
 
 void rav::RavennaSender::send_outgoing_data() {
     if (auto lock = send_outgoing_data_reader_.lock_realtime()) {
         TRACY_ZONE_SCOPED;
 
-        // Allow to send 10 extra packets which come in during the loop, but otherwise keep the loop bounded
+        // Allow to send 100 extra packets which come in during the loop, but otherwise keep the loop bounded
         for (size_t i = 0; i < lock->outgoing_data.size() + 100; ++i) {
             const auto packet = lock->outgoing_data.pop();
 

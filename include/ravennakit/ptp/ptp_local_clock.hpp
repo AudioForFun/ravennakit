@@ -89,7 +89,7 @@ class LocalClock {
     /**
      * @return True if the clock is valid, false otherwise. It does this by checking if the last sync time is valid.
      */
-    bool is_valid() const {
+    [[nodiscard]] bool is_valid() const {
         return last_sync_.valid();
     }
 
