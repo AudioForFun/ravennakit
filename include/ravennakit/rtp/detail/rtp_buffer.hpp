@@ -86,12 +86,13 @@ class Buffer {
 
     /**
      * Reads data from the buffer.
+     * Once the data is read, the buffer is cleared (i.e. the data is set to the ground value).
      * @param at_timestamp The timestamp to read from.
      * @param buffer The destination to write the data to.
      * @param buffer_size The size of the buffer in bytes.
      * @returns true if buffer_size bytes were read, or false if buffer_size bytes couldn't be read.
      */
-    bool read(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size) const {
+    bool read(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size) {
         RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr.");
         RAV_ASSERT(buffer_size > 0, "Buffer size must be greater than 0.");
 
@@ -110,9 +111,11 @@ class Buffer {
         );
 
         std::memcpy(buffer, buffer_.data() + position.index1, position.size1);
+        std::fill_n(buffer_.data() + position.index1, position.size1, ground_value_);
 
         if (position.size2 > 0) {
             std::memcpy(buffer + position.size1, buffer_.data(), position.size2);
+            std::fill_n(buffer_.data(), position.size2, ground_value_);
         }
 
         return true;
