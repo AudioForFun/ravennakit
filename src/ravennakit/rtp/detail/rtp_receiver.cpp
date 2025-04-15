@@ -41,7 +41,7 @@ asio::io_context& rav::rtp::Receiver::get_io_context() const {
     return io_context_;
 }
 
-bool rav::rtp::Receiver::subscribe(Subscriber* subscriber_to_add, const Session& session, const Filter& filter) {
+bool rav::rtp::Receiver::subscribe(Subscriber* subscriber, const Session& session, const Filter& filter) {
     auto* context = find_or_create_session_context(session);
 
     if (context == nullptr) {
@@ -51,13 +51,13 @@ bool rav::rtp::Receiver::subscribe(Subscriber* subscriber_to_add, const Session&
 
     RAV_ASSERT(context != nullptr, "Expecting valid session at this point");
 
-    return context->subscribers.add_or_update_context(subscriber_to_add, SubscriberContext {filter});
+    return context->subscribers.add_or_update_context(subscriber, SubscriberContext {filter});
 }
 
-bool rav::rtp::Receiver::unsubscribe(const Subscriber* subscriber_to_remove) {
+bool rav::rtp::Receiver::unsubscribe(const Subscriber* subscriber) {
     size_t count = 0;
     for (auto it = sessions_contexts_.begin(); it != sessions_contexts_.end();) {
-        if (it->subscribers.remove(subscriber_to_remove)) {
+        if (it->subscribers.remove(subscriber)) {
             count++;
         }
         if (it->subscribers.empty()) {
@@ -102,13 +102,13 @@ rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::create_new_session_conte
     new_session.rtcp_sender_receiver = find_rtcp_sender_receiver(session.rtcp_port);
 
     // Note: we bind to the any address because the behaviour of macOS and Windows slightly differs. On macOS the bind
-    // address functions as a filter (at least when joining a multicast group), while on Windows it's the actual address
-    // to bind to. Secondly, binding to the multicast address would work on macOS, but not on Windows where this is an
-    // invalid operation. To have a cross-platform solution we bind to the any address, which potentially results in
-    // more traffic being received than we need, but since we're filtering on the endpoint anyway, this is not a
+    // address functions as a filter (at least when joining a multicast group), while on Windows it's the interface
+    // address to bind to. Secondly, binding to the multicast address would work on macOS, but not on Windows where this
+    // is an invalid operation. To have a cross-platform solution we bind to the any address, which potentially results
+    // in more traffic being received than we need, but since we're filtering on the endpoint anyway, this is not a
     // problem.
     // The ideal solution would be a platform-specific implementation, where on macOS we would use a single socket bound
-    // to a specific interface for unicast and a separate sockets for each multicast address (bound to the multicast
+    // to a specific interface for unicast and separate sockets for each multicast address (bound to the multicast
     // address to filter). On Windows we would use a single socket for all traffic (unicast + multicast) but bound to a
     // specific interface (address).
     // To summarize: on macOS we cannot bind to a specific interface and receive both unicast and multicast traffic.

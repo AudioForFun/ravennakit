@@ -93,19 +93,19 @@ class Receiver {
 
     /**
      * Adds a subscriber to the receiver.
-     * @param subscriber_to_add The subscriber to add
+     * @param subscriber The subscriber to add
      * @param session The session to subscribe to.
      * @param filter The filter to apply to the session.
      * @return true if the subscriber was added, or false if it was already in the list.
      */
-    bool subscribe(Subscriber* subscriber_to_add, const Session& session, const Filter& filter);
+    bool subscribe(Subscriber* subscriber, const Session& session, const Filter& filter);
 
     /**
      * Removes a subscriber from all sessions of the receiver.
-     * @param subscriber_to_remove The subscriber to remove.
+     * @param subscriber The subscriber to remove.
      * @return true if the subscriber was removed, or false if it wasn't found.
      */
-    bool unsubscribe(const Subscriber* subscriber_to_remove);
+    bool unsubscribe(const Subscriber* subscriber);
 
     /**
      * Sets the interface address to join multicast groups on. If the address is empty existing multicast groups are

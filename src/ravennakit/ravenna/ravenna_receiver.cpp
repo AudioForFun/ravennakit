@@ -36,6 +36,124 @@ bool is_connection_info_valid(const rav::sdp::ConnectionInfoField& conn) {
     return true;
 }
 
+tl::expected<rav::RavennaReceiver::StreamParameters, std::string>
+find_primary_stream_parameters(const rav::sdp::SessionDescription& sdp) {
+    std::optional<rav::AudioFormat> selected_audio_format;
+    const rav::sdp::MediaDescription* selected_media_description = nullptr;
+    const rav::sdp::ConnectionInfoField* selected_connection_info = nullptr;
+
+    for (auto& media_description : sdp.media_descriptions()) {
+        if (media_description.media_type() != "audio") {
+            RAV_WARNING("Unsupported media type: {}", media_description.media_type());
+            continue;
+        }
+
+        if (media_description.protocol() != "RTP/AVP") {
+            RAV_WARNING("Unsupported protocol {}", media_description.protocol());
+            continue;
+        }
+
+        // The first acceptable payload format from the beginning of the list SHOULD be used for the session.
+        // https://datatracker.ietf.org/doc/html/rfc8866#name-media-descriptions-m
+        selected_audio_format.reset();  // Reset format from previous iteration
+        for (auto& format : media_description.formats()) {
+            selected_audio_format = format.to_audio_format();
+            if (!selected_audio_format) {
+                RAV_WARNING("Not a supported audio format: {}", format.to_string());
+                continue;
+            }
+            break;
+        }
+
+        if (!selected_audio_format) {
+            RAV_WARNING("No supported audio format found");
+            continue;
+        }
+
+        for (auto& conn : media_description.connection_infos()) {
+            if (!is_connection_info_valid(conn)) {
+                continue;
+            }
+            selected_connection_info = &conn;
+        }
+
+        selected_media_description = &media_description;
+        break;  // We only need the first media description
+    }
+
+    if (!selected_media_description) {
+        return tl::unexpected("No suitable media description found");
+    }
+
+    if (!selected_audio_format) {
+        return tl::unexpected("No media description with supported audio format available");
+    }
+
+    if (selected_connection_info == nullptr) {
+        // Find connection info in the session description session level
+        if (const auto& conn = sdp.connection_info()) {
+            if (is_connection_info_valid(*conn)) {
+                selected_connection_info = &*conn;
+            }
+        }
+    }
+
+    if (selected_connection_info == nullptr) {
+        return tl::unexpected("No suitable connection info found");
+    }
+
+    uint16_t packet_time_frames = 0;
+    const auto ptime = selected_media_description->ptime();
+    if (ptime.has_value()) {
+        packet_time_frames = rav::aes67::PacketTime::framecount(*ptime, selected_audio_format->sample_rate);
+    }
+
+    if (packet_time_frames == 0) {
+        RAV_WARNING("No ptime attribute found, falling back to framecount");
+        const auto framecount = selected_media_description->framecount();
+        if (!framecount.has_value()) {
+            return tl::unexpected("No framecount attribute found");
+        }
+        packet_time_frames = *framecount;
+    }
+
+    RAV_ASSERT(packet_time_frames > 0, "packet_time_frames must be greater than 0");
+
+    rav::rtp::Session session;
+
+    asio::error_code ec;
+    session.rtp_port = selected_media_description->port();
+    session.rtcp_port = session.rtp_port + 1;
+    session.connection_address = asio::ip::make_address(selected_connection_info->address, ec);
+    if (ec) {
+        return tl::unexpected(fmt::format("Failed to parse connection address: {}", ec.message()));
+    }
+
+    rav::rtp::Filter filter(session.connection_address);
+
+    const auto& source_filters = selected_media_description->source_filters();
+    if (!source_filters.empty()) {
+        if (filter.add_filters(source_filters) == 0) {
+            RAV_WARNING("No suitable source filters found in SDP");
+        }
+    } else {
+        const auto& sdp_source_filters = sdp.source_filters();
+        if (!sdp_source_filters.empty()) {
+            if (filter.add_filters(sdp_source_filters) == 0) {
+                RAV_WARNING("No suitable source filters found in SDP");
+            }
+        }
+    }
+
+    rav::RavennaReceiver::StreamParameters stream_parameters;
+    stream_parameters.session = session;
+    stream_parameters.filter = filter;
+    stream_parameters.audio_format = *selected_audio_format;
+    stream_parameters.packet_time_frames = packet_time_frames;
+
+    return stream_parameters;
+}
+
 }  // namespace
 
 const char* rav::RavennaReceiver::to_string(const ReceiverState state) {
@@ -307,133 +425,20 @@ void rav::RavennaReceiver::MediaStream::set_state(const ReceiverState state) {
 }
 
 void rav::RavennaReceiver::update_sdp(const sdp::SessionDescription& sdp) {
-    const sdp::MediaDescription* selected_media_description = nullptr;
-    const sdp::ConnectionInfoField* selected_connection_info = nullptr;
-    std::optional<AudioFormat> selected_audio_format;
+    auto primary = find_primary_stream_parameters(sdp);
 
-    for (auto& media_description : sdp.media_descriptions()) {
-        if (media_description.media_type() != "audio") {
-            RAV_WARNING("Unsupported media type: {}", media_description.media_type());
-            continue;
-        }
-
-        if (media_description.protocol() != "RTP/AVP") {
-            RAV_WARNING("Unsupported protocol {}", media_description.protocol());
-            continue;
-        }
-
-        // The first acceptable payload format from the beginning of the list SHOULD be used for the session.
-        // https://datatracker.ietf.org/doc/html/rfc8866#name-media-descriptions-m
-        selected_audio_format.reset();  // Reset format from previous iteration
-        for (auto& format : media_description.formats()) {
-            selected_audio_format = format.to_audio_format();
-            if (!selected_audio_format) {
-                RAV_WARNING("Not a supported audio format: {}", format.to_string());
-                continue;
-            }
-            break;
-        }
-
-        if (!selected_audio_format) {
-            RAV_WARNING("No supported audio format found");
-            continue;
-        }
-
-        for (auto& conn : media_description.connection_infos()) {
-            if (!is_connection_info_valid(conn)) {
-                continue;
-            }
-            selected_connection_info = &conn;
-        }
-
-        selected_media_description = &media_description;
-        break;  // We only need the first media description (at least for now)
-    }
-
-    if (!selected_media_description) {
-        RAV_WARNING("No suitable media description found in SDP");
+    if (!primary) {
+        RAV_ERROR("Failed to find primary stream parameters: {}", primary.error());
         return;
     }
-
-    if (!selected_audio_format) {
-        RAV_WARNING("No media description with supported audio format available");
-        return;
-    }
-
-    if (selected_connection_info == nullptr) {
-        if (const auto& conn = sdp.connection_info()) {
-            if (is_connection_info_valid(*conn)) {
-                selected_connection_info = &*conn;
-            }
-        }
-    }
-
-    if (selected_connection_info == nullptr) {
-        RAV_WARNING("No suitable connection info found in SDP");
-        return;
-    }
-
-    RAV_ASSERT(selected_connection_info != nullptr, "Expecting found_connection_info to be set");
-
-    uint16_t packet_time_frames = 0;
-    const auto ptime = selected_media_description->ptime();
-    if (ptime.has_value()) {
-        packet_time_frames = aes67::PacketTime::framecount(*ptime, selected_audio_format->sample_rate);
-    }
-
-    if (packet_time_frames == 0) {
-        RAV_WARNING("No ptime attribute found, falling back to framecount");
-        const auto framecount = selected_media_description->framecount();
-        if (!framecount.has_value()) {
-            RAV_ERROR("No framecount attribute found");
-            return;
-        }
-        packet_time_frames = *framecount;
-    }
-
-    RAV_ASSERT(packet_time_frames > 0, "packet_time_frames must be greater than 0");
-
-    rtp::Session session;
-
-    asio::error_code ec;
-    session.rtp_port = selected_media_description->port();
-    session.rtcp_port = session.rtp_port + 1;
-    session.connection_address = asio::ip::make_address(selected_connection_info->address, ec);
-    if (ec) {
-        RAV_ERROR("Failed to parse connection address: {}", ec.message());
-        return;
-    }
-
-    rtp::Filter filter(session.connection_address);
-
-    const auto& source_filters = selected_media_description->source_filters();
-    if (!source_filters.empty()) {
-        if (filter.add_filters(source_filters) == 0) {
-            RAV_WARNING("No suitable source filters found in SDP");
-        }
-    } else {
-        const auto& sdp_source_filters = sdp.source_filters();
-        if (!sdp_source_filters.empty()) {
-            if (filter.add_filters(sdp_source_filters) == 0) {
-                RAV_WARNING("No suitable source filters found in SDP");
-            }
-        }
-    }
-
-    bool do_update_shared_context = false;
 
     auto notify = false;  // Either notify or restart will trigger a notification
-    auto [stream, was_created] = find_or_create_media_stream(session);
+    auto [stream, was_created] = find_or_create_media_stream(primary->session);
 
     RAV_ASSERT(stream != nullptr, "Expecting stream to be valid");
 
-    StreamParameters stream_parameters;
-    stream_parameters.session = session;
-    stream_parameters.filter = filter;
-    stream_parameters.audio_format = *selected_audio_format;
-    stream_parameters.packet_time_frames = packet_time_frames;
-
-    if (stream->update_parameters(stream_parameters)) {
+    bool do_update_shared_context = false;
+    if (stream->update_parameters(*primary)) {
         // The stream parameters have changed, so we need to update the shared context
         do_update_shared_context = true;
         notify = true;
@@ -442,7 +447,7 @@ void rav::RavennaReceiver::update_sdp(const sdp::SessionDescription& sdp) {
 
     // Delete all streams that are not in the SDP anymore
     for (auto it = media_streams_.begin(); it != media_streams_.end();) {
-        if (it->get()->get_session() != session) {
+        if (it->get()->get_session() != primary->session) {
             it = media_streams_.erase(it);
         } else {
             ++it;
@@ -450,11 +455,11 @@ void rav::RavennaReceiver::update_sdp(const sdp::SessionDescription& sdp) {
     }
 
     if (configuration_.enabled) {
-        for (auto& s : media_streams_) {
+        for (const auto& s : media_streams_) {
             s->start();
         }
     } else {
-        for (auto& s : media_streams_) {
+        for (const auto& s : media_streams_) {
             s->stop();
         }
     }
@@ -623,7 +628,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_configuration(const
 
         std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
 
-        RAV_ASSERT(configuration_.session_name != "", "Session name must not be empty");
+        RAV_ASSERT(!configuration_.session_name.empty(), "Session name must not be empty");
 
         if (!rtsp_client_.subscribe_to_session(this, configuration_.session_name)) {
             RAV_ERROR("Failed to subscribe to session '{}'", configuration_.session_name);
@@ -637,7 +642,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_configuration(const
         update_shared_context();
     }
 
-    for (auto& stream : media_streams_) {
+    for (const auto& stream : media_streams_) {
         configuration_.enabled ? stream->start() : stream->stop();
     }
 

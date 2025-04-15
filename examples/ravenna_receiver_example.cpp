@@ -222,8 +222,6 @@ class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
         );
     }
 
-    void on_data_ready([[maybe_unused]] rav::WrappingUint32 timestamp) override {}
-
   private:
     asio::io_context io_context_;
     rav::RavennaBrowser browser_ {io_context_};

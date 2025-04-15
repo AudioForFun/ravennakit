@@ -330,15 +330,24 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     };
 
     struct SharedContext {
+        // Audio thread:
         rtp::Buffer receiver_buffer;
         std::vector<uint8_t> read_buffer;
-        FifoBuffer<IntermediatePacket, Fifo::Spsc> fifo;
-        FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;
         std::optional<WrappingUint32> first_packet_timestamp;
         WrappingUint32 next_ts;
         AudioFormat selected_audio_format;
+
+        // Read by audio and network thread:
         uint32_t delay_frames = 0;
-        /// Whether data is being consumed. When the FIFO is full, this will be set to false.
+
+        // Audio thread writes and network thread reads:
+        FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;
+
+        // Network thread writes and audio thread reads:
+        FifoBuffer<IntermediatePacket, Fifo::Spsc> fifo;
+
+        // Read and write by both threads:
+        // Whether data is being consumed. When the FIFO is full, this will be set to false.
         std::atomic_bool consumer_active {false};
     };
 
