@@ -14,22 +14,23 @@
 
 #include <asio.hpp>
 
-namespace rav::rtp {
+namespace rav {
 
 /**
- * A custom UDP sender and receiver class which extends usual UDP socket functionality by adding the ability to receive
+ * A customized UDP socket class which extends usual UDP socket functionality by adding the ability to receive
  * the destination address of a received packet. This is useful for RTP where sessions are defined by the source and
  * destination endpoints. Also in cases where a single receiver is receiving from multiple senders, the destination
- * address is needed to determine the source of the packet.
+ * address is needed to determine the source of the packet. This class also adds the ability to set dscp values for the
+ * socket.
  */
-class UdpSenderReceiver {
+class ExtendedUdpSocket {
   public:
     struct recv_event {
         const uint8_t* data;
         size_t size;
         const asio::ip::udp::endpoint& src_endpoint;
         const asio::ip::udp::endpoint& dst_endpoint;
-        uint64_t recv_time; // Monotonically increasing time in nanoseconds with arbitrary starting point.
+        uint64_t recv_time;  // Monotonically increasing time in nanoseconds with arbitrary starting point.
     };
 
     using HandlerType = std::function<void(const recv_event& event)>;
@@ -39,7 +40,7 @@ class UdpSenderReceiver {
      * @param io_context The asio io_context to use.
      * @param endpoint The endpoint to bind to.
      */
-    UdpSenderReceiver(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint);
+    ExtendedUdpSocket(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint);
 
     /**
      * Construct a new instance of the class.
@@ -47,15 +48,15 @@ class UdpSenderReceiver {
      * @param interface_address The address to bind to.
      * @param port The port to bind to.
      */
-    UdpSenderReceiver(asio::io_context& io_context, const asio::ip::address& interface_address, uint16_t port);
+    ExtendedUdpSocket(asio::io_context& io_context, const asio::ip::address& interface_address, uint16_t port);
 
-    UdpSenderReceiver(const UdpSenderReceiver&) = delete;
-    UdpSenderReceiver& operator=(const UdpSenderReceiver&) = delete;
+    ExtendedUdpSocket(const ExtendedUdpSocket&) = delete;
+    ExtendedUdpSocket& operator=(const ExtendedUdpSocket&) = delete;
 
-    UdpSenderReceiver(UdpSenderReceiver&&) noexcept = delete;
-    UdpSenderReceiver& operator=(UdpSenderReceiver&&) noexcept = delete;
+    ExtendedUdpSocket(ExtendedUdpSocket&&) noexcept = delete;
+    ExtendedUdpSocket& operator=(ExtendedUdpSocket&&) noexcept = delete;
 
-    ~UdpSenderReceiver();
+    ~ExtendedUdpSocket();
 
     /**
      * Start the receiver.

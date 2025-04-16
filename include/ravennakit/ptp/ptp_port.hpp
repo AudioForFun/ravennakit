@@ -17,7 +17,6 @@
 #include "detail/ptp_basic_filter.hpp"
 #include "detail/ptp_request_response_delay_sequence.hpp"
 #include "messages/ptp_announce_message.hpp"
-#include "messages/ptp_delay_req_message.hpp"
 #include "messages/ptp_delay_resp_message.hpp"
 #include "messages/ptp_follow_up_message.hpp"
 #include "messages/ptp_pdelay_req_message.hpp"
@@ -25,7 +24,7 @@
 #include "messages/ptp_pdelay_resp_message.hpp"
 #include "messages/ptp_sync_message.hpp"
 #include "ravennakit/core/containers/ring_buffer.hpp"
-#include "ravennakit/rtp/detail/udp_sender_receiver.hpp"
+#include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
 #include "types/ptp_port_identity.hpp"
 
 #include <map>
@@ -104,8 +103,8 @@ class Port {
     Instance& parent_;
     PortDs port_ds_;
     asio::steady_timer announce_receipt_timeout_timer_;
-    rtp::UdpSenderReceiver event_socket_;
-    rtp::UdpSenderReceiver general_socket_;
+    ExtendedUdpSocket event_socket_;
+    ExtendedUdpSocket general_socket_;
     std::vector<Subscription> subscriptions_;
     ForeignMasterList foreign_master_list_;
     std::optional<AnnounceMessage> erbest_;
@@ -119,7 +118,7 @@ class Port {
     RingBuffer<SyncMessage> sync_messages_ {8};
     RingBuffer<RequestResponseDelaySequence> request_response_delay_sequences_ {8};
 
-    void handle_recv_event(const rtp::UdpSenderReceiver::recv_event& event);
+    void handle_recv_event(const ExtendedUdpSocket::recv_event& event);
     void handle_announce_message(const AnnounceMessage& announce_message, BufferView<const uint8_t> tlvs);
     void handle_sync_message(SyncMessage sync_message, BufferView<const uint8_t> tlvs);
     void handle_follow_up_message(const FollowUpMessage& follow_up_message, BufferView<const uint8_t> tlvs);

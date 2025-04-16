@@ -14,10 +14,10 @@
 #include "../rtcp_packet_view.hpp"
 #include "../rtp_packet_view.hpp"
 #include "rtp_session.hpp"
-#include "udp_sender_receiver.hpp"
 #include "ravennakit/core/events.hpp"
 #include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/core/subscriber_list.hpp"
+#include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
 #include "ravennakit/sdp/sdp_media_description.hpp"
 
 #include <asio.hpp>
@@ -135,8 +135,8 @@ class Receiver {
         Session session;
         std::vector<StreamState> stream_states;
         SubscriberList<Subscriber, SubscriberContext> subscribers;
-        std::shared_ptr<UdpSenderReceiver> rtp_sender_receiver;
-        std::shared_ptr<UdpSenderReceiver> rtcp_sender_receiver;
+        std::shared_ptr<ExtendedUdpSocket> rtp_sender_receiver;
+        std::shared_ptr<ExtendedUdpSocket> rtcp_sender_receiver;
         Subscription rtp_multicast_subscription;
         Subscription rtcp_multicast_subscription;
     };
@@ -152,11 +152,11 @@ class Receiver {
     SessionContext* find_session_context(const Session& session);
     SessionContext* create_new_session_context(const Session& session);
     SessionContext* find_or_create_session_context(const Session& session);
-    std::shared_ptr<UdpSenderReceiver> find_rtp_sender_receiver(uint16_t port);
-    std::shared_ptr<UdpSenderReceiver> find_rtcp_sender_receiver(uint16_t port);
+    std::shared_ptr<ExtendedUdpSocket> find_rtp_sender_receiver(uint16_t port);
+    std::shared_ptr<ExtendedUdpSocket> find_rtcp_sender_receiver(uint16_t port);
 
-    void handle_incoming_rtp_data(const UdpSenderReceiver::recv_event& event);
-    void handle_incoming_rtcp_data(const UdpSenderReceiver::recv_event& event);
+    void handle_incoming_rtp_data(const ExtendedUdpSocket::recv_event& event);
+    void handle_incoming_rtcp_data(const ExtendedUdpSocket::recv_event& event);
 };
 
 }  // namespace rav::rtp

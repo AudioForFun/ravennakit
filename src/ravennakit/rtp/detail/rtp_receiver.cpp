@@ -128,18 +128,18 @@ rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::create_new_session_conte
 
     if (new_session.rtp_sender_receiver == nullptr) {
         new_session.rtp_sender_receiver =
-            std::make_shared<UdpSenderReceiver>(io_context_, asio::ip::address_v4(), session.rtp_port);
+            std::make_shared<ExtendedUdpSocket>(io_context_, asio::ip::address_v4(), session.rtp_port);
         // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
-        new_session.rtp_sender_receiver->start([this](const UdpSenderReceiver::recv_event& event) {
+        new_session.rtp_sender_receiver->start([this](const ExtendedUdpSocket::recv_event& event) {
             handle_incoming_rtp_data(event);
         });
     }
 
     if (new_session.rtcp_sender_receiver == nullptr) {
         new_session.rtcp_sender_receiver =
-            std::make_shared<UdpSenderReceiver>(io_context_, asio::ip::address_v4(), session.rtcp_port);
+            std::make_shared<ExtendedUdpSocket>(io_context_, asio::ip::address_v4(), session.rtcp_port);
         // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
-        new_session.rtcp_sender_receiver->start([this](const UdpSenderReceiver::recv_event& event) {
+        new_session.rtcp_sender_receiver->start([this](const ExtendedUdpSocket::recv_event& event) {
             handle_incoming_rtcp_data(event);
         });
     }
@@ -166,7 +166,7 @@ rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::find_or_create_session_c
     return context;
 }
 
-std::shared_ptr<rav::rtp::UdpSenderReceiver> rav::rtp::Receiver::find_rtp_sender_receiver(const uint16_t port) {
+std::shared_ptr<rav::ExtendedUdpSocket> rav::rtp::Receiver::find_rtp_sender_receiver(const uint16_t port) {
     for (auto& context : sessions_contexts_) {
         if (context.session.rtcp_port == port) {
             RAV_WARNING("RTCP port found instead of RTP port. This is a network administration error.");
@@ -179,7 +179,7 @@ std::shared_ptr<rav::rtp::UdpSenderReceiver> rav::rtp::Receiver::find_rtp_sender
     return {};
 }
 
-std::shared_ptr<rav::rtp::UdpSenderReceiver> rav::rtp::Receiver::find_rtcp_sender_receiver(const uint16_t port) {
+std::shared_ptr<rav::ExtendedUdpSocket> rav::rtp::Receiver::find_rtcp_sender_receiver(const uint16_t port) {
     for (auto& session : sessions_contexts_) {
         if (session.session.rtp_port == port) {
             RAV_WARNING("RTP port found instead of RTCP port. This is a network administration error.");
@@ -192,7 +192,7 @@ std::shared_ptr<rav::rtp::UdpSenderReceiver> rav::rtp::Receiver::find_rtcp_sende
     return {};
 }
 
-void rav::rtp::Receiver::handle_incoming_rtp_data(const UdpSenderReceiver::recv_event& event) {
+void rav::rtp::Receiver::handle_incoming_rtp_data(const ExtendedUdpSocket::recv_event& event) {
     TRACY_ZONE_SCOPED;
 
     const PacketView packet(event.data, event.size);
@@ -231,7 +231,7 @@ void rav::rtp::Receiver::handle_incoming_rtp_data(const UdpSenderReceiver::recv_
     }
 }
 
-void rav::rtp::Receiver::handle_incoming_rtcp_data(const UdpSenderReceiver::recv_event& event) {
+void rav::rtp::Receiver::handle_incoming_rtcp_data(const ExtendedUdpSocket::recv_event& event) {
     TRACY_ZONE_SCOPED;
 
     const rtcp::PacketView packet(event.data, event.size);

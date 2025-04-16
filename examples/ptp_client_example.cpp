@@ -10,9 +10,6 @@
 
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
-#include "ravennakit/ptp/messages/ptp_announce_message.hpp"
-#include "ravennakit/ptp/messages/ptp_message_header.hpp"
-#include "ravennakit/rtp/detail/udp_sender_receiver.hpp"
 
 #include <CLI/App.hpp>
 #include <asio/io_context.hpp>
