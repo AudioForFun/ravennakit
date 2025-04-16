@@ -196,31 +196,6 @@ if (${RAV_TESTS})
 endif ()
 
 ##############
-# Test tools #
-##############
-
-if (${RAV_TESTS})
-    file(GLOB_RECURSE RAVENNAKIT_TEST_TOOLS "test/tools/*.cpp")
-
-    # Build test tool targets based on the .cpp files in the examples subfolder
-    foreach (FILE ${RAVENNAKIT_TEST_TOOLS})
-        get_filename_component(FILE_NAME ${FILE} NAME_WE)
-        add_executable(${FILE_NAME} ${FILE})
-        target_link_libraries(${FILE_NAME}
-                PUBLIC
-                rav_recommended_warning_flags
-                rav_recommended_lto_flags
-                ravennakit
-                PRIVATE
-                CLI11::CLI11
-        )
-        if (RAV_TRACY_ENABLE)
-            target_link_libraries(${FILE_NAME} PUBLIC tracy)
-        endif ()
-    endforeach ()
-endif ()
-
-##############
 # Benchmarks #
 ##############
 
@@ -233,8 +208,8 @@ if (${RAV_BENCHMARKS})
             PUBLIC
             rav_recommended_warning_flags
             rav_recommended_lto_flags
-            PRIVATE
             ravennakit
+            PRIVATE
             nanobench::nanobench
             Catch2::Catch2
     )
