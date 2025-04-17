@@ -15,7 +15,7 @@
 
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
-    rtp_receiver_ = std::make_unique<rtp::Receiver>(io_context_, udp_receiver_);
+    rtp_receiver_ = std::make_unique<rtp::Receiver>(udp_receiver_);
     advertiser_ = dnssd::Advertiser::create(io_context_);
 
     std::promise<std::thread::id> promise;
@@ -48,8 +48,9 @@ rav::RavennaNode::~RavennaNode() {
 
 std::future<rav::Id> rav::RavennaNode::create_receiver(const RavennaReceiver::ConfigurationUpdate& initial_config) {
     auto work = [this, initial_config]() mutable {
-        auto new_receiver =
-            std::make_unique<RavennaReceiver>(rtsp_client_, *rtp_receiver_, id_generator_.next(), initial_config);
+        auto new_receiver = std::make_unique<RavennaReceiver>(
+            io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next(), initial_config
+        );
         const auto& it = receivers_.emplace_back(std::move(new_receiver));
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
@@ -461,8 +462,9 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json
                 if (!config) {
                     return tl::unexpected(config.error());
                 }
-                auto new_receiver =
-                    std::make_unique<RavennaReceiver>(rtsp_client_, *rtp_receiver_, id_generator_.next(), *config);
+                auto new_receiver = std::make_unique<RavennaReceiver>(
+                    io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next(), *config
+                );
                 new_receivers.push_back(std::move(new_receiver));
             }
 

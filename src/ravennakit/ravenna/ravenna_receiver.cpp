@@ -180,7 +180,7 @@ nlohmann::json rav::RavennaReceiver::to_json() const {
 }
 
 void rav::RavennaReceiver::set_interface(const asio::ip::address_v4& interface_address) {
-
+    TODO("Implement set_interface");
 }
 
 std::string rav::RavennaReceiver::StreamParameters::to_string() const {
@@ -208,9 +208,10 @@ rav::RavennaReceiver::ConfigurationUpdate::from_json(const nlohmann::json& json)
 }
 
 rav::RavennaReceiver::RavennaReceiver(
-    RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id, ConfigurationUpdate initial_config
+    asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id,
+    ConfigurationUpdate initial_config
 ) :
-    rtp_receiver_(rtp_receiver), rtsp_client_(rtsp_client), id_(id), maintenance_timer_(rtp_receiver.get_io_context()) {
+    rtp_receiver_(rtp_receiver), rtsp_client_(rtsp_client), id_(id), maintenance_timer_(io_context) {
     if (!initial_config.delay_frames) {
         initial_config.delay_frames = 480;  // 10ms at 48KHz
     }
@@ -503,7 +504,8 @@ void rav::RavennaReceiver::update_shared_context() {
     }
 
     if (!selected_format.has_value()) {
-        RAV_WARNING("No valid audio format available");
+        RAV_TRACE("No valid audio format available, clearing shared context");
+        shared_context_.clear();
         return;
     }
 

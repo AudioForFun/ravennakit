@@ -75,21 +75,15 @@ class Receiver {
 
     /**
      * Constructs a new RTP receiver using given loop.
-     * @param io_context The io_context to use.
      * @param udp_receiver The UDP receiver to use.
      */
-    explicit Receiver(asio::io_context& io_context, UdpReceiver& udp_receiver);
+    explicit Receiver(UdpReceiver& udp_receiver);
 
     Receiver(const Receiver&) = delete;
     Receiver& operator=(const Receiver&) = delete;
 
     Receiver(Receiver&&) = delete;
     Receiver& operator=(Receiver&&) = delete;
-
-    /**
-     * @return The io_context associated with this receiver.
-     */
-    [[nodiscard]] asio::io_context& get_io_context() const;
 
     /**
      * Adds a subscriber to the receiver.
@@ -111,7 +105,7 @@ class Receiver {
      * left.
      * @param interface_address The address to bind to.
      */
-    void set_interface(const asio::ip::address& interface_address);
+    void set_interface(const asio::ip::address_v4& interface_address);
 
   private:
     class SynchronizationSource {
@@ -126,19 +120,20 @@ class Receiver {
         uint32_t ssrc_ {};
     };
 
-    struct SessionContext: UdpReceiver::Subscriber {
-        std::vector<SynchronizationSource> synchronization_sources;
-        SubscriberList<Receiver::Subscriber> subscribers;
-
+    class SessionContext: UdpReceiver::Subscriber {
+      public:
         explicit SessionContext(
             UdpReceiver& udp_receiver, Session session, const asio::ip::address_v4& interface_address
         );
         ~SessionContext() override;
 
+        [[nodiscard]] bool add_subscriber(Receiver::Subscriber* subscriber);
         [[nodiscard]] bool remove_subscriber(const Receiver::Subscriber* subscriber);
 
         [[nodiscard]] bool empty() const;
         [[nodiscard]] const Session& get_session() const;
+
+        void set_interface(const asio::ip::address_v4& interface_address);
 
         // UdpReceiver::Subscriber overrides
         void on_receive(const ExtendedUdpSocket::RecvEvent& event) override;
@@ -146,15 +141,17 @@ class Receiver {
       private:
         UdpReceiver& udp_receiver_;
         Session session_;
+        std::vector<SynchronizationSource> synchronization_sources_;
+        SubscriberList<Receiver::Subscriber> subscribers_;
 
         void handle_incoming_rtp_data(const ExtendedUdpSocket::RecvEvent& event);
+        void subscribe_to_udp_receiver(const asio::ip::address_v4& interface_address);
     };
 
     struct Configuration {
         asio::ip::address interface_address {};
     };
 
-    asio::io_context& io_context_;
     UdpReceiver& udp_receiver_;
     Configuration config_;
     std::vector<std::unique_ptr<SessionContext>> sessions_contexts_;

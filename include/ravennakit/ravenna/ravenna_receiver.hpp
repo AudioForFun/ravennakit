@@ -167,7 +167,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     };
 
     explicit RavennaReceiver(
-        RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id, ConfigurationUpdate initial_config = {}
+        asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id, ConfigurationUpdate initial_config = {}
     );
     ~RavennaReceiver() override;
 
