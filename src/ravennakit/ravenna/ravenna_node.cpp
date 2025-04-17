@@ -15,7 +15,7 @@
 
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
-    rtp_receiver_ = std::make_unique<rtp::Receiver>(io_context_);
+    rtp_receiver_ = std::make_unique<rtp::Receiver>(io_context_, udp_receiver_);
     advertiser_ = dnssd::Advertiser::create(io_context_);
 
     std::promise<std::thread::id> promise;

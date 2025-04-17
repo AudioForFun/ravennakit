@@ -49,8 +49,8 @@ bool rav::UdpReceiver::subscribe(
 }
 
 void rav::UdpReceiver::unsubscribe(const Subscriber* subscriber) {
-    for (const auto& context : sockets_) {
-        std::ignore = context->remove_subscriber(subscriber);
+    for (const auto& socket : sockets_) {
+        std::ignore = socket->remove_subscriber(subscriber);
     }
     auto count = cleanup_empty_sockets();
     if (count > 0) {

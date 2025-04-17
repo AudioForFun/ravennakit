@@ -334,6 +334,7 @@ class RavennaNode {
     };
 
     asio::io_context io_context_;
+    UdpReceiver udp_receiver_ {io_context_};
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
     Id::Generator id_generator_;

@@ -18,6 +18,7 @@
 #include "ravennakit/core/net/sockets/udp_receiver.hpp"
 
 #include <asio.hpp>
+#include <utility>
 
 namespace rav::rtp {
 
@@ -31,7 +32,7 @@ class Receiver {
         const Session& session;
         const asio::ip::udp::endpoint& src_endpoint;
         const asio::ip::udp::endpoint& dst_endpoint;
-        uint64_t recv_time;  // Monotonically increasing time in nanoseconds with arbitrary starting point.
+        uint64_t recv_time;  // Arbitrary monotonic in nanoseconds
     };
 
     struct RtcpPacketEvent {
@@ -75,8 +76,9 @@ class Receiver {
     /**
      * Constructs a new RTP receiver using given loop.
      * @param io_context The io_context to use.
+     * @param udp_receiver The UDP receiver to use.
      */
-    explicit Receiver(asio::io_context& io_context);
+    explicit Receiver(asio::io_context& io_context, UdpReceiver& udp_receiver);
 
     Receiver(const Receiver&) = delete;
     Receiver& operator=(const Receiver&) = delete;
@@ -124,12 +126,28 @@ class Receiver {
         uint32_t ssrc_ {};
     };
 
-    struct SessionContext {
-        Session session;
+    struct SessionContext: UdpReceiver::Subscriber {
         std::vector<SynchronizationSource> synchronization_sources;
-        SubscriberList<Subscriber> subscribers;
-        std::shared_ptr<ExtendedUdpSocket> rtp_sender_receiver;
-        std::shared_ptr<ExtendedUdpSocket> rtcp_sender_receiver;
+        SubscriberList<Receiver::Subscriber> subscribers;
+
+        explicit SessionContext(
+            UdpReceiver& udp_receiver, Session session, const asio::ip::address_v4& interface_address
+        );
+        ~SessionContext() override;
+
+        [[nodiscard]] bool remove_subscriber(const Receiver::Subscriber* subscriber);
+
+        [[nodiscard]] bool empty() const;
+        [[nodiscard]] const Session& get_session() const;
+
+        // UdpReceiver::Subscriber overrides
+        void on_receive(const ExtendedUdpSocket::RecvEvent& event) override;
+
+      private:
+        UdpReceiver& udp_receiver_;
+        Session session_;
+
+        void handle_incoming_rtp_data(const ExtendedUdpSocket::RecvEvent& event);
     };
 
     struct Configuration {
@@ -137,18 +155,13 @@ class Receiver {
     };
 
     asio::io_context& io_context_;
-    UdpReceiver udp_receiver_;
+    UdpReceiver& udp_receiver_;
     Configuration config_;
-    std::vector<SessionContext> sessions_contexts_;
+    std::vector<std::unique_ptr<SessionContext>> sessions_contexts_;
 
-    SessionContext* find_session_context(const Session& session);
+    [[nodiscard]] SessionContext* find_session_context(const Session& session) const;
     SessionContext* create_new_session_context(const Session& session);
     SessionContext* find_or_create_session_context(const Session& session);
-    std::shared_ptr<ExtendedUdpSocket> find_rtp_sender_receiver(uint16_t port);
-    std::shared_ptr<ExtendedUdpSocket> find_rtcp_sender_receiver(uint16_t port);
-
-    void handle_incoming_rtp_data(const ExtendedUdpSocket::RecvEvent& event);
-    void handle_incoming_rtcp_data(const ExtendedUdpSocket::RecvEvent& event);
 };
 
 }  // namespace rav::rtp

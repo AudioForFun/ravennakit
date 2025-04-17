@@ -35,7 +35,8 @@ typedef BOOL(PASCAL* LPFN_WSARECVMSG)(
 );
 #endif
 
-rav::rtp::Receiver::Receiver(asio::io_context& io_context) : io_context_(io_context), udp_receiver_(io_context) {}
+rav::rtp::Receiver::Receiver(asio::io_context& io_context, UdpReceiver& udp_receiver) :
+    io_context_(io_context), udp_receiver_(udp_receiver) {}
 
 asio::io_context& rav::rtp::Receiver::get_io_context() const {
     return io_context_;
@@ -57,10 +58,10 @@ bool rav::rtp::Receiver::subscribe(Subscriber* subscriber, const Session& sessio
 bool rav::rtp::Receiver::unsubscribe(const Subscriber* subscriber) {
     size_t count = 0;
     for (auto it = sessions_contexts_.begin(); it != sessions_contexts_.end();) {
-        if (it->subscribers.remove(subscriber)) {
+        if ((*it)->remove_subscriber(subscriber)) {
             count++;
         }
-        if (it->subscribers.empty()) {
+        if ((*it)->empty()) {
             it = sessions_contexts_.erase(it);
         } else {
             ++it;
@@ -72,128 +73,70 @@ bool rav::rtp::Receiver::unsubscribe(const Subscriber* subscriber) {
 void rav::rtp::Receiver::set_interface(const asio::ip::address& interface_address) {
     config_.interface_address = interface_address;
 
-    for (auto& session : sessions_contexts_) {
-        if (!interface_address.is_unspecified() && session.session.connection_address.is_multicast()) {
-            session.rtp_sender_receiver->join_multicast_group(
-                session.session.connection_address.to_v4(), interface_address.to_v4()
-            );
-            session.rtcp_sender_receiver->join_multicast_group(
-                session.session.connection_address.to_v4(), interface_address.to_v4()
-            );
-        } else {
-            // TODO: Leave multicast group(s)
-        }
-    }
+    // TODO: Reimplement or remove
+
+    // for (auto& session : sessions_contexts_) {
+    //     if (!interface_address.is_unspecified() && session.session.connection_address.is_multicast()) {
+    //         session.rtp_sender_receiver->join_multicast_group(
+    //             session.session.connection_address.to_v4(), interface_address.to_v4()
+    //         );
+    //         session.rtcp_sender_receiver->join_multicast_group(
+    //             session.session.connection_address.to_v4(), interface_address.to_v4()
+    //         );
+    //     } else {
+    //         // TODO: Leave multicast group(s)
+    //     }
+    // }
 }
 
-rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::find_session_context(const Session& session) {
-    for (auto& context : sessions_contexts_) {
-        if (context.session == session) {
-            return &context;
-        }
-    }
-    return nullptr;
-}
-
-rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::create_new_session_context(const Session& session) {
-    // Note: we bind to the any address because the behaviour of macOS and Windows slightly differs. On macOS the bind
-    // address functions as a filter (at least when joining a multicast group), while on Windows it's the interface
-    // address to bind to. Secondly, binding to the multicast address would work on macOS, but not on Windows where this
-    // is an invalid operation. To have a cross-platform solution we bind to the any address, which potentially results
-    // in more traffic being received than we need, but since we're filtering on the endpoint anyway, this is not a
-    // problem.
-    // The ideal solution would be a platform-specific implementation, where on macOS we would use a single socket bound
-    // to a specific interface for unicast and separate sockets for each multicast address (bound to the multicast
-    // address to filter). On Windows we would use a single socket for all traffic (unicast + multicast) but bound to a
-    // specific interface (address).
-    // To summarize: on macOS we cannot bind to a specific interface and receive both unicast and multicast traffic.
-
-    // TODO: Disallow a port to be used in multiple sessions because when receiving RTP data we don't know which session
-    // it belongs to.
-
-    // For future refactor:
-    // - Create a udp_sender_receiver_pool which manages udp_sender_receiver instances (weakly reference them). This
-    // pool will hand out a single instance per interface address + port on Windows and separate instances on macos for
-    // address + multicast addresses + unicast. This allows the socket to bind to a specific interface (see above).
-    // - Make rtp_receiver work with a port pair (i.e. 5004/5004). Limit a port to only be used in a single port pair.
-    // - Create a rtp_receiver_pool which manages rtp_receiver instances (weakly reference them). This pool will hand
-    // out instances based on port pair. If one of the ports is already used in another instance, refuse.
-    // - rtp_stream_receiver gets a rtp_receiver from the pool and holds on to it locally. This allows multiple streams
-    // to use the same rtp_receiver instance.
-
-    SessionContext new_session;
-    new_session.session = session;
-    new_session.rtp_sender_receiver = find_rtp_sender_receiver(session.rtp_port);
-    new_session.rtcp_sender_receiver = find_rtcp_sender_receiver(session.rtcp_port);
-
-    if (new_session.rtp_sender_receiver == nullptr) {
-        new_session.rtp_sender_receiver =
-            std::make_shared<ExtendedUdpSocket>(io_context_, asio::ip::address_v4(), session.rtp_port);
-        // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
-        new_session.rtp_sender_receiver->start([this](const ExtendedUdpSocket::RecvEvent& event) {
-            handle_incoming_rtp_data(event);
-        });
-    }
-
-    if (new_session.rtcp_sender_receiver == nullptr) {
-        new_session.rtcp_sender_receiver =
-            std::make_shared<ExtendedUdpSocket>(io_context_, asio::ip::address_v4(), session.rtcp_port);
-        // Capturing this is valid because rtp_receiver will stop the udp_sender_receiver before it goes out of scope.
-        new_session.rtcp_sender_receiver->start([this](const ExtendedUdpSocket::RecvEvent& event) {
-            handle_incoming_rtcp_data(event);
-        });
-    }
-
+rav::rtp::Receiver::SessionContext::SessionContext(
+    UdpReceiver& udp_receiver, Session session, const asio::ip::address_v4& interface_address
+) :
+    udp_receiver_(udp_receiver), session_(std::move(session)) {
     if (session.connection_address.is_multicast()) {
-        // TODO: Handle leaving
-        new_session.rtp_sender_receiver->join_multicast_group(
-            session.connection_address.to_v4(), config_.interface_address.to_v4()
-        );
-        new_session.rtcp_sender_receiver->join_multicast_group(
-            session.connection_address.to_v4(), config_.interface_address.to_v4()
-        );
-    }
-
-    sessions_contexts_.emplace_back(std::move(new_session));
-    RAV_TRACE("New RTP session context created for: {}", session.to_string());
-    return &sessions_contexts_.back();
-}
-
-rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::find_or_create_session_context(const Session& session) {
-    auto context = find_session_context(session);
-    if (context == nullptr) {
-        context = create_new_session_context(session);
-    }
-    return context;
-}
-
-std::shared_ptr<rav::ExtendedUdpSocket> rav::rtp::Receiver::find_rtp_sender_receiver(const uint16_t port) {
-    for (auto& context : sessions_contexts_) {
-        if (context.session.rtcp_port == port) {
-            RAV_WARNING("RTCP port found instead of RTP port. This is a network administration error.");
-            return nullptr;
+        if (!udp_receiver_.subscribe(this, session.connection_address.to_v4(), interface_address, session.rtp_port)) {
+            RAV_ERROR("Failed to subscribe to multicast RTP session {}", session.to_string());
         }
-        if (context.session.rtp_port == port) {
-            return context.rtp_sender_receiver;
+        if (!udp_receiver_.subscribe(this, session.connection_address.to_v4(), interface_address, session.rtcp_port)) {
+            RAV_ERROR("Failed to subscribe to multicast RTP session {}", session.to_string());
+        }
+    } else {
+        if (!udp_receiver_.subscribe(this, interface_address, session.rtp_port)) {
+            RAV_ERROR("Failed to subscribe to unicast RTP session {}", session.to_string());
+        }
+        if (!udp_receiver_.subscribe(this, interface_address, session.rtcp_port)) {
+            RAV_ERROR("Failed to subscribe to unicast RTP session {}", session.to_string());
         }
     }
-    return {};
 }
 
-std::shared_ptr<rav::ExtendedUdpSocket> rav::rtp::Receiver::find_rtcp_sender_receiver(const uint16_t port) {
-    for (auto& session : sessions_contexts_) {
-        if (session.session.rtp_port == port) {
-            RAV_WARNING("RTP port found instead of RTCP port. This is a network administration error.");
-            return nullptr;
-        }
-        if (session.session.rtcp_port == port) {
-            return session.rtcp_sender_receiver;
-        }
+rav::rtp::Receiver::SessionContext::~SessionContext() {
+    udp_receiver_.unsubscribe(this);
+}
+
+bool rav::rtp::Receiver::SessionContext::remove_subscriber(const Receiver::Subscriber* subscriber) {
+    return subscribers.remove(subscriber);
+}
+
+bool rav::rtp::Receiver::SessionContext::empty() const {
+    return subscribers.empty();
+}
+
+const rav::rtp::Session& rav::rtp::Receiver::SessionContext::get_session() const {
+    return session_;
+}
+
+void rav::rtp::Receiver::SessionContext::on_receive(const ExtendedUdpSocket::RecvEvent& event) {
+    if (event.dst_endpoint.port() == session_.rtp_port) {
+        handle_incoming_rtp_data(event);
+    } else if (event.dst_endpoint.port() == session_.rtcp_port) {
+        // TODO: Handle RTCP data
+    } else {
+        RAV_WARNING("Received data on unknown port: {}", event.dst_endpoint.port());
     }
-    return {};
 }
 
-void rav::rtp::Receiver::handle_incoming_rtp_data(const ExtendedUdpSocket::RecvEvent& event) {
+void rav::rtp::Receiver::SessionContext::handle_incoming_rtp_data(const ExtendedUdpSocket::RecvEvent& event) {
     TRACY_ZONE_SCOPED;
 
     const PacketView packet(event.data, event.size);
@@ -202,45 +145,52 @@ void rav::rtp::Receiver::handle_incoming_rtp_data(const ExtendedUdpSocket::RecvE
         return;
     }
 
-    for (auto& context : sessions_contexts_) {
-        if (context.session.connection_address == event.dst_endpoint.address()
-            && context.session.rtp_port == event.dst_endpoint.port()) {
-            const RtpPacketEvent rtp_event {
-                packet, context.session, event.src_endpoint, event.dst_endpoint, event.recv_time
-            };
+    const RtpPacketEvent rtp_event {packet, session_, event.src_endpoint, event.dst_endpoint, event.recv_time};
 
-            bool did_find_stream = false;
+    bool did_find_stream = false;
 
-            for (auto& state : context.synchronization_sources) {
-                if (state.get_ssrc() == packet.ssrc()) {
-                    did_find_stream = true;
-                }
-            }
-
-            if (!did_find_stream) {
-                auto& it = context.synchronization_sources.emplace_back(packet.ssrc());
-                RAV_TRACE(
-                    "Added new stream with SSRC {} from {}:{}", it.get_ssrc(), event.src_endpoint.address().to_string(),
-                    event.src_endpoint.port()
-                );
-            }
-
-            for (auto* s : context.subscribers) {
-                s->on_rtp_packet(rtp_event);
-            }
+    for (auto& state : synchronization_sources) {
+        if (state.get_ssrc() == packet.ssrc()) {
+            did_find_stream = true;
         }
+    }
+
+    if (!did_find_stream) {
+        const auto& it = synchronization_sources.emplace_back(packet.ssrc());
+        RAV_TRACE(
+            "Added new stream with SSRC {} from {}:{}", it.get_ssrc(), event.src_endpoint.address().to_string(),
+            event.src_endpoint.port()
+        );
+    }
+
+    for (auto* s : subscribers) {
+        s->on_rtp_packet(rtp_event);
     }
 }
 
-void rav::rtp::Receiver::handle_incoming_rtcp_data(const ExtendedUdpSocket::RecvEvent& event) {
-    TRACY_ZONE_SCOPED;
-
-    const rtcp::PacketView packet(event.data, event.size);
-    if (!packet.validate()) {
-        RAV_WARNING("Invalid RTCP packet received");
-        return;
+rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::find_session_context(const Session& session) const {
+    for (const auto& context : sessions_contexts_) {
+        if (context->get_session() == session) {
+            return context.get();
+        }
     }
-    // const rtcp_packet_event rtcp_event {packet, event.src_endpoint, event.dst_endpoint};
+    return nullptr;
+}
 
-    // TODO: Process the packet
+rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::create_new_session_context(const Session& session) {
+    // TODO: Disallow a port to be used in multiple sessions because when receiving RTP data we don't know which session
+    // it belongs to.
+
+    auto new_session = std::make_unique<SessionContext>(udp_receiver_, session, config_.interface_address.to_v4());
+    const auto& it = sessions_contexts_.emplace_back(std::move(new_session));
+    RAV_TRACE("New RTP session context created for: {}", session.to_string());
+    return it.get();
+}
+
+rav::rtp::Receiver::SessionContext* rav::rtp::Receiver::find_or_create_session_context(const Session& session) {
+    auto context = find_session_context(session);
+    if (context == nullptr) {
+        context = create_new_session_context(session);
+    }
+    return context;
 }
