@@ -48,7 +48,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
             interface_addr
         );
 
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(io_context_);
+        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
         rtp_receiver_->set_interface(interface_addr);
 
         rav::RavennaReceiver::ConfigurationUpdate update;
@@ -57,7 +57,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         update.session_name = stream_name_;
 
         ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(
-            *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id(), update
+            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id(), update
         );
         auto result = ravenna_receiver_->update_configuration(update);
         if (!result) {
@@ -80,7 +80,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         }
     }
 
-    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& parameters) override {
+    void ravenna_receiver_stream_updated(const rav::rtp::AudioReceiver::StreamParameters& parameters) override {
         RAV_ASSERT(parameters.audio_format.is_valid(), "Invalid audio format");
 
         buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.packet_time_frames);
@@ -122,6 +122,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
   private:
     std::string stream_name_;
     asio::io_context io_context_;
+    rav::UdpReceiver udp_receiver_ {io_context_};
     std::vector<uint8_t> buffer_;
     bool ptp_clock_stable_ = false;
 

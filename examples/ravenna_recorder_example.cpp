@@ -56,7 +56,7 @@ class stream_recorder: public rav::RavennaReceiver::Subscriber {
         }
     }
 
-    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& event) override {
+    void ravenna_receiver_stream_updated(const rav::rtp::AudioReceiver::StreamParameters& event) override {
         if (!event.audio_format.is_valid() || !event.session.valid()) {
             return;
         }
@@ -112,8 +112,8 @@ class ravenna_recorder {
     explicit ravenna_recorder(const std::string& interface_address) {
         rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
 
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(io_context_);
-        rtp_receiver_->set_interface(asio::ip::make_address(interface_address));
+        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
+        rtp_receiver_->set_interface(asio::ip::make_address_v4(interface_address));
     }
 
     ~ravenna_recorder() = default;
@@ -125,7 +125,7 @@ class ravenna_recorder {
         update.session_name = stream_name;
 
         auto receiver = std::make_unique<rav::RavennaReceiver>(
-            *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
+            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
         );
         auto result = receiver->update_configuration(update);
         if (!result) {
@@ -147,6 +147,7 @@ class ravenna_recorder {
 
   private:
     asio::io_context io_context_;
+    rav::UdpReceiver udp_receiver_ {io_context_};
     rav::RavennaBrowser browser_ {io_context_};
     std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
     std::unique_ptr<rav::rtp::Receiver> rtp_receiver_;

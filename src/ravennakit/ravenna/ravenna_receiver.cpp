@@ -36,7 +36,7 @@ bool is_connection_info_valid(const rav::sdp::ConnectionInfoField& conn) {
     return true;
 }
 
-tl::expected<rav::RavennaReceiver::StreamParameters, std::string>
+tl::expected<rav::rtp::AudioReceiver::StreamParameters, std::string>
 find_primary_stream_parameters(const rav::sdp::SessionDescription& sdp) {
     std::optional<rav::AudioFormat> selected_audio_format;
     const rav::sdp::MediaDescription* selected_media_description = nullptr;
@@ -145,7 +145,7 @@ find_primary_stream_parameters(const rav::sdp::SessionDescription& sdp) {
         }
     }
 
-    rav::RavennaReceiver::StreamParameters stream_parameters;
+    rav::rtp::AudioReceiver::StreamParameters stream_parameters;
     stream_parameters.session = session;
     stream_parameters.filter = filter;
     stream_parameters.audio_format = *selected_audio_format;
@@ -164,6 +164,22 @@ nlohmann::json rav::RavennaReceiver::to_json() const {
 
 void rav::RavennaReceiver::set_interface(const asio::ip::address_v4& interface_address) {
     TODO("Implement set_interface");
+}
+
+std::optional<uint32_t> rav::RavennaReceiver::read_data_realtime(
+    uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+) {
+    return rtp_audio_receiver_.read_data_realtime(buffer, buffer_size, at_timestamp);
+}
+
+std::optional<uint32_t> rav::RavennaReceiver::read_audio_data_realtime(
+    const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
+) {
+    return rtp_audio_receiver_.read_audio_data_realtime(output_buffer, at_timestamp);
+}
+
+rav::rtp::AudioReceiver::StreamStats rav::RavennaReceiver::get_stream_stats() const {
+    return rtp_audio_receiver_.get_stream_stats();
 }
 
 nlohmann::json rav::RavennaReceiver::Configuration::to_json() const {
@@ -187,7 +203,7 @@ rav::RavennaReceiver::RavennaReceiver(
     asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id,
     ConfigurationUpdate initial_config
 ) :
-    AudioReceiver(io_context, rtp_receiver), rtsp_client_(rtsp_client), id_(id) {
+    rtsp_client_(rtsp_client), rtp_audio_receiver_(io_context, rtp_receiver), id_(id) {
     if (!initial_config.delay_frames) {
         initial_config.delay_frames = 480;  // 10ms at 48KHz
     }
@@ -220,9 +236,9 @@ void rav::RavennaReceiver::update_sdp(const sdp::SessionDescription& sdp) {
         return;
     }
 
-    if (set_parameters(*primary)) {
+    if (rtp_audio_receiver_.set_parameters(*primary)) {
         for (auto* subscriber : subscribers_) {
-            subscriber->ravenna_receiver_stream_updated(get_parameters());
+            subscriber->ravenna_receiver_stream_updated(rtp_audio_receiver_.get_parameters());
         }
     }
 }
@@ -241,12 +257,12 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_configuration(const
 
     if (update.delay_frames.has_value() && update.delay_frames != configuration_.delay_frames) {
         configuration_.delay_frames = *update.delay_frames;
-        set_delay_frames(configuration_.delay_frames);
+        rtp_audio_receiver_.set_delay_frames(configuration_.delay_frames);
     }
 
     if (update.enabled.has_value() && update.enabled != configuration_.enabled) {
         configuration_.enabled = *update.enabled;
-        set_enabled(configuration_.enabled);
+        rtp_audio_receiver_.set_enabled(configuration_.enabled);
     }
 
     if (update.session_name.has_value() && update.session_name != configuration_.session_name) {
@@ -278,7 +294,7 @@ const rav::RavennaReceiver::Configuration& rav::RavennaReceiver::get_configurati
 bool rav::RavennaReceiver::subscribe(Subscriber* subscriber) {
     if (subscribers_.add(subscriber)) {
         subscriber->ravenna_receiver_configuration_updated(get_id(), configuration_);
-        subscriber->ravenna_receiver_stream_updated(get_parameters());
+        subscriber->ravenna_receiver_stream_updated(rtp_audio_receiver_.get_parameters());
         return true;
     }
     return false;
