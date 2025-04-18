@@ -80,7 +80,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         }
     }
 
-    void ravenna_receiver_stream_updated(const rav::rtp::AudioReceiver::StreamParameters& parameters) override {
+    void ravenna_receiver_stream_updated(const rav::rtp::AudioReceiver::Parameters& parameters) override {
         RAV_ASSERT(parameters.audio_format.is_valid(), "Invalid audio format");
 
         buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.packet_time_frames);

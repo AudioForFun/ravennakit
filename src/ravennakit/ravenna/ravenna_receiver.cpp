@@ -36,7 +36,7 @@ bool is_connection_info_valid(const rav::sdp::ConnectionInfoField& conn) {
     return true;
 }
 
-tl::expected<rav::rtp::AudioReceiver::StreamParameters, std::string>
+tl::expected<rav::rtp::AudioReceiver::Parameters, std::string>
 find_primary_stream_parameters(const rav::sdp::SessionDescription& sdp) {
     std::optional<rav::AudioFormat> selected_audio_format;
     const rav::sdp::MediaDescription* selected_media_description = nullptr;
@@ -145,7 +145,7 @@ find_primary_stream_parameters(const rav::sdp::SessionDescription& sdp) {
         }
     }
 
-    rav::rtp::AudioReceiver::StreamParameters stream_parameters;
+    rav::rtp::AudioReceiver::Parameters stream_parameters;
     stream_parameters.session = session;
     stream_parameters.filter = filter;
     stream_parameters.audio_format = *selected_audio_format;
@@ -174,7 +174,7 @@ std::optional<uint32_t> rav::RavennaReceiver::read_audio_data_realtime(
     return rtp_audio_receiver_.read_audio_data_realtime(output_buffer, at_timestamp);
 }
 
-rav::rtp::AudioReceiver::StreamStats rav::RavennaReceiver::get_stream_stats() const {
+rav::rtp::AudioReceiver::Stats rav::RavennaReceiver::get_stream_stats() const {
     return rtp_audio_receiver_.get_stream_stats();
 }
 
@@ -208,6 +208,24 @@ rav::RavennaReceiver::RavennaReceiver(
     if (!result) {
         RAV_ERROR("Failed to update configuration: {}", result.error());
     }
+
+    rtp_audio_receiver_.on_data_received([this](const WrappingUint32 packet_timestamp) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->on_data_received(packet_timestamp);
+        }
+    });
+
+    rtp_audio_receiver_.on_data_ready([this](const WrappingUint32 packet_timestamp) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->on_data_ready(packet_timestamp);
+        }
+    });
+
+    rtp_audio_receiver_.on_state_changed([this](const rtp::AudioReceiver::State state) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->ravenna_receiver_state_updated(state);
+        }
+    });
 }
 
 rav::RavennaReceiver::~RavennaReceiver() {

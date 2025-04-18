@@ -66,7 +66,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
          * Called when the stream has changed.
          * @param parameters The stream parameters.
          */
-        virtual void ravenna_receiver_stream_updated(const rtp::AudioReceiver::StreamParameters& parameters) {
+        virtual void ravenna_receiver_stream_updated(const rtp::AudioReceiver::Parameters& parameters) {
             std::ignore = parameters;
         }
 
@@ -78,6 +78,14 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
         virtual void ravenna_receiver_configuration_updated(const Id receiver_id, const Configuration& configuration) {
             std::ignore = receiver_id;
             std::ignore = configuration;
+        }
+
+        /**
+         * Called when the state of the receiver has changed.
+         * @param state The new state of the receiver.
+         */
+        virtual void ravenna_receiver_state_updated(const rtp::AudioReceiver::State state) {
+            std::ignore = state;
         }
 
         /**
@@ -191,7 +199,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
      */
-    [[nodiscard]] rtp::AudioReceiver::StreamStats get_stream_stats() const;
+    [[nodiscard]] rtp::AudioReceiver::Stats get_stream_stats() const;
 
     // ravenna_rtsp_client::subscriber overrides
     void on_announced(const RavennaRtspClient::AnnouncedEvent& event) override;

@@ -56,7 +56,7 @@ class stream_recorder: public rav::RavennaReceiver::Subscriber {
         }
     }
 
-    void ravenna_receiver_stream_updated(const rav::rtp::AudioReceiver::StreamParameters& event) override {
+    void ravenna_receiver_stream_updated(const rav::rtp::AudioReceiver::Parameters& event) override {
         if (!event.audio_format.is_valid() || !event.session.valid()) {
             return;
         }

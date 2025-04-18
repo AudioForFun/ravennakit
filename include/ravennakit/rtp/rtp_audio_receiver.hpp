@@ -36,7 +36,7 @@ class AudioReceiver: public Receiver::Subscriber {
     /**
      * The state of the stream.
      */
-    enum class ReceiverState {
+    enum class State {
         /// The receiver is idle which is expected because no parameters have been set.
         idle,
         /// The receiver is waiting for the first data.
@@ -52,12 +52,11 @@ class AudioReceiver: public Receiver::Subscriber {
     /**
      * Struct to hold the parameters of the stream.
      */
-    struct StreamParameters {
+    struct Parameters {
         Session session;
         Filter filter;
         AudioFormat audio_format;
         uint16_t packet_time_frames = 0;
-        ReceiverState state {ReceiverState::idle};  // TODO: Move outside of this struct
 
         [[nodiscard]] std::string to_string() const;
     };
@@ -65,7 +64,7 @@ class AudioReceiver: public Receiver::Subscriber {
     /**
      * A struct to hold the packet and interval statistics for the stream.
      */
-    struct StreamStats {
+    struct Stats {
         /// The packet interval statistics.
         SlidingStats::Stats packet_interval_stats;
         /// The packet statistics.
@@ -87,12 +86,12 @@ class AudioReceiver: public Receiver::Subscriber {
      * @param new_parameters The new parameters to set.
      * @return True if the parameters were changed, false if not.
      */
-    bool set_parameters(const StreamParameters& new_parameters);
+    bool set_parameters(const Parameters& new_parameters);
 
     /**
      * @return The current parameters of the stream.
      */
-    const StreamParameters& get_parameters() const;
+    const Parameters& get_parameters() const;
 
     /**
      * Reads data from the buffer at the given timestamp.
@@ -124,7 +123,7 @@ class AudioReceiver: public Receiver::Subscriber {
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
      */
-    [[nodiscard]] StreamStats get_stream_stats() const;
+    [[nodiscard]] Stats get_stream_stats() const;
 
     /**
      * Sets the delay in frames.
@@ -138,6 +137,29 @@ class AudioReceiver: public Receiver::Subscriber {
      */
     void set_enabled(bool enabled);
 
+    /**
+     * Sets a callback for when data is received.
+     * The timestamp will monotonically increase, but might have gaps because out-of-order and dropped packets.
+     * @param callback The callback to call when data is received.
+     */
+    void on_data_received(std::function<void(WrappingUint32 packet_timestamp)> callback);
+
+    /**
+     * Sets a callback for when data is ready to be consumed.
+     * The timestamp will be the timestamp of the packet which triggered this event, minus the delay. This makes it
+     * convenient for consumers to read data from the buffer when the delay has passed. There will be no gaps in
+     * timestamp as newer packets will trigger this event for lost packets, and out of order packet (which are
+     * basically lost, not lost but late packets) will be ignored.
+     * @param callback The callback to call when data is ready to be consumed.
+     */
+    void on_data_ready(std::function<void(WrappingUint32 packet_timestamp)> callback);
+
+    /**
+     * Sets a callback for when the state of the receiver changes.
+     * @param callback The callback to call when the state changes.
+     */
+    void on_state_changed(std::function<void(State state)> callback);
+
     // Receiver::Subscriber overrides
     void on_rtp_packet(const Receiver::RtpPacketEvent& rtp_event) override;
     void on_rtcp_packet(const Receiver::RtcpPacketEvent& rtcp_event) override;
@@ -145,7 +167,7 @@ class AudioReceiver: public Receiver::Subscriber {
     /**
      * @return A string representation of ReceiverState.
      */
-    [[nodiscard]] static const char* to_string(ReceiverState state);
+    [[nodiscard]] static const char* to_string(State state);
 
   private:
     /**
@@ -185,9 +207,10 @@ class AudioReceiver: public Receiver::Subscriber {
     asio::steady_timer maintenance_timer_;
     ExclusiveAccessGuard realtime_access_guard_;
 
-    StreamParameters parameters_;
+    Parameters parameters_;
     uint32_t delay_frames_ {};
     bool enabled_ {};
+    State state_ {State::idle};
 
     // TODO: Make session specific
     WrappingUint64 last_packet_time_ns_;
@@ -204,10 +227,14 @@ class AudioReceiver: public Receiver::Subscriber {
     Rcu<SharedContext>::Reader audio_thread_reader_ {shared_context_.create_reader()};
     Rcu<SharedContext>::Reader network_thread_reader_ {shared_context_.create_reader()};
 
+    std::function<void(WrappingUint32 packet_timestamp)> on_data_received_callback_;
+    std::function<void(WrappingUint32 packet_timestamp)> on_data_ready_callback_;
+    std::function<void(State state)> on_state_changed_callback_;
+
     void update_shared_context();
     void do_maintenance();
     void do_realtime_maintenance();
-    void set_state(ReceiverState state);
+    void set_state(State state);
     void start();
     void stop();
 };

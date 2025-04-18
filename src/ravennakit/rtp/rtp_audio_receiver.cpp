@@ -15,7 +15,7 @@
 #include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/types/int24.hpp"
 
-std::string rav::rtp::AudioReceiver::StreamParameters::to_string() const {
+std::string rav::rtp::AudioReceiver::Parameters::to_string() const {
     return fmt::format(
         "session={}, selected_audio_format={}, packet_time_frames={}", session.to_string(), audio_format.to_string(),
         packet_time_frames
@@ -26,19 +26,18 @@ rav::rtp::AudioReceiver::AudioReceiver(asio::io_context& io_context, Receiver& r
     rtp_receiver_(rtp_receiver), maintenance_timer_(io_context) {}
 
 rav::rtp::AudioReceiver::~AudioReceiver() {
-    maintenance_timer_.cancel();  // TODO: I don't think this is safe. The token might outlive this object.
+    maintenance_timer_.cancel();  // TODO: I don't think this is safe. The completion token might outlive this object.
+                                  // The timer has a low interval and therefore we might not have run into this yet.
     rtp_receiver_.unsubscribe(this);
 }
 
-bool rav::rtp::AudioReceiver::set_parameters(const StreamParameters& new_parameters) {
+bool rav::rtp::AudioReceiver::set_parameters(const Parameters& new_parameters) {
     bool changed = false;
-    bool do_update_shared_context = false;
 
     if (parameters_.session != new_parameters.session || parameters_.filter != new_parameters.filter) {
         parameters_.session = new_parameters.session;
         parameters_.filter = new_parameters.filter;
         changed = true;
-        do_update_shared_context = true;
     }
 
     if (parameters_.audio_format != new_parameters.audio_format
@@ -46,25 +45,20 @@ bool rav::rtp::AudioReceiver::set_parameters(const StreamParameters& new_paramet
         parameters_.audio_format = new_parameters.audio_format;
         parameters_.packet_time_frames = new_parameters.packet_time_frames;
         changed = true;
-        do_update_shared_context = true;
     }
 
-    if (do_update_shared_context) {
+    if (changed) {
         stop();
-    }
-
-    if (enabled_) {
-        start();
-    }
-
-    if (do_update_shared_context) {
         update_shared_context();
+        if (enabled_) {
+            start();
+        }
     }
 
     return changed;
 }
 
-const rav::rtp::AudioReceiver::StreamParameters& rav::rtp::AudioReceiver::get_parameters() const {
+const rav::rtp::AudioReceiver::Parameters& rav::rtp::AudioReceiver::get_parameters() const {
     return parameters_;
 }
 
@@ -168,8 +162,8 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
     return std::nullopt;
 }
 
-rav::rtp::AudioReceiver::StreamStats rav::rtp::AudioReceiver::get_stream_stats() const {
-    StreamStats s;
+rav::rtp::AudioReceiver::Stats rav::rtp::AudioReceiver::get_stream_stats() const {
+    Stats s;
     s.packet_stats = packet_stats_.get_total_counts();
     s.packet_interval_stats = packet_interval_stats_.get_stats();
     return s;
@@ -190,17 +184,29 @@ void rav::rtp::AudioReceiver::set_enabled(const bool enabled) {
     enabled_ ? start() : stop();
 }
 
-const char* rav::rtp::AudioReceiver::to_string(const ReceiverState state) {
+void rav::rtp::AudioReceiver::on_data_received(std::function<void(WrappingUint32 packet_timestamp)> callback) {
+    on_data_received_callback_ = std::move(callback);
+}
+
+void rav::rtp::AudioReceiver::on_data_ready(std::function<void(WrappingUint32 packet_timestamp)> callback) {
+    on_data_ready_callback_ = std::move(callback);
+}
+
+void rav::rtp::AudioReceiver::on_state_changed(std::function<void(State state)> callback) {
+    on_state_changed_callback_ = std::move(callback);
+}
+
+const char* rav::rtp::AudioReceiver::to_string(const State state) {
     switch (state) {
-        case ReceiverState::idle:
+        case State::idle:
             return "idle";
-        case ReceiverState::waiting_for_data:
+        case State::waiting_for_data:
             return "waiting_for_data";
-        case ReceiverState::ok:
+        case State::ok:
             return "ok";
-        case ReceiverState::ok_no_consumer:
+        case State::ok_no_consumer:
             return "ok_no_consumer";
-        case ReceiverState::inactive:
+        case State::inactive:
             return "inactive";
         default:
             return "unknown";
@@ -254,12 +260,12 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
             if (!lock->fifo.push(intermediate)) {
                 RAV_TRACE("Failed to push packet info FIFO, make receiver inactive");
                 lock->consumer_active = false;
-                set_state(ReceiverState::ok_no_consumer);
+                set_state(State::ok_no_consumer);
             } else {
-                set_state(ReceiverState::ok);
+                set_state(State::ok);
             }
         } else {
-            set_state(ReceiverState::ok_no_consumer);
+            set_state(State::ok_no_consumer);
         }
 
         while (auto seq = lock->packets_too_old.pop()) {
@@ -275,21 +281,19 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
         if (const auto diff = seq_.update(rtp_event.packet.sequence_number())) {
             if (diff >= 1) {
                 // Only call back with monotonically increasing sequence numbers
-                // TODO: Notify data received
-                // for (auto* subscriber : owner_.subscribers_) {
-                // subscriber->on_data_received(packet_timestamp);
-                // }
+                if (on_data_received_callback_) {
+                    on_data_received_callback_(packet_timestamp);
+                }
             }
 
             if (packet_timestamp - lock->delay_frames >= *rtp_ts_) {
-                // Make sure to call with the correct timestamps for the missing packets
+                // Make sure to inserts calls for missing packets
                 for (uint16_t i = 0; i < *diff; ++i) {
-                    // TODO: Notify data ready
-                    // for (auto* subscriber : owner_.subscribers_) {
-                    // subscriber->on_data_ready(
-                    // packet_timestamp - lock->delay_frames - (*diff - 1u - i) * parameters_.packet_time_frames
-                    // );
-                    // }
+                    if (on_data_ready_callback_) {
+                        on_data_ready_callback_(
+                            packet_timestamp - lock->delay_frames - (*diff - 1u - i) * parameters_.packet_time_frames
+                        );
+                    }
                 }
             }
         }
@@ -338,10 +342,10 @@ void rav::rtp::AudioReceiver::update_shared_context() {
 
 void rav::rtp::AudioReceiver::do_maintenance() {
     // Check if streams became are no longer receiving data
-    if (parameters_.state == ReceiverState::ok || parameters_.state == ReceiverState::ok_no_consumer) {
+    if (state_ == State::ok || state_ == State::ok_no_consumer) {
         const auto now = HighResolutionClock::now();
         if ((last_packet_time_ns_ + k_receive_timeout_ms * 1'000'000).value() < now) {
-            set_state(ReceiverState::inactive);
+            set_state(State::inactive);
         }
     }
 
@@ -406,15 +410,15 @@ void rav::rtp::AudioReceiver::do_realtime_maintenance() {
     }
 }
 
-void rav::rtp::AudioReceiver::set_state(const ReceiverState state) {
-    if (state == parameters_.state) {
+void rav::rtp::AudioReceiver::set_state(const State state) {
+    if (state_ == state) {
         return;
     }
-    parameters_.state = state;
-    // TODO: Notify state change
-    // for (auto* subscriber : owner_.subscribers_) {
-    // subscriber->ravenna_receiver_stream_updated(parameters_);
-    // }
+    state_ = state;
+    RAV_TRACE("State changed to {}", to_string(state));
+    if (on_state_changed_callback_) {
+        on_state_changed_callback_(state);
+    }
 }
 
 void rav::rtp::AudioReceiver::start() {
