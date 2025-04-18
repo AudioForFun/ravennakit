@@ -16,10 +16,13 @@
 #include "ravennakit/core/types/int24.hpp"
 
 std::string rav::rtp::AudioReceiver::Parameters::to_string() const {
-    return fmt::format(
-        "session={}, selected_audio_format={}, packet_time_frames={}", session.to_string(), audio_format.to_string(),
-        packet_time_frames
-    );
+    auto output = fmt::format("audio_format={}, packet_time_frames={}", audio_format.to_string(), packet_time_frames);
+    for (const auto& stream : sessions) {
+        fmt::format_to(
+            std::back_inserter(output), ", {}={}", stream.rank.to_ordinal_latin(), stream.session.to_string()
+        );
+    }
+    return output;
 }
 
 rav::rtp::AudioReceiver::AudioReceiver(asio::io_context& io_context, Receiver& rtp_receiver) :
@@ -33,11 +36,12 @@ rav::rtp::AudioReceiver::~AudioReceiver() {
 
 bool rav::rtp::AudioReceiver::set_parameters(const Parameters& new_parameters) {
     bool changed = false;
+    bool do_update_shared_context = false;
 
-    if (parameters_.session != new_parameters.session || parameters_.filter != new_parameters.filter) {
-        parameters_.session = new_parameters.session;
-        parameters_.filter = new_parameters.filter;
+    if (parameters_.sessions != new_parameters.sessions) {
+        parameters_.sessions = new_parameters.sessions;
         changed = true;
+        // In this case the shared context doesn't need to be updated which hopefully keeps the streaming seamless.
     }
 
     if (parameters_.audio_format != new_parameters.audio_format
@@ -45,14 +49,19 @@ bool rav::rtp::AudioReceiver::set_parameters(const Parameters& new_parameters) {
         parameters_.audio_format = new_parameters.audio_format;
         parameters_.packet_time_frames = new_parameters.packet_time_frames;
         changed = true;
+        do_update_shared_context = true;
     }
 
     if (changed) {
         stop();
+    }
+
+    if (do_update_shared_context) {
         update_shared_context();
-        if (enabled_) {
-            start();
-        }
+    }
+
+    if (enabled_) {
+        start();
     }
 
     return changed;
@@ -164,8 +173,9 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
 
 rav::rtp::AudioReceiver::Stats rav::rtp::AudioReceiver::get_stream_stats() const {
     Stats s;
-    s.packet_stats = packet_stats_.get_total_counts();
-    s.packet_interval_stats = packet_interval_stats_.get_stats();
+    // TODO: Implement this. Find out how to deal with multiple sessions.
+    // s.packet_stats = packet_stats_.get_total_counts();
+    // s.packet_interval_stats = packet_interval_stats_.get_stats();
     return s;
 }
 
@@ -216,7 +226,15 @@ const char* rav::rtp::AudioReceiver::to_string(const State state) {
 void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_event) {
     TRACY_ZONE_SCOPED;
 
-    if (!parameters_.filter.is_valid_source(rtp_event.dst_endpoint.address(), rtp_event.src_endpoint.address())) {
+    auto* session_context = find_session_context(rtp_event.session);
+    if (!session_context) {
+        RAV_WARNING("No session context found for session {}", rtp_event.session.to_string());
+        return;
+    }
+
+    if (!session_context->session_info.filter.is_valid_source(
+            rtp_event.dst_endpoint.address(), rtp_event.src_endpoint.address()
+        )) {
         return;  // This packet is not for us
     }
 
@@ -225,7 +243,7 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
     if (!rtp_ts_.has_value()) {
         seq_ = rtp_event.packet.sequence_number();
         rtp_ts_ = rtp_event.packet.timestamp();
-        last_packet_time_ns_ = rtp_event.recv_time;
+        session_context->last_packet_time_ns = rtp_event.recv_time;
     }
 
     const auto payload = rtp_event.packet.payload_data();
@@ -239,17 +257,17 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
         return;
     }
 
-    if (const auto interval = last_packet_time_ns_.update(rtp_event.recv_time)) {
+    if (const auto interval = session_context->last_packet_time_ns.update(rtp_event.recv_time)) {
         TRACY_PLOT("packet interval (ms)", static_cast<double>(*interval) / 1'000'000.0);
-        packet_interval_stats_.add(static_cast<double>(*interval) / 1'000'000.0);
+        session_context->packet_interval_stats.add(static_cast<double>(*interval) / 1'000'000.0);
     }
 
     if (packet_interval_throttle_.update()) {
-        RAV_TRACE("Packet interval stats: {}", packet_interval_stats_.to_string());
+        RAV_TRACE("Packet interval stats: {}", session_context->packet_interval_stats.to_string());
     }
 
     if (auto lock = network_thread_reader_.lock_realtime()) {
-        if (lock->consumer_active) {
+        if (consumer_active_) {
             IntermediatePacket intermediate {};
             intermediate.timestamp = rtp_event.packet.timestamp();
             intermediate.seq = rtp_event.packet.sequence_number();
@@ -259,7 +277,7 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
 
             if (!lock->fifo.push(intermediate)) {
                 RAV_TRACE("Failed to push packet info FIFO, make receiver inactive");
-                lock->consumer_active = false;
+                consumer_active_.store(false);
                 set_state(State::ok_no_consumer);
             } else {
                 set_state(State::ok);
@@ -269,12 +287,14 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
         }
 
         while (auto seq = lock->packets_too_old.pop()) {
-            packet_stats_.mark_packet_too_late(*seq);
+            session_context->packet_stats.mark_packet_too_late(*seq);
         }
 
-        if (const auto stats = packet_stats_.update(rtp_event.packet.sequence_number())) {
+        if (const auto stats = session_context->packet_stats.update(rtp_event.packet.sequence_number())) {
             if (auto v = packet_stats_throttle_.update(*stats)) {
-                RAV_WARNING("Stats for stream {}: {}", parameters_.session.to_string(), v->to_string());
+                RAV_WARNING(
+                    "Stats for stream {}: {}", session_context->session_info.session.to_string(), v->to_string()
+                );
             }
         }
 
@@ -342,12 +362,13 @@ void rav::rtp::AudioReceiver::update_shared_context() {
 
 void rav::rtp::AudioReceiver::do_maintenance() {
     // Check if streams became are no longer receiving data
-    if (state_ == State::ok || state_ == State::ok_no_consumer) {
-        const auto now = HighResolutionClock::now();
-        if ((last_packet_time_ns_ + k_receive_timeout_ms * 1'000'000).value() < now) {
-            set_state(State::inactive);
-        }
-    }
+    // TODO: Make this global for all streams or stream specific
+    // if (state_ == State::ok || state_ == State::ok_no_consumer) {
+        // const auto now = HighResolutionClock::now();
+        // if ((last_packet_time_ns_ + k_receive_timeout_ms * 1'000'000).value() < now) {
+            // set_state(State::inactive);
+        // }
+    // }
 
     std::ignore = shared_context_.reclaim();
 
@@ -366,7 +387,7 @@ void rav::rtp::AudioReceiver::do_maintenance() {
 
 void rav::rtp::AudioReceiver::do_realtime_maintenance() {
     if (auto lock = audio_thread_reader_.lock_realtime()) {
-        if (lock->consumer_active.exchange(true) == false) {
+        if (consumer_active_.exchange(true) == false) {
             lock->fifo.pop_all();
         }
 
@@ -426,11 +447,15 @@ void rav::rtp::AudioReceiver::start() {
         return;
     }
     rtp_ts_.reset();
-    packet_stats_.reset();
-    if (!parameters_.session.valid()) {
-        return;
+
+    for (const auto& context : sessions_contexts_) {
+        context->packet_stats.reset();
+        context->last_packet_time_ns = HighResolutionClock::now();
+        if (context->session_info.session.valid()) {
+            rtp_receiver_.subscribe(this, context->session_info.session);
+        }
     }
-    rtp_receiver_.subscribe(this, parameters_.session);
+
     is_running_ = true;
 }
 
@@ -440,4 +465,13 @@ void rav::rtp::AudioReceiver::stop() {
     }
     is_running_ = false;
     rtp_receiver_.unsubscribe(this);
+}
+
+rav::rtp::AudioReceiver::SessionContext* rav::rtp::AudioReceiver::find_session_context(const Session& session) const {
+    for (auto& context : sessions_contexts_) {
+        if (context->session_info.session == session) {
+            return context.get();
+        }
+    }
+    return nullptr;
 }

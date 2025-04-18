@@ -10,64 +10,112 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace rav {
 
-inline const char* rank_to_ordinal(const size_t rank) {
-    switch (rank) {
-        case 0:
-            return "0th";
-        case 1:
-            return "1st";
-        case 2:
-            return "2nd";
-        case 3:
-            return "3rd";
-        case 4:
-            return "4th";
-        case 5:
-            return "5th";
-        case 6:
-            return "6th";
-        case 7:
-            return "7th";
-        case 8:
-            return "8th";
-        case 9:
-            return "9th";
-        case 10:
-            return "10th";
-        default:
-            return "N/A";
-    }
-}
+/**
+ * Class to represent a rank.
+ * The rank is a number, starting from zero, where the higher the number the lower the rank.
+ */
+class Rank {
+  public:
+    Rank() = default;
+    ~Rank() = default;
 
-inline const char* rank_to_ordinal_latin(const size_t rank) {
-    switch (rank) {
-        case 0:
-            return "0";
-        case 1:
-            return "primary";
-        case 2:
-            return "secondary";
-        case 3:
-            return "tertiary";
-        case 4:
-            return "quaternary";
-        case 5:
-            return "quinary";
-        case 6:
-            return "senary";
-        case 7:
-            return "septenary";
-        case 8:
-            return "octonary";
-        case 9:
-            return "nonary";
-        case 10:
-            return "denary";
-        default:
-            return "N/A";
+    explicit Rank(const uint8_t rank) : rank_(rank) {}
+
+    Rank(const Rank&) = default;
+    Rank& operator=(const Rank&) = default;
+
+    Rank(Rank&&) = default;
+    Rank& operator=(Rank&&) = default;
+
+    friend bool operator==(const Rank& lhs, const Rank& rhs) {
+        return lhs.rank_ == rhs.rank_;
     }
-}
+
+    friend bool operator!=(const Rank& lhs, const Rank& rhs) {
+        return !(lhs == rhs);
+    }
+
+    /**
+     * @returns The rank value.
+     */
+    explicit operator uint8_t() const {
+        return rank_;
+    }
+
+    /**
+     * @return The rank value.
+     */
+    uint8_t value() const {
+        return rank_;
+    }
+
+    /**
+     * @return The rank value as an ordinal string (1st, 2nd, etc.) up until 10th.
+     */
+    const char* to_ordinal() const {
+        switch (rank_) {
+            case 0:
+                return "1st";
+            case 1:
+                return "2nd";
+            case 2:
+                return "3rd";
+            case 3:
+                return "4th";
+            case 4:
+                return "5th";
+            case 5:
+                return "6th";
+            case 6:
+                return "7th";
+            case 7:
+                return "8th";
+            case 8:
+                return "9th";
+            case 9:
+                return "10th";
+            default:
+                return "";
+        }
+    }
+
+    /**
+     * @return The rank value as an ordinal string (primary, secondary, etc.) up until tenth (10th).
+     */
+    const char* to_ordinal_latin() const {
+        switch (rank_) {
+            case 0:
+                return "primary";
+            case 1:
+                return "secondary";
+            case 2:
+                return "tertiary";
+            case 3:
+                return "fourth";
+            case 4:
+                return "fifth";
+            case 5:
+                return "sixth";
+            case 6:
+                return "seventh";
+            case 7:
+                return "eighth";
+            case 8:
+                return "ninth";
+            case 9:
+                return "tenth";
+            case 10:
+            default:
+                return "N/A";
+        }
+    }
+
+  private:
+    uint8_t rank_ {};
+};
 
 }  // namespace rav

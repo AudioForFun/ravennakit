@@ -19,6 +19,7 @@
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
 #include "ravennakit/core/sync/rcu.hpp"
+#include "ravennakit/core/util/rank.hpp"
 #include "ravennakit/core/util/throttle.hpp"
 
 namespace rav::rtp {
@@ -53,10 +54,23 @@ class AudioReceiver: public Receiver::Subscriber {
      * Struct to hold the parameters of the stream.
      */
     struct Parameters {
-        Session session;
-        Filter filter;
+        struct SessionInfo {
+            Session session;
+            Filter filter;
+            Rank rank;
+
+            friend bool operator==(const SessionInfo& lhs, const SessionInfo& rhs) {
+                return lhs.session == rhs.session && lhs.filter == rhs.filter && lhs.rank == rhs.rank;
+            }
+
+            friend bool operator!=(const SessionInfo& lhs, const SessionInfo& rhs) {
+                return !(lhs == rhs);
+            }
+        };
+
         AudioFormat audio_format;
         uint16_t packet_time_frames = 0;
+        std::vector<SessionInfo> sessions;
 
         [[nodiscard]] std::string to_string() const;
     };
@@ -170,15 +184,21 @@ class AudioReceiver: public Receiver::Subscriber {
     [[nodiscard]] static const char* to_string(State state);
 
   private:
-    /**
-     * Used for copying received packets to the realtime context.
-     */
+    /// Used for copying received packets to the realtime context.
     struct IntermediatePacket {
         uint32_t timestamp;
         uint16_t seq;
         uint16_t data_len;
         uint16_t packet_time_frames;
         std::array<uint8_t, aes67::constants::k_max_payload> data;
+    };
+
+    /// Holds variables specific to a session.
+    struct SessionContext {
+        Parameters::SessionInfo session_info;
+        WrappingUint64 last_packet_time_ns;
+        PacketStats packet_stats;
+        SlidingStats packet_interval_stats {1000};
     };
 
     struct SharedContext {
@@ -189,6 +209,8 @@ class AudioReceiver: public Receiver::Subscriber {
         WrappingUint32 next_ts;
         AudioFormat selected_audio_format;
 
+        // Network thread:
+
         // Read by audio and network thread:
         uint32_t delay_frames = 0;
 
@@ -197,10 +219,6 @@ class AudioReceiver: public Receiver::Subscriber {
 
         // Network thread writes and audio thread reads:
         FifoBuffer<IntermediatePacket, Fifo::Spsc> fifo;
-
-        // Read and write by both threads:
-        // Whether data is being consumed. When the FIFO is full, this will be set to false.
-        std::atomic_bool consumer_active {false};
     };
 
     Receiver& rtp_receiver_;
@@ -212,16 +230,15 @@ class AudioReceiver: public Receiver::Subscriber {
     bool enabled_ {};
     State state_ {State::idle};
 
-    // TODO: Make session specific
-    WrappingUint64 last_packet_time_ns_;
-    PacketStats packet_stats_;
-    SlidingStats packet_interval_stats_ {1000};
-    WrappingUint16 seq_;
+    std::vector<std::unique_ptr<SessionContext>> sessions_contexts_;
 
     bool is_running_ {false};
     std::optional<WrappingUint32> rtp_ts_;
+    WrappingUint16 seq_;
     Throttle<void> packet_interval_throttle_ {std::chrono::seconds(10)};
     Throttle<PacketStats::Counters> packet_stats_throttle_ {std::chrono::seconds(5)};
+    // Read and write by both threads. Whether data is being consumed. When the FIFO is full, this will be set to false.
+    std::atomic_bool consumer_active_ {false};
 
     Rcu<SharedContext> shared_context_;
     Rcu<SharedContext>::Reader audio_thread_reader_ {shared_context_.create_reader()};
@@ -237,6 +254,7 @@ class AudioReceiver: public Receiver::Subscriber {
     void set_state(State state);
     void start();
     void stop();
+    SessionContext* find_session_context(const Session& session) const;
 };
 
 }  // namespace rav::rtp

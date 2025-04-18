@@ -36,6 +36,95 @@ bool is_connection_info_valid(const rav::sdp::ConnectionInfoField& conn) {
     return true;
 }
 
+}  // namespace
+
+nlohmann::json rav::RavennaReceiver::to_json() const {
+    nlohmann::json root;
+    root["configuration"] = configuration_.to_json();
+    return root;
+}
+
+std::optional<uint32_t> rav::RavennaReceiver::read_data_realtime(
+    uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+) {
+    return rtp_audio_receiver_.read_data_realtime(buffer, buffer_size, at_timestamp);
+}
+
+std::optional<uint32_t> rav::RavennaReceiver::read_audio_data_realtime(
+    const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
+) {
+    return rtp_audio_receiver_.read_audio_data_realtime(output_buffer, at_timestamp);
+}
+
+rav::rtp::AudioReceiver::Stats rav::RavennaReceiver::get_stream_stats() const {
+    return rtp_audio_receiver_.get_stream_stats();
+}
+
+nlohmann::json rav::RavennaReceiver::Configuration::to_json() const {
+    return nlohmann::json {{"session_name", session_name}, {"delay_frames", delay_frames}, {"enabled", enabled}};
+}
+
+tl::expected<rav::RavennaReceiver::ConfigurationUpdate, std::string>
+rav::RavennaReceiver::ConfigurationUpdate::from_json(const nlohmann::json& json) {
+    try {
+        ConfigurationUpdate update {};
+        update.session_name = json.at("session_name").get<std::string>();
+        update.delay_frames = json.at("delay_frames").get<uint32_t>();
+        update.enabled = json.at("enabled").get<bool>();
+        return update;
+    } catch (const std::exception& e) {
+        return tl::unexpected(e.what());
+    }
+}
+
+rav::RavennaReceiver::RavennaReceiver(
+    asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id,
+    ConfigurationUpdate initial_config
+) :
+    rtsp_client_(rtsp_client), rtp_audio_receiver_(io_context, rtp_receiver), id_(id) {
+    if (!initial_config.delay_frames) {
+        initial_config.delay_frames = 480;  // 10ms at 48KHz
+    }
+
+    auto result = set_configuration(initial_config);
+    if (!result) {
+        RAV_ERROR("Failed to update configuration: {}", result.error());
+    }
+
+    rtp_audio_receiver_.on_data_received([this](const WrappingUint32 packet_timestamp) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->on_data_received(packet_timestamp);
+        }
+    });
+
+    rtp_audio_receiver_.on_data_ready([this](const WrappingUint32 packet_timestamp) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->on_data_ready(packet_timestamp);
+        }
+    });
+
+    rtp_audio_receiver_.on_state_changed([this](const rtp::AudioReceiver::State state) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->ravenna_receiver_state_updated(state);
+        }
+    });
+}
+
+rav::RavennaReceiver::~RavennaReceiver() {
+    std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
+}
+
+void rav::RavennaReceiver::on_announced(const RavennaRtspClient::AnnouncedEvent& event) {
+    try {
+        RAV_ASSERT(event.session_name == configuration_.session_name, "Expecting session_name to match");
+        update_sdp(event.sdp);
+        RAV_TRACE("SDP updated for session '{}'", configuration_.session_name);
+    } catch (const std::exception& e) {
+        RAV_ERROR("Failed to process SDP for session '{}': {}", configuration_.session_name, e.what());
+    }
+}
+
+namespace {
 tl::expected<rav::rtp::AudioReceiver::Parameters, std::string>
 find_primary_stream_parameters(const rav::sdp::SessionDescription& sdp) {
     std::optional<rav::AudioFormat> selected_audio_format;
@@ -146,101 +235,14 @@ find_primary_stream_parameters(const rav::sdp::SessionDescription& sdp) {
     }
 
     rav::rtp::AudioReceiver::Parameters stream_parameters;
-    stream_parameters.session = session;
-    stream_parameters.filter = filter;
+    // TODO: Build stream_parameters from the session description
+    stream_parameters.sessions.push_back(rav::rtp::AudioReceiver::Parameters::SessionInfo{session, filter, rav::Rank(0)});
     stream_parameters.audio_format = *selected_audio_format;
     stream_parameters.packet_time_frames = packet_time_frames;
 
     return stream_parameters;
 }
-
 }  // namespace
-
-nlohmann::json rav::RavennaReceiver::to_json() const {
-    nlohmann::json root;
-    root["configuration"] = configuration_.to_json();
-    return root;
-}
-
-std::optional<uint32_t> rav::RavennaReceiver::read_data_realtime(
-    uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
-) {
-    return rtp_audio_receiver_.read_data_realtime(buffer, buffer_size, at_timestamp);
-}
-
-std::optional<uint32_t> rav::RavennaReceiver::read_audio_data_realtime(
-    const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
-) {
-    return rtp_audio_receiver_.read_audio_data_realtime(output_buffer, at_timestamp);
-}
-
-rav::rtp::AudioReceiver::Stats rav::RavennaReceiver::get_stream_stats() const {
-    return rtp_audio_receiver_.get_stream_stats();
-}
-
-nlohmann::json rav::RavennaReceiver::Configuration::to_json() const {
-    return nlohmann::json {{"session_name", session_name}, {"delay_frames", delay_frames}, {"enabled", enabled}};
-}
-
-tl::expected<rav::RavennaReceiver::ConfigurationUpdate, std::string>
-rav::RavennaReceiver::ConfigurationUpdate::from_json(const nlohmann::json& json) {
-    try {
-        ConfigurationUpdate update {};
-        update.session_name = json.at("session_name").get<std::string>();
-        update.delay_frames = json.at("delay_frames").get<uint32_t>();
-        update.enabled = json.at("enabled").get<bool>();
-        return update;
-    } catch (const std::exception& e) {
-        return tl::unexpected(e.what());
-    }
-}
-
-rav::RavennaReceiver::RavennaReceiver(
-    asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id,
-    ConfigurationUpdate initial_config
-) :
-    rtsp_client_(rtsp_client), rtp_audio_receiver_(io_context, rtp_receiver), id_(id) {
-    if (!initial_config.delay_frames) {
-        initial_config.delay_frames = 480;  // 10ms at 48KHz
-    }
-
-    auto result = set_configuration(initial_config);
-    if (!result) {
-        RAV_ERROR("Failed to update configuration: {}", result.error());
-    }
-
-    rtp_audio_receiver_.on_data_received([this](const WrappingUint32 packet_timestamp) {
-        for (auto* subscriber : subscribers_) {
-            subscriber->on_data_received(packet_timestamp);
-        }
-    });
-
-    rtp_audio_receiver_.on_data_ready([this](const WrappingUint32 packet_timestamp) {
-        for (auto* subscriber : subscribers_) {
-            subscriber->on_data_ready(packet_timestamp);
-        }
-    });
-
-    rtp_audio_receiver_.on_state_changed([this](const rtp::AudioReceiver::State state) {
-        for (auto* subscriber : subscribers_) {
-            subscriber->ravenna_receiver_state_updated(state);
-        }
-    });
-}
-
-rav::RavennaReceiver::~RavennaReceiver() {
-    std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
-}
-
-void rav::RavennaReceiver::on_announced(const RavennaRtspClient::AnnouncedEvent& event) {
-    try {
-        RAV_ASSERT(event.session_name == configuration_.session_name, "Expecting session_name to match");
-        update_sdp(event.sdp);
-        RAV_TRACE("SDP updated for session '{}'", configuration_.session_name);
-    } catch (const std::exception& e) {
-        RAV_ERROR("Failed to process SDP for session '{}': {}", configuration_.session_name, e.what());
-    }
-}
 
 void rav::RavennaReceiver::update_sdp(const sdp::SessionDescription& sdp) {
     auto primary = find_primary_stream_parameters(sdp);
