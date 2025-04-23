@@ -170,6 +170,7 @@ void rav::rtp::AudioReceiver::set_delay_frames(const uint32_t delay_frames) {
         return;
     }
     delay_frames_ = delay_frames;
+    update_shared_context();
 }
 
 void rav::rtp::AudioReceiver::set_enabled(const bool enabled) {
@@ -470,7 +471,7 @@ void rav::rtp::AudioReceiver::start() {
             continue;
         }
         auto iface = interface_addresses_.find(stream.stream_info.rank);
-        if (iface == interface_addresses_.end()) {
+        if (iface == interface_addresses_.end() || iface->second.is_unspecified()) {
             continue;  // No interface address available for this stream
         }
         RAV_ASSERT(!iface->second.is_unspecified(), "Interface address must not be unspecified");

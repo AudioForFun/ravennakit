@@ -67,7 +67,7 @@ class PacketStats {
 
     /**
      * Updates the statistics with the given packet.
-     * @param sequence_number
+     * @param sequence_number The sequence number of the incoming packet.
      * @return Returns the total counts if changed.
      */
     std::optional<Counters> update(const uint16_t sequence_number) {
