@@ -45,7 +45,7 @@ bool rav::RavennaRtspClient::subscribe_to_session(Subscriber* subscriber_to_add,
     new_session.session_name = session_name;
     if (!new_session.subscribers.add(subscriber_to_add)) {
         RAV_WARNING("Failed to add subscriber");
-        sessions_.pop_back(); // Roll back
+        sessions_.pop_back();  // Roll back
         return false;
     }
 
@@ -110,14 +110,16 @@ rav::RavennaRtspClient::find_or_create_connection(const std::string& host_target
         return *connection;
     }
 
-    connections_.push_back({host_target, port, rtsp::Client {io_context_}});
-    auto& new_connection = connections_.back();
+    connections_.push_back(
+        std::make_unique<ConnectionContext>(ConnectionContext {host_target, port, rtsp::Client {io_context_}})
+    );
+    const auto& new_connection = connections_.back();
 
-    new_connection.client.on<rtsp::Connection::ConnectEvent>([=](const auto&) {
+    new_connection->client.on<rtsp::Connection::ConnectEvent>([=](const auto&) {
         RAV_TRACE("Connected to: rtsp://{}:{}", host_target, port);
     });
-    new_connection.client.on<rtsp::Connection::RequestEvent>([this,
-                                                              &client = new_connection.client](const auto& event) {
+    new_connection->client.on<rtsp::Connection::RequestEvent>([this,
+                                                               &client = new_connection->client](const auto& event) {
         RAV_TRACE("{}", event.rtsp_request.to_debug_string(true));
 
         if (event.rtsp_request.method == "ANNOUNCE") {
@@ -147,12 +149,13 @@ rav::RavennaRtspClient::find_or_create_connection(const std::string& host_target
 
         RAV_WARNING("Unhandled RTSP request: {}", event.rtsp_request.method);
     });
-    new_connection.client.on<rtsp::Connection::ResponseEvent>([=](const auto& event) {
+    new_connection->client.on<rtsp::Connection::ResponseEvent>([=](const auto& event) {
         RAV_TRACE("{}", event.rtsp_response.to_debug_string(true));
 
         if (event.rtsp_response.status_code != 200) {
             RAV_ERROR(
-                "RTSP request failed with status: {} {}", event.rtsp_response.status_code, event.rtsp_response.reason_phrase
+                "RTSP request failed with status: {} {}", event.rtsp_response.status_code,
+                event.rtsp_response.reason_phrase
             );
             return;
         }
@@ -170,15 +173,15 @@ rav::RavennaRtspClient::find_or_create_connection(const std::string& host_target
             RAV_ERROR("RTSP response missing Content-Type header");
         }
     });
-    new_connection.client.async_connect(host_target, port);
-    return new_connection;
+    new_connection->client.async_connect(host_target, port);
+    return *new_connection;
 }
 
 rav::RavennaRtspClient::ConnectionContext*
-rav::RavennaRtspClient::find_connection(const std::string& host_target, const uint16_t port) {
-    for (auto& connection : connections_) {
-        if (connection.host_target == host_target && connection.port == port) {
-            return &connection;
+rav::RavennaRtspClient::find_connection(const std::string& host_target, const uint16_t port) const {
+    for (const auto& connection : connections_) {
+        if (connection->host_target == host_target && connection->port == port) {
+            return connection.get();
         }
     }
     return nullptr;

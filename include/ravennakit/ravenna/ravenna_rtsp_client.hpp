@@ -108,10 +108,10 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
     asio::io_context& io_context_;
     RavennaBrowser& browser_;
     std::vector<SessionContext> sessions_;
-    std::vector<ConnectionContext> connections_;
+    std::vector<std::unique_ptr<ConnectionContext>> connections_;
 
     ConnectionContext& find_or_create_connection(const std::string& host_target, uint16_t port);
-    ConnectionContext* find_connection(const std::string& host_target, uint16_t port);
+    ConnectionContext* find_connection(const std::string& host_target, uint16_t port) const;
     void update_session_with_service(SessionContext& session, const dnssd::ServiceDescription& service);
     void do_maintenance();
     void handle_incoming_sdp(const std::string& sdp_text);

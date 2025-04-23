@@ -457,7 +457,8 @@ void rav::rtp::AudioReceiver::start() {
 
     for (const auto& stream : stream_contexts_) {
         if (stream.stream_info.session.valid()) {
-            // Multiple streams might have the same session, but since we only subscribe once there is no need to check.
+            // Multiple streams might have the same session, but subscribing more than once for the same session has no
+            // effect, so no need to check.
             std::ignore = rtp_receiver_.subscribe(this, stream.stream_info.session);
         }
     }

@@ -81,7 +81,9 @@ rav::rtp::Receiver::SessionContext::SessionContext(
     UdpReceiver& udp_receiver, Session session, const asio::ip::address_v4& interface_address
 ) :
     udp_receiver_(udp_receiver), session_(std::move(session)) {
-    subscribe_to_udp_receiver(interface_address);
+    if (!interface_address.is_unspecified()) {
+        subscribe_to_udp_receiver(interface_address);
+    }
 }
 
 rav::rtp::Receiver::SessionContext::~SessionContext() {
