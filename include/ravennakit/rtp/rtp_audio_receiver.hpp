@@ -217,24 +217,6 @@ class AudioReceiver: public Receiver::Subscriber {
         std::array<uint8_t, aes67::constants::k_max_payload> data;
     };
 
-    struct SharedContext {
-        // Audio thread:
-        Buffer receiver_buffer;
-        std::vector<uint8_t> read_buffer;
-        std::optional<WrappingUint32> first_packet_timestamp;
-        WrappingUint32 next_ts;
-        AudioFormat selected_audio_format;
-
-        // Read by audio and network thread:
-        uint32_t delay_frames = 0;
-
-        // Audio thread writes and network thread reads:
-        FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;
-
-        // Network thread writes and audio thread reads:
-        FifoBuffer<IntermediatePacket, Fifo::Spsc> fifo;
-    };
-
     /**
      * Struct to hold the state and statistics for a session.
      */
@@ -246,6 +228,23 @@ class AudioReceiver: public Receiver::Subscriber {
         PacketStats packet_stats;
         SlidingStats packet_interval_stats {1000};
         State state {State::idle};
+        // Network thread writes and audio thread reads:
+        FifoBuffer<IntermediatePacket, Fifo::Spsc> fifo;
+        // Audio thread writes and network thread reads:
+        FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;
+    };
+
+    struct SharedContext {
+        // Audio thread:
+        Buffer receiver_buffer;
+        std::vector<uint8_t> read_buffer;
+        std::optional<WrappingUint32> first_packet_timestamp;
+        WrappingUint32 next_ts;
+        AudioFormat selected_audio_format;
+
+        // Read by audio and network thread:
+        uint32_t delay_frames = 0;
+        std::vector<StreamContext*> stream_contexts;
     };
 
     Receiver& rtp_receiver_;
@@ -257,7 +256,7 @@ class AudioReceiver: public Receiver::Subscriber {
     bool enabled_ {};
 
     std::map<Rank, asio::ip::address_v4> interface_addresses_;
-    std::vector<StreamContext> stream_contexts_;
+    std::vector<std::unique_ptr<StreamContext>> stream_contexts_;
 
     bool is_running_ {false};
     std::optional<WrappingUint32> rtp_ts_;

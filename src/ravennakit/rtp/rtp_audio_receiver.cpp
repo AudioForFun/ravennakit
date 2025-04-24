@@ -30,10 +30,15 @@ bool rav::rtp::AudioReceiver::set_parameters(Parameters new_parameters) {
     }
 
     parameters_ = std::move(new_parameters);
-    stream_contexts_.clear();
+
+    // Defer destruction of stream contexts until the shared context is updated
+    const auto* data = stream_contexts_.data();
+    const auto deferred = std::move(stream_contexts_);
+    RAV_ASSERT(deferred.data() == data, "Expecting stream contexts to be moved");
+    RAV_ASSERT(stream_contexts_.empty(), "Expecting stream contexts to be empty");
 
     for (const auto& stream : parameters_.streams) {
-        stream_contexts_.emplace_back(stream);
+        stream_contexts_.emplace_back(std::make_unique<StreamContext>(stream));
     }
 
     stop();
@@ -150,8 +155,8 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
 rav::rtp::AudioReceiver::SessionStats rav::rtp::AudioReceiver::get_session_stats() const {
     SessionStats s;
     for (auto& session_context : stream_contexts_) {
-        s.packet_stats = session_context.packet_stats.get_total_counts();
-        s.packet_interval_stats = session_context.packet_interval_stats.get_stats();
+        s.packet_stats = session_context->packet_stats.get_total_counts();
+        s.packet_interval_stats = session_context->packet_interval_stats.get_stats();
         break;
     }
     return s;
@@ -274,7 +279,7 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
             intermediate.packet_time_frames = stream_context->stream_info.packet_time_frames;
             std::memcpy(intermediate.data.data(), payload.data(), intermediate.data_len);
 
-            if (lock->fifo.push(intermediate)) {
+            if (stream_context->fifo.push(intermediate)) {
                 set_state(*stream_context, State::ok);
             } else {
                 RAV_TRACE("Failed to push packet info FIFO, make receiver inactive");
@@ -285,7 +290,7 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
             set_state(*stream_context, State::ok_no_consumer);
         }
 
-        while (auto seq = lock->packets_too_old.pop()) {
+        while (auto seq = stream_context->packets_too_old.pop()) {
             stream_context->packet_stats.mark_packet_too_late(*seq);
         }
 
@@ -362,12 +367,16 @@ void rav::rtp::AudioReceiver::update_shared_context() {
     );
     new_context->read_buffer.resize(buffer_size_frames * bytes_per_frame);
     const auto buffer_size_packets = buffer_size_frames / packet_time_frames;
-    new_context->fifo.resize(buffer_size_packets);
-    new_context->packets_too_old.resize(buffer_size_packets);
     new_context->selected_audio_format = parameters_.audio_format;
     new_context->delay_frames = delay_frames_;
 
-    shared_context_.update(std::move(new_context));
+    for (auto& stream_context : stream_contexts_) {
+        stream_context->fifo.resize(buffer_size_packets);
+        stream_context->packets_too_old.resize(buffer_size_packets);
+        new_context->stream_contexts.push_back(stream_context.get());
+    }
+
+    shared_context_.update_reclaim_all(std::move(new_context));
 
     do_maintenance();
 }
@@ -378,9 +387,9 @@ void rav::rtp::AudioReceiver::do_maintenance() {
     const auto now = HighResolutionClock::now();
 
     for (auto& stream_context : stream_contexts_) {
-        if (stream_context.state == State::ok || stream_context.state == State::ok_no_consumer) {
-            if ((stream_context.last_packet_time_ns + k_receive_timeout_ms * 1'000'000).value() < now) {
-                set_state(stream_context, State::inactive);
+        if (stream_context->state == State::ok || stream_context->state == State::ok_no_consumer) {
+            if ((stream_context->last_packet_time_ns + k_receive_timeout_ms * 1'000'000).value() < now) {
+                set_state(*stream_context, State::inactive);
             }
         }
     }
@@ -401,43 +410,47 @@ void rav::rtp::AudioReceiver::do_maintenance() {
 
 void rav::rtp::AudioReceiver::do_realtime_maintenance() {
     if (auto lock = audio_thread_reader_.lock_realtime()) {
-        if (consumer_active_.exchange(true) == false) {
-            lock->fifo.pop_all();
-        }
+        const auto clear_fifo = consumer_active_.exchange(true) == false;
 
-        while (const auto packet = lock->fifo.pop()) {
-            WrappingUint32 packet_timestamp(packet->timestamp);
-            if (!lock->first_packet_timestamp) {
-                RAV_TRACE("First packet timestamp: {}", packet->timestamp);
-                lock->first_packet_timestamp = packet_timestamp;
-                lock->receiver_buffer.set_next_ts(packet->timestamp);
-                lock->next_ts = packet_timestamp - lock->delay_frames;
-            }
-
-            // Determine whether whole packet is too old
-            if (packet_timestamp + packet->packet_time_frames <= lock->next_ts) {
-                // RAV_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
-                TRACY_MESSAGE("Packet too late - skipping");
-                if (!lock->packets_too_old.push(packet->seq)) {
-                    RAV_ERROR("Packet not enqueued to packets_too_old");
-                }
+        for (auto* stream_context : lock->stream_contexts) {
+            if (clear_fifo) {
+                stream_context->fifo.pop_all();
                 continue;
             }
-
-            // Determine whether packet contains outdated data
-            if (packet_timestamp < lock->next_ts) {
-                RAV_WARNING("Packet partly too late: seq={}, ts={}", packet->seq, packet->timestamp);
-                TRACY_MESSAGE("Packet partly too late - not skipping");
-                if (!lock->packets_too_old.push(packet->seq)) {
-                    RAV_ERROR("Packet not enqueued to packets_too_old");
+            while (const auto packet = stream_context->fifo.pop()) {
+                WrappingUint32 packet_timestamp(packet->timestamp);
+                if (!lock->first_packet_timestamp) {
+                    RAV_TRACE("First packet timestamp: {}", packet->timestamp);
+                    lock->first_packet_timestamp = packet_timestamp;
+                    lock->receiver_buffer.set_next_ts(packet->timestamp);
+                    lock->next_ts = packet_timestamp - lock->delay_frames;
                 }
-                // Still process the packet since it contains data that is not outdated
-            }
 
-            lock->receiver_buffer.clear_until(packet->timestamp);
+                // Determine whether whole packet is too old
+                if (packet_timestamp + packet->packet_time_frames <= lock->next_ts) {
+                    // RAV_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
+                    TRACY_MESSAGE("Packet too late - skipping");
+                    if (!stream_context->packets_too_old.push(packet->seq)) {
+                        RAV_ERROR("Packet not enqueued to packets_too_old");
+                    }
+                    continue;
+                }
 
-            if (!lock->receiver_buffer.write(packet->timestamp, {packet->data.data(), packet->data_len})) {
-                RAV_ERROR("Packet not written to buffer");
+                // Determine whether packet contains outdated data
+                if (packet_timestamp < lock->next_ts) {
+                    RAV_WARNING("Packet partly too late: seq={}, ts={}", packet->seq, packet->timestamp);
+                    TRACY_MESSAGE("Packet partly too late - not skipping");
+                    if (!stream_context->packets_too_old.push(packet->seq)) {
+                        RAV_ERROR("Packet not enqueued to packets_too_old");
+                    }
+                    // Still process the packet since it contains data that is not outdated
+                }
+
+                lock->receiver_buffer.clear_until(packet->timestamp);
+
+                if (!lock->receiver_buffer.write(packet->timestamp, {packet->data.data(), packet->data_len})) {
+                    RAV_ERROR("Packet not written to buffer");
+                }
             }
         }
 
@@ -467,10 +480,10 @@ void rav::rtp::AudioReceiver::start() {
     rtp_ts_.reset();
 
     for (const auto& stream : stream_contexts_) {
-        if (!stream.stream_info.session.valid()) {
+        if (!stream->stream_info.session.valid()) {
             continue;
         }
-        auto iface = interface_addresses_.find(stream.stream_info.rank);
+        auto iface = interface_addresses_.find(stream->stream_info.rank);
         if (iface == interface_addresses_.end() || iface->second.is_unspecified()) {
             continue;  // No interface address available for this stream
         }
@@ -478,7 +491,7 @@ void rav::rtp::AudioReceiver::start() {
         RAV_ASSERT(!iface->second.is_multicast(), "Interface address must not be multicast");
         // Multiple streams might have the same session, but subscribing more than once for the same session has no
         // effect, so no need to do clever stuff here.
-        std::ignore = rtp_receiver_.subscribe(this, stream.stream_info.session, iface->second);
+        std::ignore = rtp_receiver_.subscribe(this, stream->stream_info.session, iface->second);
     }
 
     is_running_ = true;
@@ -493,9 +506,9 @@ void rav::rtp::AudioReceiver::stop() {
 }
 
 rav::rtp::AudioReceiver::StreamContext* rav::rtp::AudioReceiver::find_stream_context(const Session& session) {
-    for (auto& context : stream_contexts_) {
-        if (context.stream_info.session == session) {
-            return &context;
+    for (const auto& context : stream_contexts_) {
+        if (context->stream_info.session == session) {
+            return context.get();
         }
     }
     return nullptr;
@@ -504,8 +517,8 @@ rav::rtp::AudioReceiver::StreamContext* rav::rtp::AudioReceiver::find_stream_con
 const rav::rtp::AudioReceiver::StreamContext*
 rav::rtp::AudioReceiver::find_stream_context(const Session& session) const {
     for (auto& context : stream_contexts_) {
-        if (context.stream_info.session == session) {
-            return &context;
+        if (context->stream_info.session == session) {
+            return context.get();
         }
     }
     return nullptr;
