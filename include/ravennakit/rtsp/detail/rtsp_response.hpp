@@ -32,9 +32,9 @@ struct Response {
     Response(int status, std::string reason, std::string data_);
 
     /**
-     * Resets the request to its initial state.
+     * Clears the contents of the request.
      */
-    void reset() {
+    void clear() {
         status_code = {};
         reason_phrase.clear();
         rtsp_version_major = {};

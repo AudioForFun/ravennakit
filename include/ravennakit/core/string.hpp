@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string_view>
@@ -163,37 +164,35 @@ inline std::string_view from_last_occurrence_of(
 }
 
 /**
- * Removes given prefix from given string_view, if prefix is found at the beginning of string.
+ * Returns a copy of string with given prefix removed, if prefix is found at the end of string.
  * @param string String to remove prefix from.
  * @param prefix_to_remove Prefix to find and remove.
- * @return True if prefix was removed, or false if prefix was not found and string was not altered.
+ * @return The string with the prefix removed, or the original string if the suffix was not found.
  */
-inline bool remove_prefix(std::string_view& string, const std::string_view prefix_to_remove) {
+inline std::string_view string_remove_prefix(const std::string_view& string, const std::string_view prefix_to_remove) {
     const auto pos = string.find(prefix_to_remove);
 
-    if (pos != 0)  // If prefix doesn't start at the beginning.
-        return false;
+    if (pos != 0) {
+        return string;
+    }
 
-    string = string.substr(pos + prefix_to_remove.size());
-    return true;
+    return string.substr(pos + prefix_to_remove.size());
 }
 
 /**
- * Removes given suffix from given string_view, if suffix is found at the end of string.
+ * Returns a copy of string with given suffix removed, if suffix is found at the end of string.
  * @param string String to remove suffix from.
  * @param suffix_to_remove Suffix to find and remove.
- * @return True if suffix was removed, or false if suffix was not found and string was not altered.
+ * @return The string with the suffix removed, or the original string if the suffix was not found.
  */
-inline bool remove_suffix(std::string_view& string, const std::string_view suffix_to_remove) {
+inline std::string_view string_remove_suffix(const std::string_view& string, const std::string_view suffix_to_remove) {
     const auto pos = string.rfind(suffix_to_remove);
 
     if (pos != string.size() - suffix_to_remove.size()) {
-        return false;
+        return string;
     }
 
-    string = string.substr(0, pos);
-
-    return true;
+    return string.substr(0, pos);
 }
 
 /**
@@ -213,7 +212,6 @@ std::optional<Type> ston(std::string_view string, const bool strict = false, con
         return result;
     return {};
 }
-
 
 /**
  * String to float - converts a string to a float, or returns an empty optional if the conversion failed.
@@ -338,6 +336,42 @@ inline bool string_compare_case_insensitive(const std::string_view lhs, const st
     }
 
     return true;
+}
+
+/**
+ * Converts the first `count` characters of a string to upper case.
+ * @param str The string to convert.
+ * @param count The number of leading characters to convert to upper case.
+ * @return A new string with the first `count` characters converted to upper case.
+ */
+inline std::string string_to_upper(const std::string& str, std::size_t count = std::numeric_limits<size_t>::max()) {
+    if (str.empty() || count == 0) {
+        return str;
+    }
+    std::string result = str;
+    count = std::min(count, result.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        result[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(result[i])));
+    }
+    return result;
+}
+
+/**
+ * Converts the first `count` characters of a string to lower case.
+ * @param str The string to convert.
+ * @param count The number of leading characters to convert to lower case.
+ * @return A new string with the first `count` characters converted to lower case.
+ */
+inline std::string string_to_lower(const std::string& str, std::size_t count = std::numeric_limits<size_t>::max()) {
+    if (str.empty() || count == 0) {
+        return str;
+    }
+    std::string result = str;
+    count = std::min(count, result.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        result[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(result[i])));
+    }
+    return result;
 }
 
 }  // namespace rav

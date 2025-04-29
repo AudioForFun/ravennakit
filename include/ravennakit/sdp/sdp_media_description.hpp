@@ -39,23 +39,6 @@ class MediaDescription {
     using ParseResult = Result<T, std::string>;
 
     /**
-     * Parses a media description from a string (i.e. the line starting with m=*). Does not parse the connection
-     * into or attributes.
-     * @param line The string to parse.
-     * @returns A result indicating success or failure. When parsing fails, the error message will contain a
-     * description of the error.
-     */
-    static ParseResult<MediaDescription> parse_new(std::string_view line);
-
-    /**
-     * Parse an attribute from a string.
-     * @param line The string to parse.
-     * @return A result indicating success or failure. When parsing fails, the error message will contain a
-     * description of the error.
-     */
-    ParseResult<void> parse_attribute(std::string_view line);
-
-    /**
      * @returns The media type of the media description (i.e. audio, video, text, application, message).
      */
     [[nodiscard]] const std::string& media_type() const;
@@ -255,6 +238,17 @@ class MediaDescription {
     void set_clock_domain(RavennaClockDomain clock_domain);
 
     /**
+     * @return The MID attribute of the media description.
+     */
+    [[nodiscard]] const std::optional<std::string>& get_mid() const;
+
+    /**
+     * Sets the MID attribute of the media description.
+     * @param mid The MID to set.
+     */
+    void set_mid(std::optional<std::string> mid);
+
+    /**
      * @returns Attributes which have not been parsed into a specific field.
      */
     [[nodiscard]] const std::map<std::string, std::string>& attributes() const;
@@ -271,6 +265,23 @@ class MediaDescription {
      */
     tl::expected<std::string, std::string> to_string(const char* newline = k_sdp_crlf) const;
 
+    /**
+     * Parses a media description from a string (i.e. the line starting with m=*). Does not parse the connection
+     * into or attributes.
+     * @param line The string to parse.
+     * @returns A result indicating success or failure. When parsing fails, the error message will contain a
+     * description of the error.
+     */
+    static ParseResult<MediaDescription> parse_new(std::string_view line);
+
+    /**
+     * Parse an attribute from a string.
+     * @param line The string to parse.
+     * @return A result indicating success or failure. When parsing fails, the error message will contain a
+     * description of the error.
+     */
+    ParseResult<void> parse_attribute(std::string_view line);
+
   private:
     std::string media_type_;
     uint16_t port_ {};
@@ -284,11 +295,12 @@ class MediaDescription {
     std::optional<ReferenceClock> reference_clock_;
     std::optional<MediaClockSource> media_clock_;
     std::optional<std::string> session_information_;
-    std::optional<RavennaClockDomain> clock_domain_;   // RAVENNA-specific attribute
+    std::optional<RavennaClockDomain> clock_domain_;     // RAVENNA-specific attribute
     std::optional<uint32_t> sync_time_;                  // RAVENNA-specific attribute
     std::optional<Fraction<uint32_t>> clock_deviation_;  // RAVENNA-specific attribute
     std::vector<SourceFilter> source_filters_;
-    std::optional<uint32_t> framecount_;             // Legacy RAVENNA attribute, replaced by ptime
+    std::optional<uint32_t> framecount_;  // Legacy RAVENNA attribute, replaced by ptime
+    std::optional<std::string> mid_;
     std::map<std::string, std::string> attributes_;  // Remaining, unknown attributes
 };
 

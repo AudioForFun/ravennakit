@@ -552,6 +552,168 @@ TEST_CASE("session_description | To string") {
     REQUIRE(sdp.to_string().value() == expected);
 }
 
+TEST_CASE("session_description | To string SPS") {
+    std::string expected =
+        "v=0\r\n"
+        "o=- 13 0 IN IP4 192.168.15.52\r\n"
+        "s=Anubis Combo LR\r\n"
+        "t=0 0\r\n";
+
+    rav::sdp::OriginField origin;
+    origin.session_id = "13";
+    origin.session_version = 0;
+    origin.network_type = rav::sdp::NetwType::internet;
+    origin.address_type = rav::sdp::AddrType::ipv4;
+    origin.unicast_address = "192.168.15.52";
+
+    rav::sdp::SessionDescription sdp;
+    sdp.set_origin(origin);
+    sdp.set_session_name("Anubis Combo LR");
+    sdp.set_time_active({0, 0});
+
+    REQUIRE(sdp.to_string().value() == expected);
+
+    rav::sdp::Group group;
+    group.set_type(rav::sdp::Group::Type::dup);
+    group.add_tag("primary");
+    group.add_tag("secondary");
+
+    sdp.set_group(group);
+
+    expected += "a=group:DUP primary secondary\r\n";
+
+    SECTION("Connection info (optional if media descriptions all have their own connection info)") {
+        rav::sdp::ConnectionInfoField connection_info;
+        connection_info.network_type = rav::sdp::NetwType::internet;
+        connection_info.address_type = rav::sdp::AddrType::ipv4;
+        connection_info.address = "239.1.16.51";
+        connection_info.ttl = 15;
+        sdp.set_connection_info(connection_info);
+        expected += "c=IN IP4 239.1.16.51/15\r\n";
+        REQUIRE(sdp.to_string().value() == expected);
+    }
+
+    REQUIRE(sdp.to_string().value() == expected);
+
+    SECTION("RAVENNA clock-domain attribute") {
+        rav::sdp::RavennaClockDomain clock_domain;
+        clock_domain.source = rav::sdp::RavennaClockDomain::SyncSource::ptp_v2;
+        clock_domain.domain = 0;
+        sdp.set_clock_domain(clock_domain);
+        expected += "a=clock-domain:PTPv2 0\r\n";
+        REQUIRE(sdp.to_string().value() == expected);
+    }
+
+    SECTION("Reference clock attribute") {
+        rav::sdp::ReferenceClock ref_clock(
+            rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008,
+            "00-1D-C1-FF-FE-51-9E-F7", 0
+        );
+        sdp.set_ref_clock(ref_clock);
+        expected += "a=ts-refclk:ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0\r\n";
+        REQUIRE(sdp.to_string().value() == expected);
+    }
+
+    SECTION("Media direction attribute") {
+        sdp.set_media_direction(rav::sdp::MediaDirection::recvonly);
+        expected += "a=recvonly\r\n";
+        REQUIRE(sdp.to_string().value() == expected);
+    }
+
+    SECTION("Media clock attribute") {
+        rav::sdp::MediaClockSource media_clock(
+            rav::sdp::MediaClockSource::ClockMode::direct, 0, rav::Fraction<int>({1000, 1001})
+        );
+        sdp.set_media_clock(media_clock);
+        expected += "a=mediaclk:direct=0 rate=1000/1001\r\n";
+        REQUIRE(sdp.to_string().value() == expected);
+    }
+
+    SECTION("Source filters") {
+        rav::sdp::SourceFilter filter(
+            rav::sdp::FilterMode::include, rav::sdp::NetwType::internet, rav::sdp::AddrType::ipv4, "239.1.16.51",
+            {"192.168.16.51"}
+        );
+        sdp.add_source_filter(filter);
+        expected += "a=source-filter: incl IN IP4 239.1.16.51 192.168.16.51\r\n";
+        REQUIRE(sdp.to_string().value() == expected);
+    }
+
+    rav::sdp::MediaDescription primary;
+    primary.set_media_type("audio");
+    primary.set_port(5004);
+    primary.set_number_of_ports(1);
+    primary.set_protocol("RTP/AVP");
+    primary.add_format({98, "L16", 44100, 2});
+    primary.add_connection_info({rav::sdp::NetwType::internet, rav::sdp::AddrType::ipv4, "192.168.1.1", 15, {}});
+    primary.set_ptime(20.f);
+    primary.set_max_ptime(60.f);
+    primary.set_direction(rav::sdp::MediaDirection::recvonly);
+    primary.set_ref_clock(
+        {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1}
+    );
+    primary.set_media_clock(
+        {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::Fraction<int>>({48000, 1})}
+    );
+    primary.set_clock_domain(rav::sdp::RavennaClockDomain {rav::sdp::RavennaClockDomain::SyncSource::ptp_v2, 1});
+    primary.set_sync_time(1234);
+    primary.set_clock_deviation(std::optional<rav::Fraction<unsigned>>({1001, 1000}));
+    primary.set_mid("primary");
+    sdp.add_media_description(primary);
+
+    expected +=
+        "m=audio 5004 RTP/AVP 98\r\n"
+        "c=IN IP4 192.168.1.1/15\r\n"
+        "a=rtpmap:98 L16/44100/2\r\n"
+        "a=ptime:20\r\n"
+        "a=maxptime:60\r\n"
+        "a=mid:primary\r\n"
+        "a=recvonly\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:gmid:1\r\n"
+        "a=mediaclk:direct=5 rate=48000/1\r\n"
+        "a=clock-domain:PTPv2 1\r\n"
+        "a=sync-time:1234\r\n"
+        "a=clock-deviation:1001/1000\r\n";
+
+    rav::sdp::MediaDescription secondary;
+    secondary.set_media_type("audio");
+    secondary.set_port(5004);
+    secondary.set_number_of_ports(1);
+    secondary.set_protocol("RTP/AVP");
+    secondary.add_format({98, "L16", 44100, 2});
+    secondary.add_connection_info({rav::sdp::NetwType::internet, rav::sdp::AddrType::ipv4, "192.168.1.2", 15, {}});
+    secondary.set_ptime(20.f);
+    secondary.set_max_ptime(60.f);
+    secondary.set_direction(rav::sdp::MediaDirection::recvonly);
+    secondary.set_ref_clock(
+        {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1}
+    );
+    secondary.set_media_clock(
+        {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::Fraction<int>>({48000, 1})}
+    );
+    secondary.set_clock_domain(rav::sdp::RavennaClockDomain {rav::sdp::RavennaClockDomain::SyncSource::ptp_v2, 1});
+    secondary.set_sync_time(1234);
+    secondary.set_clock_deviation(std::optional<rav::Fraction<unsigned>>({1001, 1000}));
+    secondary.set_mid("secondary");
+    sdp.add_media_description(secondary);
+
+    expected +=
+        "m=audio 5004 RTP/AVP 98\r\n"
+        "c=IN IP4 192.168.1.2/15\r\n"
+        "a=rtpmap:98 L16/44100/2\r\n"
+        "a=ptime:20\r\n"
+        "a=maxptime:60\r\n"
+        "a=mid:secondary\r\n"
+        "a=recvonly\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:gmid:1\r\n"
+        "a=mediaclk:direct=5 rate=48000/1\r\n"
+        "a=clock-domain:PTPv2 1\r\n"
+        "a=sync-time:1234\r\n"
+        "a=clock-deviation:1001/1000\r\n";
+
+    REQUIRE(sdp.to_string().value() == expected);
+}
+
 TEST_CASE("session_description | To string - regenerate Anubis SDP") {
     constexpr auto k_anubis_sdp =
         "v=0\r\n"
@@ -609,4 +771,238 @@ TEST_CASE("session_description | To string - regenerate Anubis SDP") {
         "a=framecount:48\r\n";
 
     REQUIRE(sdp_txt == expected);
+}
+
+TEST_CASE("session_description | SPS description from Mic-8") {
+    constexpr auto k_mic8_sdp =
+        "v=0\r\n"
+        "o=- 1731086923289383 0 IN IP4 192.168.4.8\r\n"
+        "s=MADI-1\r\n"
+        "t=0 0\r\n"
+        "a=group:DUP primary secondary\r\n"
+        "a=clock-domain:PTPv2 0\r\n"
+        "a=sync-time:0\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0\r\n"
+        "a=mediaclk:direct=0\r\n"
+        "m=audio 5004 RTP/AVP 98\r\n"
+        "c=IN IP4 239.3.8.1/31\r\n"
+        "a=source-filter: incl IN IP4 239.3.8.1 192.168.16.52\r\n"
+        "a=recvonly\r\n"
+        "a=rtpmap:98 L24/48000/64\r\n"
+        "a=framecount:6\r\n"
+        "a=ptime:0.12\r\n"
+        "a=mid:primary\r\n"
+        "a=clock-domain:PTPv2 0\r\n"
+        "a=sync-time:0\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0\r\n"
+        "a=mediaclk:direct=0\r\n"
+        "m=audio 5004 RTP/AVP 98\r\n"
+        "c=IN IP4 239.4.8.2/31\r\n"
+        "a=source-filter: incl IN IP4 239.4.8.2 192.168.4.8\r\n"
+        "a=recvonly\r\n"
+        "a=rtpmap:98 L24/48000/64\r\n"
+        "a=framecount:6\r\n"
+        "a=ptime:0.12\r\n"
+        "a=mid:secondary\r\n"
+        "a=clock-domain:PTPv2 0\r\n"
+        "a=sync-time:0\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0\r\n"
+        "a=mediaclk:direct=0\r\n";
+
+    auto result = rav::sdp::SessionDescription::parse_new(k_mic8_sdp);
+    REQUIRE(result.is_ok());
+
+    SECTION("Test origin") {
+        const auto& origin = result.get_ok().origin();
+        REQUIRE(origin.username == "-");
+        REQUIRE(origin.session_id == "1731086923289383");
+        REQUIRE(origin.session_version == 0);
+        REQUIRE(origin.network_type == rav::sdp::NetwType::internet);
+        REQUIRE(origin.address_type == rav::sdp::AddrType::ipv4);
+        REQUIRE(origin.unicast_address == "192.168.4.8");
+    }
+
+    SECTION("Test session name") {
+        REQUIRE(result.get_ok().session_name() == "MADI-1");
+    }
+
+    SECTION("Test time") {
+        auto time = result.get_ok().time_active();
+        REQUIRE(time.start_time == 0);
+        REQUIRE(time.stop_time == 0);
+    }
+
+    SECTION("Test clock-domain") {
+        auto clock_domain = result.get_ok().clock_domain().value();
+        REQUIRE(clock_domain.source == rav::sdp::RavennaClockDomain::SyncSource::ptp_v2);
+        REQUIRE(clock_domain.domain == 0);
+    }
+
+    SECTION("Test sync-time") {
+        REQUIRE(result.get_ok().sync_time().value() == 0);
+    }
+
+    SECTION("Test refclk on session") {
+        const auto& refclk = result.get_ok().ref_clock();
+        REQUIRE(refclk.has_value());
+        REQUIRE(refclk->source() == rav::sdp::ReferenceClock::ClockSource::ptp);
+        REQUIRE(refclk->ptp_version() == rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008);
+        REQUIRE(refclk->gmid() == "00-0B-72-FF-FE-07-DC-FC");
+        REQUIRE(refclk->domain() == 0);
+    }
+
+    SECTION("Test mediaclk attribute") {
+        auto media_clock = result.move_ok().media_clock().value();
+        REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
+        REQUIRE(media_clock.offset().value() == 0);
+        REQUIRE_FALSE(media_clock.rate().has_value());
+    }
+
+    SECTION("Test group") {
+        const auto& group = result.get_ok().get_group();
+        REQUIRE(group);
+        REQUIRE(group->get_type() == rav::sdp::Group::Type::dup);
+
+        auto tags = group->get_tags();
+        REQUIRE(tags.size() == 2);
+        REQUIRE(tags[0] == "primary");
+        REQUIRE(tags[1] == "secondary");
+    }
+
+    SECTION("Test media") {
+        const auto& descriptions = result.get_ok().media_descriptions();
+        REQUIRE(descriptions.size() == 2);
+
+        SECTION("Primary") {
+            const auto& media = descriptions[0];
+            REQUIRE(media.media_type() == "audio");
+            REQUIRE(media.port() == 5004);
+            REQUIRE(media.number_of_ports() == 1);
+            REQUIRE(media.protocol() == "RTP/AVP");
+            REQUIRE(media.formats().size() == 1);
+
+            auto format = media.formats()[0];
+            REQUIRE(format.payload_type == 98);
+            REQUIRE(format.encoding_name == "L24");
+            REQUIRE(format.clock_rate == 48000);
+            REQUIRE(format.num_channels == 64);
+            REQUIRE(media.connection_infos().size() == 1);
+
+            const auto& conn = media.connection_infos().back();
+            REQUIRE(conn.network_type == rav::sdp::NetwType::internet);
+            REQUIRE(conn.address_type == rav::sdp::AddrType::ipv4);
+            REQUIRE(conn.address == "239.3.8.1");
+            REQUIRE(conn.ttl.has_value() == true);
+            REQUIRE(*conn.ttl == 31);
+            REQUIRE(static_cast<int64_t>(media.ptime().value() * 100.f) == 12);
+
+            SECTION("Test refclk on media") {
+                const auto& refclk = media.ref_clock();
+                REQUIRE(refclk.has_value());
+                REQUIRE(refclk->source() == rav::sdp::ReferenceClock::ClockSource::ptp);
+                REQUIRE(refclk->ptp_version() == rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008);
+                REQUIRE(refclk->gmid() == "00-0B-72-FF-FE-07-DC-FC");
+                REQUIRE(refclk->domain() == 0);
+            }
+
+            SECTION("Test sync-time") {
+                REQUIRE(media.sync_time().value() == 0);
+            }
+
+            SECTION("Test mediaclk on media") {
+                const auto& media_clock = media.media_clock().value();
+                REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
+                REQUIRE(media_clock.offset().value() == 0);
+                REQUIRE_FALSE(media_clock.rate().has_value());
+            }
+
+            SECTION("Test source-filter on media") {
+                const auto& filters = media.source_filters();
+                REQUIRE(filters.size() == 1);
+                const auto& filter = filters[0];
+                REQUIRE(filter.mode() == rav::sdp::FilterMode::include);
+                REQUIRE(filter.network_type() == rav::sdp::NetwType::internet);
+                REQUIRE(filter.address_type() == rav::sdp::AddrType::ipv4);
+                REQUIRE(filter.dest_address() == "239.3.8.1");
+                REQUIRE(filter.src_list().size() == 1);
+                REQUIRE(filter.src_list()[0] == "192.168.16.52");
+            }
+
+            SECTION("Framecount") {
+                REQUIRE(media.framecount() == 6);
+            }
+
+            SECTION("Mid") {
+                auto mid = media.get_mid();
+                REQUIRE(mid.has_value());
+                REQUIRE(*mid == "primary");
+            }
+        }
+
+        SECTION("Secondary") {
+            const auto& media = descriptions[1];
+            REQUIRE(media.media_type() == "audio");
+            REQUIRE(media.port() == 5004);
+            REQUIRE(media.number_of_ports() == 1);
+            REQUIRE(media.protocol() == "RTP/AVP");
+            REQUIRE(media.formats().size() == 1);
+
+            auto format = media.formats()[0];
+            REQUIRE(format.payload_type == 98);
+            REQUIRE(format.encoding_name == "L24");
+            REQUIRE(format.clock_rate == 48000);
+            REQUIRE(format.num_channels == 64);
+            REQUIRE(media.connection_infos().size() == 1);
+
+            const auto& conn = media.connection_infos().back();
+            REQUIRE(conn.network_type == rav::sdp::NetwType::internet);
+            REQUIRE(conn.address_type == rav::sdp::AddrType::ipv4);
+            REQUIRE(conn.address == "239.4.8.2");
+            REQUIRE(conn.ttl.has_value() == true);
+            REQUIRE(*conn.ttl == 31);
+            REQUIRE(static_cast<int64_t>(media.ptime().value() * 100.f) == 12);
+
+            SECTION("Test refclk on media") {
+                const auto& refclk = media.ref_clock();
+                REQUIRE(refclk.has_value());
+                REQUIRE(refclk->source() == rav::sdp::ReferenceClock::ClockSource::ptp);
+                REQUIRE(refclk->ptp_version() == rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008);
+                REQUIRE(refclk->gmid() == "00-0B-72-FF-FE-07-DC-FC");
+                REQUIRE(refclk->domain() == 0);
+            }
+
+            SECTION("Test sync-time") {
+                REQUIRE(media.sync_time().value() == 0);
+            }
+
+            SECTION("Test mediaclk on media") {
+                const auto& media_clock = media.media_clock().value();
+                REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
+                REQUIRE(media_clock.offset().value() == 0);
+                REQUIRE_FALSE(media_clock.rate().has_value());
+            }
+
+            SECTION("Test source-filter on media") {
+                const auto& filters = media.source_filters();
+                REQUIRE(filters.size() == 1);
+                const auto& filter = filters[0];
+                REQUIRE(filter.mode() == rav::sdp::FilterMode::include);
+                REQUIRE(filter.network_type() == rav::sdp::NetwType::internet);
+                REQUIRE(filter.address_type() == rav::sdp::AddrType::ipv4);
+                REQUIRE(filter.dest_address() == "239.4.8.2");
+                REQUIRE(filter.src_list().size() == 1);
+                REQUIRE(filter.src_list()[0] == "192.168.4.8");
+            }
+
+            SECTION("Framecount") {
+                REQUIRE(media.framecount() == 6);
+            }
+
+            SECTION("Mid") {
+                auto mid = media.get_mid();
+                REQUIRE(mid.has_value());
+                REQUIRE(*mid == "secondary");
+            }
+        }
+    }
 }

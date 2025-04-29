@@ -15,6 +15,7 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <thread>
 
 namespace rav {
 
@@ -256,11 +257,51 @@ class Rcu {
      */
     void update(std::unique_ptr<T> new_value) {
         std::lock_guard lock(values_mutex_);
-        most_recent_value_.store(new_value.get());
-        // At this point a reader takes most_recent_value_ with current epoch, which is not a problem because newer
-        // values than the oldest used value are never deleted.
-        auto epoch = current_epoch_.fetch_add(1) + 1;
-        values_.emplace_back(EpochAndValue {epoch, std::move(new_value)});
+        update_internal(std::move(new_value));
+    }
+
+    /**
+     * Updates the current value with a new value. Reclaims all previous values. After this function returns all
+     * previous values have been destroyed.
+     * Real-time safe: no.
+     * Thread safe: yes.
+     * @tparam Args The types of the arguments.
+     * @param args The arguments to construct the new value.
+     */
+    template<class... Args>
+    void update_reclaim_all(Args&&... args) {
+        update_reclaim_all(std::make_unique<T>(std::forward<Args>(args)...));
+    }
+
+    /**
+     * Updates the current value with a new value and reclaims all previous values. After this function returns, all
+     * previous values will have been destroyed.
+     * Real-time safe: no.
+     * Thread safe: yes.
+     * @param new_value The new value to set.
+     */
+    void update_reclaim_all(std::unique_ptr<T> new_value) {
+        std::lock_guard lock(values_mutex_);
+        update_internal(std::move(new_value));
+        std::ignore = reclaim_internal();
+        const auto current_epoch = current_epoch_.load();
+
+        if (values_.size() == 1) {
+            RAV_ASSERT(values_.front().epoch == current_epoch, "Oldest epoch should be equal to current epoch");
+            return;
+        }
+
+        // There are older values than the current one, so we need to reclaim them.
+        for (uint64_t epoch = values_.front().epoch; epoch < current_epoch; epoch = values_.front().epoch) {
+            if (values_.size() == 1) {
+                break;  // No more values to reclaim
+            }
+            std::ignore = reclaim_internal();
+            std::this_thread::yield();
+        }
+
+        RAV_ASSERT(!values_.empty(), "The last value should have never been reclaimed");
+        RAV_ASSERT(values_.front().epoch >= current_epoch, "Oldest epoch should be equal or newer to current epoch");
     }
 
     /**
@@ -281,29 +322,7 @@ class Rcu {
      */
     [[nodiscard]] size_t reclaim() {
         std::lock_guard lock(values_mutex_);
-
-        if (current_epoch_ == 0) {
-            return 0; // Nothing to reclaim since we're in default state
-        }
-
-        RAV_ASSERT(!values_.empty(), "The last value should have never been reclaimed");
-
-        size_t num_reclaimed = 0;
-        for (auto it = values_.begin(); it != values_.end() - 1;) {
-            std::lock_guard readers_lock(readers_mutex_);
-            for (const auto* r : readers_) {
-                // r->num_locks_ might be changed by another thread at some point, but this has no consequence because
-                // in that case it will load a newer value.
-                if (r->num_locks_.load() > 0 && r->epoch_.load() <= it->epoch) {
-                    // There is a reader with the epoch of this value, so we can't delete this just yet (or any newer
-                    // values).
-                    return num_reclaimed;
-                }
-            }
-            it = values_.erase(it);
-            ++num_reclaimed;
-        }
-        return num_reclaimed;
+        return reclaim_internal();
     }
 
     /**
@@ -337,6 +356,39 @@ class Rcu {
 
     // Holds the current epoch.
     std::atomic<uint64_t> current_epoch_ {};
+
+    void update_internal(std::unique_ptr<T> new_value) {
+        most_recent_value_.store(new_value.get());
+        // At this point a reader takes most_recent_value_ with current epoch, which is not a problem because newer
+        // values than the oldest used value are never deleted.
+        auto epoch = current_epoch_.fetch_add(1) + 1;
+        values_.emplace_back(EpochAndValue {epoch, std::move(new_value)});
+    }
+
+    [[nodiscard]] size_t reclaim_internal() {
+        if (current_epoch_ == 0) {
+            return 0;  // Nothing to reclaim since we're in default state
+        }
+
+        RAV_ASSERT(!values_.empty(), "The last value should have never been reclaimed");
+
+        size_t num_reclaimed = 0;
+        for (auto it = values_.begin(); it != values_.end() - 1;) {
+            std::lock_guard readers_lock(readers_mutex_);
+            for (const auto* r : readers_) {
+                // r->num_locks_ might be changed by another thread at some point, but this has no consequence because
+                // in that case it will load a newer value.
+                if (r->num_locks_.load() > 0 && r->epoch_.load() <= it->epoch) {
+                    // There is a reader with the epoch of this value, so we can't delete this just yet (or any newer
+                    // values).
+                    return num_reclaimed;
+                }
+            }
+            it = values_.erase(it);
+            ++num_reclaimed;
+        }
+        return num_reclaimed;
+    }
 };
 
 }  // namespace rav

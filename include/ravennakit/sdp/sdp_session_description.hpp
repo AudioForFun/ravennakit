@@ -13,12 +13,13 @@
 #include <sstream>
 #include <vector>
 
-#include "sdp_media_description.hpp"
 #include "detail/sdp_constants.hpp"
-#include "ravennakit/core/result.hpp"
-#include "detail/sdp_reference_clock.hpp"
+#include "detail/sdp_group.hpp"
 #include "detail/sdp_origin.hpp"
+#include "detail/sdp_reference_clock.hpp"
 #include "detail/sdp_time_active.hpp"
+#include "ravennakit/core/result.hpp"
+#include "sdp_media_description.hpp"
 
 namespace rav::sdp {
 
@@ -163,10 +164,33 @@ class SessionDescription {
     void set_media_direction(MediaDirection direction);
 
     /**
+     * @return The sync-time of the stream. This is a RAVENNA-specific attribute extension and redundant to
+     * mediaclk:direct.
+     */
+    [[nodiscard]] std::optional<uint32_t> sync_time() const;
+
+    /**
+     * Sets the sync-time of the stream. This is a RAVENNA-specific attribute extension and redundant to
+     * mediaclk:direct.
+     * @param sync_time The sync-time to set.
+     */
+    void set_sync_time(std::optional<uint32_t> sync_time);
+
+    /**
+     * @return Group attribute of the session description.
+     */
+    [[nodiscard]] std::optional<Group> get_group() const;
+
+    /**
+     * @param group The group to set.
+     */
+    void set_group(Group group);
+
+    /**
      * @returns Attributes which have not been parsed into a specific field.
      */
     [[nodiscard]] const std::map<std::string, std::string>& attributes() const;
-    
+
     /**
      * Converts the session description to a string.
      * @return The session description as a string.
@@ -186,8 +210,10 @@ class SessionDescription {
     std::optional<MediaDirection> media_direction_;
     std::optional<ReferenceClock> reference_clock_;
     std::optional<MediaClockSource> media_clock_;
-    std::optional<RavennaClockDomain> clock_domain_;
+    std::optional<RavennaClockDomain> clock_domain_;  // RAVENNA-specific attribute
+    std::optional<uint32_t> sync_time_;               // RAVENNA-specific attribute
     std::vector<SourceFilter> source_filters_;
+    std::optional<Group> group_;
     std::map<std::string, std::string> attributes_;  // Remaining, unknown attributes
     std::vector<MediaDescription> media_descriptions_;
 

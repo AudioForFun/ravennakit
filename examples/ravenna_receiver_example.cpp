@@ -167,8 +167,7 @@ class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
         audio_device_name_(std::move(audio_device_name)) {
         rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
 
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(io_context_);
-        rtp_receiver_->set_interface(asio::ip::make_address(interface_address));
+        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
 
         rav::RavennaReceiver::ConfigurationUpdate update;
         update.delay_frames = 480;  // 10ms at 48KHz
@@ -176,9 +175,10 @@ class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
         update.session_name = stream_name;
 
         ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(
-            *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
+            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
         );
-        auto result = ravenna_receiver_->update_configuration(update);
+        ravenna_receiver_->set_interfaces({{rav::Rank::primary(), asio::ip::make_address_v4(interface_address)}});
+        auto result = ravenna_receiver_->set_configuration(update);
         if (!result) {
             RAV_ERROR("Failed to update configuration: {}", result.error());
             return;
@@ -205,12 +205,17 @@ class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
         portaudio_stream_.stop();
     }
 
-    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& event) override {
-        if (!event.audio_format.is_valid() || audio_format_ == event.audio_format) {
+    void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::Parameters& parameters) override {
+        if (parameters.streams.empty()) {
+            RAV_WARNING("No streams available");
             return;
         }
 
-        audio_format_ = event.audio_format;
+        if (!parameters.audio_format.is_valid() || audio_format_ == parameters.audio_format) {
+            return;
+        }
+
+        audio_format_ = parameters.audio_format;
         const auto sample_format = get_sample_format_for_audio_format(audio_format_);
         if (!sample_format.has_value()) {
             RAV_TRACE("Skipping stream update because audio format is invalid: {}", audio_format_.to_string());
@@ -222,10 +227,9 @@ class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
         );
     }
 
-    void on_data_ready([[maybe_unused]] rav::WrappingUint32 timestamp) override {}
-
   private:
     asio::io_context io_context_;
+    rav::UdpReceiver udp_receiver_ {io_context_};
     rav::RavennaBrowser browser_ {io_context_};
     std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
     std::unique_ptr<rav::rtp::Receiver> rtp_receiver_;
@@ -236,7 +240,7 @@ class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
 
     int stream_callback(
         const void* input, void* output, const unsigned long frame_count, const PaStreamCallbackTimeInfo* time_info,
-        PaStreamCallbackFlags status_flags
+        const PaStreamCallbackFlags status_flags
     ) {
         TRACY_ZONE_SCOPED;
 

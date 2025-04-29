@@ -36,7 +36,7 @@ struct Request {
     /**
      * Resets the request to its initial state.
      */
-    void reset();
+    void clear();
 
     /**
      * @return The encoded request as a string.

@@ -32,8 +32,6 @@ bool rav::rtp::PacketView::validate() const {
         return false;
     }
 
-
-
     return true;
 }
 

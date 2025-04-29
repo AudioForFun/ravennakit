@@ -47,15 +47,11 @@ bool rav::ptp::Instance::subscribe(Subscriber* subscriber) {
     return false;
 }
 
-bool rav::ptp::Instance::unsubscribe(Subscriber* subscriber) {
+bool rav::ptp::Instance::unsubscribe(const Subscriber* subscriber) {
     return subscribers_.remove(subscriber);
 }
 
-tl::expected<void, rav::ptp::Error> rav::ptp::Instance::add_port(const asio::ip::address& interface_address) {
-    if (!ports_.empty()) {
-        return tl::unexpected(Error::only_ordinary_clock_supported);
-    }
-
+tl::expected<uint16_t, rav::ptp::Error> rav::ptp::Instance::add_port(const asio::ip::address_v4& interface_address) {
     const auto interfaces = NetworkInterfaceList::get_system_interfaces(false);
     auto* iface = interfaces.find_by_address(interface_address);
     if (!iface) {
@@ -97,21 +93,38 @@ tl::expected<void, rav::ptp::Error> rav::ptp::Instance::add_port(const asio::ip:
         schedule_state_decision_timer();
     }
 
-    return {};
+    return port_identity.port_number;
+}
+
+bool rav::ptp::Instance::remove_port(uint16_t port_number) {
+    const auto it = std::remove_if(ports_.begin(), ports_.end(), [port_number](const auto& port) {
+        return port->get_port_identity().port_number == port_number;
+    });
+
+    if (it != ports_.end()) {
+        ports_.erase(it, ports_.end());
+        default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
+        RAV_TRACE("Removed port {}, new total amount of ports: {}", port_number, default_ds_.number_ports);
+        return true;
+    }
+
+    return false;
 }
 
 size_t rav::ptp::Instance::get_port_count() const {
     return ports_.size();
 }
 
-void rav::ptp::Instance::set_port_interface(
-    const size_t port_index, const asio::ip::address_v4& interface_address
+bool rav::ptp::Instance::set_port_interface(
+    const uint16_t port_number, const asio::ip::address_v4& interface_address
 ) const {
-    if (port_index >= ports_.size()) {
-        RAV_ERROR("Port index out of range");
-        return;
+    for (auto& port : ports_) {
+        if (port->get_port_identity().port_number == port_number) {
+            port->set_interface(interface_address);
+            return true;
+        }
     }
-    ports_[port_index]->set_interface(interface_address);
+    return false;
 }
 
 const rav::ptp::DefaultDs& rav::ptp::Instance::default_ds() const {
@@ -202,8 +215,6 @@ void rav::ptp::Instance::execute_state_decision_event() {
         RAV_ASSERT(port, "Found a nullptr in the port list");
         port->apply_state_decision_algorithm(default_ds_, ebest);
     }
-
-    // TODO: Update data sets for all ports (currently only one port is supported)
 }
 
 bool rav::ptp::Instance::should_process_ptp_messages(const MessageHeader& header) const {
@@ -244,7 +255,7 @@ rav::ptp::State rav::ptp::Instance::get_state_for_decision_code(const StateDecis
         case StateDecisionCode::m2:
         case StateDecisionCode::m3:
             if (default_ds_.slave_only) {
-                return State::listening;  // IEEE 1588-2019: Figure 31
+                return State::listening;  // IEEE 1588-2019: Figure 31 (as opposed to Figure 30)
             }
             return State::master;
         case StateDecisionCode::s1:
@@ -252,7 +263,7 @@ rav::ptp::State rav::ptp::Instance::get_state_for_decision_code(const StateDecis
         case StateDecisionCode::p1:
         case StateDecisionCode::p2:
             if (default_ds_.slave_only) {
-                return State::listening;  // IEEE 1588-2019: Figure 31
+                return State::listening;  // IEEE 1588-2019: Figure 31 (as opposed to Figure 30)
             }
             return State::passive;
         default:

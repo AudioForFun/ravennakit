@@ -44,12 +44,11 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         }
 
         sender_ = std::make_unique<rav::RavennaSender>(
-            io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, rav::Id::get_next_process_wide_unique_id(), 1,
-            interface_addr
+            io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, rav::Id::get_next_process_wide_unique_id(), 1
         );
+        sender_->set_interfaces({{rav::Rank::primary(), interface_addr}});
 
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(io_context_);
-        rtp_receiver_->set_interface(interface_addr);
+        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
 
         rav::RavennaReceiver::ConfigurationUpdate update;
         update.delay_frames = 480;  // 10ms at 48KHz
@@ -57,9 +56,10 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         update.session_name = stream_name_;
 
         ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(
-            *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id(), update
+            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id(), update
         );
-        auto result = ravenna_receiver_->update_configuration(update);
+        ravenna_receiver_->set_interfaces({{rav::Rank::primary(), interface_addr}});
+        auto result = ravenna_receiver_->set_configuration(update);
         if (!result) {
             RAV_ERROR("Failed to update configuration: {}", result.error());
             return;
@@ -80,17 +80,22 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         }
     }
 
-    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& parameters) override {
+    void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::Parameters& parameters) override {
+        if (parameters.streams.empty()) {
+            RAV_WARNING("No streams available");
+            return;
+        }
+
         RAV_ASSERT(parameters.audio_format.is_valid(), "Invalid audio format");
 
-        buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.packet_time_frames);
+        buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.streams.front().packet_time_frames);
 
         rav::RavennaSender::ConfigurationUpdate update;
         update.session_name = stream_name_ + "_loopback";
         update.audio_format = parameters.audio_format;
         update.enabled = true;
 
-        auto result = sender_->update_configuration(update);
+        auto result = sender_->set_configuration(update);
         if (!result) {
             RAV_ERROR("Failed to update sender: {}", result.error());
         }
@@ -122,6 +127,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
   private:
     std::string stream_name_;
     asio::io_context io_context_;
+    rav::UdpReceiver udp_receiver_ {io_context_};
     std::vector<uint8_t> buffer_;
     bool ptp_clock_stable_ = false;
 

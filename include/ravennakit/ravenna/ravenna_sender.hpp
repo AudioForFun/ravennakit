@@ -17,10 +17,9 @@
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/containers/fifo_buffer.hpp"
 #include "ravennakit/core/sync/rcu.hpp"
-#include "ravennakit/core/sync/realtime_shared_object.hpp"
+#include "ravennakit/core/util/rank.hpp"
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
-#include "ravennakit/ptp/types/ptp_timestamp.hpp"
 #include "ravennakit/rtp/rtp_packet.hpp"
 #include "ravennakit/rtp/detail/rtp_buffer.hpp"
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
@@ -40,11 +39,37 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     static constexpr uint32_t k_max_num_frames = 4096;
 
     /**
+     * The destination of where a stream of packets should go. The sender can send to multiple destinations, but each
+     * destination can only be used by one sender. The destination is defined by a port and an address.
+     */
+    struct Destination {
+        Rank interface_by_rank;
+        asio::ip::udp::endpoint endpoint {};
+        bool enabled {};
+
+        friend bool operator==(const Destination& lhs, const Destination& rhs) {
+            return std::tie(lhs.interface_by_rank, lhs.endpoint, lhs.enabled)
+                == std::tie(rhs.interface_by_rank, rhs.endpoint, rhs.enabled);
+        }
+
+        friend bool operator!=(const Destination& lhs, const Destination& rhs) {
+            return !(lhs == rhs);
+        }
+
+        /**
+         * @return The destination as a JSON object.
+         */
+        [[nodiscard]] nlohmann::json to_json() const;
+
+        static tl::expected<Destination, std::string> from_json(const nlohmann::json& json);
+    };
+
+    /*
      * Defines the configuration for the sender.
      */
     struct Configuration {
         std::string session_name;
-        asio::ip::address_v4 destination_address;
+        std::vector<Destination> destinations;
         int32_t ttl {};
         uint8_t payload_type {};
         AudioFormat audio_format;
@@ -58,12 +83,12 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     };
 
     /**
-     * Field to update in the configuration. Only the fields that are set are taken into account, which allows for
-     * partial updates.
+     * Struct for updating the configuration of the sender. Only the fields that are set are taken into account, which
+     * allows for partial updates.
      */
     struct ConfigurationUpdate {
         std::optional<std::string> session_name;
-        std::optional<asio::ip::address_v4> destination_address;
+        std::optional<std::vector<Destination>> destinations;
         std::optional<int32_t> ttl;
         std::optional<uint8_t> payload_type;
         std::optional<AudioFormat> audio_format;
@@ -71,7 +96,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
         std::optional<bool> enabled;
 
         /**
-         * Creates a configuration update from a JSON object.
+         * Creates a configuration changes object from a JSON object.
          * @param json The JSON object to convert.
          * @return A configuration update object if the JSON is valid, otherwise an error message.
          */
@@ -86,12 +111,16 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
             std::ignore = sender_id;
             std::ignore = configuration;
         }
+
+        virtual void ravenna_sender_status_message_updated(const Id sender_id, const std::string& message) {
+            std::ignore = sender_id;
+            std::ignore = message;
+        }
     };
 
     RavennaSender(
         asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-        ptp::Instance& ptp_instance, Id id, uint32_t session_id, const asio::ip::address_v4& interface_address,
-        ConfigurationUpdate initial_config = {}
+        ptp::Instance& ptp_instance, Id id, uint32_t session_id, ConfigurationUpdate initial_config = {}
     );
 
     ~RavennaSender() override;
@@ -119,7 +148,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      * This allows to update only a subset of the configuration.
      * @param update The configuration to update.
      */
-    [[nodiscard]] tl::expected<void, std::string> update_configuration(const ConfigurationUpdate& update);
+    [[nodiscard]] tl::expected<void, std::string> set_configuration(const ConfigurationUpdate& update);
 
     /**
      * @returns The current configuration of the sender.
@@ -138,7 +167,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      * @param subscriber The subscriber to unsubscribe.
      * @return
      */
-    [[nodiscard]] bool unsubscribe(Subscriber* subscriber);
+    [[nodiscard]] bool unsubscribe(const Subscriber* subscriber);
 
     /**
      * @return The packet time in milliseconds as signaled using SDP. If the packet time is 1ms and the sample
@@ -170,10 +199,10 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     [[nodiscard]] bool send_audio_data_realtime(const AudioBufferView<const float>& input_buffer, uint32_t timestamp);
 
     /**
-     * Sets the interface to use for this sender.
-     * @param interface_address The address of the interface to use.
+     * Sets the interface address for the receiver.
+     * @param interface_addresses A map of interface addresses to set. The key is the rank of the interface address.
      */
-    void set_interface(const asio::ip::address_v4& interface_address);
+    void set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses);
 
     /**
      * @return A JSON representation of the sender.
@@ -185,7 +214,6 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
 
     // ptp::Instance::Subscriber overrides
     void ptp_parent_changed(const ptp::ParentDs& parent) override;
-    void ptp_port_changed_state(const ptp::Port& port) override;
 
   private:
     [[maybe_unused]] asio::io_context& io_context_;
@@ -201,11 +229,12 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     Id advertisement_id_;
     int32_t clock_domain_ {};
     ptp::ClockIdentity grandmaster_identity_;
-    rtp::Sender rtp_sender_;
+    std::map<Rank, asio::ip::address_v4> interface_addresses_;
+    std::map<Rank, rtp::Sender> rtp_senders_;
 
     asio::high_resolution_timer timer_;
     SubscriberList<Subscriber> subscribers_;
-    std::atomic<bool> ptp_stable_ {false};
+    std::string status_message_;
 
     struct Packet {
         uint32_t rtp_timestamp {};
@@ -214,9 +243,6 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     };
 
     struct SharedContext {
-        // Network thread:
-        asio::ip::udp::endpoint destination_endpoint;
-
         // Audio thread:
         ByteBuffer rtp_packet_buffer;
         std::vector<uint8_t> intermediate_send_buffer;
@@ -238,11 +264,17 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      * Sends an announce request to all connected clients.
      */
     void send_announce() const;
-    [[nodiscard]] sdp::SessionDescription build_sdp() const;
+    [[nodiscard]] tl::expected<sdp::SessionDescription, std::string> build_sdp() const;
     void start_timer();
     void stop_timer();
     void send_outgoing_data();
     void update_shared_context();
+    void generate_auto_addresses_if_needed();
+    void update_rtp_senders();
+    void update_status_message(std::string message);
+    tl::expected<void, std::string> validate_state() const;
+    tl::expected<void, std::string> validate_destinations() const;
+
 };
 
 }  // namespace rav

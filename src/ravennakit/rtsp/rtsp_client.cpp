@@ -31,7 +31,7 @@ void rav::rtsp::Client::async_connect(const std::string& host, const std::string
     async_resolve_connect(host, service, asio::ip::resolver_base::flags());
 }
 
-void rav::rtsp::Client::async_describe(const std::string& path, std::string data) const {
+void rav::rtsp::Client::async_describe(const std::string& path, std::string data) {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
@@ -39,14 +39,14 @@ void rav::rtsp::Client::async_describe(const std::string& path, std::string data
     Request request;
     request.method = "DESCRIBE";
     request.uri = Uri::encode("rtsp", host_, path);
-    request.rtsp_headers.set("CSeq", "15");
+    request.rtsp_headers.set("CSeq", fmt::format("{}", seq_++));
     request.rtsp_headers.set("Accept", "application/sdp");
     request.data = std::move(data);
 
     connection_->async_send_request(request);
 }
 
-void rav::rtsp::Client::async_setup(const std::string& path) const {
+void rav::rtsp::Client::async_setup(const std::string& path) {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
@@ -54,13 +54,13 @@ void rav::rtsp::Client::async_setup(const std::string& path) const {
     Request request;
     request.method = "SETUP";
     request.uri = Uri::encode("rtsp", host_, path);
-    request.rtsp_headers.set("CSeq", "15");
+    request.rtsp_headers.set("CSeq", fmt::format("{}", seq_++));
     request.rtsp_headers.set("Transport", "RTP/AVP;unicast;client_port=5004-5005");
 
     connection_->async_send_request(request);
 }
 
-void rav::rtsp::Client::async_play(const std::string& path) const {
+void rav::rtsp::Client::async_play(const std::string& path) {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
@@ -68,13 +68,13 @@ void rav::rtsp::Client::async_play(const std::string& path) const {
     Request request;
     request.method = "PLAY";
     request.uri = Uri::encode("rtsp", host_, path);
-    request.rtsp_headers.set("CSeq", "15");
+    request.rtsp_headers.set("CSeq", fmt::format("{}", seq_++));
     request.rtsp_headers.set("Transport", "RTP/AVP;unicast;client_port=5004-5005");
 
     connection_->async_send_request(request);
 }
 
-void rav::rtsp::Client::async_teardown(const std::string& path) const {
+void rav::rtsp::Client::async_teardown(const std::string& path) {
     if (!string_starts_with(path, "/")) {
         RAV_THROW_EXCEPTION("Path must start with a /");
     }
@@ -82,7 +82,7 @@ void rav::rtsp::Client::async_teardown(const std::string& path) const {
     Request request;
     request.method = "TEARDOWN";
     request.uri = Uri::encode("rtsp", host_, path);
-    request.rtsp_headers.set("CSeq", "15");
+    request.rtsp_headers.set("CSeq", fmt::format("{}", seq_++));
 
     connection_->async_send_request(request);
 }

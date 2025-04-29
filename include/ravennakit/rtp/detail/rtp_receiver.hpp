@@ -10,15 +10,12 @@
 
 #pragma once
 
-#include "rtp_filter.hpp"
 #include "../rtcp_packet_view.hpp"
 #include "../rtp_packet_view.hpp"
 #include "rtp_session.hpp"
-#include "udp_sender_receiver.hpp"
-#include "ravennakit/core/events.hpp"
-#include "ravennakit/core/linked_node.hpp"
 #include "ravennakit/core/subscriber_list.hpp"
-#include "ravennakit/sdp/sdp_media_description.hpp"
+#include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
+#include "ravennakit/core/net/sockets/udp_receiver.hpp"
 
 #include <asio.hpp>
 #include <utility>
@@ -34,13 +31,15 @@ class Receiver {
         const PacketView& packet;
         const Session& session;
         const asio::ip::udp::endpoint& src_endpoint;
-        uint64_t recv_time;  // Monotonically increasing time in nanoseconds with arbitrary starting point.
+        const asio::ip::udp::endpoint& dst_endpoint;
+        uint64_t recv_time;  // Arbitrary monotonic in nanoseconds
     };
 
     struct RtcpPacketEvent {
         const rtcp::PacketView& packet;
         const Session& session;
         const asio::ip::udp::endpoint& src_endpoint;
+        const asio::ip::udp::endpoint& dst_endpoint;
     };
 
     /**
@@ -76,9 +75,9 @@ class Receiver {
 
     /**
      * Constructs a new RTP receiver using given loop.
-     * @param io_context The io_context to use.
+     * @param udp_receiver The UDP receiver to use.
      */
-    explicit Receiver(asio::io_context& io_context);
+    explicit Receiver(UdpReceiver& udp_receiver);
 
     Receiver(const Receiver&) = delete;
     Receiver& operator=(const Receiver&) = delete;
@@ -87,43 +86,28 @@ class Receiver {
     Receiver& operator=(Receiver&&) = delete;
 
     /**
-     * @return The io_context associated with this receiver.
-     */
-    [[nodiscard]] asio::io_context& get_io_context() const;
-
-    /**
      * Adds a subscriber to the receiver.
-     * @param subscriber_to_add The subscriber to add
+     * @param subscriber The subscriber to add
      * @param session The session to subscribe to.
-     * @param filter The filter to apply to the session.
+     * @param interface_address The interface address to receive rtp packets on.
      * @return true if the subscriber was added, or false if it was already in the list.
      */
-    bool subscribe(Subscriber* subscriber_to_add, const Session& session, const Filter& filter);
+    bool subscribe(Subscriber* subscriber, const Session& session, const asio::ip::address_v4& interface_address);
 
     /**
      * Removes a subscriber from all sessions of the receiver.
-     * @param subscriber_to_remove The subscriber to remove.
+     * @param subscriber The subscriber to remove.
      * @return true if the subscriber was removed, or false if it wasn't found.
      */
-    bool unsubscribe(const Subscriber* subscriber_to_remove);
-
-    /**
-     * Sets the interface address to join multicast groups on. If the address is empty existing multicast groups are
-     * left.
-     * @param interface_address The address to bind to.
-     */
-    void set_interface(const asio::ip::address& interface_address);
+    bool unsubscribe(const Subscriber* subscriber);
 
   private:
-    struct SubscriberContext {
-        Filter filter;
-    };
-
-    class StreamState {
+    // TODO: Remove
+    class SynchronizationSource {
       public:
-        explicit StreamState(const uint32_t ssrc) : ssrc_(ssrc) {}
+        explicit SynchronizationSource(const uint32_t ssrc) : ssrc_(ssrc) {}
 
-        [[nodiscard]] uint32_t ssrc() const {
+        [[nodiscard]] uint32_t get_ssrc() const {
             return ssrc_;
         }
 
@@ -131,32 +115,41 @@ class Receiver {
         uint32_t ssrc_ {};
     };
 
-    struct SessionContext {
-        Session session;
-        std::vector<StreamState> stream_states;
-        SubscriberList<Subscriber, SubscriberContext> subscribers;
-        std::shared_ptr<UdpSenderReceiver> rtp_sender_receiver;
-        std::shared_ptr<UdpSenderReceiver> rtcp_sender_receiver;
-        Subscription rtp_multicast_subscription;
-        Subscription rtcp_multicast_subscription;
+    class SessionContext: UdpReceiver::Subscriber {
+      public:
+        explicit SessionContext(UdpReceiver& udp_receiver, Session session, asio::ip::address_v4 interface_address);
+        ~SessionContext() override;
+
+        [[nodiscard]] bool add_subscriber(Receiver::Subscriber* subscriber);
+        [[nodiscard]] bool remove_subscriber(const Receiver::Subscriber* subscriber);
+
+        [[nodiscard]] size_t get_subscriber_count() const;
+
+        [[nodiscard]] const Session& get_session() const;
+        [[nodiscard]] const asio::ip::address_v4& interface_address() const;
+
+        // UdpReceiver::Subscriber overrides
+        void on_receive(const ExtendedUdpSocket::RecvEvent& event) override;
+
+      private:
+        UdpReceiver& udp_receiver_;
+        Session session_;
+        asio::ip::address_v4 interface_address_;
+        std::vector<SynchronizationSource> synchronization_sources_;
+        SubscriberList<Receiver::Subscriber> subscribers_;
+
+        void handle_incoming_rtp_data(const ExtendedUdpSocket::RecvEvent& event);
+        void subscribe_to_udp_receiver(const asio::ip::address_v4& interface_address);
     };
 
-    struct Configuration {
-        asio::ip::address interface_address {};
-    };
+    UdpReceiver& udp_receiver_;
+    std::vector<std::unique_ptr<SessionContext>> sessions_contexts_;
 
-    asio::io_context& io_context_;
-    Configuration config_;
-    std::vector<SessionContext> sessions_contexts_;
-
-    SessionContext* find_session_context(const Session& session);
-    SessionContext* create_new_session_context(const Session& session);
-    SessionContext* find_or_create_session_context(const Session& session);
-    std::shared_ptr<UdpSenderReceiver> find_rtp_sender_receiver(uint16_t port);
-    std::shared_ptr<UdpSenderReceiver> find_rtcp_sender_receiver(uint16_t port);
-
-    void handle_incoming_rtp_data(const UdpSenderReceiver::recv_event& event);
-    void handle_incoming_rtcp_data(const UdpSenderReceiver::recv_event& event);
+    [[nodiscard]] SessionContext*
+    find_session_context(const Session& session, const asio::ip::address_v4& interface_address) const;
+    SessionContext* create_new_session_context(const Session& session, const asio::ip::address_v4& interface_address);
+    SessionContext*
+    find_or_create_session_context(const Session& session, const asio::ip::address_v4& interface_address);
 };
 
 }  // namespace rav::rtp

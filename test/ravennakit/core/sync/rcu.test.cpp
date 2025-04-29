@@ -181,6 +181,62 @@ TEST_CASE("rcu") {
         REQUIRE(counter.instances_alive == 1);
     }
 
+    SECTION("Update and reclaim all") {
+        rav::ObjectCounter counter;
+        rav::Rcu<rav::CountedObject> rcu;
+
+        REQUIRE(counter.instances_created == 0);
+        REQUIRE(counter.instances_alive == 0);
+
+        rcu.update_reclaim_all(counter);
+
+        REQUIRE(counter.instances_created == 1);
+        REQUIRE(counter.instances_alive == 1);
+
+        rcu.update_reclaim_all(counter);
+
+        REQUIRE(counter.instances_created == 2);
+        REQUIRE(counter.instances_alive == 1);
+
+        rcu.update_reclaim_all(counter);
+
+        REQUIRE(counter.instances_created == 3);
+        REQUIRE(counter.instances_alive == 1);
+    }
+
+    SECTION("Update and reclaim all with reader") {
+        static constexpr size_t k_num_values = 10'000;
+        rav::Rcu<uint64_t> rcu;
+
+        auto reader = rcu.create_reader();
+
+        std::atomic_bool reader_error = false;
+        std::thread reader_thread([&reader, &reader_error] {
+            uint64_t value = 0;
+            while (value < k_num_values) {
+                auto lock = reader.lock_realtime();
+                if (!lock) {
+                    continue;
+                }
+                if (*lock < value) {
+                    reader_error = true;
+                    break;
+                }
+                value = *lock;
+                std::this_thread::sleep_for(std::chrono::microseconds(1));
+            }
+        });
+
+        for (uint64_t i = 0; i <= k_num_values; ++i) {
+            rcu.update_reclaim_all(i);
+            REQUIRE(rcu.get_num_values() <= 1);
+        }
+
+        reader_thread.join();
+
+        REQUIRE(!reader_error);
+    }
+
     SECTION("Only objects older than the first object used by any reader are deleted") {
         rav::ObjectCounter counter;
         rav::Rcu<rav::CountedObject> rcu;

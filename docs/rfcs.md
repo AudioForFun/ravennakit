@@ -18,6 +18,9 @@ https://datatracker.ietf.org/doc/html/rfc8866
 RFC 4570: Session Description Protocol (SDP) Source Filters  
 https://datatracker.ietf.org/doc/html/rfc4570
 
+RFC 7104: Duplication Grouping Semantics in the Session Description Protocol
+https://datatracker.ietf.org/doc/html/rfc7104
+
 RFC 7273: RTP Clock Source Signalling
 https://datatracker.ietf.org/doc/html/rfc7273
 

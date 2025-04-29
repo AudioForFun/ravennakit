@@ -23,8 +23,7 @@ namespace rav::rtsp {
  */
 class Client final: Connection::Subscriber {
   public:
-    using EventsType =
-        Events<Connection::ConnectEvent, Connection::ResponseEvent, Connection::RequestEvent>;
+    using EventsType = Events<Connection::ConnectEvent, Connection::ResponseEvent, Connection::RequestEvent>;
 
     explicit Client(asio::io_context& io_context);
     ~Client() override;
@@ -54,25 +53,25 @@ class Client final: Connection::Subscriber {
      * @param path The path to describe
      * @param data The data to add.
      */
-    void async_describe(const std::string& path, std::string data = {}) const;
+    void async_describe(const std::string& path, std::string data = {});
 
     /**
      * Sends a SETUP request to the server. Function is async and will return immediately.
      * @param path The path to setup.
      */
-    void async_setup(const std::string& path) const;
+    void async_setup(const std::string& path);
 
     /**
      * Sends a PLAY request to the server. Function is async and will return immediately.
      * @param path The path for the PLAY command.
      */
-    void async_play(const std::string& path) const;
+    void async_play(const std::string& path);
 
     /**
      * Sends a TEARDOWN request to the server. Function is async and will return immediately.
      * @param path The path for the TEARDOWN command.
      */
-    void async_teardown(const std::string& path) const;
+    void async_teardown(const std::string& path);
 
     /**
      * Sends given response to the server. Function is async and will return immediately.
@@ -106,9 +105,10 @@ class Client final: Connection::Subscriber {
     std::string host_;
     std::shared_ptr<Connection> connection_;
     EventsType events_;
+    uint32_t seq_ {0};
 
     void
     async_resolve_connect(const std::string& host, const std::string& service, asio::ip::resolver_base::flags flags);
 };
 
-}  // namespace rav
+}  // namespace rav::rtsp

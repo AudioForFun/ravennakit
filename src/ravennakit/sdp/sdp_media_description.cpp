@@ -70,8 +70,7 @@ rav::sdp::MediaDescription::parse_new(const std::string_view line) {
     return ParseResult<MediaDescription>::ok(std::move(media));
 }
 
-rav::sdp::MediaDescription::ParseResult<void>
-rav::sdp::MediaDescription::parse_attribute(const std::string_view line) {
+rav::sdp::MediaDescription::ParseResult<void> rav::sdp::MediaDescription::parse_attribute(const std::string_view line) {
     StringParser parser(line);
 
     if (!parser.skip("a=")) {
@@ -171,13 +170,13 @@ rav::sdp::MediaDescription::parse_attribute(const std::string_view line) {
         } else {
             return ParseResult<void>::err("media: failed to parse clock domain value");
         }
-    } else if (key == "sync-time") {
+    } else if (key == k_sdp_sync_time) {
         if (const auto rtp_ts = parser.read_int<uint32_t>()) {
             sync_time_ = *rtp_ts;
         } else {
             return ParseResult<void>::err("media: failed to parse sync-time value");
         }
-    } else if (key == "clock-deviation") {
+    } else if (key == k_sdp_clock_deviation) {
         const auto num = parser.read_int<uint32_t>();
         if (!num) {
             return ParseResult<void>::err("media: failed to parse clock-deviation value");
@@ -206,6 +205,15 @@ rav::sdp::MediaDescription::parse_attribute(const std::string_view line) {
         } else {
             return ParseResult<void>::err("media: failed to parse framecount value");
         }
+    } else if (key == k_sdp_mid) {
+        auto mid = parser.read_until_end();
+        if (!mid) {
+            return ParseResult<void>::err("media: failed to parse mid value");
+        }
+        if (mid->empty()) {
+            return ParseResult<void>::err("media: mid value cannot be empty");
+        }
+        mid_ = *mid;
     } else {
         // Store the attribute in the map of unknown attributes
         if (auto value = parser.read_until_end()) {
@@ -373,6 +381,14 @@ void rav::sdp::MediaDescription::set_clock_domain(RavennaClockDomain clock_domai
     clock_domain_ = clock_domain;
 }
 
+const std::optional<std::string>& rav::sdp::MediaDescription::get_mid() const {
+    return mid_;
+}
+
+void rav::sdp::MediaDescription::set_mid(std::optional<std::string> mid) {
+    mid_ = std::move(mid);
+}
+
 const std::map<std::string, std::string>& rav::sdp::MediaDescription::attributes() const {
     return attributes_;
 }
@@ -445,6 +461,12 @@ tl::expected<std::string, std::string> rav::sdp::MediaDescription::to_string(con
         fmt::format_to(std::back_inserter(result), "a=maxptime:{:.3g}{}", *max_ptime_, newline);
     }
 
+    // Group duplication
+    if (mid_) {
+        RAV_ASSERT(!mid_->empty(), "media: mid value cannot be empty");
+        fmt::format_to(std::back_inserter(result), "a=mid:{}{}", *mid_, newline);
+    }
+
     // Media direction
     if (media_direction_) {
         fmt::format_to(std::back_inserter(result), "a={}{}", sdp::to_string(*media_direction_), newline);
@@ -474,9 +496,7 @@ tl::expected<std::string, std::string> rav::sdp::MediaDescription::to_string(con
         if (!txt) {
             return tl::make_unexpected(txt.error());
         }
-        fmt::format_to(
-            std::back_inserter(result), "{}{}",txt.value(), newline
-        );
+        fmt::format_to(std::back_inserter(result), "{}{}", txt.value(), newline);
     }
 
     // Sync time (RAVENNA Specific)

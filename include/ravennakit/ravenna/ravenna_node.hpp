@@ -204,9 +204,10 @@ class RavennaNode {
     /**
      * Get the packet statistics for the given stream, if the stream for the given ID exists.
      * @param receiver_id The ID of the stream to get the packet statistics for.
+     * @param rank The rank of the stream to get the statistics for.
      * @return The packet statistics for the stream, or an empty structure if the stream doesn't exist.
      */
-    [[nodiscard]] std::future<RavennaReceiver::StreamStats> get_stats_for_receiver(Id receiver_id);
+    [[nodiscard]] std::future<rtp::AudioReceiver::SessionStats> get_stats_for_receiver(Id receiver_id, Rank rank);
 
     /**
      * Get the SDP for the receiver with the given id.
@@ -334,6 +335,7 @@ class RavennaNode {
     };
 
     asio::io_context io_context_;
+    UdpReceiver udp_receiver_ {io_context_};
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
     Id::Generator id_generator_;
@@ -346,6 +348,7 @@ class RavennaNode {
     std::unique_ptr<dnssd::Advertiser> advertiser_;
     rtsp::Server rtsp_server_;
     ptp::Instance ptp_instance_;
+    std::map<Rank, uint16_t> ptp_ports_; // Mapping between interface by rank and ptp port number
     std::vector<std::unique_ptr<RavennaSender>> senders_;
 
     SubscriberList<Subscriber> subscribers_;

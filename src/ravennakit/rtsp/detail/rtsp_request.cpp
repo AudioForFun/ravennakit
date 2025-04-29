@@ -14,7 +14,7 @@
 
 #include <catch2/catch_all.hpp>
 
-void rav::rtsp::Request::reset() {
+void rav::rtsp::Request::clear() {
     method.clear();
     uri.clear();
     rtsp_version_major = {};

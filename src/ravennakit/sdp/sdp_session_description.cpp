@@ -207,6 +207,22 @@ void rav::sdp::SessionDescription::set_media_direction(MediaDirection direction)
     media_direction_ = direction;
 }
 
+std::optional<uint32_t> rav::sdp::SessionDescription::sync_time() const {
+    return sync_time_;
+}
+
+void rav::sdp::SessionDescription::set_sync_time(const std::optional<uint32_t> sync_time) {
+    sync_time_ = sync_time;
+}
+
+std::optional<rav::sdp::Group> rav::sdp::SessionDescription::get_group() const {
+    return group_;
+}
+
+void rav::sdp::SessionDescription::set_group(Group group) {
+    group_ = std::move(group);
+}
+
 const std::map<std::string, std::string>& rav::sdp::SessionDescription::attributes() const {
     return attributes_;
 }
@@ -234,6 +250,15 @@ tl::expected<std::string, std::string> rav::sdp::SessionDescription::to_string(c
         return time;
     }
     fmt::format_to(std::back_inserter(sdp), "{}{}", time.value(), newline);
+
+    // Group duplication
+    if (group_.has_value()) {
+        auto group = group_->to_string();
+        if (!group) {
+            return group;
+        }
+        fmt::format_to(std::back_inserter(sdp), "{}{}", group.value(), newline);
+    }
 
     // Connection info
     if (connection_info_.has_value()) {
@@ -285,6 +310,7 @@ tl::expected<std::string, std::string> rav::sdp::SessionDescription::to_string(c
         fmt::format_to(std::back_inserter(sdp), "{}{}", source_filter.value(), newline);
     }
 
+    // Media descriptions
     for (const auto& media : media_descriptions_) {
         auto media_str = media.to_string(newline);
         if (!media_str) {
@@ -367,6 +393,20 @@ rav::sdp::SessionDescription::parse_attribute(const std::string_view line) {
             source_filters_.push_back(filter.move_ok());
         } else {
             return ParseResult<void>::err("media: failed to parse source-filter value");
+        }
+    } else if (key == k_sdp_sync_time) {
+        if (const auto rtp_ts = parser.read_int<uint32_t>()) {
+            sync_time_ = *rtp_ts;
+        } else {
+            return ParseResult<void>::err("media: failed to parse sync-time value");
+        }
+    } else if (key == k_sdp_group) {
+        if (const auto value = parser.read_until_end()) {
+            auto group = Group::parse_new(*value);
+            if (!group.has_value()) {
+                return ParseResult<void>::err(group.error());
+            }
+            group_ = *group;
         }
     } else {
         // Store the attribute in the map of unknown attributes

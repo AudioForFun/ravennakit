@@ -21,7 +21,7 @@ TEST_CASE("rtsp_response", "[rtsp_response]") {
         request.rtsp_version_minor = 1;
         request.rtsp_headers.emplace_back({"CSeq", "1"});
         request.data = "Hello, World!";
-        request.reset();
+        request.clear();
         REQUIRE(request.status_code == 0);
         REQUIRE(request.reason_phrase.empty());
         REQUIRE(request.rtsp_version_major == 0);

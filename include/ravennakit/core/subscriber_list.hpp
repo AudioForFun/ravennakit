@@ -122,16 +122,18 @@ class SubscriberList {
     /**
      * Removes the given subscriber from the list.
      * @param subscriber The subscriber to remove.
-     * @returns true if the subscriber was removed, or false if it was not in the list.
+     * @returns An option containing the context of the removed subscriber, or nullopt if the subscriber was not in the
+     * list.
      */
-    [[nodiscard]] bool remove(const T* subscriber) {
+    [[nodiscard]] std::optional<C> remove(const T* subscriber) {
         for (auto it = subscribers_.begin(); it != subscribers_.end(); ++it) {
             if (it->first == subscriber) {
+                auto context = std::move(it->second);
                 subscribers_.erase(it);
-                return true;
+                return context;
             }
         }
-        return false;
+        return std::nullopt;
     }
 
     /**
@@ -260,7 +262,7 @@ class SubscriberList<T, void> {
      * @param subscriber The subscriber to remove.
      * @returns true if the subscriber was removed, or false if it was not in the list.
      */
-    [[nodiscard]] bool remove(T* subscriber) {
+    [[nodiscard]] bool remove(const T* subscriber) {
         auto it = std::find(subscribers_.begin(), subscribers_.end(), subscriber);
         if (it == subscribers_.end()) {
             return false;

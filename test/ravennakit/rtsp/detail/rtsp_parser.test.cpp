@@ -202,7 +202,9 @@ TEST_CASE("rtsp_parser | Parse some requests", "[rtsp_parser]") {
             REQUIRE(request.rtsp_version_minor == 0);
             REQUIRE(request.rtsp_headers.size() == 2);
             REQUIRE(request.rtsp_headers.get_or_default("CSeq") == "312");
-            REQUIRE(request.rtsp_headers.get_or_default("Accept") == "application/sdp, application/rtsl, application/mheg");
+            REQUIRE(
+                request.rtsp_headers.get_or_default("Accept") == "application/sdp, application/rtsl, application/mheg"
+            );
             REQUIRE(request.data.empty());
             request_count++;
         });
@@ -261,7 +263,9 @@ TEST_CASE("rtsp_parser | Parse some requests", "[rtsp_parser]") {
             REQUIRE(request.rtsp_version_minor == 0);
             REQUIRE(request.rtsp_headers.size() == 2);
             REQUIRE(request.rtsp_headers.get_or_default("CSeq") == "312");
-            REQUIRE(request.rtsp_headers.get_or_default("Accept") == "application/sdp, application/rtsl, application/mheg");
+            REQUIRE(
+                request.rtsp_headers.get_or_default("Accept") == "application/sdp, application/rtsl, application/mheg"
+            );
             REQUIRE(request.data.empty());
             request_count++;
         });
@@ -388,4 +392,57 @@ TEST_CASE("rtsp_parser | Parse Anubis DESCRIBE response and ANNOUNCE request", "
     REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
     REQUIRE(request_count == 1);
     REQUIRE(response_count == 1);
+}
+
+TEST_CASE("rtsp_parser | Parse special case from mic8") {
+    constexpr std::string_view payload(
+        "RTSP/1.0 200 OK\r\n"
+        "cseq: 3\r\n"
+        "\r\n"
+        "RTSP/1.0 200 OK\r\n"
+        "content-length: 473\r\n"
+        "content-type: application/sdp; charset=utf-8\r\n"
+        "cseq: 4\r\n"
+        "\r\n"
+        "v=0\r\n"
+        "o=- 1744662004692777 5 IN IP4 192.168.15.55\r\n"
+        "s=mic8-12\r\n"
+        "t=0 0\r\n"
+        "a=clock-domain:PTPv2 0\r\n"
+        "a=sync-time:0\r\n"
+        "a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DB-E6:0\r\n"
+        "a=mediaclk:direct=0\r\n"
+        "m=audio 5004 RTP/AVP 98\r\n"
+        "c=IN IP4 239.15.55.1/31\r\n"
+        "a=source-filter: incl IN IP4 239.15.55.1 192.168.15.55\r\n"
+        "a=recvonly\r\n"
+        "a=rtpmap:98 L24/48000/2\r\n"
+        "a=framecount:48\r\n"
+        "a=ptime:1\r\n"
+        "a=clock-domain:PTPv2 0\r\n"
+        "a=sync-time:0"
+    );
+
+    rav::StringBuffer input(payload.data());
+    rav::rtsp::Parser parser;
+
+    int request_count = 0;
+    int response_count = 0;
+
+    parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        REQUIRE(response.rtsp_version_major == 1);
+        REQUIRE(response.rtsp_version_minor == 0);
+        REQUIRE(response.status_code == 200);
+        REQUIRE(response.reason_phrase == "OK");
+        REQUIRE(response.rtsp_headers.size() == 1);
+        REQUIRE(response.rtsp_headers.get_or_default("cseq") == "3");
+        REQUIRE(response.data.empty());
+        response_count++;
+    });
+
+    parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request&) {
+        request_count++;
+    });
+
+    REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::indeterminate);
 }

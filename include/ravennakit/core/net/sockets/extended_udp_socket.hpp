@@ -11,35 +11,37 @@
 #pragma once
 
 #include "ravennakit/core/subscription.hpp"
+#include "ravennakit/core/expected.hpp"
 
 #include <asio.hpp>
 
-namespace rav::rtp {
+namespace rav {
 
 /**
- * A custom UDP sender and receiver class which extends usual UDP socket functionality by adding the ability to receive
+ * A customized UDP socket class which extends usual UDP socket functionality by adding the ability to receive
  * the destination address of a received packet. This is useful for RTP where sessions are defined by the source and
  * destination endpoints. Also in cases where a single receiver is receiving from multiple senders, the destination
- * address is needed to determine the source of the packet.
+ * address is needed to determine the source of the packet. This class also adds the ability to set dscp values for the
+ * socket.
  */
-class UdpSenderReceiver {
+class ExtendedUdpSocket {
   public:
-    struct recv_event {
+    struct RecvEvent {
         const uint8_t* data;
         size_t size;
         const asio::ip::udp::endpoint& src_endpoint;
         const asio::ip::udp::endpoint& dst_endpoint;
-        uint64_t recv_time; // Monotonically increasing time in nanoseconds with arbitrary starting point.
+        uint64_t recv_time;  // Monotonically increasing time in nanoseconds with arbitrary starting point.
     };
 
-    using HandlerType = std::function<void(const recv_event& event)>;
+    using HandlerType = std::function<void(const RecvEvent& event)>;
 
     /**
      * Construct a new instance of the class.
      * @param io_context The asio io_context to use.
      * @param endpoint The endpoint to bind to.
      */
-    UdpSenderReceiver(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint);
+    ExtendedUdpSocket(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint);
 
     /**
      * Construct a new instance of the class.
@@ -47,15 +49,15 @@ class UdpSenderReceiver {
      * @param interface_address The address to bind to.
      * @param port The port to bind to.
      */
-    UdpSenderReceiver(asio::io_context& io_context, const asio::ip::address& interface_address, uint16_t port);
+    ExtendedUdpSocket(asio::io_context& io_context, const asio::ip::address& interface_address, uint16_t port);
 
-    UdpSenderReceiver(const UdpSenderReceiver&) = delete;
-    UdpSenderReceiver& operator=(const UdpSenderReceiver&) = delete;
+    ExtendedUdpSocket(const ExtendedUdpSocket&) = delete;
+    ExtendedUdpSocket& operator=(const ExtendedUdpSocket&) = delete;
 
-    UdpSenderReceiver(UdpSenderReceiver&&) noexcept = delete;
-    UdpSenderReceiver& operator=(UdpSenderReceiver&&) noexcept = delete;
+    ExtendedUdpSocket(ExtendedUdpSocket&&) noexcept = delete;
+    ExtendedUdpSocket& operator=(ExtendedUdpSocket&&) noexcept = delete;
 
-    ~UdpSenderReceiver();
+    ~ExtendedUdpSocket();
 
     /**
      * Start the receiver.
@@ -72,14 +74,24 @@ class UdpSenderReceiver {
     void send(const uint8_t* data, size_t size, const asio::ip::udp::endpoint& endpoint) const;
 
     /**
-     * Join a multicast group. A group can be joined multiple times as the group will be counted internally. Only when
-     * the last subscription is removed will the group be left.
+     * Join a multicast group.
      * @param multicast_address The multicast address to join.
      * @param interface_address The interface address to join the multicast group on.
-     * @returns A subscription object which will leave the multicast group when it goes out of scope.
+     * @returns Success if the operation was successful, error code otherwise.
      */
-    [[nodiscard]] Subscription
-    join_multicast_group(const asio::ip::address& multicast_address, const asio::ip::address& interface_address) const;
+    [[nodiscard]] asio::error_code join_multicast_group(
+        const asio::ip::address_v4& multicast_address, const asio::ip::address_v4& interface_address
+    ) const;
+
+    /**
+     * Leave a multicast group.
+     * @param multicast_address The multicast address to leave.
+     * @param interface_address The interface address to leave the multicast group on.
+     * @return Success if the operation was successful, error code otherwise.
+     */
+    [[nodiscard]] asio::error_code leave_multicast_group(
+        const asio::ip::address_v4& multicast_address, const asio::ip::address_v4& interface_address
+    ) const;
 
     /**
      * Set the outbound interface for multicast packets.
@@ -103,8 +115,8 @@ class UdpSenderReceiver {
     void set_dscp_value(int value) const;
 
   private:
-    class impl;
-    std::shared_ptr<impl> impl_;
+    class Impl;
+    std::shared_ptr<Impl> impl_;
 };
 
 }  // namespace rav

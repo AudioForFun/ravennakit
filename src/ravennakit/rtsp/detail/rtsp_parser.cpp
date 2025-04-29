@@ -113,8 +113,8 @@ void rav::rtsp::Parser::reset() noexcept {
     start_line_.clear();
     headers_.clear();
     data_.clear();
-    request_.reset();
-    response_.reset();
+    request_.clear();
+    response_.clear();
 }
 
 rav::rtsp::Parser::result rav::rtsp::Parser::handle_response() {
@@ -147,10 +147,14 @@ rav::rtsp::Parser::result rav::rtsp::Parser::handle_response() {
     }
 
     // Assemble response
+    response_.clear();
     response_.rtsp_version_major = *version_major;
     response_.rtsp_version_minor = *version_minor;
     response_.status_code = *status_code;
     response_.reason_phrase = *reason_phrase;
+
+    RAV_ASSERT(response_.rtsp_headers.empty(), "RTSP headers should be empty");
+    RAV_ASSERT(response_.data.empty(), "RTSP data should be empty");
 
     std::swap(response_.rtsp_headers, headers_);
     std::swap(response_.data, data_);
@@ -186,10 +190,14 @@ rav::rtsp::Parser::result rav::rtsp::Parser::handle_request() {
     }
 
     // Assemble request
+    request_.clear();
     request_.method = *method;
     request_.uri = *uri;
     request_.rtsp_version_major = *version_major;
     request_.rtsp_version_minor = *version_minor;
+
+    RAV_ASSERT(request_.rtsp_headers.empty(), "RTSP headers should be empty");
+    RAV_ASSERT(request_.data.empty(), "RTSP data should be empty");
 
     std::swap(request_.rtsp_headers, headers_);
     std::swap(request_.data, data_);

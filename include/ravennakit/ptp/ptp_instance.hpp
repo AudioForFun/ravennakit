@@ -87,7 +87,7 @@ class Instance {
      * @param subscriber The subscriber to remove.
      * @return True if the subscriber was removed successfully, false if the subscriber was not found.
      */
-    [[nodiscard]] bool unsubscribe(Subscriber* subscriber);
+    [[nodiscard]] bool unsubscribe(const Subscriber* subscriber);
 
     /**
      * Adds a port to the PTP instance. The port will be used to send and receive PTP messages. The clock identity of
@@ -95,7 +95,15 @@ class Instance {
      * @param interface_address The address of the interface to bind the port to. The network interface must have a MAC
      * address and support multicast.
      */
-    tl::expected<void, Error> add_port(const asio::ip::address& interface_address);
+    tl::expected<uint16_t, Error> add_port(const asio::ip::address_v4& interface_address);
+
+    /**
+     * Removes a port from the PTP instance.
+     * @param port_number The port number to remove. The port number is 1-based, so the first port is 1 and 0 is
+     * considered invalid.
+     * @return True if the port was removed successfully, false if the port was not found.
+     */
+    bool remove_port(uint16_t port_number);
 
     /**
      * @return The amount of ports in the PTP instance.
@@ -103,11 +111,12 @@ class Instance {
     [[nodiscard]] size_t get_port_count() const;
 
     /**
-     * Sets the network interface for port with given index.
-     * @param port_index The index of the port to set the network interface for.
+     * Sets the network interface for port with given port number.
+     * @param port_number The port number to set the interface for. The port number is 1-based, so the first port is 1
+     * and 0 is considered invalid.
      * @param interface_address The address of the interface to bind the port to.
      */
-    void set_port_interface(size_t port_index, const asio::ip::address_v4& interface_address) const;
+    [[nodiscard]] bool set_port_interface(uint16_t port_number, const asio::ip::address_v4& interface_address) const;
 
     /**
      * @return The default data set of the PTP instance.

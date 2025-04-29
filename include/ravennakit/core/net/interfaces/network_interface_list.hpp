@@ -72,7 +72,7 @@ class NetworkInterfaceList {
     static const NetworkInterfaceList& get_system_interfaces(bool force_refresh = false);
 
   private:
-    static constexpr auto k_ttl = std::chrono::seconds(5);
+    static constexpr auto k_ttl = std::chrono::seconds(5); // TTL for the cache
     std::vector<NetworkInterface> interfaces_;
 
     /**

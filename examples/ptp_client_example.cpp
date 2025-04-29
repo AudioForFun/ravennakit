@@ -10,9 +10,6 @@
 
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
-#include "ravennakit/ptp/messages/ptp_announce_message.hpp"
-#include "ravennakit/ptp/messages/ptp_message_header.hpp"
-#include "ravennakit/rtp/detail/udp_sender_receiver.hpp"
 
 #include <CLI/App.hpp>
 #include <asio/io_context.hpp>
@@ -37,7 +34,7 @@ int main(int const argc, char* argv[]) {
     asio::io_context io_context;
 
     rav::ptp::Instance ptp_instance(io_context);
-    auto result = ptp_instance.add_port(asio::ip::make_address(interface_address));
+    auto result = ptp_instance.add_port(asio::ip::make_address_v4(interface_address));
     if (!result) {
         RAV_TRACE("PTP Error: {}", static_cast<std::underlying_type_t<rav::ptp::Error>>(result.error()));
         return 1;

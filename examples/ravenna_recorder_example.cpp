@@ -56,8 +56,13 @@ class stream_recorder: public rav::RavennaReceiver::Subscriber {
         }
     }
 
-    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& event) override {
-        if (!event.audio_format.is_valid() || !event.session.valid()) {
+    void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::Parameters& parameters) override {
+        if (parameters.streams.empty()) {
+            RAV_WARNING("No streams available");
+            return;
+        }
+
+        if (!parameters.audio_format.is_valid()) {
             return;
         }
 
@@ -74,13 +79,13 @@ class stream_recorder: public rav::RavennaReceiver::Subscriber {
             "Recording stream: {} to file: {}", receiver_->get_configuration().session_name, file_path.to_string()
         );
 
-        audio_format_ = event.audio_format;
+        audio_format_ = parameters.audio_format;
         file_output_stream_ = std::make_unique<rav::FileOutputStream>(file_path);
         wav_writer_ = std::make_unique<rav::WavAudioFormat::Writer>(
             *file_output_stream_, rav::WavAudioFormat::FormatCode::pcm, audio_format_.sample_rate,
             audio_format_.num_channels, audio_format_.bytes_per_sample() * 8
         );
-        audio_data_.resize(event.packet_time_frames * audio_format_.bytes_per_frame());
+        audio_data_.resize(parameters.streams.front().packet_time_frames * audio_format_.bytes_per_frame());
     }
 
     void on_data_ready(const rav::WrappingUint32 timestamp) override {
@@ -109,11 +114,10 @@ class stream_recorder: public rav::RavennaReceiver::Subscriber {
 
 class ravenna_recorder {
   public:
-    explicit ravenna_recorder(const std::string& interface_address) {
+    explicit ravenna_recorder(const std::string& interface_address) :
+        interface_address_(asio::ip::make_address_v4(interface_address)) {
         rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
-
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(io_context_);
-        rtp_receiver_->set_interface(asio::ip::make_address(interface_address));
+        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
     }
 
     ~ravenna_recorder() = default;
@@ -125,9 +129,10 @@ class ravenna_recorder {
         update.session_name = stream_name;
 
         auto receiver = std::make_unique<rav::RavennaReceiver>(
-            *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
+            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
         );
-        auto result = receiver->update_configuration(update);
+        receiver->set_interfaces({{rav::Rank::primary(), interface_address_}});
+        auto result = receiver->set_configuration(update);
         if (!result) {
             RAV_ERROR("Failed to update configuration: {}", result.error());
             return;
@@ -147,6 +152,8 @@ class ravenna_recorder {
 
   private:
     asio::io_context io_context_;
+    asio::ip::address_v4 interface_address_;
+    rav::UdpReceiver udp_receiver_ {io_context_};
     rav::RavennaBrowser browser_ {io_context_};
     std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
     std::unique_ptr<rav::rtp::Receiver> rtp_receiver_;

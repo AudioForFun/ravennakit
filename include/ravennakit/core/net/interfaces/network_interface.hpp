@@ -12,9 +12,10 @@
 
 #include "mac_address.hpp"
 #include "ravennakit/core/platform.hpp"
+#include "ravennakit/core/expected.hpp"
+
 #include <vector>
 #include <asio/ip/address.hpp>
-#include "ravennakit/core/expected.hpp"
 #include <optional>
 
 #if RAV_WINDOWS

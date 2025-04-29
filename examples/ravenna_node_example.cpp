@@ -19,9 +19,9 @@
 namespace examples {
 
 struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::Subscriber {
-    explicit ravenna_node(rav::NetworkInterface::Identifier primary_interface) {
+    explicit ravenna_node(const rav::NetworkInterface::Identifier& primary_interface) {
         rav::RavennaConfig::NetworkInterfaceConfig config;
-        config.primary = std::move(primary_interface);
+        config.set_interface(rav::Rank::primary(), primary_interface);
         node.set_network_interface_config(config);
         node.subscribe(this).wait();
     }
@@ -69,8 +69,8 @@ struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::S
         std::ignore = configuration;
     }
 
-    void ravenna_receiver_stream_updated(const rav::RavennaReceiver::StreamParameters& parameters) override {
-        RAV_INFO("RAVENNA Stream updated: {}", parameters.to_string());
+    void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::Parameters& parameters) override {
+        RAV_INFO("RAVENNA parameters updated: {}", parameters.audio_format.to_string());
     }
 
     rav::RavennaNode node;
