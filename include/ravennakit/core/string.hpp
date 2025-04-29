@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <charconv>
+#include <limits>
 #include <optional>
 #include <sstream>
 #include <string_view>

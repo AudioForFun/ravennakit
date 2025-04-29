@@ -15,6 +15,7 @@
 #include <mutex>
 #include <atomic>
 #include <memory>
+#include <thread>
 
 namespace rav {
 
