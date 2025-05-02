@@ -49,7 +49,7 @@ size_t receive_from_socket(
     DWORD bytes_received = 0;
     auto wsa_recv_msg = rav::windows::wsa_recv_msg_function::get_global();
     if (wsa_recv_msg(socket.native_handle(), &msg, &bytes_received, nullptr, nullptr) == SOCKET_ERROR) {
-        ec = boost::system::error_code(WSAGetLastError(), asio::system_category());
+        ec = boost::system::error_code(WSAGetLastError(), boost::system::system_category());
         return 0;
     }
     recv_time = rav::HighResolutionClock::now();
