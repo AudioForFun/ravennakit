@@ -16,7 +16,7 @@
 
 const rav::ptp::LocalClock& rav::ptp::Instance::Subscriber::get_local_clock() {
     static_assert(std::is_trivially_copyable_v<LocalClock>);
-    if (const auto value = local_clock_buffer_.get()) {
+    if (const auto value = local_clock_buffer_.read(boost::lockfree::uses_optional)) {
         local_clock_ = *value;
     }
     return local_clock_;
@@ -40,7 +40,7 @@ bool rav::ptp::Instance::subscribe(Subscriber* subscriber) {
         }
         if (local_ptp_clock_.is_calibrated()) {
             static_assert(std::is_trivially_copyable_v<LocalClock>);
-            subscriber->local_clock_buffer_.update(local_clock_);
+            subscriber->local_clock_buffer_.write(local_clock_);
         }
         return true;
     }
@@ -51,7 +51,8 @@ bool rav::ptp::Instance::unsubscribe(const Subscriber* subscriber) {
     return subscribers_.remove(subscriber);
 }
 
-tl::expected<uint16_t, rav::ptp::Error> rav::ptp::Instance::add_port(const boost::asio::ip::address_v4& interface_address) {
+tl::expected<uint16_t, rav::ptp::Error>
+rav::ptp::Instance::add_port(const boost::asio::ip::address_v4& interface_address) {
     const auto interfaces = NetworkInterfaceList::get_system_interfaces(false);
     auto* iface = interfaces.find_by_address(interface_address);
     if (!iface) {
@@ -281,7 +282,7 @@ void rav::ptp::Instance::update_local_ptp_clock(const Measurement<double>& measu
     local_ptp_clock_.update(measurement);
     if (local_ptp_clock_.is_calibrated()) {
         for (auto* s : subscribers_) {
-            s->local_clock_buffer_.update(local_clock_);
+            s->local_clock_buffer_.write(local_clock_);
         }
     }
 }

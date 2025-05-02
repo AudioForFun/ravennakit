@@ -25,6 +25,7 @@
 #include "ravennakit/core/sync/realtime_shared_object.hpp"
 
 #include <boost/asio/ip/address.hpp>
+#include <boost/lockfree/spsc_value.hpp>
 
 namespace rav::ptp {
 
@@ -61,7 +62,7 @@ class Instance {
 
       private:
         friend class Instance;
-        TripleBuffer<LocalClock> local_clock_buffer_;
+        boost::lockfree::spsc_value<LocalClock> local_clock_buffer_;
         LocalClock local_clock_;
     };
 
