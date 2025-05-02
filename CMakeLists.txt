@@ -53,6 +53,10 @@ find_package(asio CONFIG REQUIRED)
 target_compile_definitions(asio::asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
 find_package(nanobench CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(boost_container CONFIG REQUIRED)
+find_package(boost_beast CONFIG REQUIRED)
+find_package(boost_circular_buffer CONFIG REQUIRED)
+find_package(boost_lockfree CONFIG REQUIRED)
 
 #########
 # Tracy #
@@ -97,6 +101,9 @@ target_link_libraries(ravennakit
         fmt::fmt
         nlohmann_json::nlohmann_json
         $<$<BOOL:${RAV_ENABLE_SPDLOG}>:spdlog::spdlog>
+        Boost::beast
+        Boost::circular_buffer
+        Boost::lockfree
 )
 
 if (APPLE)

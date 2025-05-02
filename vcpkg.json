@@ -10,6 +10,10 @@
     "asio",
     "tl-expected",
     "nanobench",
-    "nlohmann-json"
+    "nlohmann-json",
+    "boost-beast",
+    "boost-container",
+    "boost-lockfree",
+    "boost-circular-buffer"
   ]
 }
