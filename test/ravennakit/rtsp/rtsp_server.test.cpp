@@ -16,7 +16,7 @@
 
 TEST_CASE("rtsp_server", "[rtsp_server]") {
     SECTION("Port") {
-        asio::io_context io_context;
+        boost::asio::io_context io_context;
 
         std::thread thread([&] {
             io_context.run();
@@ -25,13 +25,13 @@ TEST_CASE("rtsp_server", "[rtsp_server]") {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         SECTION("Any port") {
-            rav::rtsp::Server server(io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 0));
+            rav::rtsp::Server server(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v6(), 0));
             REQUIRE(server.port() != 0);
             server.stop();
         }
 
         SECTION("Specific port") {
-            rav::rtsp::Server server(io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 5555));
+            rav::rtsp::Server server(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v6(), 5555));
             REQUIRE(server.port() == 5555);
             server.stop();
         }

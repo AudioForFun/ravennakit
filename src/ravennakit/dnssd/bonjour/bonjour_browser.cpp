@@ -148,21 +148,21 @@ const rav::dnssd::ServiceDescription& rav::dnssd::BonjourBrowser::service::descr
     return description_;
 }
 
-rav::dnssd::BonjourBrowser::BonjourBrowser(asio::io_context& io_context) : service_socket_(io_context) {
+rav::dnssd::BonjourBrowser::BonjourBrowser(boost::asio::io_context& io_context) : service_socket_(io_context) {
     const int service_fd = DNSServiceRefSockFD(shared_connection_.service_ref());
 
     if (service_fd < 0) {
         RAV_THROW_EXCEPTION("Invalid file descriptor");
     }
 
-    service_socket_.assign(asio::ip::tcp::v6(), service_fd);
+    service_socket_.assign(boost::asio::ip::tcp::v6(), service_fd);
     async_process_results();
 }
 
 void rav::dnssd::BonjourBrowser::async_process_results() {
-    service_socket_.async_wait(asio::ip::tcp::socket::wait_read, [this](const asio::error_code& ec) {
+    service_socket_.async_wait(boost::asio::ip::tcp::socket::wait_read, [this](const boost::system::error_code& ec) {
         if (ec) {
-            if (ec != asio::error::operation_aborted) {
+            if (ec != boost::asio::error::operation_aborted) {
                 RAV_ERROR("Error in async_wait_for_results: {}", ec.message());
             }
             return;

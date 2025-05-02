@@ -15,7 +15,7 @@
 #include "detail/rtsp_response.hpp"
 #include "ravennakit/core/events.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 #include <unordered_map>
 
 namespace rav::rtsp {
@@ -48,8 +48,8 @@ class Server final: Connection::Subscriber {
         virtual void on_response([[maybe_unused]] Connection::ResponseEvent event) {}
     };
 
-    Server(asio::io_context& io_context, const asio::ip::tcp::endpoint& endpoint);
-    Server(asio::io_context& io_context, const char* address, uint16_t port);
+    Server(boost::asio::io_context& io_context, const boost::asio::ip::tcp::endpoint& endpoint);
+    Server(boost::asio::io_context& io_context, const char* address, uint16_t port);
     ~Server() override;
 
     /**
@@ -104,7 +104,7 @@ class Server final: Connection::Subscriber {
         bool add_connection_if_not_exists(Connection& connection);
     };
 
-    asio::ip::tcp::acceptor acceptor_;
+    boost::asio::ip::tcp::acceptor acceptor_;
     std::unordered_map<std::string, PathContext> paths_;
 
     void async_accept();

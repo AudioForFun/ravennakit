@@ -10,7 +10,7 @@
 
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 
-rav::RavennaRtspClient::RavennaRtspClient(asio::io_context& io_context, RavennaBrowser& browser) :
+rav::RavennaRtspClient::RavennaRtspClient(boost::asio::io_context& io_context, RavennaBrowser& browser) :
     io_context_(io_context), browser_(browser) {
     if (!browser_.subscribe(this)) {
         RAV_WARNING("Failed to add subscriber to browser");
@@ -100,7 +100,7 @@ std::optional<std::string> rav::RavennaRtspClient::get_sdp_text_for_session(cons
     return std::nullopt;
 }
 
-asio::io_context& rav::RavennaRtspClient::get_io_context() const {
+boost::asio::io_context& rav::RavennaRtspClient::get_io_context() const {
     return io_context_;
 }
 

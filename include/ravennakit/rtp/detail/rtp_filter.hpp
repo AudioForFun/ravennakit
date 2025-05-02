@@ -13,7 +13,7 @@
 #include "ravennakit/sdp/detail/sdp_constants.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 #include "ravennakit/core/expected.hpp"
 
 namespace rav::rtp {
@@ -29,7 +29,7 @@ class Filter {
      * Creates a new RTP filter for the given connection address.
      * @param connection_address The connection address.
      */
-    explicit Filter(asio::ip::address connection_address) : connection_address_(std::move(connection_address)) {}
+    explicit Filter(boost::asio::ip::address connection_address) : connection_address_(std::move(connection_address)) {}
 
     Filter(const Filter&) = default;
     Filter& operator=(const Filter&) = default;
@@ -42,7 +42,7 @@ class Filter {
      * @param src_address The source address.
      * @param mode The filter mode.
      */
-    void add_filter(asio::ip::address src_address, const sdp::FilterMode mode) {
+    void add_filter(boost::asio::ip::address src_address, const sdp::FilterMode mode) {
         RAV_TRACE(
             "Added source filter: {} {} {}", rav::sdp::to_string(mode), connection_address_.to_string(),
             src_address.to_string()
@@ -57,12 +57,12 @@ class Filter {
      */
     size_t add_filter(const sdp::SourceFilter& source_filter) {
         size_t total = 0;
-        const auto dest_address = asio::ip::make_address(source_filter.dest_address());
+        const auto dest_address = boost::asio::ip::make_address(source_filter.dest_address());
         if (dest_address != connection_address_) {
             return 0;
         }
         for (auto& src : source_filter.src_list()) {
-            add_filter(asio::ip::make_address(src), source_filter.mode());
+            add_filter(boost::asio::ip::make_address(src), source_filter.mode());
             total++;
         }
         return total;
@@ -84,7 +84,7 @@ class Filter {
     /**
      * @return The connection address.
      */
-    [[nodiscard]] asio::ip::address connection_address() const {
+    [[nodiscard]] boost::asio::ip::address connection_address() const {
         return connection_address_;
     }
 
@@ -97,7 +97,7 @@ class Filter {
      * @return True if the connection address and source address matches the filter, or false if not.
      */
     [[nodiscard]] bool
-    is_valid_source(const asio::ip::address& connection_address, const asio::ip::address& src_address) const {
+    is_valid_source(const boost::asio::ip::address& connection_address, const boost::asio::ip::address& src_address) const {
         if (connection_address_ != connection_address) {
             return false;
         }
@@ -142,7 +142,7 @@ class Filter {
   private:
     struct filter {
         sdp::FilterMode mode {sdp::FilterMode::undefined};
-        asio::ip::address address;
+        boost::asio::ip::address address;
 
         friend bool operator==(const filter& lhs, const filter& rhs) {
             return std::tie(lhs.mode, lhs.address) == std::tie(rhs.mode, rhs.address);
@@ -153,7 +153,7 @@ class Filter {
         }
     };
 
-    asio::ip::address connection_address_;
+    boost::asio::ip::address connection_address_;
     std::vector<filter> filters_;
 };
 

@@ -15,7 +15,7 @@
 #include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/types/int24.hpp"
 
-rav::rtp::AudioReceiver::AudioReceiver(asio::io_context& io_context, Receiver& rtp_receiver) :
+rav::rtp::AudioReceiver::AudioReceiver(boost::asio::io_context& io_context, Receiver& rtp_receiver) :
     rtp_receiver_(rtp_receiver), maintenance_timer_(io_context) {}
 
 rav::rtp::AudioReceiver::~AudioReceiver() {
@@ -188,7 +188,7 @@ void rav::rtp::AudioReceiver::set_enabled(const bool enabled) {
     enabled_ ? start() : stop();
 }
 
-void rav::rtp::AudioReceiver::set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses) {
+void rav::rtp::AudioReceiver::set_interfaces(const std::map<Rank, boost::asio::ip::address_v4>& interface_addresses) {
     if (interface_addresses_ == interface_addresses) {
         return; // No change in interface addresses
     }
@@ -398,9 +398,9 @@ void rav::rtp::AudioReceiver::do_maintenance() {
     std::ignore = shared_context_.reclaim();
 
     maintenance_timer_.expires_after(std::chrono::seconds(1));
-    maintenance_timer_.async_wait([this](const asio::error_code ec) {
+    maintenance_timer_.async_wait([this](const boost::system::error_code& ec) {
         if (ec) {
-            if (ec == asio::error::operation_aborted) {
+            if (ec == boost::asio::error::operation_aborted) {
                 return;
             }
             RAV_ERROR("Timer error: {}", ec.message());

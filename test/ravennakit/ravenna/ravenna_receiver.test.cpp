@@ -51,7 +51,7 @@ TEST_CASE("RavennaReceiver | Create audio receiver parameters") {
         REQUIRE(parameters->audio_format.ordering == rav::AudioFormat::ChannelOrdering::interleaved);
 
         REQUIRE(parameters->streams.size() == 1);
-        REQUIRE(parameters->streams[0].session.connection_address == asio::ip::make_address_v4("239.1.15.52"));
+        REQUIRE(parameters->streams[0].session.connection_address == boost::asio::ip::make_address_v4("239.1.15.52"));
         REQUIRE(parameters->streams[0].session.rtp_port == 5004);
         REQUIRE(parameters->streams[0].session.rtcp_port == 5005);
         REQUIRE(parameters->streams[0].packet_time_frames == 48);
@@ -108,13 +108,13 @@ TEST_CASE("RavennaReceiver | Create audio receiver parameters") {
         REQUIRE(parameters->audio_format.ordering == rav::AudioFormat::ChannelOrdering::interleaved);
 
         REQUIRE(parameters->streams.size() == 2);
-        REQUIRE(parameters->streams[0].session.connection_address == asio::ip::make_address_v4("239.3.8.1"));
+        REQUIRE(parameters->streams[0].session.connection_address == boost::asio::ip::make_address_v4("239.3.8.1"));
         REQUIRE(parameters->streams[0].session.rtp_port == 5004);
         REQUIRE(parameters->streams[0].session.rtcp_port == 5005);
         REQUIRE(parameters->streams[0].packet_time_frames == 6);
         REQUIRE(parameters->streams[0].rank == rav::Rank(0));
 
-        REQUIRE(parameters->streams[1].session.connection_address == asio::ip::make_address_v4("239.4.8.2"));
+        REQUIRE(parameters->streams[1].session.connection_address == boost::asio::ip::make_address_v4("239.4.8.2"));
         REQUIRE(parameters->streams[1].session.rtp_port == 5004);
         REQUIRE(parameters->streams[1].session.rtcp_port == 5005);
         REQUIRE(parameters->streams[1].packet_time_frames == 6);

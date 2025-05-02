@@ -17,7 +17,7 @@
 #include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
 #include "ravennakit/core/net/sockets/udp_receiver.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 #include <utility>
 
 namespace rav::rtp {
@@ -30,16 +30,16 @@ class Receiver {
     struct RtpPacketEvent {
         const PacketView& packet;
         const Session& session;
-        const asio::ip::udp::endpoint& src_endpoint;
-        const asio::ip::udp::endpoint& dst_endpoint;
+        const boost::asio::ip::udp::endpoint& src_endpoint;
+        const boost::asio::ip::udp::endpoint& dst_endpoint;
         uint64_t recv_time;  // Arbitrary monotonic in nanoseconds
     };
 
     struct RtcpPacketEvent {
         const rtcp::PacketView& packet;
         const Session& session;
-        const asio::ip::udp::endpoint& src_endpoint;
-        const asio::ip::udp::endpoint& dst_endpoint;
+        const boost::asio::ip::udp::endpoint& src_endpoint;
+        const boost::asio::ip::udp::endpoint& dst_endpoint;
     };
 
     /**
@@ -92,7 +92,7 @@ class Receiver {
      * @param interface_address The interface address to receive rtp packets on.
      * @return true if the subscriber was added, or false if it was already in the list.
      */
-    bool subscribe(Subscriber* subscriber, const Session& session, const asio::ip::address_v4& interface_address);
+    bool subscribe(Subscriber* subscriber, const Session& session, const boost::asio::ip::address_v4& interface_address);
 
     /**
      * Removes a subscriber from all sessions of the receiver.
@@ -117,7 +117,7 @@ class Receiver {
 
     class SessionContext: UdpReceiver::Subscriber {
       public:
-        explicit SessionContext(UdpReceiver& udp_receiver, Session session, asio::ip::address_v4 interface_address);
+        explicit SessionContext(UdpReceiver& udp_receiver, Session session, boost::asio::ip::address_v4 interface_address);
         ~SessionContext() override;
 
         [[nodiscard]] bool add_subscriber(Receiver::Subscriber* subscriber);
@@ -126,7 +126,7 @@ class Receiver {
         [[nodiscard]] size_t get_subscriber_count() const;
 
         [[nodiscard]] const Session& get_session() const;
-        [[nodiscard]] const asio::ip::address_v4& interface_address() const;
+        [[nodiscard]] const boost::asio::ip::address_v4& interface_address() const;
 
         // UdpReceiver::Subscriber overrides
         void on_receive(const ExtendedUdpSocket::RecvEvent& event) override;
@@ -134,22 +134,22 @@ class Receiver {
       private:
         UdpReceiver& udp_receiver_;
         Session session_;
-        asio::ip::address_v4 interface_address_;
+        boost::asio::ip::address_v4 interface_address_;
         std::vector<SynchronizationSource> synchronization_sources_;
         SubscriberList<Receiver::Subscriber> subscribers_;
 
         void handle_incoming_rtp_data(const ExtendedUdpSocket::RecvEvent& event);
-        void subscribe_to_udp_receiver(const asio::ip::address_v4& interface_address);
+        void subscribe_to_udp_receiver(const boost::asio::ip::address_v4& interface_address);
     };
 
     UdpReceiver& udp_receiver_;
     std::vector<std::unique_ptr<SessionContext>> sessions_contexts_;
 
     [[nodiscard]] SessionContext*
-    find_session_context(const Session& session, const asio::ip::address_v4& interface_address) const;
-    SessionContext* create_new_session_context(const Session& session, const asio::ip::address_v4& interface_address);
+    find_session_context(const Session& session, const boost::asio::ip::address_v4& interface_address) const;
+    SessionContext* create_new_session_context(const Session& session, const boost::asio::ip::address_v4& interface_address);
     SessionContext*
-    find_or_create_session_context(const Session& session, const asio::ip::address_v4& interface_address);
+    find_or_create_session_context(const Session& session, const boost::asio::ip::address_v4& interface_address);
 };
 
 }  // namespace rav::rtp

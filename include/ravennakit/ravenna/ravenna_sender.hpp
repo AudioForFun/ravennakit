@@ -44,7 +44,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      */
     struct Destination {
         Rank interface_by_rank;
-        asio::ip::udp::endpoint endpoint {};
+        boost::asio::ip::udp::endpoint endpoint {};
         bool enabled {};
 
         friend bool operator==(const Destination& lhs, const Destination& rhs) {
@@ -119,7 +119,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     };
 
     RavennaSender(
-        asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
+        boost::asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
         ptp::Instance& ptp_instance, Id id, uint32_t session_id, ConfigurationUpdate initial_config = {}
     );
 
@@ -202,7 +202,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      * Sets the interface address for the receiver.
      * @param interface_addresses A map of interface addresses to set. The key is the rank of the interface address.
      */
-    void set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses);
+    void set_interfaces(const std::map<Rank, boost::asio::ip::address_v4>& interface_addresses);
 
     /**
      * @return A JSON representation of the sender.
@@ -216,7 +216,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     void ptp_parent_changed(const ptp::ParentDs& parent) override;
 
   private:
-    [[maybe_unused]] asio::io_context& io_context_;
+    [[maybe_unused]] boost::asio::io_context& io_context_;
     dnssd::Advertiser& advertiser_;
     rtsp::Server& rtsp_server_;
     ptp::Instance& ptp_instance_;
@@ -229,10 +229,10 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     Id advertisement_id_;
     int32_t clock_domain_ {};
     ptp::ClockIdentity grandmaster_identity_;
-    std::map<Rank, asio::ip::address_v4> interface_addresses_;
+    std::map<Rank, boost::asio::ip::address_v4> interface_addresses_;
     std::map<Rank, rtp::Sender> rtp_senders_;
 
-    asio::high_resolution_timer timer_;
+    boost::asio::high_resolution_timer timer_;
     SubscriberList<Subscriber> subscribers_;
     std::string status_message_;
 

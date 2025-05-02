@@ -12,7 +12,7 @@
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
 
-std::unique_ptr<rav::dnssd::Browser> rav::dnssd::Browser::create(asio::io_context& io_context) {
+std::unique_ptr<rav::dnssd::Browser> rav::dnssd::Browser::create(boost::asio::io_context& io_context) {
 #if RAV_APPLE
     return std::make_unique<BonjourBrowser>(io_context);
 #elif RAV_WINDOWS

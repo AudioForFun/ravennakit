@@ -1,7 +1,7 @@
 #include "ravennakit/core/rollback.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 #if RAV_HAS_APPLE_DNSSD
 
@@ -12,14 +12,14 @@
     #include <iostream>
     #include <thread>
 
-rav::dnssd::BonjourAdvertiser::BonjourAdvertiser(asio::io_context& io_context) : service_socket_(io_context) {
+rav::dnssd::BonjourAdvertiser::BonjourAdvertiser(boost::asio::io_context& io_context) : service_socket_(io_context) {
     const int service_fd = DNSServiceRefSockFD(shared_connection_.service_ref());
 
     if (service_fd < 0) {
         RAV_THROW_EXCEPTION("Invalid file descriptor");
     }
 
-    service_socket_.assign(asio::ip::tcp::v6(), service_fd);  // Not sure about v6
+    service_socket_.assign(boost::asio::ip::tcp::v6(), service_fd);  // Not sure about v6
     async_process_results();
 }
 
@@ -73,9 +73,9 @@ void rav::dnssd::BonjourAdvertiser::subscribe(Subscriber& s) {
 }
 
 void rav::dnssd::BonjourAdvertiser::async_process_results() {
-    service_socket_.async_wait(asio::ip::tcp::socket::wait_read, [this](const asio::error_code& ec) {
+    service_socket_.async_wait(boost::asio::ip::tcp::socket::wait_read, [this](const boost::system::error_code& ec) {
         if (ec) {
-            if (ec != asio::error::operation_aborted) {
+            if (ec != boost::asio::error::operation_aborted) {
                 RAV_ERROR("Error in async_wait_for_results: {}", ec.message());
             }
             return;

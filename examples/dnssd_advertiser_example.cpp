@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <asio/post.hpp>
+#include <boost/asio/post.hpp>
 #include <thread>
 
 namespace examples {
@@ -58,7 +58,7 @@ int main(int const argc, char* argv[]) {
         examples::parse_txt_record(txt_record, *it);
     }
 
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
 
     const auto advertiser = rav::dnssd::Advertiser::create(io_context);
 
@@ -106,7 +106,7 @@ int main(int const argc, char* argv[]) {
         try {
             if (examples::parse_txt_record(txt_record, cmd)) {
                 // Schedule the updates on the io_context thread because the advertiser is not thread-safe.
-                asio::post(io_context, [=, &advertiser] {
+                boost::asio::post(io_context, [=, &advertiser] {
                     advertiser->update_txt_record(service_id2, txt_record);
                     RAV_INFO("Updated txt record");
                 });

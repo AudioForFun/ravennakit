@@ -4,7 +4,7 @@ This project requires the following dependencies:
 
 - [spdlog](https://github.com/gabime/spdlog) (MIT License)
 - [fmt](https://github.com/fmtlib/fmt) (MIT License)
-- [asio](https://github.com/chriskohlhoff/asio) (Boost Software License)
+- [boost](https://www.boost.org/) (Boost Software License)
 - [tl-expected](https://github.com/TartanLlama/expected) (CC0 1.0 Universal)
 - [nanobench](https://github.com/martinus/nanobench) (MIT License)
 - [Bonjour SDK for Windows](https://developer.apple.com/bonjour/) (Apache 2.0 License)

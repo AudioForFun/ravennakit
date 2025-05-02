@@ -15,7 +15,7 @@
 #include "ravennakit/core/expected.hpp"
 
 #include <vector>
-#include <asio/ip/address.hpp>
+#include <boost/asio/ip/address.hpp>
 #include <optional>
 
 #if RAV_WINDOWS
@@ -133,14 +133,14 @@ class NetworkInterface {
     /**
      * @return The addresses of the interface.
      */
-    [[nodiscard]] const std::vector<asio::ip::address>& get_addresses() const {
+    [[nodiscard]] const std::vector<boost::asio::ip::address>& get_addresses() const {
         return addresses_;
     }
 
     /**
      * @return The first IPv4 address of the interface, or nullopt if the interface does not have an IPv4 address.
      */
-    [[nodiscard]] asio::ip::address_v4 get_first_ipv4_address() const {
+    [[nodiscard]] boost::asio::ip::address_v4 get_first_ipv4_address() const {
         for (const auto& addr : addresses_) {
             if (addr.is_v4()) {
                 return addr.to_v4();
@@ -204,7 +204,7 @@ class NetworkInterface {
     std::string display_name_;
     std::string description_;
     std::optional<MacAddress> mac_address_;
-    std::vector<asio::ip::address> addresses_;
+    std::vector<boost::asio::ip::address> addresses_;
     Type type_ {Type::undefined};
     Capabilities capabilities_ {};
 #if RAV_WINDOWS

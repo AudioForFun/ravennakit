@@ -15,7 +15,7 @@ namespace rav::dnssd {
 
 class MockBrowser final: public Browser {
   public:
-    explicit MockBrowser(asio::io_context& io_context);
+    explicit MockBrowser(boost::asio::io_context& io_context);
     ~MockBrowser() override = default;
 
     /**
@@ -65,7 +65,7 @@ class MockBrowser final: public Browser {
     void subscribe(Subscriber& s) override;
 
   private:
-    asio::io_context& io_context_;
+    boost::asio::io_context& io_context_;
     std::map<std::string, ServiceDescription> services_;  // fullname -> service description
     std::set<std::string> browsers_; // reg_type
     Subscriber subscribers_;

@@ -22,7 +22,7 @@
 namespace examples {
 class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instance::Subscriber {
   public:
-    explicit loopback(std::string stream_name, const asio::ip::address_v4& interface_addr) :
+    explicit loopback(std::string stream_name, const boost::asio::ip::address_v4& interface_addr) :
         stream_name_(std::move(stream_name)) {
         rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
         advertiser_ = rav::dnssd::Advertiser::create(io_context_);
@@ -31,7 +31,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         }
 
         rtsp_server_ = std::make_unique<rav::rtsp::Server>(
-            io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005)
+            io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 5005)
         );
 
         ptp_instance_ = std::make_unique<rav::ptp::Instance>(io_context_);
@@ -126,7 +126,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
 
   private:
     std::string stream_name_;
-    asio::io_context io_context_;
+    boost::asio::io_context io_context_;
     rav::UdpReceiver udp_receiver_ {io_context_};
     std::vector<uint8_t> buffer_;
     bool ptp_clock_stable_ = false;
@@ -167,7 +167,7 @@ int main(int const argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    const auto interface_address = asio::ip::make_address_v4(interface_address_string);
+    const auto interface_address = boost::asio::ip::make_address_v4(interface_address_string);
 
     // Receiving side
     examples::loopback example(stream_name, interface_address);

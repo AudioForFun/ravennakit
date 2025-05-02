@@ -47,7 +47,7 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
         virtual void on_announced([[maybe_unused]] const AnnouncedEvent& event) {}
     };
 
-    explicit RavennaRtspClient(asio::io_context& io_context, RavennaBrowser& browser);
+    explicit RavennaRtspClient(boost::asio::io_context& io_context, RavennaBrowser& browser);
     ~RavennaRtspClient() override;
 
     /**
@@ -84,7 +84,7 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
     /**
      * @return The io_context used by this client.
      */
-    [[nodiscard]] asio::io_context& get_io_context() const;
+    [[nodiscard]] boost::asio::io_context& get_io_context() const;
 
     // ravenna_browser::subscriber overrides
     void ravenna_session_discovered(const dnssd::Browser::ServiceResolved& event) override;
@@ -105,7 +105,7 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
         rtsp::Client client;
     };
 
-    asio::io_context& io_context_;
+    boost::asio::io_context& io_context_;
     RavennaBrowser& browser_;
     std::vector<SessionContext> sessions_;
     std::vector<std::unique_ptr<ConnectionContext>> connections_;

@@ -291,7 +291,7 @@ class RavennaNode {
     std::future<tl::expected<void, std::string>> restore_from_json(const nlohmann::json& json);
 
     /**
-     * Schedules some work on the maintenance thread using asio::dispatch. This is useful for synchronizing with
+     * Schedules some work on the maintenance thread using boost::asio::dispatch. This is useful for synchronizing with
      * callbacks from the node and to offload work from the main (UI) thread. If passing using asio::use_future, the
      * future will be set when the work is complete.
      *
@@ -306,7 +306,7 @@ class RavennaNode {
      */
     template<typename CompletionToken>
     auto dispatch(CompletionToken&& token) {
-        return asio::dispatch(io_context_, token);
+        return boost::asio::dispatch(io_context_, token);
     }
 
     /**
@@ -325,7 +325,7 @@ class RavennaNode {
      */
     template<typename CompletionToken>
     auto post(CompletionToken&& token) {
-        return asio::post(io_context_, token);
+        return boost::asio::post(io_context_, token);
     }
 
   private:
@@ -334,7 +334,7 @@ class RavennaNode {
         std::vector<RavennaSender*> senders;
     };
 
-    asio::io_context io_context_;
+    boost::asio::io_context io_context_;
     UdpReceiver udp_receiver_ {io_context_};
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;

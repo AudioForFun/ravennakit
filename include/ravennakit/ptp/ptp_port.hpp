@@ -39,7 +39,7 @@ class Instance;
 class Port {
   public:
     Port(
-        Instance& parent, asio::io_context& io_context, const asio::ip::address_v4& interface_address,
+        Instance& parent, boost::asio::io_context& io_context, const boost::asio::ip::address_v4& interface_address,
         PortIdentity port_identity
     );
 
@@ -98,13 +98,13 @@ class Port {
      * Sets the interface address of this port.
      * @param interface_address The address of the interface to use.
      */
-    void set_interface(const asio::ip::address_v4& interface_address);
+    void set_interface(const boost::asio::ip::address_v4& interface_address);
 
   private:
     Instance& parent_;
-    asio::ip::address_v4 interface_address_;
+    boost::asio::ip::address_v4 interface_address_;
     PortDs port_ds_;
-    asio::steady_timer announce_receipt_timeout_timer_;
+    boost::asio::steady_timer announce_receipt_timeout_timer_;
     ExtendedUdpSocket event_send_socket_;
     ExtendedUdpSocket general_send_socket_;
     ForeignMasterList foreign_master_list_;

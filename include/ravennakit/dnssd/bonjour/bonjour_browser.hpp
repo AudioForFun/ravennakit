@@ -8,7 +8,7 @@
 #include "bonjour.hpp"
 #include "bonjour_process_results_thread.hpp"
 
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 
 #if RAV_HAS_APPLE_DNSSD
 
@@ -106,7 +106,7 @@ class BonjourBrowser: public Browser {
         );
     };
 
-    explicit BonjourBrowser(asio::io_context& io_context);
+    explicit BonjourBrowser(boost::asio::io_context& io_context);
     void browse_for(const std::string& service) override;
     [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
     [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
@@ -114,7 +114,7 @@ class BonjourBrowser: public Browser {
     void subscribe(Subscriber& s) override;
 
   private:
-    asio::ip::tcp::socket service_socket_;
+    boost::asio::ip::tcp::socket service_socket_;
     BonjourSharedConnection shared_connection_;
     std::map<std::string, service> services_;                         // fullname -> service
     std::map<std::string, BonjourScopedDnsServiceRef> browsers_;  // reg_type -> DNSServiceRef

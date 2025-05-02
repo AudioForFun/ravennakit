@@ -12,7 +12,7 @@
 
 #include "ravennakit/core/platform.hpp"
 #include "ravennakit/core/expected.hpp"
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 #if RAV_WINDOWS
 
@@ -57,10 +57,10 @@ class qos_flow {
      * @param socket Socket to add.
      * @return True on success, or false on failure.
      */
-    bool add_socket_to_flow(asio::ip::udp::socket& socket) {
+    bool add_socket_to_flow(boost::asio::ip::udp::socket& socket) {
         SOCKET native_socket_handle = socket.native_handle();
 
-        asio::error_code ec;
+        boost::system::error_code ec;
         auto endpoint = socket.local_endpoint(ec);
         if (ec) {
             RAV_ERROR("Failed to get local endpoint");

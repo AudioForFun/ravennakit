@@ -15,7 +15,7 @@ int main(const int argc, char* argv[]) {
         return -1;
     }
 
-    asio::io_context io_context;  // NOLINT
+    boost::asio::io_context io_context;  // NOLINT
 
     const auto browser = rav::dnssd::Browser::create(io_context);
 

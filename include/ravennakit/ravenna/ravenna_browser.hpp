@@ -52,7 +52,7 @@ class RavennaBrowser {
         virtual void ravenna_session_removed([[maybe_unused]] const dnssd::Browser::ServiceRemoved& event) {}
     };
 
-    explicit RavennaBrowser(asio::io_context& io_context);
+    explicit RavennaBrowser(boost::asio::io_context& io_context);
 
     /**
      * Finds a node by its name.

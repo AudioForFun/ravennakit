@@ -14,8 +14,8 @@
 #include "ravennakit/rtsp/detail/rtsp_request.hpp"
 #include "ravennakit/core/uri.hpp"
 
-rav::rtsp::Client::Client(asio::io_context& io_context) :
-    resolver_(io_context), connection_(Connection::create(asio::ip::tcp::socket(io_context))) {}
+rav::rtsp::Client::Client(boost::asio::io_context& io_context) :
+    resolver_(io_context), connection_(Connection::create(boost::asio::ip::tcp::socket(io_context))) {}
 
 rav::rtsp::Client::~Client() {
     if (connection_ != nullptr) {
@@ -24,11 +24,11 @@ rav::rtsp::Client::~Client() {
 }
 
 void rav::rtsp::Client::async_connect(const std::string& host, const uint16_t port) {
-    async_resolve_connect(host, std::to_string(port), asio::ip::resolver_base::flags::numeric_service);
+    async_resolve_connect(host, std::to_string(port), boost::asio::ip::resolver_base::flags::numeric_service);
 }
 
 void rav::rtsp::Client::async_connect(const std::string& host, const std::string& service) {
-    async_resolve_connect(host, service, asio::ip::resolver_base::flags());
+    async_resolve_connect(host, service, boost::asio::ip::resolver_base::flags());
 }
 
 void rav::rtsp::Client::async_describe(const std::string& path, std::string data) {
@@ -108,14 +108,14 @@ void rav::rtsp::Client::on_response(Connection& connection, const Response& resp
 }
 
 void rav::rtsp::Client::async_resolve_connect(
-    const std::string& host, const std::string& service, const asio::ip::resolver_base::flags flags
+    const std::string& host, const std::string& service, const boost::asio::ip::resolver_base::flags flags
 ) {
     host_ = host;
     connection_->set_subscriber(this);
     auto connection = connection_;
     resolver_.async_resolve(
         host, service, flags,
-        [host, connection](const asio::error_code ec, const asio::ip::tcp::resolver::results_type& results) {
+        [host, connection](const boost::system::error_code ec, const boost::asio::ip::tcp::resolver::results_type& results) {
             if (ec) {
                 RAV_ERROR("Resolve error: {}", ec.message());
                 return;

@@ -12,7 +12,7 @@
 #include "ravennakit/core/exception.hpp"
 #include "ravennakit/core/log.hpp"
 
-rav::RavennaBrowser::RavennaBrowser(asio::io_context& io_context) {
+rav::RavennaBrowser::RavennaBrowser(boost::asio::io_context& io_context) {
     node_browser_ = dnssd::Browser::create(io_context);
 
     if (node_browser_ == nullptr) {

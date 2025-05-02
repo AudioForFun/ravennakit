@@ -28,7 +28,7 @@ TEST_CASE("dnssd | Browse and advertise") {
 
     SECTION("On systems other than Apple and Windows, dnssd is not implemented") {
 #if !RAV_HAS_DNSSD
-        asio::io_context io_context;
+        boost::asio::io_context io_context;
         auto advertiser = rav::dnssd::Advertiser::create(io_context);
         REQUIRE_FALSE(advertiser);
         auto browser = rav::dnssd::Browser::create(io_context);
@@ -40,7 +40,7 @@ TEST_CASE("dnssd | Browse and advertise") {
 #if !RAV_HAS_DNSSD
         return;
 #endif
-        asio::io_context io_context;
+        boost::asio::io_context io_context;
 
         std::vector<rav::dnssd::ServiceDescription> discovered_services;
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
@@ -107,7 +107,7 @@ TEST_CASE("dnssd | Update a txt record") {
 
     const auto reg_type = generate_random_reg_type();
 
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
     std::optional<rav::dnssd::ServiceDescription> updated_service;
 
     const auto advertiser = rav::dnssd::Advertiser::create(io_context);

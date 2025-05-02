@@ -10,18 +10,18 @@
 
 #pragma once
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 #include "ravennakit/core/format.hpp"
 
 namespace rav::rtp {
 
 struct Session {
-    asio::ip::address connection_address;
+    boost::asio::ip::address connection_address;
     uint16_t rtp_port {};
     uint16_t rtcp_port {};
 
     void reset() {
-        connection_address = asio::ip::address{};
+        connection_address = boost::asio::ip::address{};
         rtp_port = {};
         rtcp_port = {};
     }

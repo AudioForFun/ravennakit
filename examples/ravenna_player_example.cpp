@@ -18,7 +18,7 @@
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
 #include <CLI/App.hpp>
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 #include <utility>
 
 namespace examples {
@@ -31,9 +31,9 @@ static constexpr uint32_t k_frames_per_read = 1024;
 class wav_file_player: public rav::ptp::Instance::Subscriber {
   public:
     explicit wav_file_player(
-        asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
+        boost::asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
         rav::ptp::Instance& ptp_instance, rav::Id::Generator& id_generator,
-        const asio::ip::address_v4& interface_address, const rav::File& file_to_play, const std::string& session_name
+        const boost::asio::ip::address_v4& interface_address, const rav::File& file_to_play, const std::string& session_name
     ) :
         ptp_instance_(ptp_instance), timer_(io_context) {
         if (!file_to_play.exists()) {
@@ -104,7 +104,7 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
     uint32_t rtp_ts_ {};
     std::unique_ptr<rav::WavAudioFormat::Reader> reader_;
     std::unique_ptr<rav::RavennaSender> sender_;
-    asio::high_resolution_timer timer_;
+    boost::asio::high_resolution_timer timer_;
 
     void start_timer() {
 #if RAV_WINDOWS
@@ -117,8 +117,8 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
 #endif
 
         timer_.expires_after(expires_after);
-        timer_.async_wait([this](const asio::error_code ec) {
-            if (ec == asio::error::operation_aborted) {
+        timer_.async_wait([this](const boost::system::error_code ec) {
+            if (ec == boost::asio::error::operation_aborted) {
                 return;
             }
             if (ec) {
@@ -197,14 +197,14 @@ int main(int const argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    const auto interface_address = asio::ip::make_address_v4(interface_address_string);
+    const auto interface_address = boost::asio::ip::make_address_v4(interface_address_string);
 
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
 
     std::vector<std::unique_ptr<examples::wav_file_player>> wav_file_players;
 
     auto advertiser = rav::dnssd::Advertiser::create(io_context);
-    rav::rtsp::Server rtsp_server(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
+    rav::rtsp::Server rtsp_server(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 5005));
 
     // PTP
     rav::ptp::Instance ptp_instance(io_context);

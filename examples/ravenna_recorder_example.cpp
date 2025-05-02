@@ -18,7 +18,7 @@
 #include "ravennakit/ravenna/ravenna_receiver.hpp"
 
 #include <CLI/App.hpp>
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 #include <utility>
 
 namespace examples {
@@ -115,7 +115,7 @@ class stream_recorder: public rav::RavennaReceiver::Subscriber {
 class ravenna_recorder {
   public:
     explicit ravenna_recorder(const std::string& interface_address) :
-        interface_address_(asio::ip::make_address_v4(interface_address)) {
+        interface_address_(boost::asio::ip::make_address_v4(interface_address)) {
         rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
         rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
     }
@@ -151,8 +151,8 @@ class ravenna_recorder {
     }
 
   private:
-    asio::io_context io_context_;
-    asio::ip::address_v4 interface_address_;
+    boost::asio::io_context io_context_;
+    boost::asio::ip::address_v4 interface_address_;
     rav::UdpReceiver udp_receiver_ {io_context_};
     rav::RavennaBrowser browser_ {io_context_};
     std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;

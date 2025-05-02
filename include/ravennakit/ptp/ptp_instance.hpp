@@ -24,7 +24,7 @@
 #include "ravennakit/core/expected.hpp"
 #include "ravennakit/core/sync/realtime_shared_object.hpp"
 
-#include <asio/ip/address.hpp>
+#include <boost/asio/ip/address.hpp>
 
 namespace rav::ptp {
 
@@ -70,7 +70,7 @@ class Instance {
      * @param io_context The asio io context to use for networking and timers. Should be a single-threaded context,
      * multithreaded contexts are not supported and will lead to race conditions.
      */
-    explicit Instance(asio::io_context& io_context);
+    explicit Instance(boost::asio::io_context& io_context);
 
     ~Instance();
 
@@ -95,7 +95,7 @@ class Instance {
      * @param interface_address The address of the interface to bind the port to. The network interface must have a MAC
      * address and support multicast.
      */
-    tl::expected<uint16_t, Error> add_port(const asio::ip::address_v4& interface_address);
+    tl::expected<uint16_t, Error> add_port(const boost::asio::ip::address_v4& interface_address);
 
     /**
      * Removes a port from the PTP instance.
@@ -116,7 +116,7 @@ class Instance {
      * and 0 is considered invalid.
      * @param interface_address The address of the interface to bind the port to.
      */
-    [[nodiscard]] bool set_port_interface(uint16_t port_number, const asio::ip::address_v4& interface_address) const;
+    [[nodiscard]] bool set_port_interface(uint16_t port_number, const boost::asio::ip::address_v4& interface_address) const;
 
     /**
      * @return The default data set of the PTP instance.
@@ -169,8 +169,8 @@ class Instance {
     void update_local_ptp_clock(const Measurement<double>& measurement);
 
   private:
-    asio::io_context& io_context_;
-    asio::steady_timer state_decision_timer_;
+    boost::asio::io_context& io_context_;
+    boost::asio::steady_timer state_decision_timer_;
     DefaultDs default_ds_;
     CurrentDs current_ds_;
     ParentDs parent_ds_;

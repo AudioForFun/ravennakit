@@ -22,7 +22,7 @@ const rav::ptp::LocalClock& rav::ptp::Instance::Subscriber::get_local_clock() {
     return local_clock_;
 }
 
-rav::ptp::Instance::Instance(asio::io_context& io_context) :
+rav::ptp::Instance::Instance(boost::asio::io_context& io_context) :
     io_context_(io_context), state_decision_timer_(io_context), default_ds_(true), parent_ds_(default_ds_) {}
 
 rav::ptp::Instance::~Instance() {
@@ -51,7 +51,7 @@ bool rav::ptp::Instance::unsubscribe(const Subscriber* subscriber) {
     return subscribers_.remove(subscriber);
 }
 
-tl::expected<uint16_t, rav::ptp::Error> rav::ptp::Instance::add_port(const asio::ip::address_v4& interface_address) {
+tl::expected<uint16_t, rav::ptp::Error> rav::ptp::Instance::add_port(const boost::asio::ip::address_v4& interface_address) {
     const auto interfaces = NetworkInterfaceList::get_system_interfaces(false);
     auto* iface = interfaces.find_by_address(interface_address);
     if (!iface) {
@@ -116,7 +116,7 @@ size_t rav::ptp::Instance::get_port_count() const {
 }
 
 bool rav::ptp::Instance::set_port_interface(
-    const uint16_t port_number, const asio::ip::address_v4& interface_address
+    const uint16_t port_number, const boost::asio::ip::address_v4& interface_address
 ) const {
     for (auto& port : ports_) {
         if (port->get_port_identity().port_number == port_number) {
@@ -304,8 +304,8 @@ void rav::ptp::Instance::schedule_state_decision_timer() {
     }
     const auto announce_interval_seconds = std::pow(2, ports_.front()->port_ds().log_announce_interval);
     state_decision_timer_.expires_after(std::chrono::seconds(static_cast<int>(announce_interval_seconds)));
-    state_decision_timer_.async_wait([this](const std::error_code& error) {
-        if (error == asio::error::operation_aborted) {
+    state_decision_timer_.async_wait([this](const boost::system::error_code& error) {
+        if (error == boost::asio::error::operation_aborted) {
             return;
         }
         if (error) {

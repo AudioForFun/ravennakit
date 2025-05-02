@@ -4,7 +4,7 @@
 #include "ravennakit/core/events.hpp"
 #include "ravennakit/core/linked_node.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 #include <functional>
 #include <memory>
@@ -94,7 +94,7 @@ class Browser {
      * Creates the most appropriate dnssd_browser implementation for the platform.
      * @return The created dnssd_browser instance, or nullptr if no implementation is available.
      */
-    static std::unique_ptr<Browser> create(asio::io_context& io_context);
+    static std::unique_ptr<Browser> create(boost::asio::io_context& io_context);
 
     /**
      * Tries to find a service by its name.

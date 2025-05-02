@@ -115,7 +115,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     };
 
     explicit RavennaReceiver(
-        asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id,
+        boost::asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id,
         ConfigurationUpdate initial_config = {}
     );
     ~RavennaReceiver() override;
@@ -172,7 +172,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
      * Sets the interface address for the receiver.
      * @param interface_addresses A map of interface addresses to set. The key is the rank of the interface address.
      */
-    void set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses);
+    void set_interfaces(const std::map<Rank, boost::asio::ip::address_v4>& interface_addresses);
 
     /**
      * @return A JSON representation of the sender.

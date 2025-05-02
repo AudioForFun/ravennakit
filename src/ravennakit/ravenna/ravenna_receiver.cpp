@@ -78,7 +78,7 @@ rav::RavennaReceiver::ConfigurationUpdate::from_json(const nlohmann::json& json)
 }
 
 rav::RavennaReceiver::RavennaReceiver(
-    asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id,
+    boost::asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, const Id id,
     ConfigurationUpdate initial_config
 ) :
     rtsp_client_(rtsp_client), rtp_audio_receiver_(io_context, rtp_receiver), id_(id) {
@@ -185,10 +185,10 @@ tl::expected<rav::rtp::AudioReceiver::Stream, std::string> create_stream_from_me
 
     rav::rtp::Session session;
 
-    asio::error_code ec;
+    boost::system::error_code ec;
     session.rtp_port = media_description.port();
     session.rtcp_port = session.rtp_port + 1;
-    session.connection_address = asio::ip::make_address(selected_connection_info->address, ec);
+    session.connection_address = boost::asio::ip::make_address(selected_connection_info->address, ec);
     if (ec) {
         return tl::unexpected(fmt::format("Failed to parse connection address: {}", ec.message()));
     }
@@ -409,6 +409,6 @@ std::optional<std::string> rav::RavennaReceiver::get_sdp_text() const {
     return rtsp_client_.get_sdp_text_for_session(configuration_.session_name);
 }
 
-void rav::RavennaReceiver::set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses) {
+void rav::RavennaReceiver::set_interfaces(const std::map<Rank, boost::asio::ip::address_v4>& interface_addresses) {
     rtp_audio_receiver_.set_interfaces(interface_addresses);
 }

@@ -12,12 +12,12 @@
 
 #include "ravennakit/core/exception.hpp"
 
-rav::dnssd::MockBrowser::MockBrowser(asio::io_context& io_context) : io_context_(io_context) {}
+rav::dnssd::MockBrowser::MockBrowser(boost::asio::io_context& io_context) : io_context_(io_context) {}
 
 void rav::dnssd::MockBrowser::mock_discovering_service(
     const std::string& fullname, const std::string& name, const std::string& reg_type, const std::string& domain
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         if (browsers_.find(reg_type) == browsers_.end()) {
             RAV_THROW_EXCEPTION("Not browsing for reg_type: {}", reg_type);
         }
@@ -34,7 +34,7 @@ void rav::dnssd::MockBrowser::mock_discovering_service(
 void rav::dnssd::MockBrowser::mock_resolved_service(
     const std::string& fullname, const std::string& host_target, const uint16_t port, const TxtRecord& txt_record
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
@@ -49,7 +49,7 @@ void rav::dnssd::MockBrowser::mock_resolved_service(
 void rav::dnssd::MockBrowser::mock_adding_address(
     const std::string& fullname, const std::string& address, const uint32_t interface_index
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
@@ -62,7 +62,7 @@ void rav::dnssd::MockBrowser::mock_adding_address(
 void rav::dnssd::MockBrowser::mock_removing_address(
     const std::string& fullname, const std::string& address, uint32_t interface_index
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
@@ -84,7 +84,7 @@ void rav::dnssd::MockBrowser::mock_removing_address(
 }
 
 void rav::dnssd::MockBrowser::mock_removing_service(const std::string& fullname) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);

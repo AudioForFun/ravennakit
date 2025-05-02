@@ -13,7 +13,7 @@
 #include "detail/rtsp_connection.hpp"
 #include "detail/rtsp_parser.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 namespace rav::rtsp {
 
@@ -25,7 +25,7 @@ class Client final: Connection::Subscriber {
   public:
     using EventsType = Events<Connection::ConnectEvent, Connection::ResponseEvent, Connection::RequestEvent>;
 
-    explicit Client(asio::io_context& io_context);
+    explicit Client(boost::asio::io_context& io_context);
     ~Client() override;
 
     Client(const Client&) = delete;
@@ -101,14 +101,14 @@ class Client final: Connection::Subscriber {
     void on_response(Connection& connection, const Response& response) override;
 
   private:
-    asio::ip::tcp::resolver resolver_;
+    boost::asio::ip::tcp::resolver resolver_;
     std::string host_;
     std::shared_ptr<Connection> connection_;
     EventsType events_;
     uint32_t seq_ {0};
 
     void
-    async_resolve_connect(const std::string& host, const std::string& service, asio::ip::resolver_base::flags flags);
+    async_resolve_connect(const std::string& host, const std::string& service, boost::asio::ip::resolver_base::flags flags);
 };
 
 }  // namespace rav::rtsp

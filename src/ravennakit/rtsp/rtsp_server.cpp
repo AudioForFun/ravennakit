@@ -77,13 +77,13 @@ size_t rav::rtsp::Server::send_request(const std::string& path, const Request& r
     return count;
 }
 
-rav::rtsp::Server::Server(asio::io_context& io_context, const asio::ip::tcp::endpoint& endpoint) :
+rav::rtsp::Server::Server(boost::asio::io_context& io_context, const boost::asio::ip::tcp::endpoint& endpoint) :
     acceptor_(io_context, endpoint) {
     async_accept();
 }
 
-rav::rtsp::Server::Server(asio::io_context& io_context, const char* address, const uint16_t port) :
-    Server(io_context, asio::ip::tcp::endpoint(asio::ip::make_address(address), port)) {}
+rav::rtsp::Server::Server(boost::asio::io_context& io_context, const char* address, const uint16_t port) :
+    Server(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::make_address(address), port)) {}
 
 void rav::rtsp::Server::stop() {
     TRACY_ZONE_SCOPED;
@@ -162,14 +162,14 @@ bool rav::rtsp::Server::PathContext::add_connection_if_not_exists(Connection& co
 }
 
 void rav::rtsp::Server::async_accept() {
-    acceptor_.async_accept(acceptor_.get_executor(), [this](const std::error_code ec, asio::ip::tcp::socket socket) {
+    acceptor_.async_accept(acceptor_.get_executor(), [this](const boost::system::error_code& ec, boost::asio::ip::tcp::socket socket) {
         TRACY_ZONE_SCOPED;
         if (ec) {
-            if (ec == asio::error::operation_aborted) {
+            if (ec == boost::asio::error::operation_aborted) {
                 RAV_TRACE("Operation aborted");
                 return;
             }
-            if (ec == asio::error::eof) {
+            if (ec == boost::asio::error::eof) {
                 RAV_TRACE("EOF");
                 return;
             }

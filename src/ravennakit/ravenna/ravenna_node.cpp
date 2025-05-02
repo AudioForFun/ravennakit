@@ -14,7 +14,7 @@
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
 rav::RavennaNode::RavennaNode() :
-    rtsp_server_(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
+    rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
     rtp_receiver_ = std::make_unique<rtp::Receiver>(udp_receiver_);
     advertiser_ = dnssd::Advertiser::create(io_context_);
 
@@ -62,7 +62,7 @@ std::future<rav::Id> rav::RavennaNode::create_receiver(const RavennaReceiver::Co
         }
         return it->get_id();
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::remove_receiver(Id receiver_id) {
@@ -84,7 +84,7 @@ std::future<void> rav::RavennaNode::remove_receiver(Id receiver_id) {
             }
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<tl::expected<void, std::string>>
@@ -97,7 +97,7 @@ rav::RavennaNode::update_receiver_configuration(Id receiver_id, RavennaReceiver:
         }
         return tl::unexpected("Sender not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<rav::Id> rav::RavennaNode::create_sender(const RavennaSender::ConfigurationUpdate& initial_config) {
@@ -116,7 +116,7 @@ std::future<rav::Id> rav::RavennaNode::create_sender(const RavennaSender::Config
         }
         return it->get_id();
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
@@ -138,7 +138,7 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
             }
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<tl::expected<void, std::string>>
@@ -151,7 +151,7 @@ rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::Confi
         }
         return tl::unexpected("Sender not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
@@ -171,7 +171,7 @@ std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
         }
         subscriber->network_interface_config_updated(config_.network_interfaces);
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber) {
@@ -184,7 +184,7 @@ std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber) {
             RAV_WARNING("Failed to remove subscriber from node");
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
@@ -199,7 +199,7 @@ std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, Ravenn
         }
         RAV_WARNING("Receiver not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
@@ -214,7 +214,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, Ra
         }
         // Don't warn about not finding the receiver, as the receiver might have already been removed.
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe_to_sender(Id sender_id, RavennaSender::Subscriber* subscriber) {
@@ -229,7 +229,7 @@ std::future<void> rav::RavennaNode::subscribe_to_sender(Id sender_id, RavennaSen
         }
         RAV_WARNING("Sender not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, RavennaSender::Subscriber* subscriber) {
@@ -244,7 +244,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, Ravenn
         }
         // Don't warn about not finding the sender, as the sender might have already been removed.
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe_to_ptp_instance(ptp::Instance::Subscriber* subscriber) {
@@ -253,7 +253,7 @@ std::future<void> rav::RavennaNode::subscribe_to_ptp_instance(ptp::Instance::Sub
             RAV_ERROR("Failed to add subscriber to PTP instance");
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance::Subscriber* subscriber) {
@@ -262,7 +262,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance:
             RAV_ERROR("Failed to remove subscriber from PTP instance");
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<rav::rtp::AudioReceiver::SessionStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id, Rank rank) {
@@ -274,7 +274,7 @@ std::future<rav::rtp::AudioReceiver::SessionStats> rav::RavennaNode::get_stats_f
         }
         return rtp::AudioReceiver::SessionStats {};
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_sdp_for_receiver(Id receiver_id) {
@@ -286,7 +286,7 @@ std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_s
         }
         return std::nullopt;
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_receiver(Id receiver_id) {
@@ -299,7 +299,7 @@ std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_recei
         }
         return std::nullopt;
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
@@ -415,7 +415,7 @@ rav::RavennaNode::set_network_interface_config(RavennaConfig::NetworkInterfaceCo
 
         RAV_INFO("{}", config.to_string());
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 bool rav::RavennaNode::is_maintenance_thread() const {
@@ -438,7 +438,7 @@ std::future<nlohmann::json> rav::RavennaNode::to_json() {
         root["receivers"] = receivers;
         return root;
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json(const nlohmann::json& json) {
@@ -532,7 +532,7 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json
 
         return {};
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 bool rav::RavennaNode::update_realtime_shared_context() {

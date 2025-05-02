@@ -33,8 +33,8 @@ rav::RavennaSender::Destination::from_json(const nlohmann::json& json) {
     try {
         Destination destination {};
         destination.interface_by_rank = Rank(json.at("interface_by_rank").get<uint8_t>());
-        destination.endpoint = asio::ip::udp::endpoint(
-            asio::ip::make_address_v4(json.at("address").get<std::string>()), json.at("port").get<uint16_t>()
+        destination.endpoint = boost::asio::ip::udp::endpoint(
+            boost::asio::ip::make_address_v4(json.at("address").get<std::string>()), json.at("port").get<uint16_t>()
         );
         destination.enabled = json.at("enabled").get<bool>();
         return destination;
@@ -90,7 +90,7 @@ rav::RavennaSender::ConfigurationUpdate::from_json(const nlohmann::json& json) {
 }
 
 rav::RavennaSender::RavennaSender(
-    asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server, ptp::Instance& ptp_instance,
+    boost::asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server, ptp::Instance& ptp_instance,
     const Id id, const uint32_t session_id, ConfigurationUpdate initial_config
 ) :
     io_context_(io_context),
@@ -131,8 +131,8 @@ rav::RavennaSender::RavennaSender(
 
     if (!initial_config.destinations.has_value()) {
         std::vector<Destination> destinations;
-        destinations.emplace_back(Destination {Rank::primary(), {asio::ip::address_v4::any(), 5004}, true});
-        destinations.emplace_back(Destination {Rank::secondary(), {asio::ip::address_v4::any(), 5004}, true});
+        destinations.emplace_back(Destination {Rank::primary(), {boost::asio::ip::address_v4::any(), 5004}, true});
+        destinations.emplace_back(Destination {Rank::secondary(), {boost::asio::ip::address_v4::any(), 5004}, true});
         initial_config.destinations = std::move(destinations);
     }
 
@@ -483,7 +483,7 @@ bool rav::RavennaSender::send_audio_data_realtime(
     return false;
 }
 
-void rav::RavennaSender::set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses) {
+void rav::RavennaSender::set_interfaces(const std::map<Rank, boost::asio::ip::address_v4>& interface_addresses) {
     if (interface_addresses_ == interface_addresses) {
         return;  // No change in interface addresses
     }
@@ -708,8 +708,8 @@ void rav::RavennaSender::start_timer() {
 #endif
 
     timer_.expires_after(expires_after);
-    timer_.async_wait([this](const asio::error_code ec) {
-        if (ec == asio::error::operation_aborted) {
+    timer_.async_wait([this](const boost::system::error_code& ec) {
+        if (ec == boost::asio::error::operation_aborted) {
             return;
         }
         if (ec) {
@@ -723,7 +723,7 @@ void rav::RavennaSender::start_timer() {
 
 void rav::RavennaSender::stop_timer() {
     timer_.expires_after(std::chrono::hours(24));
-    timer_.async_wait([](asio::error_code) {});
+    timer_.async_wait([](boost::system::error_code) {});
     const auto num_canceled = timer_.cancel();
     if (num_canceled == 0) {
         RAV_WARNING("No timer handlers canceled");
@@ -793,7 +793,7 @@ void rav::RavennaSender::generate_auto_addresses_if_needed() {
                 // Construct a multicast address from the interface address
                 const auto interface_address_bytes = it->second.to_bytes();
                 dst.endpoint.address(
-                    asio::ip::address_v4(
+                    boost::asio::ip::address_v4(
                         {239, interface_address_bytes[2], interface_address_bytes[3],
                          static_cast<uint8_t>(id_.value() % 0xff)}
                     )

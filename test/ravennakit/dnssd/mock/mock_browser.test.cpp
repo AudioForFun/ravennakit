@@ -13,7 +13,7 @@
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("mock_browser") {
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
     rav::dnssd::MockBrowser browser(io_context);
 
     SECTION("Mock discovering and removing service") {
@@ -111,7 +111,7 @@ TEST_CASE("mock_browser") {
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         REQUIRE(browser.find_service("name") == nullptr);
 
-        asio::post(io_context, [&] {
+        boost::asio::post(io_context, [&] {
             auto* service = browser.find_service("name");
             REQUIRE(service != nullptr);
             REQUIRE(service->fullname == "fullname");
@@ -128,7 +128,7 @@ TEST_CASE("mock_browser") {
         browser.browse_for("reg_type2");
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         browser.mock_discovering_service("fullname2", "name2", "reg_type2", "domain2");
-        asio::post(io_context, [&] {
+        boost::asio::post(io_context, [&] {
             auto services = browser.get_services();
             REQUIRE(services.size() == 2);
             REQUIRE(services[0].fullname == "fullname");

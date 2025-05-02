@@ -12,7 +12,7 @@
 
 rav::rtsp::Connection::~Connection() = default;
 
-rav::rtsp::Connection::Connection(asio::ip::tcp::socket socket) : socket_(std::move(socket)) {
+rav::rtsp::Connection::Connection(boost::asio::ip::tcp::socket socket) : socket_(std::move(socket)) {
     parser_.on<Request>([this](const Request& request) {
         if (subscriber_) {
             subscriber_->on_request(*this, request);
@@ -39,7 +39,7 @@ void rav::rtsp::Connection::async_send_request(const Request& request) {
 }
 
 void rav::rtsp::Connection::shutdown() {
-    socket_.shutdown(asio::ip::tcp::socket::shutdown_both);
+    socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
 }
 
 void rav::rtsp::Connection::start() {
@@ -54,9 +54,9 @@ void rav::rtsp::Connection::set_subscriber(Subscriber* subscriber_to_set) {
     subscriber_ = subscriber_to_set;
 }
 
-void rav::rtsp::Connection::async_connect(const asio::ip::tcp::resolver::results_type& results) {
+void rav::rtsp::Connection::async_connect(const boost::asio::ip::tcp::resolver::results_type& results) {
     auto self = shared_from_this();
-    asio::async_connect(socket_, results, [self](const asio::error_code ec, const asio::ip::tcp::endpoint& endpoint) {
+    boost::asio::async_connect(socket_, results, [self](const boost::system::error_code ec, const boost::asio::ip::tcp::endpoint& endpoint) {
         if (ec) {
             RAV_ERROR("Failed to connect: {}", ec.message());
             return;
@@ -83,9 +83,9 @@ void rav::rtsp::Connection::async_write() {
         return;
     }
     auto self = shared_from_this();
-    asio::async_write(
-        socket_, asio::buffer(output_buffer_.data()),
-        [self](const asio::error_code ec, const std::size_t length) {
+    boost::asio::async_write(
+        socket_, boost::asio::buffer(output_buffer_.data()),
+        [self](const boost::system::error_code ec, const std::size_t length) {
             if (ec) {
                 RAV_ERROR("Write error: {}", ec.message());
                 return;
@@ -102,15 +102,15 @@ void rav::rtsp::Connection::async_read_some() {
     auto buffer = input_buffer_.prepare(512);
     auto self = shared_from_this();
     socket_.async_read_some(
-        asio::buffer(buffer.data(), buffer.size_bytes()),
-        [self](const asio::error_code ec, const std::size_t length) mutable {
+        boost::asio::buffer(buffer.data(), buffer.size_bytes()),
+        [self](const boost::system::error_code ec, const std::size_t length) mutable {
             if (ec) {
                 self->subscriber_->on_disconnect(*self);
-                if (ec == asio::error::operation_aborted) {
+                if (ec == boost::asio::error::operation_aborted) {
                     RAV_TRACE("Operation aborted");
                     return;
                 }
-                if (ec == asio::error::eof) {
+                if (ec == boost::asio::error::eof) {
                     RAV_TRACE("EOF");
                     return;
                 }
@@ -131,6 +131,6 @@ void rav::rtsp::Connection::async_read_some() {
     );
 }
 
-asio::ip::tcp::endpoint rav::rtsp::Connection::remote_endpoint() const {
+boost::asio::ip::tcp::endpoint rav::rtsp::Connection::remote_endpoint() const {
     return socket_.remote_endpoint();
 }

@@ -32,7 +32,7 @@ class UdpReceiver {
         virtual void on_receive(const ExtendedUdpSocket::RecvEvent& event) = 0;
     };
 
-    explicit UdpReceiver(asio::io_context& io_context);
+    explicit UdpReceiver(boost::asio::io_context& io_context);
 
     /**
      * Subscribes to traffic destined for `port` on interface identified by `interface_address`. The address can be the
@@ -44,7 +44,7 @@ class UdpReceiver {
      * @param port The port to bind to.
      * @returns true if the subscription was successful, false otherwise.
      */
-    [[nodiscard]] bool subscribe(Subscriber* subscriber, const asio::ip::address_v4& interface_address, uint16_t port);
+    [[nodiscard]] bool subscribe(Subscriber* subscriber, const boost::asio::ip::address_v4& interface_address, uint16_t port);
 
     /**
      * Subscribes to multicast traffic on the given multicast address and interface address. The interface address
@@ -57,8 +57,8 @@ class UdpReceiver {
      * @returns true if the subscription was successful, false otherwise.
      */
     [[nodiscard]] bool subscribe(
-        Subscriber* subscriber, const asio::ip::address_v4& multicast_address,
-        const asio::ip::address_v4& interface_address, uint16_t port
+        Subscriber* subscriber, const boost::asio::ip::address_v4& multicast_address,
+        const boost::asio::ip::address_v4& interface_address, uint16_t port
     );
 
     /**
@@ -70,8 +70,8 @@ class UdpReceiver {
 
   private:
     struct MulticastGroup {
-        asio::ip::address_v4 multicast_address;
-        asio::ip::address_v4 interface_address;
+        boost::asio::ip::address_v4 multicast_address;
+        boost::asio::ip::address_v4 interface_address;
 
         bool operator==(const MulticastGroup& other) const {
             return multicast_address == other.multicast_address && interface_address == other.interface_address;
@@ -80,16 +80,16 @@ class UdpReceiver {
 
     class SocketContext {
       public:
-        SocketContext(asio::io_context& io_context, asio::ip::udp::endpoint local_endpoint);
+        SocketContext(boost::asio::io_context& io_context, boost::asio::ip::udp::endpoint local_endpoint);
 
         [[nodiscard]] bool add_subscriber(Subscriber* subscriber);
         [[nodiscard]] bool add_subscriber(Subscriber* subscriber, const MulticastGroup& multicast_group);
         [[nodiscard]] bool remove_subscriber(const Subscriber* subscriber);
-        [[nodiscard]] const asio::ip::udp::endpoint& local_endpoint() const;
+        [[nodiscard]] const boost::asio::ip::udp::endpoint& local_endpoint() const;
         [[nodiscard]] bool empty() const;
 
       private:
-        asio::ip::udp::endpoint local_endpoint_;
+        boost::asio::ip::udp::endpoint local_endpoint_;
         SubscriberList<Subscriber, MulticastGroup> subscribers_;
         ExtendedUdpSocket socket_;
 
@@ -97,11 +97,11 @@ class UdpReceiver {
         void handle_recv_event(const ExtendedUdpSocket::RecvEvent& event);
     };
 
-    asio::io_context& io_context_;
+    boost::asio::io_context& io_context_;
     std::vector<std::unique_ptr<SocketContext>> sockets_;
 
-    [[nodiscard]] SocketContext* find_socket_context(const asio::ip::udp::endpoint& endpoint) const;
-    SocketContext& find_or_create_socket_context(const asio::ip::udp::endpoint& endpoint);
+    [[nodiscard]] SocketContext* find_socket_context(const boost::asio::ip::udp::endpoint& endpoint) const;
+    SocketContext& find_or_create_socket_context(const boost::asio::ip::udp::endpoint& endpoint);
     size_t cleanup_empty_sockets();
 };
 

@@ -9,7 +9,7 @@
 #include "ravennakit/core/result.hpp"
 #include "ravennakit/core/util/id.hpp"
 
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 
 namespace rav::dnssd {
 
@@ -82,7 +82,7 @@ class Advertiser {
      * Creates the most appropriate dnssd_advertiser implementation for the platform.
      * @return The created dnssd_advertiser instance, or nullptr if no implementation is available.
      */
-    static std::unique_ptr<Advertiser> create(asio::io_context& io_context);
+    static std::unique_ptr<Advertiser> create(boost::asio::io_context& io_context);
 
     /**
      * Subscribes given subscriber to the advertiser. The subscriber will receive future events.

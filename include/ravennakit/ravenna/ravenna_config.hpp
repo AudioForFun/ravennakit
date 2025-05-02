@@ -65,23 +65,23 @@ struct RavennaConfig {
          * @return The first IPv4 address of one of the network interfaces. The address will be unspecified if the
          * interface is not found or if it has no IPv4 address.
          */
-        [[nodiscard]] asio::ip::address_v4 get_interface_ipv4_address(const Rank rank) const {
+        [[nodiscard]] boost::asio::ip::address_v4 get_interface_ipv4_address(const Rank rank) const {
             const auto it = interfaces_.find(rank);
             if (it == interfaces_.end()) {
-                return asio::ip::address_v4 {};
+                return boost::asio::ip::address_v4 {};
             }
             if (auto* interface = NetworkInterfaceList::get_system_interfaces().get_interface(it->second)) {
                 return interface->get_first_ipv4_address();
             }
-            return asio::ip::address_v4 {};
+            return boost::asio::ip::address_v4 {};
         }
 
         /**
          * @return A map of all network interfaces and their first IPv4 address. The address will be unspecified if the
          * interface has no IPv4 address.
          */
-        [[nodiscard]] std::map<Rank, asio::ip::address_v4> get_interface_ipv4_addresses() const {
-            std::map<Rank, asio::ip::address_v4> addresses;
+        [[nodiscard]] std::map<Rank, boost::asio::ip::address_v4> get_interface_ipv4_addresses() const {
+            std::map<Rank, boost::asio::ip::address_v4> addresses;
             for (const auto& iface : interfaces_) {
                 addresses[iface.first] = get_interface_ipv4_address(iface.first);
             }
