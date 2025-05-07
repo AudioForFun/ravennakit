@@ -70,4 +70,49 @@ TEST_CASE("HttpClient") {
 
         REQUIRE(counter == 1);
     }
+
+    SECTION("Shorthand post") {
+        boost::asio::io_context io_context;
+
+        nlohmann::json json_body;
+        json_body["test"] = 1;
+        const auto response = rav::HttpClient(io_context, "http://httpbin.cpp.al/post").post(json_body.dump());
+        io_context.run();
+        REQUIRE(response.has_value());
+        REQUIRE(response->result() == boost::beast::http::status::ok);
+        REQUIRE(response->body().size() > 0);
+
+        auto body = response->body();
+        auto json_body_returned = nlohmann::json::parse(response->body());
+        REQUIRE(json_body_returned.at("json") == json_body);
+        REQUIRE(json_body_returned.at("url") == "http://httpbin.cpp.al/post");
+    }
+
+    SECTION("Shorthand post_async") {
+        boost::asio::io_context io_context;
+
+        nlohmann::json json_body;
+        json_body["test"] = 1;
+
+        int counter = 0;
+        auto token =
+            [&counter, json_body](
+                const boost::system::result<boost::beast::http::response<boost::beast::http::string_body>>& response
+            ) {
+                REQUIRE(response.has_value());
+                REQUIRE(response->result() == boost::beast::http::status::ok);
+                REQUIRE(response->body().size() > 0);
+
+                auto body = response->body();
+                auto json_body_returned = nlohmann::json::parse(response->body());
+                REQUIRE(json_body_returned.at("json") == json_body);
+                REQUIRE(json_body_returned.at("url") == "http://httpbin.cpp.al/post");
+                counter++;
+        };
+
+        rav::HttpClient(io_context, "http://httpbin.cpp.al/post").post_async(json_body.dump(), token);
+        io_context.run();
+
+        REQUIRE(counter == 1);
+    }
 }

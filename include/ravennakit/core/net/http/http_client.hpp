@@ -61,6 +61,20 @@ class HttpClient {
     boost::system::result<http::response<http::string_body>> get(std::string_view target) const;
 
     /**
+     * Synchronous GET request to the target of the URL, or the root if no target is specified.
+     * @return The response from the server, which may contain an error.
+     */
+    boost::system::result<http::response<http::string_body>>
+    post(std::string body, std::string_view content_type = "application/json") const;
+
+    /**
+     * Synchronous GET request to the target of the URL, or the root if no target is specified.
+     * @return The response from the server, which may contain an error.
+     */
+    boost::system::result<http::response<http::string_body>>
+    post(std::string_view target, std::string body, std::string_view content_type = "application/json") const;
+
+    /**
      * Asynchronous GET request to the target of the URL, or the root if no target is specified.
      * The callback's lifetime will be tied to the io_context so make sure referenced objects are kept alive until the
      * callback is called.
@@ -78,6 +92,21 @@ class HttpClient {
     void get_async(std::string_view target, CallbackType callback) const;
 
     /**
+     * Synchronous POST request to the target of the URL, or the root if no target is specified.
+     * @return The response from the server, which may contain an error.
+     */
+    void post_async(std::string body, CallbackType callback, std::string_view content_type = "application/json") const;
+
+    /**
+     * Synchronous POST request to the target of the URL, or the root if no target is specified.
+     * @return The response from the server, which may contain an error.
+     */
+    void post_async(
+        std::string_view target, std::string body, CallbackType callback,
+        std::string_view content_type = "application/json"
+    ) const;
+
+    /**
      * Synchronous request.
      * @param io_context The io_context to use for the request.
      * @param method The HTTP method to use for the request.
@@ -85,11 +114,12 @@ class HttpClient {
      * @param service The service (port) to use for the request.
      * @param target The target to request.
      * @param body The body to send with the request.
+     * @param  content_type
      * @return The response from the server, which may contain an error.
      */
     static boost::system::result<http::response<http::string_body>> request(
         boost::asio::io_context& io_context, http::verb method, std::string_view host, std::string_view service,
-        std::string_view target, const std::string& body
+        std::string_view target, std::string body, std::string_view content_type = "application/json"
     );
 
     /**
@@ -100,11 +130,12 @@ class HttpClient {
      * @param service The service (port) to use for the request.
      * @param target The target to request.
      * @param body The optional body to send with the request.
+     * @param content_type
      * @param callback The callback to call when the request is complete.
      */
     static void request_async(
         boost::asio::io_context& io_context, http::verb method, std::string_view host, std::string_view service,
-        std::string_view target, const std::string& body, CallbackType callback
+        std::string_view target, const std::string& body, std::string_view content_type, CallbackType callback
     );
 
   private:
@@ -116,13 +147,14 @@ class HttpClient {
         explicit Session(boost::asio::io_context& io_context);
 
         void request(
-            http::request<http::empty_body> request, std::string_view host, std::string_view port, CallbackType callback
+            http::request<http::string_body> request, std::string_view host, std::string_view port,
+            CallbackType callback
         );
 
       private:
         boost::asio::ip::tcp::resolver resolver_;
         boost::beast::tcp_stream stream_;
-        http::request<http::empty_body> request_;
+        http::request<http::string_body> request_;
         http::response<http::string_body> response_;
         boost::beast::flat_buffer buffer_;
         CallbackType callback_;
