@@ -24,14 +24,12 @@
 
 class rav::HttpServer::ClientSession: public std::enable_shared_from_this<ClientSession> {
   public:
-    std::function<boost::beast::http::message_generator(boost::beast::http::request<boost::beast::http::string_body>)>
-        on_request_callback;
-    std::function<void(boost::system::error_code ec, std::string_view what)> on_error_callback;
-    std::function<void()> on_close_callback;
-
     ClientSession() = delete;
 
-    explicit ClientSession(boost::asio::ip::tcp::socket&& socket) : stream_(std::move(socket)) {}
+    explicit ClientSession(boost::asio::ip::tcp::socket&& socket, HttpServer* owner) :
+        stream_(std::move(socket)), owner_(owner) {
+        RAV_ASSERT(owner != nullptr, "Owner cannot be null");
+    }
 
     void start() {
         boost::asio::dispatch(
@@ -39,25 +37,37 @@ class rav::HttpServer::ClientSession: public std::enable_shared_from_this<Client
         );
     }
 
-    void reset() {
-        if (stream_.socket().is_open()) {
+    void set_owner(HttpServer* owner) {
+        owner_ = owner;
+        if (owner_ == nullptr && stream_.socket().is_open()) {
             do_close();
         }
-        on_request_callback = nullptr;
-        on_error_callback = nullptr;
-        on_close_callback = nullptr;
+    }
+
+    std::string get_remote_address_string() const {
+        boost::beast::error_code ec;
+        const auto endpoint = stream_.socket().remote_endpoint(ec);
+        if (ec) {
+            return {ec.message()};
+        }
+        return endpoint.address().to_string() + ":" + std::to_string(endpoint.port());
     }
 
   private:
     boost::beast::tcp_stream stream_;
+    HttpServer* owner_ {};
     boost::beast::flat_buffer buffer_;
     boost::beast::http::request<boost::beast::http::string_body> request_;
 
     void do_read() {
+        if (owner_ == nullptr) {
+            return;  // Acceptor was stopped
+        }
+
         // Make the request empty before reading, otherwise the operation behavior is undefined.
         request_ = {};
 
-        stream_.expires_after(std::chrono::seconds(30));
+        stream_.expires_after(std::chrono::seconds(k_timeout_seconds));
 
         // Read a request
         boost::beast::http::async_read(
@@ -68,20 +78,29 @@ class rav::HttpServer::ClientSession: public std::enable_shared_from_this<Client
     void on_read(const boost::beast::error_code& ec, std::size_t bytes_transferred) {
         std::ignore = bytes_transferred;
 
+        if (owner_ == nullptr) {
+            return;  // Acceptor was stopped
+        }
+
         // This means they closed the connection
-        if (ec == boost::beast::http::error::end_of_stream)
+        if (ec == boost::beast::http::error::end_of_stream) {
             return do_close();
+        }
 
         if (ec) {
-            on_error_callback(ec, "read");
-            return;
+            owner_->on_client_error(ec, "read");
+            return do_close();
         }
 
         // Send the response
-        send_response(on_request_callback(std::move(request_)));
+        send_response(owner_->on_request(std::move(request_)));
     }
 
     void send_response(boost::beast::http::message_generator&& msg) {
+        if (owner_ == nullptr) {
+            return;  // Acceptor was stopped
+        }
+
         bool keep_alive = msg.keep_alive();
 
         // Write the response
@@ -94,10 +113,13 @@ class rav::HttpServer::ClientSession: public std::enable_shared_from_this<Client
     void on_write(const bool keep_alive, const boost::beast::error_code& ec, std::size_t bytes_transferred) {
         boost::ignore_unused(bytes_transferred);
 
+        if (owner_ == nullptr) {
+            return;  // Acceptor was stopped
+        }
+
         if (ec) {
-            if (on_error_callback) {
-                on_error_callback(ec, "write");
-            }
+            owner_->on_client_error(ec, "write");
+            do_close();
             return;
         }
 
@@ -112,25 +134,30 @@ class rav::HttpServer::ClientSession: public std::enable_shared_from_this<Client
     }
 
     void do_close() {
-        boost::beast::error_code ec;
-        stream_.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
-        if (ec && ec != boost::beast::errc::not_connected) {
-            if (on_error_callback) {
-                on_error_callback(ec, "shutdown");
+        if (stream_.socket().is_open()) {
+            boost::beast::error_code ec;
+            stream_.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+            if (ec && ec != boost::beast::errc::not_connected) {
+                if (owner_ != nullptr) {
+                    owner_->on_client_error(ec, "shutdown");
+                }
             }
         }
-        if (on_close_callback) {
-            on_close_callback();
+
+        if (owner_ == nullptr) {
+            return;  // Acceptor was stopped
         }
+
+        owner_->remove_client_session(this);
     }
 };
 
 class rav::HttpServer::Listener: public std::enable_shared_from_this<Listener> {
   public:
-    std::function<void(boost::asio::ip::tcp::socket socket)> on_accept_callback;
-    std::function<void(boost::system::error_code ec, std::string_view what)> on_error_callback;
-
-    explicit Listener(boost::asio::io_context& io_context) : io_context_(io_context), acceptor_(io_context) {}
+    explicit Listener(boost::asio::io_context& io_context, HttpServer* owner) :
+        io_context_(io_context), owner_(owner), acceptor_(io_context) {
+        RAV_ASSERT(owner != nullptr, "Owner cannot be null");
+    }
 
     boost::system::result<void> start(const boost::asio::ip::tcp::endpoint& endpoint) {
         boost::system::error_code ec;
@@ -159,22 +186,25 @@ class rav::HttpServer::Listener: public std::enable_shared_from_this<Listener> {
         return {};
     }
 
-    void reset() {
-        on_accept_callback = nullptr;
-        on_error_callback = nullptr;
-        if (acceptor_.is_open()) {
+    void set_owner(HttpServer* owner) {
+        owner_ = owner;
+
+        if (owner_ && acceptor_.is_open()) {
             boost::beast::error_code ec;
             acceptor_.close(ec);
             if (ec) {
-                if (on_error_callback) {
-                    on_error_callback(ec, "close");
-                }
+                RAV_ERROR("Error closing acceptor: {}", ec.message());
             }
         }
     }
 
+    boost::asio::ip::tcp::endpoint local_endpoint() const {
+        return acceptor_.local_endpoint();
+    }
+
   private:
     boost::asio::io_context& io_context_;
+    HttpServer* owner_ {};
     boost::asio::ip::tcp::acceptor acceptor_;
 
     void do_accept() {
@@ -182,18 +212,16 @@ class rav::HttpServer::Listener: public std::enable_shared_from_this<Listener> {
     }
 
     void on_accept(const boost::beast::error_code& ec, boost::asio::ip::tcp::socket socket) {
+        if (owner_ == nullptr) {
+            return;  // Acceptor was stopped
+        }
+
         if (ec) {
-            if (on_error_callback) {
-                on_error_callback(ec, "accept error");
-            }
+            owner_->on_listener_error(ec, "accept");
             return;  // To avoid infinite loop
         }
 
-        if (on_error_callback == nullptr) {
-            return;  // Acceptor was stopped, return which should lead to deallocation of this instance
-        }
-
-        on_accept_callback(std::move(socket));
+        owner_->on_accept(std::move(socket));
         do_accept();
     }
 };
@@ -211,45 +239,8 @@ boost::system::result<void> rav::HttpServer::start(const std::string_view host, 
         return ec;
     }
 
-    auto listener = std::make_shared<Listener>(io_context_);
-    listener->on_accept_callback = [this](boost::asio::ip::tcp::socket socket) {
-        auto session = std::make_shared<ClientSession>(std::move(socket));
-        session->on_request_callback = [](boost::beast::http::request<boost::beast::http::string_body> request
-                                       ) -> boost::beast::http::message_generator {
-            auto const bad_request = [&request](boost::beast::string_view why) {
-                boost::beast::http::response<boost::beast::http::string_body> res {
-                    boost::beast::http::status::bad_request, request.version()
-                };
-                res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
-                res.set(boost::beast::http::field::content_type, "text/html");
-                res.keep_alive(request.keep_alive());
-                res.body() = std::string(why);
-                res.prepare_payload();
-                return res;
-            };
-            return {bad_request("Invalid request")};
-        };
-        session->on_error_callback = [](const boost::system::error_code& cb_ec, std::string_view what) {
-            RAV_ERROR("Client session error: {}: {}", what, cb_ec.message());
-        };
-        session->on_close_callback = [this, session] {
-            RAV_DEBUG("Client session closed");
+    auto listener = std::make_shared<Listener>(io_context_, this);
 
-            for (auto it = client_sessions_.begin(); it != client_sessions_.end(); ++it) {
-                if (*it == session) {
-                    (*it)->reset();  // Reset inner
-                    client_sessions_.erase(it);
-                    break;
-                }
-            }
-        };
-        session->start();
-        client_sessions_.push_back(std::move(session));
-    };
-    listener->on_error_callback = [](const boost::system::error_code& cb_ec, std::string_view what) {
-        RAV_ERROR("Listener error: {}: {}", what, cb_ec.message());
-        // TODO: Report error
-    };
     const auto result = listener->start({addr, port});
     if (result.has_error()) {
         return result;
@@ -261,13 +252,85 @@ boost::system::result<void> rav::HttpServer::start(const std::string_view host, 
 }
 
 void rav::HttpServer::stop() {
-    // TODO: Reset listener callback
     if (listener_) {
-        listener_->reset();
+        listener_->set_owner(nullptr);
         listener_.reset();
     }
 
     for (const auto& session : client_sessions_) {
-        session->reset();
+        session->set_owner(nullptr);
     }
+
+    client_sessions_.clear();
+}
+
+boost::asio::ip::tcp::endpoint rav::HttpServer::get_local_endpoint() const {
+    return listener_ ? listener_->local_endpoint() : boost::asio::ip::tcp::endpoint {};
+}
+
+std::string rav::HttpServer::get_address_string() const {
+    const auto endpoint = get_local_endpoint();
+    return endpoint.address().to_string() + ":" + std::to_string(endpoint.port());
+}
+
+size_t rav::HttpServer::get_client_count() const {
+    return client_sessions_.size();
+}
+
+void rav::HttpServer::on_accept(boost::asio::ip::tcp::socket socket) {
+    auto session = std::make_shared<ClientSession>(std::move(socket), this);
+    session->start();
+    RAV_TRACE("Accepted new connection from {}", session->get_remote_address_string());
+    client_sessions_.push_back(std::move(session));
+}
+
+void rav::HttpServer::on_listener_error(const boost::beast::error_code& ec, std::string_view what) const {
+    RAV_ERROR("Listener error: {}: {}", what, ec.message());
+}
+
+void rav::HttpServer::on_client_error(const boost::beast::error_code& ec, std::string_view what) const {
+    if (ec == boost::beast::error::timeout) {
+        RAV_TRACE("Client timeout: {}", ec.message());
+    } else {
+        RAV_ERROR("Client error: {}: {}", what, ec.message());
+    }
+}
+
+boost::beast::http::message_generator
+rav::HttpServer::on_request(boost::beast::http::request<boost::beast::http::string_body> request) {
+    RAV_TRACE("Received request: {} {}", request.method_string(), request.target());
+
+    if (request.method() == boost::beast::http::verb::get && request.target() == "/shutdown") {
+        stop();
+    }
+
+    auto const hello_world = [&request](const boost::beast::string_view why) {
+        boost::beast::http::response<boost::beast::http::string_body> res {
+            boost::beast::http::status::ok, request.version()
+        };
+        res.set(boost::beast::http::field::server, BOOST_BEAST_VERSION_STRING);
+        res.set(boost::beast::http::field::content_type, "text/html");
+        res.keep_alive(request.keep_alive());
+        res.body() = std::string(why);
+        res.prepare_payload();
+        return res;
+    };
+
+    return {hello_world("Hello world")};
+}
+
+void rav::HttpServer::remove_client_session(const ClientSession* session) {
+    client_sessions_.erase(
+        std::remove_if(
+            client_sessions_.begin(), client_sessions_.end(),
+            [session](const auto& s) {
+                if (s.get() == session) {
+                    RAV_TRACE("Removing client session");
+                    return true;
+                }
+                return false;
+            }
+        ),
+        client_sessions_.end()
+    );
 }

@@ -9,9 +9,13 @@
  */
 
 #include "ravennakit/core/log.hpp"
+#include "ravennakit/core/system.hpp"
 #include "ravennakit/core/net/http/http_server.hpp"
 
 int main() {
+    rav::set_log_level_from_env();
+    rav::do_system_checks();
+
     boost::asio::io_context io_context;
 
     // Create a server instance
@@ -23,6 +27,9 @@ int main() {
         RAV_ERROR("Error starting server: {}", result.error().message());
         return 1;
     }
+
+    RAV_INFO("Server started at http://{}", server.get_address_string());
+    RAV_INFO("Visit http://{}/shutdown to stop the server", server.get_address_string());
 
     // Run the io_context to start accepting connections
     io_context.run();
