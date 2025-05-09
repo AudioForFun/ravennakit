@@ -44,13 +44,15 @@ class HttpServer {
      */
     explicit HttpServer(boost::asio::io_context& io_context);
 
+    ~HttpServer();
+
     /**
      * Starts the server on the given host and port.
-     * @param host The host to bind to.
+     * @param bind_address The address to bind to.
      * @param port The port to bind to.
      * @return An error code if the server fails to start, or an empty result if it succeeds.
      */
-    boost::system::result<void> start(std::string_view host, uint16_t port);
+    boost::system::result<void> start(std::string_view bind_address, uint16_t port);
 
     /**
      * Stops the server and closes all client sessions.

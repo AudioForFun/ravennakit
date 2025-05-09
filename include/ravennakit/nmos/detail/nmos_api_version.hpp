@@ -21,8 +21,8 @@ namespace rav::nmos {
  * Represents the version of the NMOS API. Not to be confused with the version of resources.
  */
 struct ApiVersion {
-    int major {0};
-    int minor {0};
+    int16_t major {0};
+    int16_t minor {0};
 
     /**
      * @return  True if the version is valid, false otherwise.
@@ -49,7 +49,7 @@ struct ApiVersion {
             return std::nullopt;
         }
 
-        const auto major = parser.read_int<int>();
+        const auto major = parser.read_int<int16_t>();
         if (!major) {
             return std::nullopt;
         }
@@ -58,7 +58,7 @@ struct ApiVersion {
             return std::nullopt;
         }
 
-        const auto minor = parser.read_int<int>();
+        const auto minor = parser.read_int<int16_t>();
         if (!minor) {
             return std::nullopt;
         }
@@ -67,7 +67,23 @@ struct ApiVersion {
             return std::nullopt;
         }
 
-        return ApiVersion{*major, *minor};
+        return ApiVersion {*major, *minor};
+    }
+
+    static constexpr ApiVersion v1_2() {
+        return {1, 2};
+    }
+
+    static constexpr ApiVersion v1_3() {
+        return {1, 3};
+    }
+
+    friend bool operator==(const ApiVersion& lhs, const ApiVersion& rhs) {
+        return lhs.major == rhs.major && lhs.minor == rhs.minor;
+    }
+
+    friend bool operator!=(const ApiVersion& lhs, const ApiVersion& rhs) {
+        return !(lhs == rhs);
     }
 };
 

@@ -228,13 +228,17 @@ class rav::HttpServer::Listener: public std::enable_shared_from_this<Listener> {
 
 rav::HttpServer::HttpServer(boost::asio::io_context& io_context) : io_context_(io_context) {}
 
-boost::system::result<void> rav::HttpServer::start(const std::string_view host, uint16_t port) {
+rav::HttpServer::~HttpServer() {
+    stop();
+}
+
+boost::system::result<void> rav::HttpServer::start(const std::string_view bind_address, uint16_t port) {
     if (listener_ != nullptr) {
         return boost::asio::error::already_started;
     }
 
     boost::system::error_code ec;
-    auto addr = boost::asio::ip::make_address(host, ec);
+    auto addr = boost::asio::ip::make_address(bind_address, ec);
     if (ec) {
         return ec;
     }
