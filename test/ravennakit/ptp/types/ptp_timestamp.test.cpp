@@ -237,4 +237,9 @@ TEST_CASE("ptp_timestamp") {
             REQUIRE((samples & 0xffffffff) == 0x55667788);
         }
     }
+
+    SECTION("To string") {
+        rav::ptp::Timestamp ts(1'000'000'001);
+        REQUIRE(ts.to_string() == "1.000000001");
+    }
 }

@@ -215,7 +215,7 @@ class StringParser {
 
     /**
      * Tries to read an integer from the string. If successful, the integer is returned, otherwise an empty optional is
-     * returned. If the string starts with spaces, they are skipped before parsing the number.
+     * returned. Leading whitespace characters are automatically ignored when parsing the number
      * @tparam T The type of the integer to read.
      * @return The read integer or an empty optional.
      */
