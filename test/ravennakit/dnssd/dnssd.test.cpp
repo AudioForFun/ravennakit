@@ -113,7 +113,8 @@ TEST_CASE("dnssd | Update a txt record") {
     const auto advertiser = rav::dnssd::Advertiser::create(io_context);
     RAV_ASSERT(advertiser, "Expected a dnssd advertiser");
     const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
-    const auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false, true);
+    // Note: when local_only is true, the txt record update will not trigger a callback
+    const auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false, false);
 
     const auto browser = rav::dnssd::Browser::create(io_context);
     RAV_ASSERT(browser, "Expected a dnssd browser");
