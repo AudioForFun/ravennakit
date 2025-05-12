@@ -54,12 +54,13 @@ class Advertiser {
      * @param txt_record A TXT record to add to the service, consisting of a couple of keys and values.
      * @param auto_rename When true, the name will be automatically renamed if a conflict occurs. If false an
      * events::name_conflict will be emitted.
-     * @param local_only When true, service will only be advertised on the local machine.
+     * @param interface_index The interface index to register the service on. If 0, the service will be registered on
+     * all interfaces and basically means "do the right thing".
      * @throws When an error occurs during registration.
      */
     virtual Id register_service(
         const std::string& reg_type, const char* name, const char* domain, uint16_t port, const TxtRecord& txt_record,
-        bool auto_rename, bool local_only
+        bool auto_rename, std::optional<uint32_t> interface_index
     ) = 0;
 
     /**

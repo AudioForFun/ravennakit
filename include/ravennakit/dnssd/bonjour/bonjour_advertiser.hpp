@@ -32,7 +32,7 @@ class BonjourAdvertiser: public Advertiser {
 
     Id register_service(
         const std::string& reg_type, const char* name, const char* domain, uint16_t port, const TxtRecord& txt_record,
-        bool auto_rename, bool local_only
+        bool auto_rename, std::optional<uint32_t> interface_index
     ) override;
 
     void update_txt_record(Id id, const TxtRecord& txt_record) override;

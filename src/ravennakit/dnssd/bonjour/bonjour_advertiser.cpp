@@ -25,7 +25,7 @@ rav::dnssd::BonjourAdvertiser::BonjourAdvertiser(boost::asio::io_context& io_con
 
 rav::Id rav::dnssd::BonjourAdvertiser::register_service(
     const std::string& reg_type, const char* name, const char* domain, uint16_t port, const TxtRecord& txt_record,
-    const bool auto_rename, const bool local_only
+    const bool auto_rename, std::optional<uint32_t> interface_index
 ) {
     RAV_ASSERT(!reg_type.empty(), "Service type must not be empty");
     RAV_ASSERT(port != 0, "Port must not be 0");
@@ -39,12 +39,12 @@ rav::Id rav::dnssd::BonjourAdvertiser::register_service(
         flags |= kDNSServiceFlagsNoAutoRename;
     }
 
-    if (local_only) {
-        flags |= kDNSServiceInterfaceIndexLocalOnly;
+    if (!interface_index) {
+        interface_index = 0; // Register on all interfaces, "do the right thing".
     }
 
     const auto result = DNSServiceRegister(
-        &service_ref, flags, 0, name, reg_type.c_str(), domain, nullptr, htons(port), record.length(),
+        &service_ref, flags, *interface_index, name, reg_type.c_str(), domain, nullptr, htons(port), record.length(),
         record.bytes_ptr(), register_service_callback, this
     );
 
@@ -118,8 +118,7 @@ void rav::dnssd::BonjourAdvertiser::register_service_callback(
     }
 }
 
-rav::dnssd::BonjourAdvertiser::registered_service*
-rav::dnssd::BonjourAdvertiser::find_registered_service(const Id id) {
+rav::dnssd::BonjourAdvertiser::registered_service* rav::dnssd::BonjourAdvertiser::find_registered_service(const Id id) {
     for (auto& service : registered_services_) {
         if (service.id == id) {
             return &service;

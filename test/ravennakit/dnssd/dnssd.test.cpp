@@ -9,6 +9,7 @@
  */
 
 #include "ravennakit/core/random.hpp"
+#include "ravennakit/core/net/interfaces/network_interface_list.hpp"
 
 #include <catch2/catch_all.hpp>
 
@@ -21,6 +22,25 @@ std::string generate_random_reg_type() {
     auto random_string = rav::Random().generate_random_string(20);
     return fmt::format("_{}._tcp.", random_string);
 }
+
+uint32_t get_loopback_interface_index() {
+    auto* loopback = rav::NetworkInterfaceList::get_system_interfaces().get_loopback_interface();
+
+    if (!loopback) {
+        FAIL("No loopback interface found");
+        return 0;
+    }
+
+    const auto loopback_index = loopback->get_interface_index();
+
+    if (!loopback_index) {
+        FAIL("No loopback interface index found");
+        return 0;
+    }
+
+    return *loopback_index;
+}
+
 }  // namespace
 
 TEST_CASE("dnssd | Browse and advertise") {
@@ -40,6 +60,7 @@ TEST_CASE("dnssd | Browse and advertise") {
 #if !RAV_HAS_DNSSD
         return;
 #endif
+
         boost::asio::io_context io_context;
 
         std::vector<rav::dnssd::ServiceDescription> discovered_services;
@@ -49,7 +70,9 @@ TEST_CASE("dnssd | Browse and advertise") {
         auto advertiser = rav::dnssd::Advertiser::create(io_context);
         REQUIRE(advertiser);
         const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
-        auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, txt_record, false, true);
+        auto id = advertiser->register_service(
+            reg_type, "test", nullptr, 1234, txt_record, false, get_loopback_interface_index()
+        );
 
         rav::dnssd::Browser::Subscriber subscriber;
         subscriber->on<rav::dnssd::Browser::ServiceDiscovered>([&](const auto& event) {
@@ -96,8 +119,6 @@ TEST_CASE("dnssd | Browse and advertise") {
         REQUIRE(removed_services.at(0).txt == txt_record);
         REQUIRE_FALSE(removed_services.at(0).host_target.empty());
     }
-
-    SECTION("Update a txt record") {}
 }
 
 TEST_CASE("dnssd | Update a txt record") {
@@ -113,7 +134,8 @@ TEST_CASE("dnssd | Update a txt record") {
     const auto advertiser = rav::dnssd::Advertiser::create(io_context);
     RAV_ASSERT(advertiser, "Expected a dnssd advertiser");
     const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
-    const auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false, true);
+    const auto id =
+        advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false, get_loopback_interface_index());
 
     const auto browser = rav::dnssd::Browser::create(io_context);
     RAV_ASSERT(browser, "Expected a dnssd browser");

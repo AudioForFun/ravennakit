@@ -25,6 +25,15 @@ rav::NetworkInterfaceList::get_interface(const NetworkInterface::Identifier& ide
     return nullptr;
 }
 
+const rav::NetworkInterface* rav::NetworkInterfaceList::get_loopback_interface() const {
+    for (auto& interface : interfaces_) {
+        if (interface.get_type() == NetworkInterface::Type::loopback) {
+            return &interface;
+        }
+    }
+    return nullptr;
+}
+
 const rav::NetworkInterface* rav::NetworkInterfaceList::find_by_string(const std::string& search_string) const {
     if (search_string.empty()) {
         return nullptr;

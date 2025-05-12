@@ -37,6 +37,12 @@ class NetworkInterfaceList {
     [[nodiscard]] const NetworkInterface* get_interface(const NetworkInterface::Identifier& identifier) const;
 
     /**
+     * @return The first network interface that is a loopback interface. If no loopback interface is found, nullptr is
+     * returned.
+     */
+    [[nodiscard]] const NetworkInterface* get_loopback_interface() const;
+
+    /**
      * Finds a network interface by the given string. The string can be the identifier, display name, description, MAC
      * or an ip address. It's meant as convenience function for the user. The search is case-insensitive.
      * @param search_string The string to search for.
@@ -72,7 +78,7 @@ class NetworkInterfaceList {
     static const NetworkInterfaceList& get_system_interfaces(bool force_refresh = false);
 
   private:
-    static constexpr auto k_ttl = std::chrono::seconds(5); // TTL for the cache
+    static constexpr auto k_ttl = std::chrono::seconds(5);  // TTL for the cache
     std::vector<NetworkInterface> interfaces_;
 
     /**
