@@ -107,7 +107,7 @@ class BonjourBrowser: public Browser {
     };
 
     explicit BonjourBrowser(boost::asio::io_context& io_context);
-    void browse_for(const std::string& service) override;
+    void browse_for(const std::string& service, std::optional<uint32_t> interface_index) override;
     [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
     [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
 

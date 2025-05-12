@@ -59,7 +59,7 @@ class MockBrowser final: public Browser {
     void mock_removing_service(const std::string& fullname);
 
     // dnssd_browser overrides
-    void browse_for(const std::string& service_type) override;
+    void browse_for(const std::string& service_type, std::optional<uint32_t> interface_index) override;
     [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
     [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
     void subscribe(Subscriber& s) override;

@@ -40,7 +40,7 @@ rav::Id rav::dnssd::BonjourAdvertiser::register_service(
     }
 
     if (!interface_index) {
-        interface_index = 0; // Register on all interfaces, "do the right thing".
+        interface_index = kDNSServiceInterfaceIndexAny; // Register on all interfaces, "do the right thing".
     }
 
     const auto result = DNSServiceRegister(

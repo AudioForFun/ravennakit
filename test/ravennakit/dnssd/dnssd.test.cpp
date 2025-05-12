@@ -91,7 +91,7 @@ TEST_CASE("dnssd | Browse and advertise") {
         REQUIRE(browser);
 
         browser->subscribe(subscriber);
-        browser->browse_for(reg_type);
+        browser->browse_for(reg_type, get_loopback_interface_index());
 
         io_context.run_for(std::chrono::seconds(10));
 
@@ -154,7 +154,7 @@ TEST_CASE("dnssd | Update a txt record") {
     });
 
     browser->subscribe(subscriber);
-    browser->browse_for(reg_type);
+    browser->browse_for(reg_type, get_loopback_interface_index());
 
     io_context.run_for(std::chrono::seconds(10));
 

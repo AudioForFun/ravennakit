@@ -51,7 +51,7 @@ int main(const int argc, char* argv[]) {
     });
 
     browser->subscribe(subscriber);
-    browser->browse_for(argv[1]);
+    browser->browse_for(argv[1], {});
 
     std::thread io_context_thread([&io_context] {
         io_context.run();

@@ -29,7 +29,7 @@ TEST_CASE("mock_browser") {
         });
         browser.subscribe(subscriber);
 
-        browser.browse_for("reg_type");
+        browser.browse_for("reg_type", {});
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         browser.mock_removing_service("fullname");
 
@@ -57,7 +57,7 @@ TEST_CASE("mock_browser") {
         });
         browser.subscribe(subscriber);
 
-        browser.browse_for("reg_type");
+        browser.browse_for("reg_type", {});
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         browser.mock_resolved_service("fullname", "host_target", 1234, {{"key", "value"}});
 
@@ -87,7 +87,7 @@ TEST_CASE("mock_browser") {
         });
         browser.subscribe(subscriber);
 
-        browser.browse_for("reg_type");
+        browser.browse_for("reg_type", {});
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         browser.mock_resolved_service("fullname", "host_target", 1234, {});
         browser.mock_adding_address("fullname", "address", 1);
@@ -107,7 +107,7 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Find service") {
-        browser.browse_for("reg_type");
+        browser.browse_for("reg_type", {});
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         REQUIRE(browser.find_service("name") == nullptr);
 
@@ -124,8 +124,8 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Get services") {
-        browser.browse_for("reg_type");
-        browser.browse_for("reg_type2");
+        browser.browse_for("reg_type", {});
+        browser.browse_for("reg_type2", {});
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         browser.mock_discovering_service("fullname2", "name2", "reg_type2", "domain2");
         boost::asio::post(io_context, [&] {
@@ -144,7 +144,7 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Subscribe") {
-        browser.browse_for("reg_type");
+        browser.browse_for("reg_type", {});
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
         browser.mock_resolved_service("fullname", "host_target", 1234, {});
         browser.mock_adding_address("fullname", "address", 1);
@@ -213,7 +213,7 @@ TEST_CASE("mock_browser") {
             REQUIRE_THROWS(io_context.run());
         }
 
-        browser.browse_for("reg_type");
+        browser.browse_for("reg_type", {});
 
         SECTION("Interface not found") {
             browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
@@ -230,7 +230,7 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Browse for error cases") {
-        browser.browse_for("reg_type");
-        REQUIRE_THROWS(browser.browse_for("reg_type"));
+        browser.browse_for("reg_type", {});
+        REQUIRE_THROWS(browser.browse_for("reg_type", {}));
     }
 }

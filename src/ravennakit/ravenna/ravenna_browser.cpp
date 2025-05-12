@@ -49,8 +49,8 @@ rav::RavennaBrowser::RavennaBrowser(boost::asio::io_context& io_context) {
     });
     session_browser_->subscribe(session_browser_subscriber_);
 
-    node_browser_->browse_for("_rtsp._tcp,_ravenna");
-    session_browser_->browse_for("_rtsp._tcp,_ravenna_session");
+    node_browser_->browse_for("_rtsp._tcp,_ravenna", {});
+    session_browser_->browse_for("_rtsp._tcp,_ravenna_session", {});
 }
 
 const rav::dnssd::ServiceDescription* rav::RavennaBrowser::find_session(const std::string& session_name) const {

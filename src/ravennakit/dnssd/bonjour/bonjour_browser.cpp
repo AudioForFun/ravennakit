@@ -239,7 +239,7 @@ void rav::dnssd::BonjourBrowser::browse_reply(
     }
 }
 
-void rav::dnssd::BonjourBrowser::browse_for(const std::string& service) {
+void rav::dnssd::BonjourBrowser::browse_for(const std::string& service, std::optional<uint32_t> interface_index) {
     DNSServiceRef browsing_service_ref = shared_connection_.service_ref();
 
     if (browsing_service_ref == nullptr) {
@@ -251,10 +251,14 @@ void rav::dnssd::BonjourBrowser::browse_for(const std::string& service) {
         RAV_THROW_EXCEPTION("Already browsing for service \"{}\"", service);
     }
 
+    if (!interface_index) {
+        interface_index = kDNSServiceInterfaceIndexAny; // Browse on all interfaces
+    }
+
     DNSSD_THROW_IF_ERROR(
         DNSServiceBrowse(
-            &browsing_service_ref, kDNSServiceFlagsShareConnection, kDNSServiceInterfaceIndexAny, service.c_str(),
-            nullptr, browse_reply, this
+            &browsing_service_ref, kDNSServiceFlagsShareConnection, *interface_index, service.c_str(), nullptr,
+            browse_reply, this
         ),
         "Browse error"
     );
@@ -263,8 +267,7 @@ void rav::dnssd::BonjourBrowser::browse_for(const std::string& service) {
     // From here the serviceRef is under RAII inside the ScopedDnsServiceRef class
 }
 
-const rav::dnssd::ServiceDescription* rav::dnssd::BonjourBrowser::find_service(const std::string& service_name
-) const {
+const rav::dnssd::ServiceDescription* rav::dnssd::BonjourBrowser::find_service(const std::string& service_name) const {
     for (auto& service : services_) {
         if (service.second.description().name == service_name) {
             return &service.second.description();

@@ -94,7 +94,7 @@ void rav::dnssd::MockBrowser::mock_removing_service(const std::string& fullname)
     });
 }
 
-void rav::dnssd::MockBrowser::browse_for(const std::string& service_type) {
+void rav::dnssd::MockBrowser::browse_for(const std::string& service_type, std::optional<uint32_t> interface_index) {
     auto [it, inserted] = browsers_.insert(service_type);
     if (!inserted) {
         RAV_THROW_EXCEPTION("Service type already being browsed for: {}", service_type);
