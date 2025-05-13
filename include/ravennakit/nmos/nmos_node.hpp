@@ -104,6 +104,11 @@ class Node {
      */
     void stop();
 
+    /**
+     * @return The local (listening) endpoint of the server.
+     */
+    [[nodiscard]] boost::asio::ip::tcp::endpoint get_local_endpoint() const;
+
   private:
     HttpServer http_server_;
     boost::uuids::uuid uuid_ = boost::uuids::random_generator()();

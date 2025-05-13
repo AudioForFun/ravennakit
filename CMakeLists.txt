@@ -57,6 +57,7 @@ find_package(boost_beast CONFIG REQUIRED)
 find_package(boost_url CONFIG REQUIRED)
 find_package(boost_circular_buffer CONFIG REQUIRED)
 find_package(boost_lockfree CONFIG REQUIRED)
+find_package(boost_json CONFIG REQUIRED)
 
 target_compile_definitions(Boost::asio INTERFACE BOOST_ASIO_NO_DEPRECATED)
 
@@ -107,6 +108,7 @@ target_link_libraries(ravennakit
         Boost::url
         Boost::circular_buffer
         Boost::lockfree
+        Boost::json
 )
 
 if (APPLE)

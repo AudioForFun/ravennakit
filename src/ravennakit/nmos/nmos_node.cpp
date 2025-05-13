@@ -60,6 +60,10 @@ void rav::nmos::Node::stop() {
     http_server_.stop();
 }
 
+boost::asio::ip::tcp::endpoint rav::nmos::Node::get_local_endpoint() const {
+    return http_server_.get_local_endpoint();
+}
+
 std::ostream& rav::nmos::operator<<(std::ostream& os, const Node::Error error) {
     switch (error) {
         case Node::Error::incompatible_discover_mode:

@@ -9,6 +9,7 @@
  */
 
 #include "ravennakit/nmos/nmos_node.hpp"
+#include "ravennakit/nmos/detail/nmos_test_api_client.hpp"
 
 #include <catch2/catch_all.hpp>
 
@@ -112,4 +113,52 @@ TEST_CASE("nmos::Node") {
             REQUIRE(config.validate() == rav::nmos::Node::Error::incompatible_discover_mode);
         }
     }
+}
+
+namespace {
+
+class NodeRunner {
+  public:
+    ~NodeRunner() {
+        boost::asio::dispatch(io_context_, [this] {
+            node_.stop();
+        });
+
+        thread_.join();
+    }
+
+    boost::asio::ip::tcp::endpoint start() {
+        REQUIRE(node_.start("127.0.0.1", 0));
+        auto endpoint = node_.get_local_endpoint();
+
+        thread_ = std::thread([this]() {
+            io_context_.run();
+        });
+
+        return endpoint;
+    }
+
+  private:
+    boost::asio::io_context io_context_;
+    rav::nmos::Node node_ {io_context_};
+    std::thread thread_;
+};
+
+}  // namespace
+
+TEST_CASE("Test nmos::Node against NMOS Test API") {
+    auto url = rav::nmos::NmosTestApiClient::get_test_api_url_from_env();
+    if (!url) {
+        FAIL("NMOS_TEST_API_URL environment variable is not set");
+    }
+
+    boost::asio::io_context io_context;
+    rav::nmos::NmosTestApiClient client(io_context, *url);
+    REQUIRE(client.test_connection());
+
+    NodeRunner runner;
+    auto endpoint = runner.start();
+
+    auto result = client.run_test_suite("IS-04-01", endpoint.address().to_string(), endpoint.port(), {"v1.3"});
+    REQUIRE(result);
 }
