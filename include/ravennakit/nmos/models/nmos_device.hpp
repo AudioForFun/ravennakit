@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "nmos_resource.hpp"
+#include "nmos_resource_core.hpp"
 
 #include <boost/uuid.hpp>
 #include <boost/json/conversion.hpp>
@@ -18,7 +18,7 @@
 
 namespace rav::nmos {
 
-struct Device: Resource {
+struct Device: ResourceCore {
     static constexpr auto k_type_generic = "urn:x-nmos:device:generic";
     static constexpr auto k_type_pipeline = "urn:x-nmos:device:pipeline";
 
@@ -52,7 +52,7 @@ inline void tag_invoke(const boost::json::value_from_tag&, boost::json::value& j
 }
 
 inline void tag_invoke(const boost::json::value_from_tag& tag, boost::json::value& jv, const Device& device) {
-    tag_invoke(tag, jv, static_cast<const Resource&>(device));
+    tag_invoke(tag, jv, static_cast<const ResourceCore&>(device));
     auto& object = jv.as_object();
     object["type"] = device.type;
     object["node_id"] = to_string(device.node_id);

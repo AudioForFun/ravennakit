@@ -12,14 +12,14 @@
 
 #include "nmos_clock_internal.hpp"
 #include "nmos_clock_ptp.hpp"
-#include "nmos_resource.hpp"
+#include "nmos_resource_core.hpp"
 
 namespace rav::nmos {
 
 /**
  * Describes the Node and the services which run on it.
  */
-struct Self: Resource {
+struct Self: ResourceCore {
     struct Endpoint {
         /// IP address or hostname which the Node API is running on
         std::string host;
@@ -92,7 +92,7 @@ inline void tag_invoke(const boost::json::value_from_tag&, boost::json::value& j
 }
 
 inline void tag_invoke(const boost::json::value_from_tag& tag, boost::json::value& jv, const Self& self) {
-    tag_invoke(tag, jv, static_cast<const Resource&>(self));
+    tag_invoke(tag, jv, static_cast<const ResourceCore&>(self));
     auto& object = jv.as_object();
     object["href"] = self.href;
     object["caps"] = boost::json::object();

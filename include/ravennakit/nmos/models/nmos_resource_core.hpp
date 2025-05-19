@@ -21,7 +21,7 @@
 
 namespace rav::nmos {
 
-struct Resource {
+struct ResourceCore {
     /// Globally unique identifier for the resource
     boost::uuids::uuid id;
 
@@ -40,7 +40,7 @@ struct Resource {
     std::map<std::string, std::vector<std::string>> tags;
 };
 
-inline void tag_invoke(const boost::json::value_from_tag&, boost::json::value& jv, const Resource& resource) {
+inline void tag_invoke(const boost::json::value_from_tag&, boost::json::value& jv, const ResourceCore& resource) {
     jv = {
         {"id", boost::uuids::to_string(resource.id)},
         {"version", resource.version.to_string()},
