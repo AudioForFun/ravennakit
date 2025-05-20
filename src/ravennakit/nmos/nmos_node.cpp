@@ -329,6 +329,47 @@ rav::nmos::Node::Node(boost::asio::io_context& io_context) : http_server_(io_con
         }
     );
 
+    http_server_.get(
+        "/x-nmos/node/{version}/receivers",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_version_from_parameters(res, params)) {
+                return;
+            }
+
+            ok_response(res, boost::json::serialize(boost::json::value_from(receivers_)));
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/node/{version}/receivers/{receiver_id}",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_version_from_parameters(res, params)) {
+                return;
+            }
+
+            const auto* uuid_str = params.get("receiver_id");
+            if (uuid_str == nullptr) {
+                set_error_response(res, boost::beast::http::status::bad_request, "Invalid receiver ID", "Receiver ID is empty");
+                return;
+            }
+
+            const auto uuid = boost::lexical_cast<boost::uuids::uuid>(*uuid_str);
+            if (uuid.is_nil()) {
+                set_error_response(
+                    res, boost::beast::http::status::bad_request, "Invalid receiver ID", "Receiver ID is not a valid UUID"
+                );
+                return;
+            }
+
+            if (auto* receiver = get_receiver(uuid)) {
+                ok_response(res, boost::json::serialize(boost::json::value_from(*receiver)));
+                return;
+            }
+
+            set_error_response(res, boost::beast::http::status::not_found, "Not found", "Receiver not found");
+        }
+    );
+
     http_server_.get("/**", [](const HttpServer::Request&, HttpServer::Response& res, PathMatcher::Parameters&) {
         set_error_response(res, boost::beast::http::status::not_found, "Not found", "No matching route");
     });
@@ -414,6 +455,34 @@ const rav::nmos::Flow* rav::nmos::Node::get_flow(boost::uuids::uuid uuid) const 
         return flow.id() == uuid;
     });
     if (it != flows_.end()) {
+        return &*it;
+    }
+    return nullptr;
+}
+
+bool rav::nmos::Node::set_receiver(Receiver receiver) {
+    if (receiver.id().is_nil()) {
+        RAV_ERROR("Flow ID should not be nil");
+        return false;
+    }
+
+    for (auto& existing_receiver : receivers_) {
+        if (existing_receiver.id() == receiver.id()) {
+            existing_receiver = std::move(receiver);
+            return true;
+        }
+    }
+
+    receivers_.push_back(std::move(receiver));
+
+    return true;
+}
+
+const rav::nmos::Receiver* rav::nmos::Node::get_receiver(boost::uuids::uuid uuid) const {
+    const auto it = std::find_if(receivers_.begin(), receivers_.end(), [uuid](const Receiver& receiver) {
+        return receiver.id() == uuid;
+    });
+    if (it != receivers_.end()) {
         return &*it;
     }
     return nullptr;

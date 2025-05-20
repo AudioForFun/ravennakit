@@ -26,7 +26,7 @@ int main() {
         return 1;
     }
 
-    // Add devices to the node
+    // Devices
     for (uint32_t i = 0; i < 5; ++i) {
         rav::nmos::Device::Control control;
         control.href = fmt::format("http://localhost:{}", i + 6000);
@@ -41,6 +41,7 @@ int main() {
         std::ignore = node.set_device(device);
     }
 
+    // Flows
     for (uint32_t i = 0; i < 5; ++i) {
         rav::nmos::FlowAudioRaw flow;
         flow.id = boost::uuids::random_generator()();
@@ -53,6 +54,19 @@ int main() {
         flow.source_id = boost::uuids::random_generator()(); // TODO: Assign a valid source ID
         flow.device_id = boost::uuids::random_generator()(); // TODO: Assign a valid device ID
         std::ignore = node.set_flow({flow});
+    }
+
+    // Receivers
+    for (uint32_t i = 0; i < 5; ++i) {
+        rav::nmos::ReceiverAudio receiver;
+        receiver.id = boost::uuids::random_generator()();
+        receiver.label = fmt::format("Receiver {} label", i + 1);
+        receiver.description = fmt::format("Receiver {} desc", i + 1);
+        receiver.version = rav::nmos::Version {i + 1, (i + 1) * 1000};
+        receiver.device_id = boost::uuids::random_generator()(); // TODO: Assign a valid device ID
+        receiver.transport = "urn:x-nmos:transport:rtp";
+        receiver.caps.media_types = {"audio/L24", "audio/L20", "audio/L16", "audio/L8", "audio/PCM"};
+        std::ignore = node.set_receiver({receiver});
     }
 
     std::string url =
