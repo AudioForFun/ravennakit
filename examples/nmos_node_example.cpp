@@ -69,6 +69,18 @@ int main() {
         std::ignore = node.set_receiver({receiver});
     }
 
+    // Senders
+    for (uint32_t i = 0; i < 5; ++i) {
+        rav::nmos::Sender sender;
+        sender.id = boost::uuids::random_generator()();
+        sender.label = fmt::format("Sender {} label", i + 1);
+        sender.description = fmt::format("Sender {} desc", i + 1);
+        sender.version = rav::nmos::Version {i + 1, (i + 1) * 1000};
+        sender.device_id = boost::uuids::random_generator()(); // TODO: Assign a valid device ID
+        sender.transport = "urn:x-nmos:transport:rtp";
+        std::ignore = node.set_sender(sender);
+    }
+
     std::string url =
         fmt::format("http://{}:{}", node.get_local_endpoint().address().to_string(), node.get_local_endpoint().port());
 

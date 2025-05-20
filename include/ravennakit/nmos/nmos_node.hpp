@@ -16,6 +16,7 @@
 #include "models/nmos_flow_audio_raw.hpp"
 #include "models/nmos_receiver.hpp"
 #include "models/nmos_self.hpp"
+#include "models/nmos_sender.hpp"
 #include "ravennakit/core/net/http/http_server.hpp"
 
 #include <boost/uuid.hpp>
@@ -156,6 +157,20 @@ class Node {
     [[nodiscard]] const Receiver* get_receiver(boost::uuids::uuid uuid) const;
 
     /**
+     * Adds the given sender to the node or updates an existing sender if it already exists (based on the uuid).
+     * @param sender The sender to set.
+     * @return True if the sender was set successfully, false otherwise.
+     */
+    [[nodiscard]] bool set_sender(Sender sender);
+
+    /**
+     * Finds a sender by its uuid.
+     * @param uuid The uuid of the sender to find.
+     * @return A pointer to the sender if found, or nullptr if not found.
+     */
+    [[nodiscard]] const Sender* get_sender(boost::uuids::uuid uuid) const;
+
+    /**
      * @return The uuid of the node.
      */
     [[nodiscard]] const boost::uuids::uuid& get_uuid() const;
@@ -171,6 +186,7 @@ class Node {
     std::vector<Device> devices_;
     std::vector<Flow> flows_;
     std::vector<Receiver> receivers_;
+    std::vector<Sender> senders_;
 };
 
 /// Overload the output stream operator for the Node::Error enum class

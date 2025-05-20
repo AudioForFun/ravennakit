@@ -349,14 +349,17 @@ rav::nmos::Node::Node(boost::asio::io_context& io_context) : http_server_(io_con
 
             const auto* uuid_str = params.get("receiver_id");
             if (uuid_str == nullptr) {
-                set_error_response(res, boost::beast::http::status::bad_request, "Invalid receiver ID", "Receiver ID is empty");
+                set_error_response(
+                    res, boost::beast::http::status::bad_request, "Invalid receiver ID", "Receiver ID is empty"
+                );
                 return;
             }
 
             const auto uuid = boost::lexical_cast<boost::uuids::uuid>(*uuid_str);
             if (uuid.is_nil()) {
                 set_error_response(
-                    res, boost::beast::http::status::bad_request, "Invalid receiver ID", "Receiver ID is not a valid UUID"
+                    res, boost::beast::http::status::bad_request, "Invalid receiver ID",
+                    "Receiver ID is not a valid UUID"
                 );
                 return;
             }
@@ -367,6 +370,49 @@ rav::nmos::Node::Node(boost::asio::io_context& io_context) : http_server_(io_con
             }
 
             set_error_response(res, boost::beast::http::status::not_found, "Not found", "Receiver not found");
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/node/{version}/senders",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_version_from_parameters(res, params)) {
+                return;
+            }
+
+            ok_response(res, boost::json::serialize(boost::json::value_from(senders_)));
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/node/{version}/senders/{sender_id}",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_version_from_parameters(res, params)) {
+                return;
+            }
+
+            const auto* uuid_str = params.get("sender_id");
+            if (uuid_str == nullptr) {
+                set_error_response(
+                    res, boost::beast::http::status::bad_request, "Invalid sender ID", "Sender ID is empty"
+                );
+                return;
+            }
+
+            const auto uuid = boost::lexical_cast<boost::uuids::uuid>(*uuid_str);
+            if (uuid.is_nil()) {
+                set_error_response(
+                    res, boost::beast::http::status::bad_request, "Invalid sender ID", "Sender ID is not a valid UUID"
+                );
+                return;
+            }
+
+            if (auto* sender = get_sender(uuid)) {
+                ok_response(res, boost::json::serialize(boost::json::value_from(*sender)));
+                return;
+            }
+
+            set_error_response(res, boost::beast::http::status::not_found, "Not found", "Sender not found");
         }
     );
 
@@ -418,7 +464,6 @@ bool rav::nmos::Node::set_device(Device device) {
     }
 
     devices_.push_back(std::move(device));
-
     return true;
 }
 
@@ -446,7 +491,6 @@ bool rav::nmos::Node::set_flow(Flow flow) {
     }
 
     flows_.push_back(std::move(flow));
-
     return true;
 }
 
@@ -474,7 +518,6 @@ bool rav::nmos::Node::set_receiver(Receiver receiver) {
     }
 
     receivers_.push_back(std::move(receiver));
-
     return true;
 }
 
@@ -483,6 +526,33 @@ const rav::nmos::Receiver* rav::nmos::Node::get_receiver(boost::uuids::uuid uuid
         return receiver.id() == uuid;
     });
     if (it != receivers_.end()) {
+        return &*it;
+    }
+    return nullptr;
+}
+
+bool rav::nmos::Node::set_sender(Sender sender) {
+    if (sender.id.is_nil()) {
+        RAV_ERROR("Flow ID should not be nil");
+        return false;
+    }
+
+    for (auto& existing_sender : senders_) {
+        if (existing_sender.id == sender.id) {
+            existing_sender = std::move(sender);
+            return true;
+        }
+    }
+
+    senders_.push_back(std::move(sender));
+    return true;
+}
+
+const rav::nmos::Sender* rav::nmos::Node::get_sender(boost::uuids::uuid uuid) const {
+    const auto it = std::find_if(senders_.begin(), senders_.end(), [uuid](const Sender& sender) {
+        return sender.id == uuid;
+    });
+    if (it != senders_.end()) {
         return &*it;
     }
     return nullptr;
