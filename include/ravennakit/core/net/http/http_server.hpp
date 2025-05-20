@@ -92,6 +92,15 @@ class HttpServer {
         router_.insert(boost::beast::http::verb::post, pattern, std::move(handler));
     }
 
+    /**
+     * Adds a handler for OPTIONS requests to the given pattern.
+     * @param pattern The pattern to match against the request path.
+     * @param handler The handler to call when a request matches the pattern.
+     */
+    void options(const std::string_view pattern, Handler handler) {
+        router_.insert(boost::beast::http::verb::options, pattern, std::move(handler));
+    }
+
   private:
     class Listener;
     std::shared_ptr<Listener> listener_;

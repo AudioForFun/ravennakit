@@ -373,6 +373,34 @@ rav::nmos::Node::Node(boost::asio::io_context& io_context) : http_server_(io_con
         }
     );
 
+    http_server_.options(
+        "/x-nmos/node/{version}/receivers/{receiver_id}/target",
+        [](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_version_from_parameters(res, params)) {
+                return;
+            }
+
+            const auto* uuid_str = params.get("receiver_id");
+            if (uuid_str == nullptr) {
+                set_error_response(
+                    res, boost::beast::http::status::bad_request, "Invalid receiver ID", "Receiver ID is empty"
+                );
+                return;
+            }
+
+            const auto uuid = boost::lexical_cast<boost::uuids::uuid>(*uuid_str);
+            if (uuid.is_nil()) {
+                set_error_response(
+                    res, boost::beast::http::status::bad_request, "Invalid receiver ID",
+                    "Receiver ID is not a valid UUID"
+                );
+                return;
+            }
+
+            ok_response(res, {});
+        }
+    );
+
     http_server_.get(
         "/x-nmos/node/{version}/senders",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
