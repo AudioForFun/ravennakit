@@ -10,7 +10,7 @@
 
 #include "ravennakit/rtp/rtp_audio_receiver.hpp"
 
-#include "ravennakit/core/exclusive_access_guard.hpp"
+#include "ravennakit/core/util/exclusive_access_guard.hpp"
 #include "ravennakit/core/audio/audio_data.hpp"
 #include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/types/int24.hpp"

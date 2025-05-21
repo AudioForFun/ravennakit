@@ -11,7 +11,7 @@
 #pragma once
 
 #include "ravenna_rtsp_client.hpp"
-#include "ravennakit/core/exclusive_access_guard.hpp"
+#include "ravennakit/core/util/exclusive_access_guard.hpp"
 #include "ravennakit/core/containers/fifo_buffer.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/rtp/rtp_audio_receiver.hpp"

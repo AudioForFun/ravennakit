@@ -17,7 +17,7 @@
 #include "detail/rtp_packet_stats.hpp"
 #include "detail/rtp_receiver.hpp"
 #include "ravennakit/aes67/aes67_constants.hpp"
-#include "ravennakit/core/exclusive_access_guard.hpp"
+#include "ravennakit/core/util/exclusive_access_guard.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
 #include "ravennakit/core/sync/rcu.hpp"
