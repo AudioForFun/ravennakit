@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "ravennakit/core/subscriber_list.hpp"
+#include "ravennakit/core/events/subscriber_list.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 
 namespace rav {

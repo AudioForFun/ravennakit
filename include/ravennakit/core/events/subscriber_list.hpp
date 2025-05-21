@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "assert.hpp"
+#include "../assert.hpp"
 
 #include <functional>
 #include <vector>

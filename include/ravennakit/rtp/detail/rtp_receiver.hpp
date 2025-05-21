@@ -13,7 +13,7 @@
 #include "../rtcp_packet_view.hpp"
 #include "../rtp_packet_view.hpp"
 #include "rtp_session.hpp"
-#include "ravennakit/core/subscriber_list.hpp"
+#include "ravennakit/core/events/subscriber_list.hpp"
 #include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
 #include "ravennakit/core/net/sockets/udp_receiver.hpp"
 
