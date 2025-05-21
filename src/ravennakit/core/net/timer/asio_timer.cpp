@@ -41,7 +41,6 @@ class rav::AsioTimer::Impl: public std::enable_shared_from_this<Impl> {
         timer_.expires_after(duration);
         timer_.async_wait([self = shared_from_this(), duration](const boost::system::error_code& ec) {
             if (ec == boost::asio::error::operation_aborted) {
-                RAV_TRACE("Timer operation aborted");
                 return;
             }
             if (ec) {
@@ -65,6 +64,7 @@ class rav::AsioTimer::Impl: public std::enable_shared_from_this<Impl> {
             }
 
             callback(ec);
+
             if (repeat) {
                 self->async_wait(duration);
             }
