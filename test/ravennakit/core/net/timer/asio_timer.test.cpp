@@ -49,7 +49,7 @@ TEST_CASE("AsioTimer") {
         int callback_count = 0;
         int creation_count = 0;
         for (auto i = 0; i < times; ++i) {
-            boost::asio::post(io_context, [&] {
+            boost::asio::post(io_context, [&io_context, &callback_count, &creation_count, i] {
                 const rav::AsioTimer timer(io_context);
                 timer.start(std::chrono::milliseconds(i), [&](const boost::system::error_code&) {
                     callback_count++;
@@ -59,7 +59,7 @@ TEST_CASE("AsioTimer") {
         }
 
         for (auto i = 0; i < times; ++i) {
-            boost::asio::post(io_context, [&] {
+            boost::asio::post(io_context, [&io_context, &callback_count, &creation_count, i] {
                 const rav::AsioTimer timer(io_context);
                 timer.once(std::chrono::milliseconds(i), [&](const boost::system::error_code&) {
                     callback_count++;
