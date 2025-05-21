@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dnssd_service_description.hpp"
-#include "ravennakit/core/events.hpp"
+#include "../core/events/event_emitter.hpp"
 #include "ravennakit/core/util/linked_node.hpp"
 
 #include <boost/asio.hpp>
@@ -78,7 +78,7 @@ class Browser {
     };
 
     using Subscriber = LinkedNode<
-        Events<ServiceDiscovered, ServiceRemoved, ServiceResolved, AddressAdded, AddressRemoved, BrowseError>>;
+        EventEmitter<ServiceDiscovered, ServiceRemoved, ServiceResolved, AddressAdded, AddressRemoved, BrowseError>>;
 
     virtual ~Browser() = default;
 

@@ -11,7 +11,7 @@
 #pragma once
 
 #include "ravenna_browser.hpp"
-#include "ravennakit/core/events.hpp"
+#include "../core/events/event_emitter.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 #include "ravennakit/rtsp/rtsp_client.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"

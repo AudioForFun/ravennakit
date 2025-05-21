@@ -23,7 +23,7 @@ namespace rav::rtsp {
  */
 class Client final: Connection::Subscriber {
   public:
-    using EventsType = Events<Connection::ConnectEvent, Connection::ResponseEvent, Connection::RequestEvent>;
+    using EventsType = EventEmitter<Connection::ConnectEvent, Connection::ResponseEvent, Connection::RequestEvent>;
 
     explicit Client(boost::asio::io_context& io_context);
     ~Client() override;

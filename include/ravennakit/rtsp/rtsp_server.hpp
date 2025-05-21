@@ -13,7 +13,7 @@
 #include "detail/rtsp_connection.hpp"
 #include "detail/rtsp_request.hpp"
 #include "detail/rtsp_response.hpp"
-#include "ravennakit/core/events.hpp"
+#include "../core/events/event_emitter.hpp"
 
 #include <boost/asio.hpp>
 #include <unordered_map>

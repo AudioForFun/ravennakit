@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "dnssd_service_description.hpp"
-#include "ravennakit/core/events.hpp"
+#include "../core/events/event_emitter.hpp"
 #include "../core/util/linked_node.hpp"
 #include "ravennakit/core/result.hpp"
 #include "ravennakit/core/util/id.hpp"
@@ -33,7 +33,7 @@ class Advertiser {
         const char* name;
     };
 
-    using Subscriber = LinkedNode<Events<AdvertiserError, NameConflict>>;
+    using Subscriber = LinkedNode<EventEmitter<AdvertiserError, NameConflict>>;
 
     explicit Advertiser() = default;
     virtual ~Advertiser() = default;

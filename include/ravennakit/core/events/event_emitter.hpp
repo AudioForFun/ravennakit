@@ -19,16 +19,16 @@ namespace rav {
  * @tparam E The events to be held.
  */
 template<class... E>
-class Events {
+class EventEmitter {
   public:
-    Events() = default;
-    virtual ~Events() = default;
+    EventEmitter() = default;
+    virtual ~EventEmitter() = default;
 
-    Events(const Events&) = delete;
-    Events& operator=(const Events&) = delete;
+    EventEmitter(const EventEmitter&) = delete;
+    EventEmitter& operator=(const EventEmitter&) = delete;
 
-    Events(Events&&) = default;
-    Events& operator=(Events&&) = default;
+    EventEmitter(EventEmitter&&) = default;
+    EventEmitter& operator=(EventEmitter&&) = default;
 
     template<class Type>
     using handler = std::function<void(const Type&)>;
