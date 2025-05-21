@@ -50,7 +50,8 @@ class rav::AsioTimer::Impl: public std::enable_shared_from_this<Impl> {
             }
 
             Callback callback;
-            bool repeat;
+            bool repeat {};
+
             {
                 std::lock_guard lock(self->mutex_);
                 if (self->callback_ == nullptr) {
@@ -58,14 +59,15 @@ class rav::AsioTimer::Impl: public std::enable_shared_from_this<Impl> {
                 }
                 callback = self->callback_;
                 repeat = self->repeating_;
+                if (!repeat) {
+                    self->callback_ = nullptr;
+                }
             }
+
             callback(ec);
-            std::lock_guard lock(self->mutex_);
-            if (!repeat) {
-                self->callback_ = nullptr;
-                return;
+            if (repeat) {
+                self->async_wait(duration);
             }
-            self->async_wait(duration);
         });
     }
 };
