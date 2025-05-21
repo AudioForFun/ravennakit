@@ -21,13 +21,13 @@ void rav::dnssd::MockBrowser::mock_discovering_service(
         if (browsers_.find(reg_type) == browsers_.end()) {
             RAV_THROW_EXCEPTION("Not browsing for reg_type: {}", reg_type);
         }
-        dnssd::ServiceDescription service;
+        ServiceDescription service;
         service.fullname = fullname;
         service.name = name;
         service.reg_type = reg_type;
         service.domain = domain;
         const auto [it, inserted] = services_.emplace(fullname, service);
-        emit(ServiceDiscovered {it->second});
+        on_service_discovered(it->second);
     });
 }
 
@@ -42,7 +42,7 @@ void rav::dnssd::MockBrowser::mock_resolved_service(
         it->second.host_target = host_target;
         it->second.port = port;
         it->second.txt = txt_record;
-        emit(ServiceResolved {it->second});
+        on_service_resolved(it->second);
     });
 }
 
@@ -55,7 +55,7 @@ void rav::dnssd::MockBrowser::mock_adding_address(
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
         }
         it->second.interfaces[interface_index].insert(address);
-        emit(AddressAdded {it->second, address, interface_index});
+        on_address_added(it->second, address, interface_index);
     });
 }
 
@@ -79,7 +79,7 @@ void rav::dnssd::MockBrowser::mock_removing_address(
         if (iface->second.empty()) {
             it->second.interfaces.erase(iface);
         }
-        emit(AddressRemoved {it->second, address, interface_index});
+        on_address_removed(it->second, address, interface_index);
     });
 }
 
@@ -89,7 +89,7 @@ void rav::dnssd::MockBrowser::mock_removing_service(const std::string& fullname)
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
         }
-        emit(ServiceRemoved {it->second});
+        on_service_removed(it->second);
         services_.erase(it);
     });
 }

@@ -24,29 +24,24 @@ int main(const int argc, char* argv[]) {
         exit(-1);
     }
 
-    browser->on<rav::dnssd::Browser::ServiceDiscovered>([](const auto& event) {
-        RAV_INFO("Service discovered: {}", event.description.to_string());
-    });
-
-    browser->on<rav::dnssd::Browser::ServiceRemoved>([](const auto& event) {
-        RAV_INFO("Service removed: {}", event.description.to_string());
-    });
-
-    browser->on<rav::dnssd::Browser::ServiceResolved>([](const auto& event) {
-        RAV_INFO("Service resolved: {}", event.description.to_string());
-    });
-
-    browser->on<rav::dnssd::Browser::AddressAdded>([](const auto& event) {
-        RAV_INFO("Address added ({}): {}", event.address, event.description.to_string());
-    });
-
-    browser->on<rav::dnssd::Browser::AddressRemoved>([](const auto& event) {
-        RAV_INFO("Address removed ({}): {}", event.address, event.description.to_string());
-    });
-
-    browser->on<rav::dnssd::Browser::BrowseError>([](const auto& event) {
-        RAV_ERROR("{}", event.error_message);
-    });
+    browser->on_service_discovered = [](const auto& desc) {
+        RAV_INFO("Service discovered: {}", desc.to_string());
+    };
+    browser->on_service_removed = [](const auto& desc) {
+        RAV_INFO("Service removed: {}", desc.to_string());
+    };
+    browser->on_service_resolved = [](const auto& desc) {
+        RAV_INFO("Service resolved: {}", desc.to_string());
+    };
+    browser->on_address_added = [](const auto& desc, const auto& address, const auto& interface_index) {
+        RAV_INFO("Address added ({}): {} on interface {}", address, desc.to_string(), interface_index);
+    };
+    browser->on_address_removed = [](const auto& desc, const auto& address, const auto& interface_index) {
+        RAV_INFO("Address removed ({}): {} on interface {}", address, desc.to_string(), interface_index);
+    };
+    browser->on_error = [](const auto& error_message){
+        RAV_ERROR("Error: {}", error_message);
+    };
 
     browser->browse_for(argv[1]);
 

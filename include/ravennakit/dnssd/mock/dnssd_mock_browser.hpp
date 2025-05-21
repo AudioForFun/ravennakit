@@ -67,16 +67,6 @@ class MockBrowser final: public Browser {
     boost::asio::io_context& io_context_;
     std::map<std::string, ServiceDescription> services_;  // fullname -> service description
     std::set<std::string> browsers_; // reg_type
-
-    /**
-     * Emits fiven event to all subscribers.
-     * @tparam T The type of the event.
-     * @param event The event to emit.
-     */
-    template<class T>
-    void emit(const T& event) {
-        event_emitter_.emit(event);
-    }
 };
 
 }  // namespace rav::dnssd

@@ -54,17 +54,17 @@ TEST_CASE("dnssd | Browse and advertise") {
         auto browser = rav::dnssd::Browser::create(io_context);
         REQUIRE(browser);
 
-        browser->on<rav::dnssd::Browser::ServiceDiscovered>([&](const auto& event) {
-            discovered_services.push_back(event.description);
-        });
-        browser->on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-            resolved_services.push_back(event.description);
+        browser->on_service_discovered = [&](const auto& desc) {
+            discovered_services.push_back(desc);
+        };
+        browser->on_service_resolved = [&](const auto& desc) {
+            resolved_services.push_back(desc);
             advertiser->unregister_service(id);
-        });
-        browser->on<rav::dnssd::Browser::ServiceRemoved>([&](const auto& event) {
-            removed_services.push_back(event.description);
+        };
+        browser->on_service_removed = [&](const auto& desc) {
+            removed_services.push_back(desc);
             io_context.stop();
-        });
+        };
 
         browser->browse_for(reg_type);
 
@@ -117,17 +117,17 @@ TEST_CASE("dnssd | Update a txt record") {
     const auto browser = rav::dnssd::Browser::create(io_context);
     RAV_ASSERT(browser, "Expected a dnssd browser");
     bool updated = false;
-    browser->on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-        if (event.description.txt.empty() && !updated) {
+    browser->on_service_resolved = [&](const auto& desc) {
+        if (desc.txt.empty() && !updated) {
             advertiser->update_txt_record(id, txt_record);
             updated = true;
         }
 
-        if (event.description.txt == txt_record) {
-            updated_service = event.description;
+        if (desc.txt == txt_record) {
+            updated_service = desc;
             io_context.stop();
         }
-    });
+    };
 
     browser->browse_for(reg_type);
 

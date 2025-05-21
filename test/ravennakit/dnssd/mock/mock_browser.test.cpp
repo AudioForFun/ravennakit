@@ -20,12 +20,12 @@ TEST_CASE("mock_browser") {
         std::vector<rav::dnssd::ServiceDescription> discovered_services;
         std::vector<rav::dnssd::ServiceDescription> removed_services;
 
-        browser.on<rav::dnssd::Browser::ServiceDiscovered>([&](const auto& event) {
-            discovered_services.push_back(event.description);
-        });
-        browser.on<rav::dnssd::Browser::ServiceRemoved>([&](const auto& event) {
-            removed_services.push_back(event.description);
-        });
+        browser.on_service_discovered = [&](const auto& desc) {
+            discovered_services.push_back(desc);
+        };
+        browser.on_service_removed = [&](const auto& desc) {
+            removed_services.push_back(desc);
+        };
 
         browser.browse_for("reg_type");
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
@@ -49,9 +49,9 @@ TEST_CASE("mock_browser") {
     SECTION("Mock resolving a service") {
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
 
-        browser.on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-            resolved_services.push_back(event.description);
-        });
+        browser.on_service_resolved = [&](const auto& desc) {
+            resolved_services.push_back(desc);
+        };
 
         browser.browse_for("reg_type");
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
@@ -74,12 +74,18 @@ TEST_CASE("mock_browser") {
         std::vector<rav::dnssd::ServiceDescription> addresses_added;
         std::vector<rav::dnssd::ServiceDescription> addresses_removed;
 
-        browser.on<rav::dnssd::Browser::AddressAdded>([&](const auto& event) {
-            addresses_added.push_back(event.description);
-        });
-        browser.on<rav::dnssd::Browser::AddressRemoved>([&](const auto& event) {
-            addresses_removed.push_back(event.description);
-        });
+        browser.on_address_added = [&](const rav::dnssd::ServiceDescription& desc, const std::string& address,
+                                       size_t interface_index) {
+            std::ignore = address;
+            std::ignore = interface_index;
+            addresses_added.push_back(desc);
+        };
+        browser.on_address_removed = [&](const rav::dnssd::ServiceDescription& desc, const std::string& address,
+                                         size_t interface_index) {
+            std::ignore = address;
+            std::ignore = interface_index;
+            addresses_removed.push_back(desc);
+        };
 
         browser.browse_for("reg_type");
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
@@ -142,15 +148,18 @@ TEST_CASE("mock_browser") {
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
         std::vector<rav::dnssd::ServiceDescription> addresses_added;
 
-        browser.on<rav::dnssd::Browser::ServiceDiscovered>([&](const auto& event) {
-            discovered_services.push_back(event.description);
-        });
-        browser.on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-            resolved_services.push_back(event.description);
-        });
-        browser.on<rav::dnssd::Browser::AddressAdded>([&](const auto& event) {
-            addresses_added.push_back(event.description);
-        });
+        browser.on_service_discovered = [&](const auto& desc) {
+            discovered_services.push_back(desc);
+        };
+        browser.on_service_resolved = [&](const auto& desc) {
+            resolved_services.push_back(desc);
+        };
+        browser.on_address_added = [&](const rav::dnssd::ServiceDescription& desc, const std::string& address,
+                                       size_t interface_index) {
+            std::ignore = address;
+            std::ignore = interface_index;
+            addresses_added.push_back(desc);
+        };
 
         browser.browse_for("reg_type");
         browser.mock_discovering_service("fullname", "name", "reg_type", "domain");

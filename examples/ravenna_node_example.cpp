@@ -30,20 +30,20 @@ struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::S
         node.unsubscribe(this).wait();
     }
 
-    void ravenna_node_discovered(const rav::dnssd::Browser::ServiceResolved& event) override {
-        RAV_INFO("RAVENNA node discovered: {}", event.description.to_string());
+    void ravenna_node_discovered(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA node discovered: {}", desc.to_string());
     }
 
-    void ravenna_node_removed(const rav::dnssd::Browser::ServiceRemoved& event) override {
-        RAV_INFO("RAVENNA node removed: {}", event.description.to_string());
+    void ravenna_node_removed(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA node removed: {}", desc.to_string());
     }
 
-    void ravenna_session_discovered(const rav::dnssd::Browser::ServiceResolved& event) override {
-        RAV_INFO("RAVENNA session discovered: {}", event.description.to_string());
+    void ravenna_session_discovered(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA session discovered: {}", desc.to_string());
     }
 
-    void ravenna_session_removed(const rav::dnssd::Browser::ServiceRemoved& event) override {
-        RAV_INFO("RAVENNA session removed: {}", event.description.to_string());
+    void ravenna_session_removed(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA session removed: {}", desc.to_string());
     }
 
     void ravenna_sender_added(const rav::RavennaSender& sender) override {

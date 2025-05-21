@@ -139,16 +139,6 @@ class BonjourBrowser: public Browser {
         DNSServiceRef browse_service_ref, DNSServiceFlags flags, uint32_t interface_index,
         DNSServiceErrorType error_code, const char* name, const char* type, const char* domain, void* context
     );
-
-    /**
-     * Emits given event to all subscribers.
-     * @tparam T The type of the event.
-     * @param event The event to emit.
-     */
-    template<class T>
-    void emit(T&& event) {
-        event_emitter_.emit(std::forward<T>(event));
-    }
 };
 
 }  // namespace rav::dnssd
