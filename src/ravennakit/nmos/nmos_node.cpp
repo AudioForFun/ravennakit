@@ -640,13 +640,15 @@ bool rav::nmos::Node::connect_to_registry() {
 }
 
 bool rav::nmos::Node::connect_to_registry(std::string_view host_target, uint16_t port) {
+    host_target = string_remove_suffix(host_target, ".");
+
     RAV_TRACE("Try to register with registry at {}:{}", host_target, port);
 
     Rollback rollback([this] {
         state_.failed_connection_attempts++;
     });
 
-    http_client_.set_host(string_remove_suffix(host_target, "."), std::to_string(port));
+    http_client_.set_host(host_target, std::to_string(port));
 
     // Note the next section will block the io_context until this function returns. The reason for this is that the
     // requests are being made synchronously, because once the first request errors out, we want to stop sending more
