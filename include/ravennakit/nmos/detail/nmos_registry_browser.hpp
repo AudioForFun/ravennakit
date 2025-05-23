@@ -61,7 +61,7 @@ class RegistryBrowser {
             // Subscribe to future updates
             multicast_browser_->on_service_discovered = [](const dnssd::ServiceDescription&) {};
             cb(find_most_suitable_registry());
-            unicast_browser_.reset();
+            unicast_browser_.reset(); // No longer needed after one query
         });
     }
 

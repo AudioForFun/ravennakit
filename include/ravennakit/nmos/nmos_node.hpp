@@ -101,6 +101,10 @@ class Node {
         DiscoverMode discover_mode {};
         /// The port of the local node api.
         uint16_t node_api_port {};
+        /// Whether the node is registered with a registry or not.
+        bool is_registered {};
+        /// Failed connection attempts
+        uint32_t failed_connection_attempts {};
     };
 
     explicit Node(boost::asio::io_context& io_context, const ConfigurationUpdate& configuration = {});
@@ -120,8 +124,9 @@ class Node {
      * Updates the configuration of the NMOS node. Only takes into account the fields in the configuration that are set.
      * This allows updating only a subset of the configuration.
      * @param update The configuration to update.
+     * @param force_update Whether to force the update even if the configuration didn't change.
      */
-    boost::system::result<void, Error> set_configuration(const ConfigurationUpdate& update);
+    [[nodiscard]] boost::system::result<void, Error> set_configuration(const ConfigurationUpdate& update, bool force_update = false);
 
     /**
      * @return The local (listening) endpoint of the server.
@@ -209,6 +214,9 @@ class Node {
     [[nodiscard]] const std::vector<Device>& get_devices() const;
 
   private:
+    static constexpr uint8_t k_max_failed_heartbeats = 5;
+    static constexpr auto k_heartbeat_interval = std::chrono::seconds(5);
+
     boost::asio::io_context& io_context_;
     Configuration configuration_;
     State state_;
@@ -223,6 +231,7 @@ class Node {
     std::vector<Sender> senders_;
     std::vector<Source> sources_;
 
+    uint8_t failed_heartbeat_count_ = 0;
     AsioTimer heartbeat_timer_;  // Keep below http_client_ to avoid dangling reference
 
     /**
@@ -236,12 +245,13 @@ class Node {
      */
     void stop_internal();
 
-    void register_with_registry(std::string_view host_target, uint16_t port);
+    [[nodiscard]] bool connect_to_registry();
+    [[nodiscard]] bool connect_to_registry(std::string_view host_target, uint16_t port);
     [[nodiscard]] bool post_resource(const char* type, const boost::json::value& resource) const;
-    void send_heartbeat() const;
+    void send_heartbeat();
 
-    bool add_receiver_to_device(const Receiver& receiver);
-    bool add_sender_to_device(const Sender& sender);
+    [[nodiscard]] bool add_receiver_to_device(const Receiver& receiver);
+    [[nodiscard]] bool add_sender_to_device(const Sender& sender);
 };
 
 /// Overload the output stream operator for the Node::Error enum class
