@@ -9,7 +9,6 @@
  */
 
 #include "ravennakit/nmos/nmos_node.hpp"
-#include "ravennakit/nmos/detail/nmos_test_api_client.hpp"
 
 #include <catch2/catch_all.hpp>
 

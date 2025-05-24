@@ -92,33 +92,6 @@ class HttpClient {
     void set_host(std::string_view host, std::string_view service, std::string_view target = {});
 
     /**
-     * Synchronous GET request to the target of the URL, or the root if no target is specified.
-     * @return The response from the server, which may contain an error.
-     */
-    [[nodiscard]] boost::system::result<http::response<http::string_body>> get() const;
-
-    /**
-     * Synchronous GET request.
-     * @param target The target to request.
-     * @return The response from the server, which may contain an error.
-     */
-    [[nodiscard]] boost::system::result<http::response<http::string_body>> get(std::string_view target) const;
-
-    /**
-     * Synchronous GET request to the target of the URL, or the root if no target is specified.
-     * @return The response from the server, which may contain an error.
-     */
-    [[nodiscard]] boost::system::result<http::response<http::string_body>>
-    post(std::string body, std::string_view content_type = "application/json") const;
-
-    /**
-     * Synchronous GET request to the target of the URL, or the root if no target is specified.
-     * @return The response from the server, which may contain an error.
-     */
-    [[nodiscard]] boost::system::result<http::response<http::string_body>>
-    post(std::string_view target, std::string body, std::string_view content_type = "application/json") const;
-
-    /**
      * Asynchronous GET request to the target of the URL, or the root if no target is specified.
      * The callback's lifetime will be tied to the io_context so make sure referenced objects are kept alive until the
      * callback is called.
@@ -149,22 +122,6 @@ class HttpClient {
         std::string_view target, std::string body, CallbackType callback,
         std::string_view content_type = "application/json"
     ) const;
-
-    /**
-     * Synchronous request.
-     * @param io_context The io_context to use for the request.
-     * @param method The HTTP method to use for the request.
-     * @param host The host to request.
-     * @param service The service (port) to use for the request.
-     * @param target The target to request.
-     * @param body The body to send with the request.
-     * @param  content_type
-     * @return The response from the server, which may contain an error.
-     */
-    [[nodiscard]] static boost::system::result<http::response<http::string_body>> request(
-        boost::asio::io_context& io_context, http::verb method, std::string_view host, std::string_view service,
-        std::string_view target, std::string body, std::string_view content_type = "application/json"
-    );
 
     /**
      * Asynchronous request.

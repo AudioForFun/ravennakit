@@ -16,38 +16,6 @@
 #include <fmt/format.h>
 
 TEST_CASE("HttpClient") {
-    SECTION("Shorthand get") {
-        boost::asio::io_context io_context;
-        const auto response = rav::HttpClient(io_context, "http://httpbin.cpp.al/get").get();
-        io_context.run();
-        REQUIRE(response.has_value());
-        REQUIRE(response->result() == boost::beast::http::status::ok);
-        REQUIRE(!response->body().empty());
-
-        auto json_body = nlohmann::json::parse(response->body());
-        REQUIRE(json_body.at("url") == "http://httpbin.cpp.al/get");
-    }
-
-    SECTION("Shorthand get without path") {
-        boost::asio::io_context io_context;
-        const auto response = rav::HttpClient(io_context, "http://httpbin.cpp.al").get();
-        io_context.run();
-        REQUIRE(response.has_value());
-        REQUIRE(response->result() == boost::beast::http::status::ok);
-    }
-
-    SECTION("Shorthand get but with different path") {
-        boost::asio::io_context io_context;
-        const auto response = rav::HttpClient(io_context, "http://httpbin.cpp.al/get").get("/anything");
-        io_context.run();
-        REQUIRE(response.has_value());
-        REQUIRE(response->result() == boost::beast::http::status::ok);
-
-        auto body = response->body();
-        auto json_body = nlohmann::json::parse(response->body());
-        REQUIRE(json_body.at("url") == "http://httpbin.cpp.al/anything");
-    }
-
     SECTION("Shorthand get_async") {
         boost::asio::io_context io_context;
 
@@ -69,23 +37,6 @@ TEST_CASE("HttpClient") {
         io_context.run();
 
         REQUIRE(counter == 1);
-    }
-
-    SECTION("Shorthand post") {
-        boost::asio::io_context io_context;
-
-        nlohmann::json json_body;
-        json_body["test"] = 1;
-        const auto response = rav::HttpClient(io_context, "http://httpbin.cpp.al/post").post(json_body.dump());
-        io_context.run();
-        REQUIRE(response.has_value());
-        REQUIRE(response->result() == boost::beast::http::status::ok);
-        REQUIRE(response->body().size() > 0);
-
-        auto body = response->body();
-        auto json_body_returned = nlohmann::json::parse(response->body());
-        REQUIRE(json_body_returned.at("json") == json_body);
-        REQUIRE(json_body_returned.at("url") == "http://httpbin.cpp.al/post");
     }
 
     SECTION("Shorthand post_async") {

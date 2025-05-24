@@ -63,26 +63,6 @@ rav::HttpClient::HttpClient(boost::asio::io_context& io_context, const std::stri
     target_ = parsed_url.path();
 }
 
-boost::system::result<boost::beast::http::response<boost::beast::http::basic_string_body<char>>>
-rav::HttpClient::get(const std::string_view target) const {
-    return request(io_context_, http::verb::get, host_, service_, target, {}, {});
-}
-
-boost::system::result<boost::beast::http::response<boost::beast::http::basic_string_body<char>>>
-rav::HttpClient::get() const {
-    return request(io_context_, http::verb::get, host_, service_, target_, {}, {});
-}
-
-boost::system::result<boost::beast::http::response<boost::beast::http::basic_string_body<char>>>
-rav::HttpClient::post(std::string body, const std::string_view content_type) const {
-    return request(io_context_, http::verb::post, host_, service_, target_, std::move(body), content_type);
-}
-
-boost::system::result<boost::beast::http::response<boost::beast::http::basic_string_body<char>>>
-rav::HttpClient::post(const std::string_view target, std::string body, const std::string_view content_type) const {
-    return request(io_context_, http::verb::post, host_, service_, target, std::move(body), content_type);
-}
-
 void rav::HttpClient::get_async(const std::string_view target, CallbackType callback) const {
     request_async(io_context_, http::verb::get, host_, service_, target, {}, {}, std::move(callback));
 }
@@ -103,58 +83,6 @@ void rav::HttpClient::post_async(
 
 void rav::HttpClient::get_async(CallbackType callback) const {
     request_async(io_context_, http::verb::get, host_, service_, target_, {}, {}, std::move(callback));
-}
-
-boost::system::result<boost::beast::http::response<boost::beast::http::basic_string_body<char>>>
-rav::HttpClient::request(
-    boost::asio::io_context& io_context, http::verb method, std::string_view host, std::string_view service,
-    std::string_view target, std::string body, std::string_view content_type
-) {
-    RAV_ASSERT(!host.empty(), "Host cannot be empty");
-
-    boost::asio::ip::tcp::resolver resolver(io_context);
-    boost::beast::tcp_stream stream(io_context);
-
-    boost::beast::error_code ec;
-    auto const results = resolver.resolve(host, service.empty() ? k_default_port : service, ec);
-    if (ec) {
-        return ec;
-    }
-
-    stream.connect(results, ec);
-    if (ec) {
-        return ec;
-    }
-
-    auto request = http::request<http::string_body>(method, target.empty() ? "/" : target, 11);
-    request.set(http::field::host, host);
-    request.set(http::field::user_agent, BOOST_BEAST_VERSION_STRING);
-    request.set(http::field::accept, "*/*");
-    if (!body.empty()) {
-        request.set(http::field::content_type, content_type);
-        request.body() = std::move(body);
-        request.prepare_payload();
-    }
-
-    http::write(stream, request, ec);
-    if (ec) {
-        return ec;
-    }
-
-    boost::beast::flat_buffer buffer;
-    http::response<http::string_body> response;
-    http::read(stream, buffer, response, ec);
-    if (ec) {
-        return ec;
-    }
-
-    stream.socket().shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-
-    if (ec && ec != boost::beast::errc::not_connected) {
-        return ec;
-    }
-
-    return response;
 }
 
 void rav::HttpClient::request_async(
