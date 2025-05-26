@@ -42,9 +42,7 @@ rav::HttpClient::~HttpClient() {
 }
 
 void rav::HttpClient::set_host(const boost::urls::url& url) {
-    host_ = url.host();
-    service_ = url.port();
-    target_ = url.path();
+    set_host(url.host(), url.port(), url.path());
 }
 
 void rav::HttpClient::set_host(const std::string_view url) {
@@ -55,6 +53,13 @@ void rav::HttpClient::set_host(const std::string_view url) {
 void rav::HttpClient::set_host(
     const std::string_view host, const std::string_view service, const std::string_view target
 ) {
+    if (host == host_ && service == service_ && target == target_) {
+        return;  // No change, no need to reset the session.
+    }
+    if (session_) {
+        session_->clear_owner();  // Clear the owner to avoid dangling pointer issues.
+        session_.reset();         // Reset the session to create a new one on the next request.
+    }
     host_ = host;
     service_ = service;
     target_ = target;
@@ -73,18 +78,10 @@ void rav::HttpClient::get_async(const std::string_view target, CallbackType call
     request_async(http::verb::get, target, {}, {}, std::move(callback));
 }
 
-void rav::HttpClient::post_async(std::string body, CallbackType callback, const std::string_view content_type) {
-    request_async(http::verb::post, target_, std::move(body), content_type, std::move(callback));
-}
-
 void rav::HttpClient::post_async(
     const std::string_view target, std::string body, CallbackType callback, const std::string_view content_type
 ) {
     request_async(http::verb::post, target, std::move(body), content_type, std::move(callback));
-}
-
-void rav::HttpClient::get_async(CallbackType callback) {
-    request_async(http::verb::get, target_, {}, {}, std::move(callback));
 }
 
 void rav::HttpClient::request_async(
@@ -107,7 +104,6 @@ void rav::HttpClient::request_async(
 
     if (!session_) {
         session_ = std::make_shared<Session>(io_context_, this);
-        fmt::print("HttpClient: Created new session for {}:{}\n", host_, service_.empty() ? k_default_port : service_);
     }
 
     session_->send_requests();
@@ -134,10 +130,6 @@ void rav::HttpClient::Session::clear_owner() {
 
 void rav::HttpClient::Session::async_connect() {
     RAV_ASSERT(owner_ != nullptr, "HttpClient::Session must have an owner");
-    fmt::print(
-        "HttpClient::Session: Resolving {}:{}\n", owner_->host_,
-        owner_->service_.empty() ? k_default_port : owner_->service_
-    );
     resolver_.async_resolve(
         owner_->host_, owner_->service_.empty() ? k_default_port : owner_->service_,
         boost::beast::bind_front_handler(&Session::on_resolve, shared_from_this())
@@ -252,11 +244,15 @@ void rav::HttpClient::Session::on_read(boost::beast::error_code ec, std::size_t 
         return;
     }
 
-    if (const auto& cb = owner_->requests_.front().second) {
+    // Move the callback function so that the lifetime is extended to until the callback returned, in case requests are
+    // cleared through cancel_outstanding_requests.
+    if (const auto cb = std::move(owner_->requests_.front().second)) {
         cb(response_);
     }
 
-    owner_->requests_.pop();
+    if (!owner_->requests_.empty()) {
+        owner_->requests_.pop();
+    }
 
     if (!response_.keep_alive()) {
         // Gracefully close the socket

@@ -94,14 +94,6 @@ class HttpClient {
     void set_host(std::string_view host, std::string_view service, std::string_view target = {});
 
     /**
-     * Asynchronous GET request to the target of the URL, or the root if no target is specified.
-     * The callback's lifetime will be tied to the io_context so make sure referenced objects are kept alive until the
-     * callback is called.
-     * @param callback The callback to call when the request is complete.
-     */
-    void get_async(CallbackType callback);
-
-    /**
      * Asynchronous GET request.
      * The callback's lifetime will be tied to the io_context so make sure referenced objects are kept alive until the
      * callback is called.
@@ -109,12 +101,6 @@ class HttpClient {
      * @param callback The callback to call when the request is complete.
      */
     void get_async(std::string_view target, CallbackType callback);
-
-    /**
-     * Synchronous POST request to the target of the URL, or the root if no target is specified.
-     * @return The response from the server, which may contain an error.
-     */
-    void post_async(std::string body, CallbackType callback, std::string_view content_type = "application/json");
 
     /**
      * Synchronous POST request to the target of the URL, or the root if no target is specified.
@@ -141,7 +127,7 @@ class HttpClient {
     /**
      * Clears all scheduled requests if there are any. Otherwise this function has no effect.
      */
-    void clear_scheduled_requests() {
+    void cancel_outstanding_requests() {
         requests_ = {};
     }
 

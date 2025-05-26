@@ -16,7 +16,7 @@
 #include <fmt/format.h>
 
 TEST_CASE("HttpClient") {
-    SECTION("Shorthand get_async") {
+    SECTION("get_async") {
         boost::asio::io_context io_context;
 
         int counter = 0;
@@ -33,27 +33,27 @@ TEST_CASE("HttpClient") {
                 counter++;
             };
 
-        rav::HttpClient client(io_context, "http://httpbin.cpp.al/get");
-        client.get_async(token);
+        rav::HttpClient client(io_context, "http://httpbin.cpp.al");
+        client.get_async("/get", token);
         io_context.run();
 
         REQUIRE(counter == 1);
     }
 
-    SECTION("Shorthand post_async") {
+    SECTION("post_async") {
         boost::asio::io_context io_context;
 
         static constexpr auto num_requests = 5;
         int counter = 0;
 
-        rav::HttpClient client(io_context, "http://httpbin.cpp.al/post");
+        rav::HttpClient client(io_context, "http://httpbin.cpp.al");
 
         for (auto i = 0; i < num_requests; ++i) {
             nlohmann::json json_body;
             json_body["test"] = i + 1;
 
             client.post_async(
-                json_body.dump(),
+                "/post", json_body.dump(),
                 [&counter, json_body](
                     const boost::system::result<boost::beast::http::response<boost::beast::http::string_body>>& response
                 ) {
@@ -73,5 +73,40 @@ TEST_CASE("HttpClient") {
         io_context.run();
 
         REQUIRE(counter == num_requests);
+    }
+
+    SECTION("cancel_outstanding_requests") {
+        boost::asio::io_context io_context;
+
+        int counter = 0;
+
+        rav::HttpClient client(io_context, "http://httpbin.cpp.al");
+
+        for (auto i = 0; i < 100; ++i) {
+            nlohmann::json json_body;
+            json_body["test"] = i + 1;
+
+            client.post_async(
+                "/post", json_body.dump(),
+                [&counter, &client, json_body](
+                    const boost::system::result<boost::beast::http::response<boost::beast::http::string_body>>& response
+                ) {
+                    REQUIRE(response.has_value());
+                    REQUIRE(response->result() == boost::beast::http::status::ok);
+                    REQUIRE(!response->body().empty());
+
+                    auto body = response->body();
+                    auto json_body_returned = nlohmann::json::parse(response->body());
+                    REQUIRE(json_body_returned.at("json") == json_body);
+                    REQUIRE(json_body_returned.at("url") == "http://httpbin.cpp.al/post");
+                    client.cancel_outstanding_requests();  // Cancel all requests after the first one
+                    counter++;
+                }
+            );
+        }
+
+        io_context.run();
+
+        REQUIRE(counter == 1);
     }
 }
