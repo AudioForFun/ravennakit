@@ -196,6 +196,12 @@ class HttpClient {
     std::string service_;
     std::queue<std::pair<http::request<http::string_body>, CallbackType>> requests_;
     std::shared_ptr<Session> session_;
+
+    void remove_first_request() {
+        if (!requests_.empty()) {
+            requests_.pop();
+        }
+    }
 };
 
 }  // namespace rav

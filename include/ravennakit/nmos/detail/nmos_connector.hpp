@@ -14,6 +14,7 @@
 #include "nmos_discover_mode.hpp"
 #include "nmos_operating_mode.hpp"
 #include "nmos_registry_browser.hpp"
+#include "ravennakit/core/uri.hpp"
 #include "ravennakit/core/net/http/http_client.hpp"
 #include "ravennakit/core/util/safe_function.hpp"
 #include "ravennakit/core/util/todo.hpp"
@@ -51,52 +52,11 @@ class Connector {
         const std::string& registry_address
     ) {
         operation_mode_ = operation_mode;
+        discover_mode_ = discover_mode;
         api_version_ = api_version;
+        registry_address_ = registry_address;
         selected_registry_.reset();
-
-        timer_.stop();
-
-        if (discover_mode == DiscoverMode::manual) {
-            RAV_ASSERT(
-                operation_mode == OperationMode::registered, "When connecting manually only registered mode is allowed"
-            );
-
-            if (registry_address.empty()) {
-                RAV_ERROR("Registry address is empty");
-                return;
-            }
-
-            const boost::urls::url_view url(registry_address);
-            // connect_to_registry_async(url.host(), url.port_number());
-            // TODO: connect to registry using the provided address
-            return;
-        }
-
-        if (operation_mode == OperationMode::p2p) {
-            selected_registry_.reset();
-            registry_browser_.stop();
-            set_status(Status::p2p);
-            return;
-        }
-
-        // All other cases require a timeout to wait for the registry to be discovered
-
-        registry_browser_.on_registry_discovered.reset();
-        registry_browser_.start(discover_mode, api_version);
-
-        timer_.once(k_default_timeout, [this] {
-            // Subscribe to future registry discoveries
-            registry_browser_.on_registry_discovered = [this](const dnssd::ServiceDescription& desc) {
-                handle_registry_discovered(desc);
-            };
-            if (const auto reg = registry_browser_.find_most_suitable_registry()) {
-                select_registry(*reg);
-            } else if (operation_mode_ == OperationMode::registered_p2p) {
-                set_status(Status::p2p);
-            } else {
-                set_status(Status::idle);
-            }
-        });
+        start();
     }
 
     void stop() {
@@ -119,14 +79,76 @@ class Connector {
         http_client_.cancel_outstanding_requests();
     }
 
+    /**
+     * Tries to reconnect to the NMOS registry.
+     */
+    void try_reconnect() {
+        connect_to_registry_async();
+    }
+
   private:
     OperationMode operation_mode_ = OperationMode::registered_p2p;
+    DiscoverMode discover_mode_ = DiscoverMode::mdns;
     ApiVersion api_version_ = ApiVersion::v1_3();
+    std::string registry_address_;
     Status status_ = Status::idle;
     std::optional<dnssd::ServiceDescription> selected_registry_;
     RegistryBrowser registry_browser_;
     HttpClient http_client_;
     AsioTimer timer_;
+
+    void start() {
+        timer_.stop();
+
+        if (discover_mode_ == DiscoverMode::manual) {
+            RAV_ASSERT(
+                operation_mode_ == OperationMode::registered, "When connecting manually only registered mode is allowed"
+            );
+
+            if (registry_address_.empty()) {
+                RAV_ERROR("Registry address is empty");
+                return;
+            }
+
+            const boost::urls::url_view url(registry_address_);
+            const auto host = url.host();
+            const auto port = url.port();
+            if (host.empty() || port.empty()) {
+                RAV_ERROR(
+                    "Invalid registry address: {} (should be in the form of: scheme://host:port)", registry_address_
+                );
+                return;
+            }
+            connect_to_registry_async(host, port);
+            return;
+        }
+
+        if (operation_mode_ == OperationMode::p2p) {
+            selected_registry_.reset();
+            registry_browser_.stop();
+            set_status(Status::p2p);
+            return;
+        }
+
+        // All other cases require a timeout to wait for the registry to be discovered
+
+        registry_browser_.on_registry_discovered.reset();
+        registry_browser_.start(discover_mode_, api_version_);
+
+        timer_.once(k_default_timeout, [this] {
+            // Subscribe to future registry discoveries
+            registry_browser_.on_registry_discovered = [this](const dnssd::ServiceDescription& desc) {
+                handle_registry_discovered(desc);
+            };
+            if (const auto reg = registry_browser_.find_most_suitable_registry()) {
+                select_registry(*reg);
+            } else if (operation_mode_ == OperationMode::registered_p2p) {
+                set_status(Status::p2p);
+            } else {
+                set_status(Status::idle);
+            }
+        });
+    }
 
     void handle_registry_discovered(const dnssd::ServiceDescription& desc) {
         RAV_INFO("Discovered NMOS registry: {}", desc.to_string());
@@ -141,20 +163,23 @@ class Connector {
             return false;  // Already connected to this registry
         }
         selected_registry_ = desc;
-        connect_to_registry_async();
+        connect_to_registry_async(selected_registry_->host_target, std::to_string(selected_registry_->port));
         return true;  // Successfully selected a new registry
     }
 
+    void connect_to_registry_async(const std::string_view host, const std::string_view service) {
+        http_client_.set_host(host, service);
+        connect_to_registry_async();
+    }
+
     void connect_to_registry_async() {
-        if (!selected_registry_.has_value()) {
-            RAV_ASSERT_FALSE("A registry must be selected at this point");
-            return;  // No registry selected
-        }
-        http_client_.set_host(selected_registry_->host_target, std::to_string(selected_registry_->port));
         http_client_.get_async("/", [this](const boost::system::result<http::response<http::string_body>>& result) {
             if (result.has_error()) {
-                RAV_ERROR("Error connecting to NMOS registry: {}", result.error().message());
+                RAV_INFO("Error connecting to NMOS registry: {}", result.error().message());
                 set_status(Status::disconnected);
+                timer_.once(k_default_timeout, [this] {
+                    start();  // Retry connection
+                });
             } else if (result.value().result() != http::status::ok) {
                 RAV_ERROR("Unexpected response from NMOS registry: {}", result.value().result_int());
                 set_status(Status::disconnected);
@@ -173,11 +198,7 @@ class Connector {
 
         switch (status) {
             case Status::connected: {
-                RAV_ASSERT(selected_registry_.has_value(), "No registry selected");
-                RAV_INFO(
-                    "Connected to NMOS registry {} at {}:{}", selected_registry_->name, selected_registry_->host_target,
-                    selected_registry_->port
-                );
+                RAV_INFO("Connected to NMOS registry at {}:{}", http_client_.get_host(), http_client_.get_service());
                 break;
             }
             case Status::disconnected: {

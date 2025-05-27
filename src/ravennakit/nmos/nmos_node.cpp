@@ -595,6 +595,7 @@ boost::system::result<void, rav::nmos::Node::Error> rav::nmos::Node::start_inter
 }
 
 void rav::nmos::Node::stop_internal() {
+    heartbeat_timer_.stop();
     connector_.stop();
     http_server_.stop();
 }
@@ -623,6 +624,7 @@ void rav::nmos::Node::register_async() {
     }
 
     failed_heartbeat_count_ = 0;
+    state_.is_registered = true;
 
     // Send heartbeat immediately after registration to update the connected status.
     send_heartbeat_async();
@@ -684,13 +686,10 @@ void rav::nmos::Node::send_heartbeat_async() {
             }
         }
         connector_.cancel_outstanding_requests();
-        RAV_ERROR("Failed to send heartbeat {} times, restart connection", failed_heartbeat_count_);
+        RAV_ERROR("Failed to send heartbeat {} times, stopping heartbeat", failed_heartbeat_count_);
         state_.is_registered = false;
-        connector_.start(
-            configuration_.operation_mode, configuration_.discover_mode, configuration_.api_version,
-            configuration_.registry_address
-        );
         heartbeat_timer_.stop();
+        connector_.try_reconnect();
     });
 }
 

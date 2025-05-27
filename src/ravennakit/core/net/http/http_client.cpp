@@ -157,6 +157,10 @@ void rav::HttpClient::Session::async_connect() {
 }
 
 void rav::HttpClient::Session::async_send() {
+    if (owner_->requests_.empty()) {
+        return;  // No requests to send
+    }
+
     // Set a timeout on the operation
     stream_.expires_after(timeout_seconds_);
 
@@ -176,14 +180,9 @@ void rav::HttpClient::Session::on_resolve(
         return;  // Session was abandoned, nothing to do.
     }
 
-    RAV_ASSERT(!owner_->requests_.empty(), "No requests available");
-
     if (ec) {
         if (const auto& cb = owner_->requests_.front().second) {
             cb(ec);
-        }
-        if (!owner_->requests_.empty()) {
-            owner_->requests_.pop();
         }
         state_ = State::disconnected;
         return;  // Error resolving the host
@@ -204,15 +203,15 @@ void rav::HttpClient::Session::
         return;  // Session was abandoned, nothing to do.
     }
 
-    RAV_ASSERT(!owner_->requests_.empty(), "No requests available");
+    if (owner_->requests_.empty()) {
+        state_ = State::connected;
+        return;  // No requests to process
+    }
 
     if (ec) {
         state_ = State::disconnected;
         if (const auto& cb = owner_->requests_.front().second) {
             cb(ec);
-        }
-        if (!owner_->requests_.empty()) {
-            owner_->requests_.pop();
         }
         return;
     }
@@ -235,9 +234,6 @@ void rav::HttpClient::Session::on_write(const boost::beast::error_code& ec, std:
         state_ = State::disconnected;
         if (const auto& cb = owner_->requests_.front().second) {
             cb(ec);
-        }
-        if (!owner_->requests_.empty()) {
-            owner_->requests_.pop();
         }
         state_ = State::disconnected;
         return;
@@ -267,9 +263,6 @@ void rav::HttpClient::Session::on_read(boost::beast::error_code ec, std::size_t 
         if (const auto& cb = owner_->requests_.front().second) {
             cb(ec);
         }
-        if (!owner_->requests_.empty()) {
-            owner_->requests_.pop();
-        }
         state_ = State::disconnected;
         return;
     }
@@ -280,9 +273,7 @@ void rav::HttpClient::Session::on_read(boost::beast::error_code ec, std::size_t 
         cb(response_);
     }
 
-    if (!owner_->requests_.empty()) {
-        owner_->requests_.pop();
-    }
+    owner_->remove_first_request();
 
     if (!response_.keep_alive()) {
         // Gracefully close the socket
