@@ -53,7 +53,6 @@ class AsioTimer {
 
   private:
     boost::asio::steady_timer timer_;
-    std::recursive_mutex mutex_;
     TimerCallback callback_;
     bool repeating_ = false;
     std::chrono::milliseconds duration_ = std::chrono::milliseconds(0);

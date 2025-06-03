@@ -23,7 +23,6 @@ void rav::AsioTimer::once(const std::chrono::milliseconds duration, TimerCallbac
 }
 
 void rav::AsioTimer::start(const std::chrono::milliseconds duration, TimerCallback cb, const bool repeating) {
-    std::lock_guard lock(mutex_);
     timer_.cancel();
     callback_ = std::move(cb);
     duration_ = duration;
@@ -32,7 +31,6 @@ void rav::AsioTimer::start(const std::chrono::milliseconds duration, TimerCallba
 }
 
 void rav::AsioTimer::stop() {
-    std::lock_guard lock(mutex_);
     timer_.cancel();
     callback_ = nullptr;
     repeating_ = false;
@@ -50,7 +48,6 @@ void rav::AsioTimer::wait() {
             return;
         }
 
-        std::lock_guard lock(mutex_);
         if (!callback_) {
             return;
         }
