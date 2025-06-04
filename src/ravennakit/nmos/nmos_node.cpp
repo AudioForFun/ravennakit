@@ -208,12 +208,18 @@ void rav::nmos::Node::ConfigurationUpdate::apply_to_config(Configuration& config
     }
 }
 
-rav::nmos::Node::Node(boost::asio::io_context& io_context, std::unique_ptr<RegistryBrowserBase> registry_browser) :
+rav::nmos::Node::Node(
+    boost::asio::io_context& io_context, std::unique_ptr<RegistryBrowserBase> registry_browser,
+    std::unique_ptr<HttpClientBase> http_client
+) :
     http_server_(io_context),
-    http_client_(io_context),
+    http_client_(std::move(http_client)),
     registry_browser_(std::move(registry_browser)),
     timer_(io_context),
     heartbeat_timer_(io_context) {
+    if (!http_client_) {
+        http_client_ = std::make_unique<HttpClient>(io_context);
+    }
     if (!registry_browser_) {
         registry_browser_ = std::make_unique<RegistryBrowser>(io_context);
     }
@@ -636,9 +642,11 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() 
 }
 
 void rav::nmos::Node::stop_internal() {
+    RAV_ASSERT(http_client_ != nullptr, "HTTP client should not be null");
+
     heartbeat_timer_.stop();
     timer_.stop();
-    http_client_.cancel_outstanding_requests();
+    http_client_->cancel_outstanding_requests();
     http_server_.stop();
     RAV_ASSERT(registry_browser_ != nullptr, "Registry browser should not be null");
     registry_browser_->stop();
@@ -678,11 +686,13 @@ void rav::nmos::Node::register_async() {
 }
 
 void rav::nmos::Node::post_resource_async(std::string type, boost::json::value resource) {
+    RAV_ASSERT(http_client_ != nullptr, "HTTP client should not be null");
+
     const auto target = fmt::format("/x-nmos/registration/{}/resource", configuration_.api_version.to_string());
 
     auto body = boost::json::serialize(boost::json::value {{"type", type}, {"data", std::move(resource)}});
 
-    http_client_.post_async(
+    http_client_->post_async(
         target, body,
         [body, type](const boost::system::result<http::response<http::string_body>>& result) mutable {
             if (result.has_error()) {
@@ -701,7 +711,8 @@ void rav::nmos::Node::post_resource_async(std::string type, boost::json::value r
             } else {
                 RAV_ERROR("Failed to post resource {}: {}", res, body);
             }
-        }
+        },
+        {}
     );
 }
 
@@ -710,34 +721,38 @@ void rav::nmos::Node::send_heartbeat_async() {
         "/x-nmos/registration/{}/health/nodes/{}", configuration_.api_version.to_string(), to_string(self_.id)
     );
 
-    http_client_.post_async(target, {}, [this](const boost::system::result<http::response<http::string_body>>& result) {
-        if (result.has_value() && result.value().result() == http::status::ok) {
-            failed_heartbeat_count_ = 0;
-            if (!std::exchange(is_registered_, true)) {
-                RAV_INFO("Node registered with the registry");
+    http_client_->post_async(
+        target, {},
+        [this](const boost::system::result<http::response<http::string_body>>& result) {
+            if (result.has_value() && result.value().result() == http::status::ok) {
+                failed_heartbeat_count_ = 0;
+                if (!std::exchange(is_registered_, true)) {
+                    RAV_INFO("Node registered with the registry");
+                }
+                return;
             }
-            return;
-        }
-        failed_heartbeat_count_++;
-        if (result.has_error()) {
-            RAV_ERROR("Failed to send heartbeat: {}", result.error().message());
-            // When this case happens, it's pretty reasonable to assume that the connection is lost.
-        } else {
-            RAV_ERROR("Sending heartbeat failed: {}", result->result_int());
-            if (failed_heartbeat_count_ < k_max_failed_heartbeats) {
-                return;  // Don't try to reconnect yet, just try the next heartbeat.
+            failed_heartbeat_count_++;
+            if (result.has_error()) {
+                RAV_ERROR("Failed to send heartbeat: {}", result.error().message());
+                // When this case happens, it's pretty reasonable to assume that the connection is lost.
+            } else {
+                RAV_ERROR("Sending heartbeat failed: {}", result->result_int());
+                if (failed_heartbeat_count_ < k_max_failed_heartbeats) {
+                    return;  // Don't try to reconnect yet, just try the next heartbeat.
+                }
             }
-        }
-        http_client_.cancel_outstanding_requests();
-        RAV_ERROR("Failed to send heartbeat {} times, stopping heartbeat", failed_heartbeat_count_);
-        is_registered_ = false;
-        heartbeat_timer_.stop();
-        connect_to_registry_async();
-    });
+            http_client_->cancel_outstanding_requests();
+            RAV_ERROR("Failed to send heartbeat {} times, stopping heartbeat", failed_heartbeat_count_);
+            is_registered_ = false;
+            heartbeat_timer_.stop();
+            connect_to_registry_async();
+        },
+        {}
+    );
 }
 
 void rav::nmos::Node::connect_to_registry_async() {
-    http_client_.get_async("/", [this](const boost::system::result<http::response<http::string_body>>& result) {
+    http_client_->get_async("/", [this](const boost::system::result<http::response<http::string_body>>& result) {
         if (result.has_error()) {
             RAV_INFO("Error connecting to NMOS registry: {}", result.error().message());
             set_status(Status::disconnected);
@@ -748,13 +763,14 @@ void rav::nmos::Node::connect_to_registry_async() {
             RAV_ERROR("Unexpected response from NMOS registry: {}", result.value().result_int());
             set_status(Status::disconnected);
         } else {
+            register_async();
             set_status(Status::connected);
         }
     });
 }
 
 void rav::nmos::Node::connect_to_registry_async(const std::string_view host, const std::string_view service) {
-    http_client_.set_host(host, service);
+    http_client_->set_host(host, service);
     connect_to_registry_async();
 }
 
@@ -783,15 +799,17 @@ void rav::nmos::Node::set_status(const Status status) {
         return;  // No change in status
     }
 
+    RAV_ASSERT(http_client_ != nullptr, "HTTP client should not be null");
+
     status_ = status;
 
     switch (status) {
         case Status::connected: {
-            RAV_INFO("Connected to NMOS registry at {}:{}", http_client_.get_host(), http_client_.get_service());
+            RAV_INFO("Connected to NMOS registry at {}:{}", http_client_->get_host(), http_client_->get_service());
             break;
         }
         case Status::disconnected: {
-            RAV_INFO("Disconnected from NMOS registry at {}:{}", http_client_.get_host(), http_client_.get_service());
+            RAV_INFO("Disconnected from NMOS registry at {}:{}", http_client_->get_host(), http_client_->get_service());
             break;
         }
         case Status::p2p:

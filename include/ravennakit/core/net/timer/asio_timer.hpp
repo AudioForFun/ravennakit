@@ -55,7 +55,7 @@ class AsioTimer {
     boost::asio::steady_timer timer_;
     TimerCallback callback_;
     bool repeating_ = false;
-    std::chrono::milliseconds duration_ = std::chrono::milliseconds(0);
+    std::chrono::milliseconds duration_ = std::chrono::seconds(0);
 
     void wait();
 };

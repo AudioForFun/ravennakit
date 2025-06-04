@@ -66,7 +66,8 @@ TEST_CASE("HttpClient") {
                     REQUIRE(json_body_returned.at("json") == json_body);
                     REQUIRE(json_body_returned.at("url") == "http://httpbin.cpp.al/post");
                     counter++;
-                }
+                },
+                {}
             );
         }
 
@@ -101,7 +102,8 @@ TEST_CASE("HttpClient") {
                     REQUIRE(json_body_returned.at("url") == "http://httpbin.cpp.al/post");
                     client.cancel_outstanding_requests();  // Cancel all requests after the first one
                     counter++;
-                }
+                },
+                {}
             );
         }
 

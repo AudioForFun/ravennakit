@@ -79,19 +79,19 @@ void rav::HttpClient::set_host(const std::string_view host, const std::string_vi
     service_ = service;
 }
 
-void rav::HttpClient::get_async(const std::string_view target, CallbackType callback) {
+void rav::HttpClient::get_async(const std::string_view target, ResponseCallback callback) {
     request_async(http::verb::get, target, {}, {}, std::move(callback));
 }
 
 void rav::HttpClient::post_async(
-    const std::string_view target, std::string body, CallbackType callback, const std::string_view content_type
+    const std::string_view target, std::string body, ResponseCallback callback, const std::string_view content_type
 ) {
     request_async(http::verb::post, target, std::move(body), content_type, std::move(callback));
 }
 
 void rav::HttpClient::request_async(
-    const http::verb method, const std::string_view target, std::string body, const std::string_view content_type,
-    CallbackType callback
+    const http::verb method, const std::string_view target, std::string body, std::string_view content_type,
+    ResponseCallback callback
 ) {
     auto request = http::request<http::string_body>(method, target.empty() ? "/" : target, 11);
     request.set(http::field::host, host_);
@@ -100,6 +100,9 @@ void rav::HttpClient::request_async(
     request.keep_alive(true);
 
     if (!body.empty()) {
+        if (content_type.empty()) {
+            content_type = "application/json"; // Content type is not specified, default to JSON
+        }
         request.set(http::field::content_type, content_type);
         request.body() = std::move(body);
         request.prepare_payload();
@@ -118,11 +121,11 @@ void rav::HttpClient::cancel_outstanding_requests() {
     requests_ = {};
 }
 
-std::string rav::HttpClient::get_host() const {
+const std::string& rav::HttpClient::get_host() const {
     return host_;
 }
 
-std::string rav::HttpClient::get_service() const {
+const std::string& rav::HttpClient::get_service() const {
     return service_;
 }
 

@@ -96,7 +96,7 @@ class Node {
         void apply_to_config(Configuration& config) const;
     };
 
-    explicit Node(boost::asio::io_context& io_context, std::unique_ptr<RegistryBrowserBase> registry_browser = nullptr);
+    explicit Node(boost::asio::io_context& io_context, std::unique_ptr<RegistryBrowserBase> registry_browser = nullptr, std::unique_ptr<HttpClientBase> http_client = nullptr);
 
     /**
      * Starts the services of this node (HTTP server, advertisements, etc.).
@@ -226,7 +226,7 @@ class Node {
     std::optional<dnssd::ServiceDescription> selected_registry_;
 
     HttpServer http_server_;
-    HttpClient http_client_;
+    std::unique_ptr<HttpClientBase> http_client_;
     std::unique_ptr<RegistryBrowserBase> registry_browser_;
     AsioTimer timer_;
 

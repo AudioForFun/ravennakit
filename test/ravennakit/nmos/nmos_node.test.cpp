@@ -35,6 +35,61 @@ class NodeTestRegistryBrowser final: public rav::nmos::RegistryBrowserBase {
     }
 };
 
+class NodeTestHttpClient final: public rav::HttpClientBase {
+  public:
+    void set_host(const boost::urls::url& url) override {
+        std::ignore = url;
+    }
+
+    void set_host(std::string_view url) override {
+        std::ignore = url;
+    }
+
+    void set_host(std::string_view host, std::string_view service) override {
+        std::ignore = host;
+        std::ignore = service;
+    }
+
+    void request_async(
+        const rav::http::verb method, const std::string_view target, std::string body,
+        const std::string_view content_type, const ResponseCallback callback
+    ) override {
+        std::ignore = method;
+        std::ignore = target;
+        std::ignore = body;
+        std::ignore = content_type;
+        rav::http::response<rav::http::string_body> res;
+        res.result(rav::http::status::ok);
+        callback({res});
+    }
+
+    void get_async(std::string_view target, ResponseCallback callback) override {
+        std::ignore = target;
+        std::ignore = callback;
+    }
+
+    void post_async(
+        std::string_view target, std::string body, ResponseCallback callback, std::string_view content_type
+    ) override {
+        std::ignore = target;
+        std::ignore = body;
+        std::ignore = callback;
+        std::ignore = content_type;
+    }
+
+    void cancel_outstanding_requests() override {}
+
+    [[nodiscard]] const std::string& get_host() const override {
+        static const std::string host = "mock_host";
+        return host;
+    }
+
+    [[nodiscard]] const std::string& get_service() const override {
+        static const std::string service = "mock_service";
+        return service;
+    }
+};
+
 }  // namespace
 
 TEST_CASE("nmos::Node") {
@@ -148,18 +203,22 @@ TEST_CASE("nmos::Node") {
         config_update.enabled = true;
         config_update.node_api_port = 8080;
 
-        auto browser = std::make_unique<NodeTestRegistryBrowser>();
-        auto* browser_ptr = browser.get();
-        rav::nmos::Node node(io_context, std::move(browser));
+        auto test_browser = std::make_unique<NodeTestRegistryBrowser>();
+        auto* browser = test_browser.get();
+
+        auto test_http_client = std::make_unique<NodeTestHttpClient>();
+        auto* http_client = test_http_client.get();
+        REQUIRE(http_client != nullptr);
+
+        rav::nmos::Node node(io_context, std::move(test_browser), std::move(test_http_client));
         auto result = node.update_configuration(config_update, true);
         REQUIRE(result.has_value());
-        REQUIRE(browser_ptr->calls_to_start.size() == 1);
+        REQUIRE(browser->calls_to_start.size() == 1);
         REQUIRE(
-            browser_ptr->calls_to_start[0]
-            == std::make_tuple(rav::nmos::DiscoverMode::mdns, rav::nmos::ApiVersion::v1_3())
+            browser->calls_to_start[0] == std::make_tuple(rav::nmos::DiscoverMode::mdns, rav::nmos::ApiVersion::v1_3())
         );
-        REQUIRE(browser_ptr->calls_to_stop == 1);
-        REQUIRE(browser_ptr->calls_to_find_most_suitable_registry == 0);
+        REQUIRE(browser->calls_to_stop == 1);
+        REQUIRE(browser->calls_to_find_most_suitable_registry == 0);
 
         rav::dnssd::ServiceDescription desc;
         desc.fullname = "registry._nmos-register._tcp.local.";
@@ -174,12 +233,12 @@ TEST_CASE("nmos::Node") {
             {"api_auth", "false"},
             {"pri", "100"},
         };
-        browser_ptr->most_suitable_registry = desc;
+        browser->most_suitable_registry = desc;
         rav::AsioTimer timer(io_context);
         timer.once(std::chrono::seconds(2), [&node] {
             node.stop();
         });
         io_context.run();
-        REQUIRE(browser_ptr->calls_to_find_most_suitable_registry == 1);
+        REQUIRE(browser->calls_to_find_most_suitable_registry == 1);
     }
 }

@@ -23,11 +23,10 @@ namespace rav {
 namespace http = boost::beast::http;
 using tcp = boost::asio::ip::tcp;
 
-/**
- * A high level wrapper around boost::beast for making HTTP requests.
- */
-class HttpClient {
+class HttpClientBase {
   public:
+    virtual ~HttpClientBase() = default;
+
     /// When no port is specified in the urls, the default port is used.
     static constexpr auto k_default_port = "80";
 
@@ -35,16 +34,89 @@ class HttpClient {
     using Response = http::response<http::string_body>;
 
     /// Callback type for async requests.
-    using CallbackType = std::function<void(boost::system::result<http::response<http::string_body>> response)>;
+    using ResponseCallback = std::function<void(boost::system::result<http::response<http::string_body>> response)>;
 
+    /**
+     * Sets the host to connect to.
+     * @param url The url with the host info.
+     */
+    virtual void set_host(const boost::urls::url& url) = 0;
+
+    /**
+     * Sets the host to connect to.
+     * @param url The host to connect to.
+     */
+    virtual void set_host(std::string_view url) = 0;
+
+    /**
+     * Sets the host to connect to.
+     * @param host The host to connect to.
+     * @param service The service (port) to connect to.
+     */
+    virtual void set_host(std::string_view host, std::string_view service) = 0;
+
+    /**
+     * Asynchronous GET request.
+     * The callback's lifetime will be tied to the io_context so make sure referenced objects are kept alive until the
+     * callback is called.
+     * @param target The target to request.
+     * @param callback The callback to call when the request is complete.
+     */
+    virtual void get_async(std::string_view target, ResponseCallback callback) = 0;
+
+    /**
+     * Synchronous POST request to the target of the URL, or the root if no target is specified.
+     * @param target The target to request.
+     * @param body The body to send with the request.
+     * @param callback The callback to call when the request is complete.
+     * @param content_type The content type of the body, e.g. "application/json". If not specified, defaults to
+     * "application/json".
+     * @return The response from the server, which may contain an error.
+     */
+    virtual void
+    post_async(std::string_view target, std::string body, ResponseCallback callback, std::string_view content_type) = 0;
+
+    /**
+     * Asynchronous request.
+     * @param method The HTTP method to use for the request.
+     * @param target The target to request.
+     * @param body The optional body to send with the request.
+     * @param content_type
+     * @param callback The callback to call when the request is complete.
+     */
+    virtual void request_async(
+        http::verb method, std::string_view target, std::string body, std::string_view content_type,
+        ResponseCallback callback
+    ) = 0;
+
+    /**
+     * Clears all scheduled requests if there are any. Otherwise, this function has no effect.
+     */
+    virtual void cancel_outstanding_requests() = 0;
+
+    /**
+     * @return The host that is currently set for this client.
+     */
+    [[nodiscard]] virtual const std::string& get_host() const = 0;
+
+    /**
+     * @return The service (port) that this current client is set for this client.
+     */
+    [[nodiscard]] virtual const std::string& get_service() const = 0;
+};
+
+/**
+ * A high level wrapper around boost::beast for making HTTP requests.
+ */
+class HttpClient: public HttpClientBase {
+  public:
     /**
      * Constructs a new HttpClient using the given io_context, but no url.
      * @param io_context The io_context to use for the request.
      * @param timeout_seconds The timeout in seconds for the requests. Defaults to 30 seconds.
      */
     explicit HttpClient(
-        boost::asio::io_context& io_context,
-        std::chrono::milliseconds timeout_seconds = std::chrono::milliseconds(30'000)
+        boost::asio::io_context& io_context, std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
     );
 
     /**
@@ -55,7 +127,7 @@ class HttpClient {
      */
     HttpClient(
         boost::asio::io_context& io_context, std::string_view url,
-        std::chrono::milliseconds timeout_seconds = std::chrono::milliseconds(30'000)
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
     );
 
     /**
@@ -66,7 +138,7 @@ class HttpClient {
      */
     HttpClient(
         boost::asio::io_context& io_context, const boost::urls::url& url,
-        std::chrono::milliseconds timeout_seconds = std::chrono::milliseconds(30'000)
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
     );
 
     /**
@@ -77,7 +149,7 @@ class HttpClient {
      */
     HttpClient(
         boost::asio::io_context& io_context, const boost::asio::ip::tcp::endpoint& endpoint,
-        std::chrono::milliseconds timeout_seconds = std::chrono::milliseconds(30'000)
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
     );
 
     /**
@@ -89,10 +161,10 @@ class HttpClient {
      */
     HttpClient(
         boost::asio::io_context& io_context, const boost::asio::ip::address& address, uint16_t port,
-        std::chrono::milliseconds timeout_seconds = std::chrono::milliseconds(30'000)
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
     );
 
-    ~HttpClient();
+    ~HttpClient() override;
 
     HttpClient(const HttpClient&) = delete;
     HttpClient& operator=(const HttpClient&) = delete;
@@ -100,69 +172,54 @@ class HttpClient {
     HttpClient& operator=(HttpClient&&) = delete;
 
     /**
-     * Sets the host to connect to.
-     * @param url The url with the host info.
+     * @copydoc HttpClientBase::set_host
      */
-    void set_host(const boost::urls::url& url);
+    void set_host(const boost::urls::url& url) override;
 
     /**
-     * Sets the host to connect to.
-     * @param url The host to connect to.
+     * @copydoc HttpClientBase::set_host
      */
-    void set_host(std::string_view url);
+    void set_host(std::string_view url) override;
 
     /**
-     * Sets the host to connect to.
-     * @param host The host to connect to.
-     * @param service The service (port) to connect to.
+     * @copydoc HttpClientBase::set_host
      */
-    void set_host(std::string_view host, std::string_view service);
+    void set_host(std::string_view host, std::string_view service) override;
 
     /**
-     * Asynchronous GET request.
-     * The callback's lifetime will be tied to the io_context so make sure referenced objects are kept alive until the
-     * callback is called.
-     * @param target The target to request.
-     * @param callback The callback to call when the request is complete.
+     * @copydoc HttpClientBase::get_async
      */
-    void get_async(std::string_view target, CallbackType callback);
+    void get_async(std::string_view target, ResponseCallback callback) override;
 
     /**
-     * Synchronous POST request to the target of the URL, or the root if no target is specified.
-     * @return The response from the server, which may contain an error.
+     * @copydoc HttpClientBase::post_async
      */
     void post_async(
-        std::string_view target, std::string body, CallbackType callback,
-        std::string_view content_type = "application/json"
-    );
+        std::string_view target, std::string body, ResponseCallback callback, std::string_view content_type
+    ) override;
 
     /**
-     * Asynchronous request.
-     * @param method The HTTP method to use for the request.
-     * @param target The target to request.
-     * @param body The optional body to send with the request.
-     * @param content_type
-     * @param callback The callback to call when the request is complete.
+     * @copydoc HttpClientBase::request_async
      */
     void request_async(
         http::verb method, std::string_view target, std::string body, std::string_view content_type,
-        CallbackType callback
-    );
+        ResponseCallback callback
+    ) override;
 
     /**
-     * Clears all scheduled requests if there are any. Otherwise, this function has no effect.
+     * @copydoc HttpClientBase::cancel_outstanding_requests
      */
-    void cancel_outstanding_requests();
+    void cancel_outstanding_requests() override;
 
     /**
-     * @return The host that is currently set for this client.
+     * @copydoc HttpClientBase::get_host
      */
-    [[nodiscard]] std::string get_host() const;
+    [[nodiscard]] const std::string& get_host() const override;
 
     /**
-     * @return The service (port) that this current client is set for this client.
+     * @copydoc HttpClientBase::get_service
      */
-    [[nodiscard]] std::string get_service() const;
+    [[nodiscard]] const std::string& get_service() const override;
 
   private:
     /**
@@ -180,7 +237,7 @@ class HttpClient {
 
       private:
         HttpClient* owner_ = nullptr;
-        std::chrono::milliseconds timeout_seconds_ = std::chrono::milliseconds(30);
+        std::chrono::milliseconds timeout_seconds_ = std::chrono::seconds(30);
         boost::asio::ip::tcp::resolver resolver_;
         boost::beast::tcp_stream stream_;
         http::response<http::string_body> response_;
@@ -196,10 +253,10 @@ class HttpClient {
     };
 
     boost::asio::io_context& io_context_;
-    std::chrono::milliseconds timeout_seconds_ = std::chrono::milliseconds(30);
+    std::chrono::milliseconds timeout_seconds_ = std::chrono::seconds(30);
     std::string host_;
     std::string service_;
-    std::queue<std::pair<http::request<http::string_body>, CallbackType>> requests_;
+    std::queue<std::pair<http::request<http::string_body>, ResponseCallback>> requests_;
     std::shared_ptr<Session> session_;
 
     void remove_first_request() {
