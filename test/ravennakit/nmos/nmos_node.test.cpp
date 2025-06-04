@@ -12,6 +12,31 @@
 
 #include <catch2/catch_all.hpp>
 
+namespace {
+
+class NodeTestRegistryBrowser final: public rav::nmos::RegistryBrowserBase {
+  public:
+    std::vector<std::tuple<rav::nmos::DiscoverMode, rav::nmos::ApiVersion>> calls_to_start;
+    int calls_to_stop = 0;
+    mutable int calls_to_find_most_suitable_registry = 0;
+    std::optional<rav::dnssd::ServiceDescription> most_suitable_registry;
+
+    void start(rav::nmos::DiscoverMode discover_mode, rav::nmos::ApiVersion api_version) override {
+        calls_to_start.emplace_back(discover_mode, api_version);
+    }
+
+    void stop() override {
+        calls_to_stop++;
+    }
+
+    [[nodiscard]] std::optional<rav::dnssd::ServiceDescription> find_most_suitable_registry() const override {
+        calls_to_find_most_suitable_registry++;
+        return most_suitable_registry;
+    }
+};
+
+}  // namespace
+
 TEST_CASE("nmos::Node") {
     SECTION("Supported api versions") {
         auto versions = rav::nmos::Node::k_supported_api_versions;
@@ -111,5 +136,50 @@ TEST_CASE("nmos::Node") {
             // Still not valid because manual mode doesn't work for p2p
             REQUIRE(config.validate() == rav::nmos::Error::incompatible_discover_mode);
         }
+    }
+
+    SECTION("Finding and connecting to a registry in registered mode using mdns") {
+        boost::asio::io_context io_context;
+
+        rav::nmos::Node::ConfigurationUpdate config_update;
+        config_update.operation_mode = rav::nmos::OperationMode::registered;
+        config_update.discover_mode = rav::nmos::DiscoverMode::mdns;
+        config_update.api_version = rav::nmos::ApiVersion::v1_3();
+        config_update.enabled = true;
+        config_update.node_api_port = 8080;
+
+        auto browser = std::make_unique<NodeTestRegistryBrowser>();
+        auto* browser_ptr = browser.get();
+        rav::nmos::Node node(io_context, std::move(browser));
+        auto result = node.update_configuration(config_update, true);
+        REQUIRE(result.has_value());
+        REQUIRE(browser_ptr->calls_to_start.size() == 1);
+        REQUIRE(
+            browser_ptr->calls_to_start[0]
+            == std::make_tuple(rav::nmos::DiscoverMode::mdns, rav::nmos::ApiVersion::v1_3())
+        );
+        REQUIRE(browser_ptr->calls_to_stop == 1);
+        REQUIRE(browser_ptr->calls_to_find_most_suitable_registry == 0);
+
+        rav::dnssd::ServiceDescription desc;
+        desc.fullname = "registry._nmos-register._tcp.local.";
+        desc.name = "registry";
+        desc.reg_type = "_nmos-register._tcp.";
+        desc.domain = "local.";
+        desc.host_target = "machine.local.";
+        desc.port = 8080;
+        desc.txt = {
+            {"api_proto", "http"},
+            {"api_ver", "v1.2,v1.3"},
+            {"api_auth", "false"},
+            {"pri", "100"},
+        };
+        browser_ptr->most_suitable_registry = desc;
+        rav::AsioTimer timer(io_context);
+        timer.once(std::chrono::seconds(2), [&node] {
+            node.stop();
+        });
+        io_context.run();
+        REQUIRE(browser_ptr->calls_to_find_most_suitable_registry == 1);
     }
 }

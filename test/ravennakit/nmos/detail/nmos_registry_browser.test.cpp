@@ -205,4 +205,58 @@ TEST_CASE("NMOS Registry Browser") {
             );
         }
     }
+
+    SECTION("filter_and_get_pri") {
+        rav::dnssd::ServiceDescription desc;
+        desc.fullname = "registry._nmos-register._tcp.local.";
+        desc.name = "registry";
+        desc.reg_type = "_nmos-register._tcp.";
+        desc.domain = "local.";
+        desc.host_target = "machine.local.";
+        desc.port = 8080;
+        desc.txt = {
+            {"api_proto", "http"},
+            {"api_ver", "v1.2,v1.3"},
+            {"api_auth", "false"},
+            {"pri", "100"},
+        };
+
+        SECTION("Valid service") {
+            auto pri = rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3());
+            REQUIRE(pri.has_value());
+            REQUIRE(*pri == 100);
+        }
+
+        SECTION("Valid service") {
+            desc.reg_type = "_nmos-registration._tcp.";
+            auto pri = rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3());
+            REQUIRE(pri.has_value());
+            REQUIRE(*pri == 100);
+        }
+
+        SECTION("Invalid reg_type") {
+            desc.reg_type = "_nmos-invalid._tcp.";
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+        }
+
+        SECTION("Invalid api_proto") {
+            desc.txt["api_proto"] = "https";  // Not supported
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+        }
+
+        SECTION("Invalid api_ver") {
+            desc.txt["api_ver"] = "v1.0,v1.1,v1.2";
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+        }
+
+        SECTION("Invalid api_auth") {
+            desc.txt["api_auth"] = "true";  // Not supported
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+        }
+
+        SECTION("Invalid pri") {
+            desc.txt["pri"] = "n/a";  // Not a number
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+        }
+    }
 }

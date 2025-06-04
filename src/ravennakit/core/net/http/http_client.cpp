@@ -181,8 +181,10 @@ void rav::HttpClient::Session::on_resolve(
     }
 
     if (ec) {
-        if (const auto& cb = owner_->requests_.front().second) {
-            cb(ec);
+        if (!owner_->requests_.empty()) {
+            if (const auto& cb = owner_->requests_.front().second) {
+                cb(ec);
+            }
         }
         state_ = State::disconnected;
         return;  // Error resolving the host

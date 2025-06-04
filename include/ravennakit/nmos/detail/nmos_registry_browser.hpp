@@ -26,6 +26,47 @@ class RegistryBrowserBase {
     virtual void start(DiscoverMode discover_mode, ApiVersion api_version) = 0;
     virtual void stop() = 0;
     [[nodiscard]] virtual std::optional<dnssd::ServiceDescription> find_most_suitable_registry() const = 0;
+
+    [[nodiscard]] static std::optional<int>
+    filter_and_get_pri(const dnssd::ServiceDescription& desc, const ApiVersion api_version) {
+        if (desc.reg_type != "_nmos-register._tcp." && desc.reg_type != "_nmos-registration._tcp.") {
+            return std::nullopt;
+        }
+
+        // api_proto
+        const auto api_proto = desc.txt.find("api_proto");
+        if (api_proto == desc.txt.end()) {
+            return std::nullopt;
+        }
+        if (api_proto->second != "http") {
+            return std::nullopt;  // TODO: Only http supported
+        }
+
+        // api_ver
+        const auto api_ver = desc.txt.find("api_ver");
+        if (api_ver == desc.txt.end()) {
+            return std::nullopt;
+        }
+        if (!string_contains(api_ver->second, api_version.to_string())) {
+            return std::nullopt;
+        }
+
+        // api_auth
+        const auto api_auth = desc.txt.find("api_auth");
+        if (api_auth == desc.txt.end()) {
+            return std::nullopt;
+        }
+        if (api_auth->second != "false") {
+            return std::nullopt;  // TODO: Only no auth supported
+        }
+
+        // pri
+        const auto pri = desc.txt.find("pri");
+        if (pri == desc.txt.end()) {
+            return std::nullopt;
+        }
+        return string_to_int<int>(pri->second, true);
+    }
 };
 
 class RegistryBrowser final: public RegistryBrowserBase {
@@ -66,7 +107,7 @@ class RegistryBrowser final: public RegistryBrowserBase {
                 multicast_browser_ = multicast_browser_factory_ ? multicast_browser_factory_(io_context_)
                                                                 : dnssd::Browser::create(io_context_);
                 multicast_browser_->on_service_resolved = [this](const dnssd::ServiceDescription& desc) {
-                    if (filter_and_get_pri(desc).has_value()) {
+                    if (filter_and_get_pri(desc, api_version_).has_value()) {
                         on_registry_discovered(desc);
                     } else {
                         RAV_TRACE("Service {} does not match NMOS registry criteria, ignoring", desc.name);
@@ -105,7 +146,7 @@ class RegistryBrowser final: public RegistryBrowserBase {
         // Unicast DNS
         if (unicast_browser_ != nullptr) {
             for (auto& desc : unicast_browser_->get_services()) {
-                auto pri = filter_and_get_pri(desc);
+                auto pri = filter_and_get_pri(desc, api_version_);
                 if (!pri) {
                     continue;
                 }
@@ -123,7 +164,7 @@ class RegistryBrowser final: public RegistryBrowserBase {
         // Multicast DNS
         if (multicast_browser_ != nullptr) {
             for (auto& desc : multicast_browser_->get_services()) {
-                auto pri = filter_and_get_pri(desc);
+                auto pri = filter_and_get_pri(desc, api_version_);
                 if (!pri) {
                     continue;
                 }
@@ -145,46 +186,6 @@ class RegistryBrowser final: public RegistryBrowserBase {
     ApiVersion api_version_;
     std::unique_ptr<dnssd::Browser> unicast_browser_;
     std::unique_ptr<dnssd::Browser> multicast_browser_;
-
-    [[nodiscard]] std::optional<int> filter_and_get_pri(const dnssd::ServiceDescription& desc) const {
-        if (desc.reg_type != "_nmos-register._tcp." && desc.reg_type != "_nmos-registration._tcp.") {
-            return std::nullopt;
-        }
-
-        // api_proto
-        const auto api_proto = desc.txt.find("api_proto");
-        if (api_proto == desc.txt.end()) {
-            return std::nullopt;
-        }
-        if (api_proto->second != "http") {
-            return std::nullopt;  // TODO: Only http supported
-        }
-
-        // api_ver
-        const auto api_ver = desc.txt.find("api_ver");
-        if (api_ver == desc.txt.end()) {
-            return std::nullopt;
-        }
-        if (!string_contains(api_ver->second, api_version_.to_string())) {
-            return std::nullopt;
-        }
-
-        // api_auth
-        const auto api_auth = desc.txt.find("api_auth");
-        if (api_auth == desc.txt.end()) {
-            return std::nullopt;
-        }
-        if (api_auth->second != "false") {
-            return std::nullopt;  // TODO: Only no auth supported
-        }
-
-        // pri
-        const auto pri = desc.txt.find("pri");
-        if (pri == desc.txt.end()) {
-            return std::nullopt;
-        }
-        return string_to_int<int>(pri->second, true);
-    }
 };
 
 }  // namespace rav::nmos

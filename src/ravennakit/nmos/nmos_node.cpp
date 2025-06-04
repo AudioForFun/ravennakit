@@ -208,10 +208,7 @@ void rav::nmos::Node::ConfigurationUpdate::apply_to_config(Configuration& config
     }
 }
 
-rav::nmos::Node::Node(
-    boost::asio::io_context& io_context, const ConfigurationUpdate& configuration,
-    std::unique_ptr<RegistryBrowserBase> registry_browser
-) :
+rav::nmos::Node::Node(boost::asio::io_context& io_context, std::unique_ptr<RegistryBrowserBase> registry_browser) :
     http_server_(io_context),
     http_client_(io_context),
     registry_browser_(std::move(registry_browser)),
@@ -522,12 +519,6 @@ rav::nmos::Node::Node(
     http_server_.get("/**", [](const HttpServer::Request&, HttpServer::Response& res, PathMatcher::Parameters&) {
         set_error_response(res, http::status::not_found, "Not found", "No matching route");
     });
-
-    const auto result = update_configuration(configuration, true);
-    if (result.has_error()) {
-        RAV_ERROR("Failed to set configuration: {}", result.error());
-        throw std::runtime_error("Failed to set configuration");
-    }
 }
 
 boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start() {
@@ -566,6 +557,10 @@ rav::nmos::Node::update_configuration(const ConfigurationUpdate& update, const b
     }
 
     return {};
+}
+
+const rav::nmos::Node::Configuration& rav::nmos::Node::get_configuration() const {
+    return configuration_;
 }
 
 boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() {
@@ -642,7 +637,11 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() 
 
 void rav::nmos::Node::stop_internal() {
     heartbeat_timer_.stop();
+    timer_.stop();
+    http_client_.cancel_outstanding_requests();
     http_server_.stop();
+    RAV_ASSERT(registry_browser_ != nullptr, "Registry browser should not be null");
+    registry_browser_->stop();
 }
 
 void rav::nmos::Node::register_async() {
@@ -743,7 +742,7 @@ void rav::nmos::Node::connect_to_registry_async() {
             RAV_INFO("Error connecting to NMOS registry: {}", result.error().message());
             set_status(Status::disconnected);
             timer_.once(k_default_timeout, [this] {
-                start();  // Retry connection
+                connect_to_registry_async();  // Retry connection
             });
         } else if (result.value().result() != http::status::ok) {
             RAV_ERROR("Unexpected response from NMOS registry: {}", result.value().result_int());

@@ -39,6 +39,9 @@ class Node {
     static std::array<ApiVersion, 2> k_supported_api_versions;
     static constexpr auto k_default_timeout = std::chrono::milliseconds(2000);
 
+    /**
+     * The connection status of the NMOS node.
+     */
     enum class Status {
         idle,
         connected,
@@ -93,10 +96,7 @@ class Node {
         void apply_to_config(Configuration& config) const;
     };
 
-    explicit Node(
-        boost::asio::io_context& io_context, const ConfigurationUpdate& configuration = {},
-        std::unique_ptr<RegistryBrowserBase> registry_browser = nullptr
-    );
+    explicit Node(boost::asio::io_context& io_context, std::unique_ptr<RegistryBrowserBase> registry_browser = nullptr);
 
     /**
      * Starts the services of this node (HTTP server, advertisements, etc.).
@@ -117,6 +117,11 @@ class Node {
      */
     [[nodiscard]] boost::system::result<void, Error>
     update_configuration(const ConfigurationUpdate& update, bool force_update = false);
+
+    /**
+     * @return The current configuration of the NMOS node.
+     */
+    [[nodiscard]] const Configuration& get_configuration() const;
 
     /**
      * @return The local (listening) endpoint of the server.
