@@ -14,6 +14,7 @@
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/net/timer/asio_timer.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
+#include "nmos_operating_mode.hpp"
 
 namespace rav::nmos {
 
@@ -72,13 +73,8 @@ class RegistryBrowser final: public RegistryBrowserBase {
   public:
     using BrowserFactory = std::function<std::unique_ptr<dnssd::Browser>(boost::asio::io_context&)>;
 
-    explicit RegistryBrowser(
-        boost::asio::io_context& io_context, BrowserFactory unicast_browser_factory = nullptr,
-        BrowserFactory multicast_browser_factory = nullptr
-    ) :
-        io_context_(io_context),
-        unicast_browser_factory_(std::move(unicast_browser_factory)),
-        multicast_browser_factory_(std::move(multicast_browser_factory)) {}
+    explicit RegistryBrowser(boost::asio::io_context& io_context, BrowserFactory multicast_browser_factory = nullptr) :
+        io_context_(io_context), multicast_browser_factory_(std::move(multicast_browser_factory)) {}
 
     void start(OperationMode operation_mode, const ApiVersion api_version) override {
         operation_mode_ = operation_mode;
@@ -143,7 +139,6 @@ class RegistryBrowser final: public RegistryBrowserBase {
 
   private:
     boost::asio::io_context& io_context_;
-    BrowserFactory unicast_browser_factory_;
     BrowserFactory multicast_browser_factory_;
     OperationMode operation_mode_ {};
     ApiVersion api_version_;

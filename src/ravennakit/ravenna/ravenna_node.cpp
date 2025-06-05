@@ -14,9 +14,22 @@
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
 rav::RavennaNode::RavennaNode() :
-    rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
+    rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)),
+    ptp_instance_(io_context_) {
     rtp_receiver_ = std::make_unique<rtp::Receiver>(udp_receiver_);
     advertiser_ = dnssd::Advertiser::create(io_context_);
+
+    nmos_node_.on_configuration_changed = [this](const nmos::Node::Configuration& config) {
+        for (const auto& s : subscribers_) {
+            s->nmos_node_config_updated(config);
+        }
+    };
+
+    nmos_node_.on_status_changed = [this](const nmos::Node::Status& status) {
+        for (const auto& s : subscribers_) {
+            s->nmos_node_status_changed(status);
+        }
+    };
 
     std::promise<std::thread::id> promise;
     auto f = promise.get_future();
@@ -150,6 +163,18 @@ rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::Confi
             }
         }
         return tl::unexpected("Sender not found");
+    };
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
+}
+
+std::future<tl::expected<void, std::string>>
+rav::RavennaNode::update_nmos_configuration(nmos::Node::ConfigurationUpdate update) {
+    auto work = [this, update = std::move(update)]() mutable -> tl::expected<void, std::string> {
+        const auto result = nmos_node_.update_configuration(update);
+        if (result.has_error()) {
+            return tl::unexpected(fmt::format("Failed to update NMOS configuration: {}", result.error()));
+        }
+        return tl::expected<void, std::string> {};
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }

@@ -16,7 +16,7 @@ namespace {
 
 class NodeTestRegistryBrowser final: public rav::nmos::RegistryBrowserBase {
   public:
-    std::vector<std::tuple<rav::nmos::DiscoverMode, rav::nmos::ApiVersion>> calls_to_start;
+    std::vector<std::tuple<rav::nmos::OperationMode, rav::nmos::ApiVersion>> calls_to_start;
     int calls_to_stop = 0;
     mutable int calls_to_find_most_suitable_registry = 0;
     std::optional<rav::dnssd::ServiceDescription> most_suitable_registry;
@@ -101,15 +101,13 @@ TEST_CASE("nmos::Node") {
     }
 
     SECTION("Test whether types are printable") {
-        std::ignore = fmt::format("{}", rav::nmos::Error::incompatible_discover_mode);
-        std::ignore = fmt::format("{}", rav::nmos::OperationMode::registered);
-        std::ignore = fmt::format("{}", rav::nmos::DiscoverMode::dns);
+        std::ignore = fmt::format("{}", rav::nmos::Error::failed_to_start_http_server);
+        std::ignore = fmt::format("{}", rav::nmos::OperationMode::mdns_p2p);
     }
 
     SECTION("Configuration default construction") {
         rav::nmos::Node::Configuration config;
-        REQUIRE(config.operation_mode == rav::nmos::OperationMode::registered_p2p);
-        REQUIRE(config.discover_mode == rav::nmos::DiscoverMode::dns);
+        REQUIRE(config.operation_mode == rav::nmos::OperationMode::mdns_p2p);
         REQUIRE(config.registry_address.empty());
     }
 
@@ -118,46 +116,9 @@ TEST_CASE("nmos::Node") {
 
         REQUIRE(config.validate());
 
-        // Registered and peer-to-peer MAY be used at the same time
-        // https://specs.amwa.tv/is-04/releases/v1.3.3/docs/Overview.html#registering-and-discovering-nodes
-        config.operation_mode = rav::nmos::OperationMode::registered_p2p;
-
-        SECTION("Validate discover mode in registered_p2p mode") {
-            // DNS works for both registered and p2p
-            config.discover_mode = rav::nmos::DiscoverMode::dns;
-            REQUIRE(config.validate());
-
-            // Multicast DNS works for both registered and p2p
-            config.discover_mode = rav::nmos::DiscoverMode::mdns;
-            REQUIRE(config.validate());
-
-            // Unicast DNS doesn't work for p2p and is therefore not valid in registered_p2p mode
-            config.discover_mode = rav::nmos::DiscoverMode::udns;
-            REQUIRE(config.validate() == rav::nmos::Error::incompatible_discover_mode);
-
-            // Manual mode doesn't work for p2p and is therefore not valid in registered_p2p mode
-            config.discover_mode = rav::nmos::DiscoverMode::manual;
-            REQUIRE(config.validate() == rav::nmos::Error::incompatible_discover_mode);
-        }
-
-        config.operation_mode = rav::nmos::OperationMode::registered;
+        config.operation_mode = rav::nmos::OperationMode::manual;
 
         SECTION("Validate discover mode in registered mode") {
-            // DNS works for both registered and p2p
-            config.discover_mode = rav::nmos::DiscoverMode::dns;
-            REQUIRE(config.validate());
-
-            // Multicast DNS works for both registered and p2p
-            config.discover_mode = rav::nmos::DiscoverMode::mdns;
-            REQUIRE(config.validate());
-
-            // Unicast DNS works for registered mode
-            config.discover_mode = rav::nmos::DiscoverMode::udns;
-            REQUIRE(config.validate());
-
-            // Manual mode works for registered mode
-            config.discover_mode = rav::nmos::DiscoverMode::manual;
-
             // Not valid because no address is specified
             REQUIRE(config.validate() == rav::nmos::Error::invalid_registry_address);
 
@@ -166,39 +127,13 @@ TEST_CASE("nmos::Node") {
             // Valid because an address is specified
             REQUIRE(config.validate());
         }
-
-        config.operation_mode = rav::nmos::OperationMode::p2p;
-
-        SECTION("Validate discover mode in p2p mode") {
-            // DNS doesn't work for p2p and is therefore not valid in p2p mode
-            config.discover_mode = rav::nmos::DiscoverMode::dns;
-            REQUIRE(config.validate() == rav::nmos::Error::incompatible_discover_mode);
-
-            // Multicast DNS works for both registered and p2p
-            config.discover_mode = rav::nmos::DiscoverMode::mdns;
-            REQUIRE(config.validate());
-
-            // Unicast DNS doesn't work for p2p and is therefore not valid in p2p mode
-            config.discover_mode = rav::nmos::DiscoverMode::udns;
-            REQUIRE(config.validate() == rav::nmos::Error::incompatible_discover_mode);
-
-            // Manual mode only works for registered mode and is therefore not valid in p2p mode
-            config.discover_mode = rav::nmos::DiscoverMode::manual;
-            REQUIRE(config.validate() == rav::nmos::Error::incompatible_discover_mode);
-
-            config.registry_address = "http://localhost:8080";
-
-            // Still not valid because manual mode doesn't work for p2p
-            REQUIRE(config.validate() == rav::nmos::Error::incompatible_discover_mode);
-        }
     }
 
     SECTION("Finding and connecting to a registry in registered mode using mdns") {
         boost::asio::io_context io_context;
 
         rav::nmos::Node::ConfigurationUpdate config_update;
-        config_update.operation_mode = rav::nmos::OperationMode::registered;
-        config_update.discover_mode = rav::nmos::DiscoverMode::mdns;
+        config_update.operation_mode = rav::nmos::OperationMode::mdns_p2p;
         config_update.api_version = rav::nmos::ApiVersion::v1_3();
         config_update.enabled = true;
         config_update.node_api_port = 8080;
@@ -215,7 +150,7 @@ TEST_CASE("nmos::Node") {
         REQUIRE(result.has_value());
         REQUIRE(browser->calls_to_start.size() == 1);
         REQUIRE(
-            browser->calls_to_start[0] == std::make_tuple(rav::nmos::DiscoverMode::mdns, rav::nmos::ApiVersion::v1_3())
+            browser->calls_to_start[0] == std::make_tuple(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion::v1_3())
         );
         REQUIRE(browser->calls_to_stop == 1);
         REQUIRE(browser->calls_to_find_most_suitable_registry == 0);
