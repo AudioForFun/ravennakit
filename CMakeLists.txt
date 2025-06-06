@@ -114,7 +114,7 @@ target_link_libraries(ravennakit
 )
 
 if (APPLE)
-    target_link_libraries(ravennakit PUBLIC "-framework SystemConfiguration")
+    target_link_libraries(ravennakit PUBLIC "-framework CoreFoundation -framework SystemConfiguration")
 endif ()
 
 target_compile_definitions(ravennakit

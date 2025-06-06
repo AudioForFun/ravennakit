@@ -390,8 +390,7 @@ bool rav::RavennaNode::send_audio_data_realtime(
     return false;
 }
 
-std::future<void>
-rav::RavennaNode::set_network_interface_config(NetworkInterfaceConfig interface_config) {
+std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfaceConfig interface_config) {
     auto work = [this, config = std::move(interface_config)] {
         if (config_.network_interfaces == config) {
             return;  // Nothing changed
@@ -407,6 +406,8 @@ rav::RavennaNode::set_network_interface_config(NetworkInterfaceConfig interface_
         for (const auto& sender : senders_) {
             sender->set_interfaces(addresses);
         }
+
+        nmos_node_.set_network_interface_config(config);
 
         // Add or update PTP ports based on the new configuration
         for (auto& [rank, address] : addresses) {

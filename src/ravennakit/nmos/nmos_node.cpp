@@ -604,15 +604,17 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() 
         return Error::failed_to_start_http_server;
     }
 
+    const auto http_endpoint = http_server_.get_local_endpoint();
+    for (auto& endpoint : self_.api.endpoints) {
+        endpoint.port = http_endpoint.port();
+    }
+
     // TODO: I'm not sure if this is the right value for href, but unless a web interface is served this is the best we
     // got.
-    const auto endpoint = http_server_.get_local_endpoint();
     self_.href = fmt::format(
-        "http://{}:{}/x-nmos/node/{}", endpoint.address().to_string(), endpoint.port(),
+        "http://{}:{}/x-nmos/node/{}", http_endpoint.address().to_string(), http_endpoint.port(),
         k_supported_api_versions.back().to_string()
     );
-
-    self_.api.endpoints = {Self::Endpoint {endpoint.address().to_string(), endpoint.port(), "http", false}};
 
     // Start the HTTP client to connect to the registry.
     if (configuration_.operation_mode == OperationMode::manual) {
@@ -1068,4 +1070,20 @@ nlohmann::json rav::nmos::Node::to_json() const {
     nlohmann::json root;
     root["configuration"] = configuration_.to_json();
     return root;
+}
+
+void rav::nmos::Node::set_network_interface_config(const NetworkInterfaceConfig& interface_config) {
+    auto addrs = interface_config.get_interface_ipv4_addresses();
+    if (addrs.empty()) {
+        RAV_ERROR("No IPv4 addresses found for the interface");
+        return;
+    }
+
+    const auto http_endpoint = http_server_.get_local_endpoint();
+
+    self_.api.endpoints.clear();
+
+    for (auto [rank, ip] : addrs) {
+        self_.api.endpoints.emplace_back(Self::Endpoint {ip.to_string(), http_endpoint.port(), "http", false});
+    }
 }

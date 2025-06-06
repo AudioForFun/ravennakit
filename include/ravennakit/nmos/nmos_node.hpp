@@ -23,6 +23,7 @@
 #include "ravennakit/core/json.hpp"
 #include "ravennakit/core/net/http/http_client.hpp"
 #include "ravennakit/core/net/http/http_server.hpp"
+#include "ravennakit/core/net/interfaces/network_interface_config.hpp"
 
 #include <boost/uuid.hpp>
 #include <boost/system/result.hpp>
@@ -232,6 +233,12 @@ class Node {
      * @return A JSON representation of the Node.
      */
     [[nodiscard]] nlohmann::json to_json() const;
+
+    /**
+     * Updates the node based on given network interface configuration.
+     * @param interface_config The network interface configuration to apply.
+     */
+    void set_network_interface_config(const NetworkInterfaceConfig& interface_config);
 
   private:
     static constexpr uint8_t k_max_failed_heartbeats = 5;
