@@ -43,4 +43,16 @@ boost::system::result<T> parse_json(const std::string_view json_str) {
 
 #endif
 
+#if RAV_HAS_NLOHMANN_JSON && RAV_HAS_BOOST_JSON
+
+inline nlohmann::json boost_to_nlohmann_json(const boost::json::value& jv) {
+    return nlohmann::json::parse(boost::json::serialize(jv));
+}
+
+inline boost::json::value nlohmann_to_boost_json(const nlohmann::json& j) {
+    return boost::json::parse(j.dump());
+}
+
+#endif
+
 }  // namespace rav

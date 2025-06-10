@@ -32,6 +32,8 @@ rav::RavennaNode::RavennaNode() :
             }
         };
 
+    ensure_nmos_device_exists();
+
     std::promise<std::thread::id> promise;
     auto f = promise.get_future();
     maintenance_thread_ = std::thread([this, p = std::move(promise)]() mutable {
@@ -465,7 +467,7 @@ std::future<nlohmann::json> rav::RavennaNode::to_json() {
         root["config"] = config_.to_json();
         root["senders"] = senders;
         root["receivers"] = receivers;
-        root["nmos_node"] = nmos_node_.to_json();
+        root["nmos_node"] = boost_to_nlohmann_json(nmos_node_.to_json());
         return root;
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
@@ -552,19 +554,15 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json
                 }
             }
 
-            {
-                auto nmos_node = json.find("nmos_node");
-                if (nmos_node != json.end()) {
-                    auto config = nmos::Node::ConfigurationUpdate::from_json(nmos_node->at("configuration"));
-                    if (!config) {
-                        return tl::unexpected(config.error());
-                    }
-                    nmos_node_.update_configuration(*config);
-                } else {
-                    RAV_TRACE("No NMOS node configuration found in JSON");
+            auto nmos_node = json.find("nmos_node");
+            if (nmos_node != json.end()) {
+                auto result = nmos_node_.restore_from_json(nlohmann_to_boost_json(*nmos_node));
+                if (result.has_error()) {
+                    return tl::unexpected(fmt::format("Failed to restore NMOS node: {}", result.error()));
                 }
+            } else {
+                RAV_TRACE("No NMOS node state found in JSON");
             }
-
         } catch (const std::exception& e) {
             return tl::unexpected(fmt::format("Failed to parse RavennaNode JSON: {}", e.what()));
         }
@@ -595,4 +593,14 @@ uint32_t rav::RavennaNode::generate_unique_session_id() const {
         highest_session_id = std::max(highest_session_id, sender->get_session_id());
     }
     return highest_session_id + 1;
+}
+
+void rav::RavennaNode::ensure_nmos_device_exists() {
+    if (nmos_node_.get_devices().empty()) {
+        nmos::Device nmos_device;
+        nmos_device.id = boost::uuids::random_generator()();
+        if (!nmos_node_.add_or_update_device(std::move(nmos_device))) {
+            RAV_ERROR("Failed to add NMOS device to node");
+        }
+    }
 }

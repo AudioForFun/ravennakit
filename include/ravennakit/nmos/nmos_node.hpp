@@ -75,7 +75,7 @@ class Node: public ptp::Instance::Subscriber {
         /**
          * @return The configuration as a JSON object.
          */
-        [[nodiscard]] nlohmann::json to_json() const;
+        [[nodiscard]] boost::json::value to_json() const;
     };
 
     /**
@@ -99,7 +99,7 @@ class Node: public ptp::Instance::Subscriber {
          * @param json The JSON object to convert.
          * @return A configuration update object if the JSON is valid, otherwise an error message.
          */
-        static tl::expected<ConfigurationUpdate, std::string> from_json(const nlohmann::json& json);
+        static boost::system::result<ConfigurationUpdate, std::string> from_json(const boost::json::value& json);
     };
 
     struct RegistryInfo {
@@ -242,7 +242,14 @@ class Node: public ptp::Instance::Subscriber {
     /**
      * @return A JSON representation of the Node.
      */
-    [[nodiscard]] nlohmann::json to_json() const;
+    [[nodiscard]] boost::json::value to_json() const;
+
+    /**
+     * Restores the node from a JSON representation.
+     * @param json The JSON representation of the node.
+     * @return A result indicating whether the restoration was successful or not.
+     */
+    boost::system::result<void, std::string> restore_from_json(const boost::json::value& json);
 
     /**
      * Updates the node based on given network interface configuration.
@@ -301,7 +308,6 @@ class Node: public ptp::Instance::Subscriber {
     void unregister_async();
     void post_resource_async(std::string type, boost::json::value resource);
     void delete_resource_async(std::string resource_type, const boost::uuids::uuid& id);
-    void update_self();
     void update_and_post_self_async();
     void send_heartbeat_async();
     void connect_to_registry_async();

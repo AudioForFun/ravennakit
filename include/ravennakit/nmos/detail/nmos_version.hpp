@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ravennakit/core/string_parser.hpp"
+#include "ravennakit/ptp/types/ptp_timestamp.hpp"
 
 #include <cstdint>
 #include <string>
@@ -37,6 +38,21 @@ struct Version {
         } else {
             nanoseconds = 0;
             ++seconds;
+        }
+    }
+
+    /**
+     * Updates the version with a new timestamp.
+     * If the new timestamp is greater than the current version, it updates the version.
+     * Otherwise, it increments the version by one nanosecond.
+     * @param timestamp The new timestamp to update the version with.
+     */
+    void update(const ptp::Timestamp timestamp) {
+        if (timestamp > ptp::Timestamp (seconds, nanoseconds)) {
+            seconds = timestamp.raw_seconds();
+            nanoseconds = timestamp.raw_nanoseconds();
+        } else {
+            inc();
         }
     }
 

@@ -174,8 +174,8 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::Configuration::va
     return {};
 }
 
-nlohmann::json rav::nmos::Node::Configuration::to_json() const {
-    return nlohmann::json {
+boost::json::value rav::nmos::Node::Configuration::to_json() const {
+    return {
         {"uuid", to_string(uuid)},
         {"operation_mode", to_string(operation_mode)},
         {"api_version", api_version.to_string()},
@@ -214,43 +214,43 @@ void rav::nmos::Node::ConfigurationUpdate::apply_to_config(Configuration& config
     }
 }
 
-tl::expected<rav::nmos::Node::ConfigurationUpdate, std::string>
-rav::nmos::Node::ConfigurationUpdate::from_json(const nlohmann::json& json) {
+boost::system::result<rav::nmos::Node::ConfigurationUpdate, std::string>
+rav::nmos::Node::ConfigurationUpdate::from_json(const boost::json::value& json) {
     try {
         ConfigurationUpdate update {};
 
         // UUID
-        const auto uuid_str = json.at("uuid").get<std::string>();
-        const auto uuid = boost::lexical_cast<boost::uuids::uuid>(uuid_str);
+        const auto& uuid_str = json.at("uuid").as_string();
+        const auto uuid = boost::lexical_cast<boost::uuids::uuid>(std::string_view(uuid_str));
         if (uuid.is_nil()) {
-            return tl::unexpected("Invalid UUID");
+            return {"Invalid UUID"};
         }
         update.uuid = uuid;
 
         // Operation mode
-        const auto operation_mode_str = json.at("operation_mode").get<std::string>();
+        const auto& operation_mode_str = json.at("operation_mode").as_string();
         const auto operation_mode = operation_mode_from_string(operation_mode_str);
         if (!operation_mode.has_value()) {
-            return tl::unexpected(fmt::format("Invalid operation mode: {}", operation_mode_str));
+            return fmt::format("Invalid operation mode: {}", std::string_view(operation_mode_str.c_str()));
         }
         update.operation_mode = *operation_mode;
 
         // Api version
-        const auto api_version_str = json.at("api_version").get<std::string>();
+        const auto& api_version_str = json.at("api_version").as_string();
         const auto api_version = ApiVersion::from_string(api_version_str);
         if (!api_version) {
-            return tl::unexpected(fmt::format("Invalid API version: {}", api_version_str));
+            return fmt::format("Invalid API version: {}", std::string_view(api_version_str));
         }
         update.api_version = *api_version;
 
-        update.registry_address = json.at("registry_address").get<std::string>();
-        update.enabled = json.at("enabled").get<bool>();
-        update.node_api_port = json.at("node_api_port").get<uint16_t>();
-        update.label = json.value("label", std::string {});
-        update.description = json.value("description", std::string {});
+        update.registry_address = json.at("registry_address").as_string();
+        update.enabled = json.at("enabled").as_bool();
+        update.node_api_port = json.at("node_api_port").to_number<uint16_t>();
+        update.label = json.at("label").as_string();
+        update.description = json.at("description").as_string();
         return update;
     } catch (const std::exception& e) {
-        return tl::unexpected(e.what());
+        return e.what();
     }
 }
 
@@ -272,7 +272,6 @@ rav::nmos::Node::Node(
     }
 
     configuration_.uuid = boost::uuids::random_generator()();
-    update_self();
 
     for (auto& v : k_supported_api_versions) {
         self_.api.versions.push_back(v.to_string());
@@ -792,8 +791,6 @@ void rav::nmos::Node::register_async() {
         RAV_INFO("Registered with NMOS registry");
         update_status(Status::registered);
 
-        send_heartbeat_async();
-
         heartbeat_timer_.start(k_heartbeat_interval, [this] {
             send_heartbeat_async();
         });
@@ -831,9 +828,9 @@ void rav::nmos::Node::post_resource_async(std::string type, boost::json::value r
             } else {
                 post_resource_error_count_++;
                 if (const auto error = parse_json<ApiError>(res.body())) {
-                    RAV_ERROR("Failed to post resource: {} ({})", error->code, error->error);
+                    RAV_ERROR("Failed to post resource: {} ({}) {}", error->code, error->error, body);
                 } else {
-                    RAV_ERROR("Failed to post resource: {} ({})", res.result_int(), res.body());
+                    RAV_ERROR("Failed to post resource: {} ({}) {}", res.result_int(), res.body(), body);
                 }
                 update_status(Status::error);
             }
@@ -875,20 +872,22 @@ void rav::nmos::Node::delete_resource_async(std::string resource_type, const boo
     );
 }
 
-void rav::nmos::Node::update_self() {
+void rav::nmos::Node::update_and_post_self_async() {
     const auto now = get_local_clock().now();
-    self_.version = {now.raw_seconds(), now.raw_nanoseconds()};
+    self_.version.update(now);
     self_.id = configuration_.uuid;
     self_.label = configuration_.label;
     self_.description = configuration_.description;
-}
-
-void rav::nmos::Node::update_and_post_self_async() {
-    update_self();
-    if (status_ != Status::registered) {
-        return;
+    if (!devices_.empty()) {
+        devices_.front().label = configuration_.label;
+        devices_.front().description = configuration_.description;
     }
     post_resource_async("node", boost::json::value_from(self_));
+
+    for (auto& device : devices_) {
+        device.version.update(now);
+        post_resource_async("device", boost::json::value_from(device));
+    }
 }
 
 void rav::nmos::Node::send_heartbeat_async() {
@@ -1037,11 +1036,19 @@ bool rav::nmos::Node::add_or_update_device(Device device) {
     for (auto& existing_device : devices_) {
         if (existing_device.id == device.id) {
             existing_device = std::move(device);
+            if (status_ == Status::registered) {
+                post_resource_async("device", boost::json::value_from(existing_device));
+            }
             return true;
         }
     }
 
     devices_.push_back(std::move(device));
+
+    if (status_ == Status::registered) {
+        post_resource_async("device", boost::json::value_from(devices_.back()));
+    }
+
     return true;
 }
 
@@ -1189,10 +1196,37 @@ const rav::nmos::Node::RegistryInfo& rav::nmos::Node::get_registry_info() const 
     return registry_info_;
 }
 
-nlohmann::json rav::nmos::Node::to_json() const {
-    nlohmann::json root;
-    root["configuration"] = configuration_.to_json();
-    return root;
+boost::json::value rav::nmos::Node::to_json() const {
+    return {
+        {"configuration", configuration_.to_json()},
+        {"devices", boost::json::value_from(devices_)},
+        {"flows", boost::json::value_from(flows_)},
+        {"senders", boost::json::value_from(senders_)},
+        {"receivers", boost::json::value_from(receivers_)},
+        {"sources", boost::json::value_from(sources_)},
+        {"self", boost::json::value_from(self_)}
+    };
+}
+
+boost::system::result<void, std::string> rav::nmos::Node::restore_from_json(const boost::json::value& json) {
+    const auto config = json.try_at("configuration");
+    if (!config || !config->is_object()) {
+        return "invalid configuration JSON";
+    }
+
+    auto update = ConfigurationUpdate::from_json(*config);
+    if (update.has_error()) {
+        return update.error();
+    }
+
+    const auto devices_json = json.try_at("devices");
+    if (devices_json && devices_json->is_array()) {
+        devices_ = boost::json::value_to<std::vector<Device>>(*devices_json);
+    }
+
+    update_configuration(*update);
+
+    return {};
 }
 
 void rav::nmos::Node::set_network_interface_config(const NetworkInterfaceConfig& interface_config) {
@@ -1208,6 +1242,10 @@ void rav::nmos::Node::set_network_interface_config(const NetworkInterfaceConfig&
 
     for (const auto& [rank, ip] : addrs) {
         self_.api.endpoints.emplace_back(Self::Endpoint {ip.to_string(), http_endpoint.port(), "http", false});
+    }
+
+    if (status_ == Status::registered) {
+        update_and_post_self_async();
     }
 }
 
@@ -1225,7 +1263,9 @@ void rav::nmos::Node::ptp_parent_changed(const ptp::ParentDs& parent) {
     clock.name = "clk0";
     clock.traceable = ptp_instance_.get_time_properties_ds().time_traceable;
     self_.clocks = {clock};
-    update_and_post_self_async();
+    if (status_ == Status::registered) {
+        update_and_post_self_async();
+    }
 }
 
 void rav::nmos::Node::ptp_port_changed_state(const ptp::Port&) {
@@ -1236,16 +1276,24 @@ void rav::nmos::Node::ptp_port_changed_state(const ptp::Port&) {
 
     auto locked = get_local_clock().is_locked();
 
-    std::visit(
+    const auto changed = std::visit(
         [locked](auto& clock) {
             if constexpr (std::is_same_v<ClockPtp, std::decay_t<decltype(clock)>>) {
+                if (clock.locked == locked) {
+                    return false;
+                }
                 clock.locked = locked;
+                return true;
             } else {
                 RAV_ERROR("Unsupported clock type for PTP port state change");
             }
+
+            return false;
         },
         self_.clocks.front()
     );
 
-    update_and_post_self_async();
+    if (changed && status_ == Status::registered) {
+        update_and_post_self_async();
+    }
 }

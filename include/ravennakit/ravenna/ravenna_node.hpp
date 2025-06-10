@@ -386,6 +386,7 @@ class RavennaNode {
 
     [[nodiscard]] bool update_realtime_shared_context();
     uint32_t generate_unique_session_id() const;
+    void ensure_nmos_device_exists();
 };
 
 }  // namespace rav
