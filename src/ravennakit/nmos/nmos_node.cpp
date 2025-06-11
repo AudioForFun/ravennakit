@@ -176,7 +176,7 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::Configuration::va
 
 boost::json::value rav::nmos::Node::Configuration::to_json() const {
     return {
-        {"uuid", to_string(uuid)},
+        {"id", to_string(id)},
         {"operation_mode", to_string(operation_mode)},
         {"api_version", api_version.to_string()},
         {"registry_address", registry_address},
@@ -188,8 +188,8 @@ boost::json::value rav::nmos::Node::Configuration::to_json() const {
 }
 
 void rav::nmos::Node::ConfigurationUpdate::apply_to_config(Configuration& config) const {
-    if (uuid.has_value()) {
-        config.uuid = *uuid;
+    if (id.has_value()) {
+        config.id = *id;
     }
     if (operation_mode.has_value()) {
         config.operation_mode = *operation_mode;
@@ -220,12 +220,12 @@ rav::nmos::Node::ConfigurationUpdate::from_json(const boost::json::value& json) 
         ConfigurationUpdate update {};
 
         // UUID
-        const auto& uuid_str = json.at("uuid").as_string();
+        const auto& uuid_str = json.at("id").as_string();
         const auto uuid = boost::lexical_cast<boost::uuids::uuid>(std::string_view(uuid_str));
         if (uuid.is_nil()) {
             return {"Invalid UUID"};
         }
-        update.uuid = uuid;
+        update.id = uuid;
 
         // Operation mode
         const auto& operation_mode_str = json.at("operation_mode").as_string();
@@ -271,7 +271,8 @@ rav::nmos::Node::Node(
         registry_browser_ = std::make_unique<RegistryBrowser>(io_context);
     }
 
-    configuration_.uuid = boost::uuids::random_generator()();
+    configuration_.id = boost::uuids::random_generator()();
+    self_.id = configuration_.id;
 
     for (auto& v : k_supported_api_versions) {
         self_.api.versions.push_back(v.to_string());
@@ -566,6 +567,9 @@ rav::nmos::Node::Node(
 }
 
 rav::nmos::Node::~Node() {
+    if (status_ == Status::registered) {
+        unregister_async();
+    }
     if (!ptp_instance_.unsubscribe(this)) {
         RAV_ERROR("Failed to unsubscribe from PTP instance");
     }
@@ -597,7 +601,7 @@ void rav::nmos::Node::update_configuration(const ConfigurationUpdate& update, co
             unregister = true;
         }
 
-        if (configuration_.uuid != new_config.uuid) {
+        if (configuration_.id != new_config.id) {
             unregister = true;
         }
 
@@ -666,13 +670,6 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() 
     for (auto& endpoint : self_.api.endpoints) {
         endpoint.port = http_endpoint.port();
     }
-
-    // TODO: I'm not sure if this is the right value for href, but unless a web interface is served this is the best we
-    // got.
-    self_.href = fmt::format(
-        "http://{}:{}/x-nmos/node/{}", http_endpoint.address().to_string(), http_endpoint.port(),
-        k_supported_api_versions.back().to_string()
-    );
 
     // Start the HTTP client to connect to the registry.
     if (configuration_.operation_mode == OperationMode::manual) {
@@ -875,19 +872,10 @@ void rav::nmos::Node::delete_resource_async(std::string resource_type, const boo
 void rav::nmos::Node::update_and_post_self_async() {
     const auto now = get_local_clock().now();
     self_.version.update(now);
-    self_.id = configuration_.uuid;
+    self_.id = configuration_.id;
     self_.label = configuration_.label;
     self_.description = configuration_.description;
-    if (!devices_.empty()) {
-        devices_.front().label = configuration_.label;
-        devices_.front().description = configuration_.description;
-    }
     post_resource_async("node", boost::json::value_from(self_));
-
-    for (auto& device : devices_) {
-        device.version.update(now);
-        post_resource_async("device", boost::json::value_from(device));
-    }
 }
 
 void rav::nmos::Node::send_heartbeat_async() {
@@ -1026,12 +1014,11 @@ boost::asio::ip::tcp::endpoint rav::nmos::Node::get_local_endpoint() const {
 }
 
 bool rav::nmos::Node::add_or_update_device(Device device) {
-    if (device.id.is_nil()) {
-        RAV_ERROR("Device ID should not be nil");
-        return false;
-    }
+    RAV_ASSERT(!device.id.is_nil(), "Device ID should not be nil");
+    RAV_ASSERT(!self_.id.is_nil(), "Node ID should not be nil");
 
     device.node_id = self_.id;
+    device.version.update(get_local_clock().now());
 
     for (auto& existing_device : devices_) {
         if (existing_device.id == device.id) {
@@ -1204,7 +1191,6 @@ boost::json::value rav::nmos::Node::to_json() const {
         {"senders", boost::json::value_from(senders_)},
         {"receivers", boost::json::value_from(receivers_)},
         {"sources", boost::json::value_from(sources_)},
-        {"self", boost::json::value_from(self_)}
     };
 }
 
@@ -1220,11 +1206,13 @@ boost::system::result<void, std::string> rav::nmos::Node::restore_from_json(cons
     }
 
     const auto devices_json = json.try_at("devices");
+    std::vector<Device> devices;
     if (devices_json && devices_json->is_array()) {
-        devices_ = boost::json::value_to<std::vector<Device>>(*devices_json);
+        devices = boost::json::value_to<std::vector<Device>>(*devices_json);
     }
 
     update_configuration(*update);
+    devices_ = std::move(devices);
 
     return {};
 }

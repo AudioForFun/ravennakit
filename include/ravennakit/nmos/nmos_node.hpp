@@ -45,7 +45,7 @@ class Node: public ptp::Instance::Subscriber {
      * The configuration of the NMOS node.
      */
     struct Configuration {
-        boost::uuids::uuid uuid;  // The UUID of the NMOS node.
+        boost::uuids::uuid id;  // The UUID of the NMOS node.
         OperationMode operation_mode {OperationMode::mdns_p2p};
         ApiVersion api_version {ApiVersion::v1_3()};
         std::string registry_address;  // For when operation_mode is registered and discover_mode is manual.
@@ -61,7 +61,7 @@ class Node: public ptp::Instance::Subscriber {
         [[nodiscard]] boost::system::result<void, Error> validate() const;
 
         [[nodiscard]] auto constexpr tie() const {
-            return std::tie(uuid, operation_mode, api_version, registry_address, enabled, label, description);
+            return std::tie(id, operation_mode, api_version, registry_address, enabled, label, description);
         }
 
         friend bool operator==(const Configuration& lhs, const Configuration& rhs) {
@@ -83,7 +83,7 @@ class Node: public ptp::Instance::Subscriber {
      * which allows for partial updates.
      */
     struct ConfigurationUpdate {
-        std::optional<boost::uuids::uuid> uuid;
+        std::optional<boost::uuids::uuid> id;
         std::optional<OperationMode> operation_mode;
         std::optional<ApiVersion> api_version;
         std::optional<std::string> registry_address;

@@ -171,8 +171,29 @@ rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::Confi
 }
 
 std::future<void> rav::RavennaNode::update_nmos_configuration(nmos::Node::ConfigurationUpdate update) {
-    auto work = [this, u = std::move(update)]() {
+    auto work = [this, u = std::move(update)] {
         nmos_node_.update_configuration(u);
+
+        const auto devices = nmos_node_.get_devices();
+        if (devices.empty()) {
+            RAV_ERROR("No devices found in NMOS node configuration");
+            return;
+        }
+
+        auto device = devices.front();
+
+        if (u.label.has_value()) {
+            device.label  = *u.label;
+        }
+
+        if (u.description.has_value()) {
+            device.description = *u.description;
+        }
+
+        if (!nmos_node_.add_or_update_device(device)) {
+            RAV_ERROR("Failed to update NMOS device configuration");
+            return;
+        }
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
