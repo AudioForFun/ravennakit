@@ -186,11 +186,12 @@ void rav::rtp::AudioReceiver::set_enabled(const bool enabled) {
     }
     enabled_ = enabled;
     enabled_ ? start() : stop();
+    update_shared_context();
 }
 
 void rav::rtp::AudioReceiver::set_interfaces(const std::map<Rank, boost::asio::ip::address_v4>& interface_addresses) {
     if (interface_addresses_ == interface_addresses) {
-        return; // No change in interface addresses
+        return;  // No change in interface addresses
     }
     interface_addresses_ = interface_addresses;
     stop();
@@ -339,7 +340,7 @@ void rav::rtp::AudioReceiver::update_shared_context() {
     }
 
     if (parameters_.streams.empty()) {
-        RAV_ERROR("No streams available - clearing shared context");
+        RAV_TRACE("No streams available - clearing shared context");
         shared_context_.clear();
         return;
     }
@@ -487,6 +488,7 @@ void rav::rtp::AudioReceiver::start() {
         }
         auto iface = interface_addresses_.find(stream->stream_info.rank);
         if (iface == interface_addresses_.end() || iface->second.is_unspecified()) {
+            RAV_WARNING("No interface address available for stream with rank {}", stream->stream_info.rank.value());
             continue;  // No interface address available for this stream
         }
         RAV_ASSERT(!iface->second.is_unspecified(), "Interface address must not be unspecified");

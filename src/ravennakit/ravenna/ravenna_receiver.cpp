@@ -89,7 +89,13 @@ rav::rtp::AudioReceiver::SessionStats rav::RavennaReceiver::get_stream_stats(con
 }
 
 nlohmann::json rav::RavennaReceiver::Configuration::to_json() const {
-    return nlohmann::json {{"session_name", session_name}, {"delay_frames", delay_frames}, {"enabled", enabled}};
+    return nlohmann::json {
+        {"session_name", session_name},
+        {"delay_frames", delay_frames},
+        {"enabled", enabled},
+        {"auto_update_sdp", auto_update_sdp},
+        {"sdp", sdp.to_string().value_or("")}
+    };
 }
 
 tl::expected<rav::RavennaReceiver::Configuration, std::string>
@@ -99,6 +105,17 @@ rav::RavennaReceiver::Configuration::from_json(const nlohmann::json& json) {
         config.session_name = json.at("session_name").get<std::string>();
         config.delay_frames = json.at("delay_frames").get<uint32_t>();
         config.enabled = json.at("enabled").get<bool>();
+        config.auto_update_sdp = json.at("auto_update_sdp").get<bool>();
+
+        const auto sdp_text = json.at("sdp").get<std::string>();
+        if (!sdp_text.empty()) {
+            auto sdp = sdp::SessionDescription::parse_new(sdp_text);
+            if (sdp.is_err()) {
+                return tl::unexpected(fmt::format("Failed to parse SDP: {}", sdp.get_err()));
+            }
+            config.sdp = sdp.move_ok();
+        }
+
         return config;
     } catch (const std::exception& e) {
         return tl::unexpected(e.what());
@@ -147,7 +164,7 @@ rav::RavennaReceiver::~RavennaReceiver() {
 void rav::RavennaReceiver::on_announced(const RavennaRtspClient::AnnouncedEvent& event) {
     try {
         RAV_ASSERT(event.session_name == configuration_.session_name, "Expecting session_name to match");
-        update_sdp(event.sdp);
+        handle_announced_sdp(event.sdp);
         RAV_TRACE("SDP updated for session '{}'", configuration_.session_name);
     } catch (const std::exception& e) {
         RAV_ERROR("Failed to process SDP for session '{}': {}", configuration_.session_name, e.what());
@@ -344,26 +361,16 @@ rav::RavennaReceiver::create_audio_receiver_parameters(const sdp::SessionDescrip
     return tl::unexpected("No suitable media description found");
 }
 
-void rav::RavennaReceiver::update_sdp(const sdp::SessionDescription& sdp) {
-    auto parameters = create_audio_receiver_parameters(sdp);
-
-    if (!parameters) {
-        RAV_ERROR("Failed to find primary stream parameters: {}", parameters.error());
+void rav::RavennaReceiver::handle_announced_sdp(const sdp::SessionDescription& sdp) {
+    if (!configuration_.auto_update_sdp) {
+        RAV_ERROR("auto_update_sdp is false, not expecting to receive SDP updates");
         return;
     }
 
-    if (rtp_audio_receiver_.set_parameters(*parameters)) {
-        nmos_receiver_.label = sdp.session_name();
-        RAV_ASSERT(nmos_receiver_.caps.media_types.size() == 1, "Expected exactly one media type");
-        nmos_receiver_.caps.media_types.front() = nmos::audio_format_to_nmos_media_type(parameters->audio_format);
-        if (nmos_node_ != nullptr) {
-            if (!nmos_node_->add_or_update_receiver({nmos_receiver_})) {
-                RAV_ERROR("Failed to update NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
-            }
-        }
-        for (auto* subscriber : subscribers_) {
-            subscriber->ravenna_receiver_parameters_updated(*parameters);
-        }
+    auto config = configuration_;
+    config.sdp = sdp;
+    if (!set_configuration(config)) {
+        RAV_ERROR("Failed to set configuration from announced SDP");
     }
 }
 
@@ -378,9 +385,13 @@ const boost::uuids::uuid& rav::RavennaReceiver::get_uuid() const {
 tl::expected<void, std::string> rav::RavennaReceiver::set_configuration(Configuration config) {
     // Validate the configuration
 
-    if (config.session_name.empty()) {
-        return tl::unexpected("Session name must not be empty");
+    if (config.auto_update_sdp) {
+        if (config.session_name.empty()) {
+            return tl::unexpected("Session name must not be empty when auto_update_sdp is true");
+        }
     }
+
+    auto parameters = create_audio_receiver_parameters(config.sdp);
 
     if (config.delay_frames == 0) {
         RAV_WARNING("Delay is set to 0 frames, which is most likely not what you want");
@@ -393,6 +404,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::set_configuration(Configur
 
     if (config.enabled != configuration_.enabled) {
         update_nmos = true;
+        update_rtsp = true;
     }
 
     if (config.session_name != configuration_.session_name) {
@@ -400,22 +412,37 @@ tl::expected<void, std::string> rav::RavennaReceiver::set_configuration(Configur
         update_rtsp = true;
     }
 
+    if (config.auto_update_sdp != configuration_.auto_update_sdp) {
+        update_rtsp = true;
+    }
+
     // Apply the configuration changes
 
     configuration_ = std::move(config);
 
+    if (!configuration_.auto_update_sdp) {
+        configuration_.session_name = configuration_.sdp.session_name();
+    }
+
     rtp_audio_receiver_.set_delay_frames(configuration_.delay_frames);
-    rtp_audio_receiver_.set_enabled(configuration_.enabled);
+    rtp_audio_receiver_.set_enabled(parameters.has_value() && configuration_.enabled);
+
+    if (parameters.has_value() && rtp_audio_receiver_.set_parameters(*parameters)) {
+        update_nmos = true;
+        for (auto* subscriber : subscribers_) {
+            subscriber->ravenna_receiver_parameters_updated(*parameters);
+        }
+    }
 
     if (update_rtsp) {
         std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
 
-        if (!rtsp_client_.subscribe_to_session(this, configuration_.session_name)) {
-            RAV_ERROR("Failed to subscribe to session '{}'", configuration_.session_name);
-            return tl::unexpected("Failed to subscribe to session");
+        if (configuration_.enabled && configuration_.auto_update_sdp) {
+            if (!rtsp_client_.subscribe_to_session(this, configuration_.session_name)) {
+                RAV_ERROR("Failed to subscribe to session '{}'", configuration_.session_name);
+                return tl::unexpected("Failed to subscribe to session");
+            }
         }
-
-        // A restart will happen when the SDP is received
     }
 
     for (auto* subscriber : subscribers_) {
@@ -425,6 +452,10 @@ tl::expected<void, std::string> rav::RavennaReceiver::set_configuration(Configur
     if (update_nmos) {
         nmos_receiver_.label = configuration_.session_name;
         nmos_receiver_.subscription.active = configuration_.enabled;
+
+        RAV_ASSERT(nmos_receiver_.caps.media_types.size() == 1, "Expected exactly one media type");
+        nmos_receiver_.caps.media_types.front() =
+            nmos::audio_format_to_nmos_media_type(rtp_audio_receiver_.get_parameters().audio_format);
 
         if (nmos_node_ != nullptr) {
             RAV_ASSERT(nmos_receiver_.is_valid(), "NMOS receiver must be valid at this point");

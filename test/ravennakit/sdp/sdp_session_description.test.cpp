@@ -34,6 +34,12 @@ TEST_CASE("session_description") {
         REQUIRE(result.is_ok());
         REQUIRE(result.get_ok().version() == 0);
     }
+
+    SECTION("Test string without newline") {
+        constexpr auto str = "bbb";
+        auto result = rav::sdp::SessionDescription::parse_new(str);
+        REQUIRE(result.is_err());
+    }
 }
 
 TEST_CASE("session_description | description from anubis") {

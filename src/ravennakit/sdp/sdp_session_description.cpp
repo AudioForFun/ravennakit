@@ -101,7 +101,7 @@ rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
                 break;
             }
             default:
-                continue;
+                return ParseResult<SessionDescription>::err(fmt::format("Unknown line: {}", *line));
         }
     }
 

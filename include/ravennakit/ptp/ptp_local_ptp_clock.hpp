@@ -72,7 +72,7 @@ class LocalPtpClock {
         // Filter out outliers, allowing a maximum per non-filtered outliers to avoid getting in a loop where all
         // measurements are filtered out and no adjustment is made anymore.
         if (is_calibrated() && offset_stats_.is_outlier_zscore(measurement.offset_from_master, 1.75)) {
-            RAV_WARNING("Ignoring outlier in offset from master: {}", measurement.offset_from_master * 1000.0);
+            ignored_outliers_++;
             TRACY_PLOT("Offset from master outliers", measurement.offset_from_master * 1000.0);
             TRACY_MESSAGE("Ignoring outlier in offset from master");
             return;
@@ -81,8 +81,10 @@ class LocalPtpClock {
         filtered_offset_stats_.add(measurement.offset_from_master);
         local_clock_.adjust(measurement.offset_from_master);
 
-        // Note: I wonder whether we should move this to the local clock, based on the actual (non-median) offset.
-        local_clock_.set_calibrated(is_between(offset_stats_.median(), -k_calibrated_threshold, k_calibrated_threshold));
+        // Note (Ruurd): I wonder whether we should move this to the local clock, based on the actual (non-median)
+        // offset.
+        local_clock_.set_calibrated(is_between(offset_stats_.median(), -k_calibrated_threshold, k_calibrated_threshold)
+        );
 
         TRACY_PLOT("Offset from master median (ms)", offset_stats_.median() * 1000.0);
         TRACY_PLOT("Offset from master outliers", 0.0);
@@ -92,9 +94,11 @@ class LocalPtpClock {
 
         if (trace_adjustments_throttle_.update()) {
             RAV_TRACE(
-                "Clock stats: offset from master=[{}], ratio={}", filtered_offset_stats_.to_string(1000.0),
-                local_clock_.get_frequency_ratio()
+                "Clock stats: offset_from_master=[min={}, max={}], ratio={}, ignored_outliers={}",
+                filtered_offset_stats_.min() * 1000.0, filtered_offset_stats_.max() * 1000.0,
+                local_clock_.get_frequency_ratio(), ignored_outliers_
             );
+            ignored_outliers_ = 0;
         }
     }
 
@@ -139,6 +143,7 @@ class LocalPtpClock {
 
     SlidingStats offset_stats_ {51};
     SlidingStats filtered_offset_stats_ {51};
+    uint32_t ignored_outliers_ = 0;
     Throttle<void> trace_adjustments_throttle_ {std::chrono::seconds(5)};
 };
 

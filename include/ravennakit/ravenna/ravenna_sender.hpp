@@ -283,6 +283,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     void update_shared_context();
     void generate_auto_addresses_if_needed();
     void update_rtp_senders();
+    void update_state(bool update_advertisement, bool announce, bool update_nmos);
 };
 
 }  // namespace rav

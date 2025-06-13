@@ -30,11 +30,14 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
   public:
     /**
      * Defines the configuration for the receiver.
+     * When no sdp_text is set, but the session_name is set, the SDP will be requested from the server.
      */
     struct Configuration {
+        sdp::SessionDescription sdp;
         std::string session_name;
         uint32_t delay_frames {};
         bool enabled {};
+        bool auto_update_sdp {true};  // When true, the receiver will connect to the RTSP server for SDP updates.
 
         /**
          * @return The configuration as a JSON object.
@@ -47,6 +50,10 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
          * @return A configuration object if the JSON is valid, otherwise an error message.
          */
         static tl::expected<Configuration, std::string> from_json(const nlohmann::json& json);
+
+        static Configuration default_config() {
+            return Configuration {{}, {}, 480, true, true};
+        }
     };
 
     /**
@@ -249,7 +256,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     nmos::ReceiverAudio nmos_receiver_;
     SubscriberList<Subscriber> subscribers_;
 
-    void update_sdp(const sdp::SessionDescription& sdp);
+    void handle_announced_sdp(const sdp::SessionDescription& sdp);
 };
 
 }  // namespace rav
