@@ -63,31 +63,31 @@ nlohmann::json rav::RavennaSender::Configuration::to_json() const {
     };
 }
 
-tl::expected<rav::RavennaSender::ConfigurationUpdate, std::string>
-rav::RavennaSender::ConfigurationUpdate::from_json(const nlohmann::json& json) {
+tl::expected<rav::RavennaSender::Configuration, std::string>
+rav::RavennaSender::Configuration::from_json(const nlohmann::json& json) {
     try {
-        ConfigurationUpdate update {};
-        update.session_name = json.at("session_name").get<std::string>();
+        Configuration config {};
+        config.session_name = json.at("session_name").get<std::string>();
 
         std::vector<Destination> destinations;
         for (auto& dst : json.at("destinations")) {
             destinations.push_back(Destination::from_json(dst).value());
         }
-        update.destinations = std::move(destinations);
-        update.ttl = json.at("ttl").get<int32_t>();
-        update.payload_type = json.at("payload_type").get<uint8_t>();
+        config.destinations = std::move(destinations);
+        config.ttl = json.at("ttl").get<int32_t>();
+        config.payload_type = json.at("payload_type").get<uint8_t>();
         auto audio_format = AudioFormat::from_json(json.at("audio_format"));
         if (!audio_format) {
             return tl::unexpected(audio_format.error());
         }
-        update.audio_format = *audio_format;
+        config.audio_format = *audio_format;
         const auto packet_time = aes67::PacketTime::from_json(json.at("packet_time"));
         if (!packet_time) {
             return tl::unexpected("Invalid packet time");
         }
-        update.packet_time = *packet_time;
-        update.enabled = json.at("enabled").get<bool>();
-        return update;
+        config.packet_time = *packet_time;
+        config.enabled = json.at("enabled").get<bool>();
+        return config;
     } catch (const std::exception& e) {
         return tl::unexpected(e.what());
     }
@@ -95,7 +95,7 @@ rav::RavennaSender::ConfigurationUpdate::from_json(const nlohmann::json& json) {
 
 rav::RavennaSender::RavennaSender(
     boost::asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-    ptp::Instance& ptp_instance, const Id id, const uint32_t session_id, ConfigurationUpdate initial_config
+    ptp::Instance& ptp_instance, const Id id, const uint32_t session_id
 ) :
     io_context_(io_context),
     advertiser_(advertiser),
@@ -115,38 +115,23 @@ rav::RavennaSender::RavennaSender(
     nmos_sender_.id = boost::uuids::random_generator()();
     nmos_sender_.flow_id = nmos_flow_.id;
 
-    if (!initial_config.session_name.has_value()) {
-        initial_config.session_name = "Sender " + std::to_string(session_id_);
-    }
+    // configuration_.session_name = "Sender " + std::to_string(session_id_);
+    // configuration_.ttl = 15;
+    // configuration_.packet_time = aes67::PacketTime::ms_1();
+    // configuration_.payload_type = 98;
 
-    if (!initial_config.ttl.has_value()) {
-        initial_config.ttl = 15;
-    }
+    // AudioFormat audio_format;
+    // audio_format.byte_order = AudioFormat::ByteOrder::be;
+    // audio_format.ordering = AudioFormat::ChannelOrdering::interleaved;
+    // audio_format.sample_rate = 48'000;
+    // audio_format.num_channels = 2;
+    // audio_format.encoding = AudioEncoding::pcm_s16;
+    // configuration_.audio_format = audio_format;
 
-    if (!initial_config.packet_time.has_value()) {
-        initial_config.packet_time = aes67::PacketTime::ms_1();
-    }
-
-    if (!initial_config.payload_type.has_value()) {
-        initial_config.payload_type = 98;
-    }
-
-    if (!initial_config.audio_format.has_value()) {
-        AudioFormat audio_format;
-        audio_format.byte_order = AudioFormat::ByteOrder::be;
-        audio_format.ordering = AudioFormat::ChannelOrdering::interleaved;
-        audio_format.sample_rate = 48'000;
-        audio_format.num_channels = 2;
-        audio_format.encoding = AudioEncoding::pcm_s16;
-        initial_config.audio_format = audio_format;
-    }
-
-    if (!initial_config.destinations.has_value()) {
-        std::vector<Destination> destinations;
-        destinations.emplace_back(Destination {Rank::primary(), {boost::asio::ip::address_v4::any(), 5004}, true});
-        destinations.emplace_back(Destination {Rank::secondary(), {boost::asio::ip::address_v4::any(), 5004}, true});
-        initial_config.destinations = std::move(destinations);
-    }
+    std::vector<Destination> destinations;
+    destinations.emplace_back(Destination {Rank::primary(), {boost::asio::ip::address_v4::any(), 5004}, true});
+    destinations.emplace_back(Destination {Rank::secondary(), {boost::asio::ip::address_v4::any(), 5004}, true});
+    configuration_.destinations = std::move(destinations);
 
     if (!ptp_instance_.subscribe(this)) {
         RAV_ERROR("Failed to subscribe to PTP instance");
@@ -155,10 +140,6 @@ rav::RavennaSender::RavennaSender(
 #if RAV_WINDOWS
     timeBeginPeriod(1);
 #endif
-
-    if (auto result = set_configuration(initial_config); !result) {
-        RAV_ERROR("Failed to update sender configuration: {}", result.error());
-    }
 }
 
 rav::RavennaSender::~RavennaSender() {
@@ -203,118 +184,80 @@ uint32_t rav::RavennaSender::get_session_id() const {
     return session_id_;
 }
 
-tl::expected<void, std::string> rav::RavennaSender::set_configuration(const ConfigurationUpdate& update) {
+tl::expected<void, std::string> rav::RavennaSender::set_configuration(const Configuration& config) {
     std::ignore = shared_context_.reclaim();  // TODO: Do somewhere else, maybe on a timer or something.
 
-    // Session name
-    if (update.session_name.has_value()) {
-        if (update.session_name->empty()) {
-            return tl::unexpected("Session name cannot be empty");
+    // Validate the configuration
+
+    if (config.session_name.empty()) {
+        return tl::unexpected("Session name cannot be empty");
+    }
+
+    for (auto& dst : config.destinations) {
+        if (!dst.endpoint.address().is_unspecified() && !dst.endpoint.address().is_multicast()) {
+            return tl::unexpected("Destination address must be multicast");  // At least for now
         }
     }
 
-    // Destination addresses
-    if (update.destinations.has_value()) {
-        for (auto& dst : *update.destinations) {
-            if (!dst.endpoint.address().is_unspecified() && !dst.endpoint.address().is_multicast()) {
-                return tl::unexpected("Destination address must be multicast");  // At least for now
-            }
-        }
+    if (config.ttl == 0) {
+        return tl::unexpected("TTL cannot be 0");
     }
 
-    // TTL
-    if (update.ttl.has_value()) {
-        if (update.ttl == 0) {
-            return tl::unexpected("TTL cannot be 0");
-        }
+    const auto& audio_format = config.audio_format;
+    if (!audio_format.is_valid()) {
+        return tl::unexpected("Invalid audio format");
+    }
+    if (audio_format.ordering != AudioFormat::ChannelOrdering::interleaved) {
+        return tl::unexpected("Only interleaved audio formats are supported");
+    }
+    if (audio_format.byte_order != AudioFormat::ByteOrder::be) {
+        return tl::unexpected("Only big endian audio formats are supported");
     }
 
-    // Audio format
-    if (update.audio_format.has_value()) {
-        const auto& audio_format = *update.audio_format;
-        if (!audio_format.is_valid()) {
-            return tl::unexpected("Invalid audio format");
-        }
-        if (audio_format.ordering != AudioFormat::ChannelOrdering::interleaved) {
-            return tl::unexpected("Only interleaved audio formats are supported");
-        }
-        if (audio_format.byte_order != AudioFormat::ByteOrder::be) {
-            return tl::unexpected("Only big endian audio formats are supported");
-        }
+    if (!config.packet_time.is_valid()) {
+        return tl::unexpected("Invalid packet time");
     }
 
-    // Packet time
-    if (update.packet_time.has_value()) {
-        if (!update.packet_time->is_valid()) {
-            return tl::unexpected("Invalid packet time");
-        }
-    }
+    // Determine changes
 
     bool update_advertisement = false;
     bool announce = false;
     bool update_nmos = false;
 
-    // Session name
-    if (update.session_name.has_value() && update.session_name != configuration_.session_name) {
-        configuration_.session_name = *update.session_name;
+    if (config.session_name != configuration_.session_name) {
         update_advertisement = true;
         announce = true;
         update_nmos = true;
-
-        nmos_sender_.label = configuration_.session_name;
-        nmos_flow_.label = configuration_.session_name;
-        nmos_source_.label = configuration_.session_name;
     }
 
-    // Destinations
-    if (update.destinations.has_value() && update.destinations != configuration_.destinations) {
-        configuration_.destinations = *update.destinations;
+    if (config.destinations != configuration_.destinations) {
         announce = true;
-        generate_auto_addresses_if_needed();
-        update_rtp_senders();
     }
 
-    // TTL
-    if (update.ttl.has_value() && update.ttl != configuration_.ttl) {
-        configuration_.ttl = *update.ttl;
+    if (config.ttl != configuration_.ttl) {
         announce = true;
         // TODO: Update socket option for TTL. Probably both multicast and unicast in one go (which are separate opts).
     }
 
-    // Payload type
-    if (update.payload_type.has_value() && update.payload_type != configuration_.payload_type) {
-        configuration_.payload_type = *update.payload_type;
+    if (config.payload_type != configuration_.payload_type) {
         announce = true;
     }
 
-    // Audio format
-    if (update.audio_format.has_value() && update.audio_format != configuration_.audio_format) {
-        configuration_.audio_format = *update.audio_format;
+    if (config.audio_format != configuration_.audio_format) {
         announce = true;
         update_nmos = true;
-
-        const auto& audio_format = *update.audio_format;
-        nmos_source_.channels.resize(audio_format.num_channels);
-        for (uint32_t i = 0; i < audio_format.num_channels; ++i) {
-            nmos_source_.channels[i].label = fmt::format("Channel {}", i + 1);
-        }
-
-        nmos_flow_.media_type = nmos::audio_format_to_nmos_media_type(audio_format);
-        nmos_flow_.sample_rate = {static_cast<int>(audio_format.sample_rate), 1};
-        nmos_flow_.bit_depth = audio_format.bytes_per_sample() * 8;
     }
 
-    // Packet time
-    if (update.packet_time.has_value() && update.packet_time != configuration_.packet_time) {
-        configuration_.packet_time = *update.packet_time;
+    if (config.packet_time != configuration_.packet_time) {
         announce = true;
     }
 
-    // Enabled
-    if (update.enabled.has_value() && update.enabled != configuration_.enabled) {
-        configuration_.enabled = *update.enabled;
-        configuration_.enabled ? start_timer() : stop_timer();
-    }
+    // Implement the changes
+
+    configuration_ = std::move(config);
+
+    generate_auto_addresses_if_needed();
+    update_rtp_senders();
 
     auto state_valid = validate_state();
     if (!state_valid) {
@@ -345,15 +288,30 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(const Conf
         }
     }
 
-    if (update_nmos && nmos_node_ != nullptr) {
-        if (!nmos_node_->add_or_update_source({nmos_source_})) {
-            RAV_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
+    if (update_nmos) {
+        nmos_sender_.label = configuration_.session_name;
+        nmos_flow_.label = configuration_.session_name;
+        nmos_source_.label = configuration_.session_name;
+
+        nmos_source_.channels.resize(audio_format.num_channels);
+        for (uint32_t i = 0; i < audio_format.num_channels; ++i) {
+            nmos_source_.channels[i].label = fmt::format("Channel {}", i + 1);
         }
-        if (!nmos_node_->add_or_update_flow({nmos_flow_})) {
-            RAV_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
-        }
-        if (!nmos_node_->add_or_update_sender(nmos_sender_)) {
-            RAV_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
+
+        nmos_flow_.media_type = nmos::audio_format_to_nmos_media_type(audio_format);
+        nmos_flow_.sample_rate = {static_cast<int>(audio_format.sample_rate), 1};
+        nmos_flow_.bit_depth = audio_format.bytes_per_sample() * 8;
+
+        if (nmos_node_ != nullptr) {
+            if (!nmos_node_->add_or_update_source({nmos_source_})) {
+                RAV_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
+            }
+            if (!nmos_node_->add_or_update_flow({nmos_flow_})) {
+                RAV_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
+            }
+            if (!nmos_node_->add_or_update_sender(nmos_sender_)) {
+                RAV_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
+            }
         }
     }
 
@@ -362,9 +320,12 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(const Conf
     }
 
     if (!should_be_running) {
+        stop_timer();
         shared_context_.clear();
         return {};  // Done here
     }
+
+    start_timer();
 
     if (rtsp_path_by_id_.empty()) {
         RAV_ASSERT(
@@ -579,7 +540,8 @@ void rav::RavennaSender::set_interfaces(const std::map<Rank, boost::asio::ip::ad
     interface_addresses_ = interface_addresses;
     generate_auto_addresses_if_needed();
     update_rtp_senders();
-    auto result = set_configuration({});  // Trigger configuration update
+    const auto config = configuration_;
+    auto result = set_configuration(config);  // Trigger configuration update
     if (!result) {
         RAV_ERROR("Failed to update sender configuration: {}", result.error());
     }
@@ -597,7 +559,7 @@ nlohmann::json rav::RavennaSender::to_json() const {
 
 tl::expected<void, std::string> rav::RavennaSender::restore_from_json(const nlohmann::json& json) {
     try {
-        auto config = ConfigurationUpdate::from_json(json.at("configuration"));
+        auto config = Configuration::from_json(json.at("configuration"));
         if (!config) {
             return tl::unexpected(config.error());
         }
@@ -607,13 +569,9 @@ tl::expected<void, std::string> rav::RavennaSender::restore_from_json(const nloh
             return tl::unexpected("Session ID must be valid");
         }
 
-        nmos_source_.id = boost::uuids::string_generator()(json.at("nmos_source_uuid").get<std::string>());
-
-        nmos_flow_.id = boost::uuids::string_generator()(json.at("nmos_flow_uuid").get<std::string>());
-        nmos_flow_.source_id = nmos_source_.id;
-
-        nmos_sender_.id = boost::uuids::string_generator()(json.at("nmos_sender_uuid").get<std::string>());
-        nmos_sender_.flow_id = nmos_flow_.id;
+        const auto nmos_source_uuid = boost::uuids::string_generator()(json.at("nmos_source_uuid").get<std::string>());
+        const auto nmos_flow_uuid = boost::uuids::string_generator()(json.at("nmos_flow_uuid").get<std::string>());
+        const auto nmos_sender_uuid = boost::uuids::string_generator()(json.at("nmos_sender_uuid").get<std::string>());
 
         auto result = set_configuration(*config);
         if (!result) {
@@ -621,10 +579,18 @@ tl::expected<void, std::string> rav::RavennaSender::restore_from_json(const nloh
         }
 
         session_id_ = session_id;
-        return {};
+
+        nmos_source_.id = nmos_source_uuid;
+
+        nmos_flow_.id = nmos_flow_uuid;
+        nmos_flow_.source_id = nmos_source_.id;
+
+        nmos_sender_.id = nmos_sender_uuid;
+        nmos_sender_.flow_id = nmos_flow_.id;
     } catch (const std::exception& e) {
         return tl::unexpected(fmt::format("Failed to restore RavennaSender from JSON: {}", e.what()));
     }
+    return {};
 }
 
 void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) const {

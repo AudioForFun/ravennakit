@@ -84,27 +84,13 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
          * @return The configuration as a JSON object.
          */
         [[nodiscard]] nlohmann::json to_json() const;
-    };
-
-    /**
-     * Struct for updating the configuration of the sender. Only the fields that are set are taken into account, which
-     * allows for partial updates.
-     */
-    struct ConfigurationUpdate {
-        std::optional<std::string> session_name;
-        std::optional<std::vector<Destination>> destinations;
-        std::optional<int32_t> ttl;
-        std::optional<uint8_t> payload_type;
-        std::optional<AudioFormat> audio_format;
-        std::optional<aes67::PacketTime> packet_time;
-        std::optional<bool> enabled;
 
         /**
-         * Creates a configuration changes object from a JSON object.
+         * Creates a configuration object from a JSON object.
          * @param json The JSON object to convert.
-         * @return A configuration update object if the JSON is valid, otherwise an error message.
+         * @return A configuration object if the JSON is valid, otherwise an error message.
          */
-        static tl::expected<ConfigurationUpdate, std::string> from_json(const nlohmann::json& json);
+        static tl::expected<Configuration, std::string> from_json(const nlohmann::json& json);
     };
 
     class Subscriber {
@@ -124,7 +110,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
 
     RavennaSender(
         boost::asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-        ptp::Instance& ptp_instance, Id id, uint32_t session_id, ConfigurationUpdate initial_config = {}
+        ptp::Instance& ptp_instance, Id id, uint32_t session_id
     );
 
     ~RavennaSender() override;
@@ -153,9 +139,9 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     /**
      * Updates the configuration of the sender. Only takes into account the fields in the configuration that are set.
      * This allows to update only a subset of the configuration.
-     * @param update The configuration to update.
+     * @param config The configuration to update.
      */
-    [[nodiscard]] tl::expected<void, std::string> set_configuration(const ConfigurationUpdate& update);
+    [[nodiscard]] tl::expected<void, std::string> set_configuration(const Configuration& config);
 
     /**
      * @returns The current configuration of the sender.
@@ -263,7 +249,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     nmos::FlowAudioRaw nmos_flow_;
     nmos::Sender nmos_sender_;
 
-    boost::asio::high_resolution_timer timer_; // TODO: Replace with AsioTimer to avoid crashes on shutdown
+    boost::asio::high_resolution_timer timer_;  // TODO: Replace with AsioTimer to avoid crashes on shutdown
     SubscriberList<Subscriber> subscribers_;
     std::string status_message_;
 

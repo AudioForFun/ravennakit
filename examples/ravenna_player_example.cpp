@@ -55,11 +55,11 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
 
         audio_format_ = *format;
 
-        rav::RavennaSender::ConfigurationUpdate update;
-        update.session_name = session_name;
-        update.audio_format = audio_format_.with_byte_order(rav::AudioFormat::ByteOrder::be);
-        update.enabled = true;
-        const auto result = sender->set_configuration(update);
+        rav::RavennaSender::Configuration config;
+        config.session_name = session_name;
+        config.audio_format = audio_format_.with_byte_order(rav::AudioFormat::ByteOrder::be);
+        config.enabled = true;
+        const auto result = sender->set_configuration(config);
         if (!result) {
             throw std::runtime_error("Failed to update configuration for transmitter: " + result.error());
         }

@@ -128,13 +128,20 @@ rav::RavennaNode::update_receiver_configuration(Id receiver_id, RavennaReceiver:
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
-std::future<rav::Id> rav::RavennaNode::create_sender(const RavennaSender::ConfigurationUpdate& initial_config) {
+std::future<rav::Id> rav::RavennaNode::create_sender(RavennaSender::Configuration initial_config) {
     auto work = [this, initial_config]() mutable {
         auto new_sender = std::make_unique<RavennaSender>(
-            io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), generate_unique_session_id(),
-            initial_config
+            io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), generate_unique_session_id()
         );
+        if (initial_config.session_name.empty()) {
+            initial_config.session_name = fmt::format("Sender {}", new_sender->get_session_id());
+        }
         new_sender->set_interfaces(config_.network_interfaces.get_interface_ipv4_addresses());
+        auto result = new_sender->set_configuration(initial_config);
+        if (!result) {
+            RAV_ERROR("Failed to set sender configuration: {}", result.error());
+            return Id {};
+        }
         const auto& it = senders_.emplace_back(std::move(new_sender));
         it->set_nmos_device_id(nmos_device_.id);
         it->set_nmos_node(&nmos_node_);
@@ -172,8 +179,8 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
 }
 
 std::future<tl::expected<void, std::string>>
-rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update) {
-    auto work = [this, sender_id, u = std::move(update)]() -> tl::expected<void, std::string> {
+rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::Configuration config) {
+    auto work = [this, sender_id, u = std::move(config)]() -> tl::expected<void, std::string> {
         for (const auto& sender : senders_) {
             if (sender->get_id() == sender_id) {
                 return sender->set_configuration(u);
@@ -516,10 +523,10 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json
                 auto new_sender = std::make_unique<RavennaSender>(
                     io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), 1
                 );
+                new_sender->set_interfaces(interface_addresses);
                 if (auto result = new_sender->restore_from_json(sender); !result) {
                     return tl::unexpected(result.error());
                 }
-                new_sender->set_interfaces(interface_addresses);
                 new_sender->set_nmos_device_id(nmos_device_id);
                 new_senders.push_back(std::move(new_sender));
             }

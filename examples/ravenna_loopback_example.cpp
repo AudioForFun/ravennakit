@@ -90,12 +90,12 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
 
         buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.streams.front().packet_time_frames);
 
-        rav::RavennaSender::ConfigurationUpdate update;
-        update.session_name = stream_name_ + "_loopback";
-        update.audio_format = parameters.audio_format;
-        update.enabled = true;
+        rav::RavennaSender::Configuration config;
+        config.session_name = stream_name_ + "_loopback";
+        config.audio_format = parameters.audio_format;
+        config.enabled = true;
 
-        auto result = sender_->set_configuration(update);
+        auto result = sender_->set_configuration(config);
         if (!result) {
             RAV_ERROR("Failed to update sender: {}", result.error());
         }

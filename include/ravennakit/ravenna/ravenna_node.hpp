@@ -144,7 +144,7 @@ class RavennaNode {
      * Creates a sender for the given session.
      * @return The ID of the created sender, which might be invalid if the sender couldn't be created.
      */
-    std::future<Id> create_sender(const RavennaSender::ConfigurationUpdate& initial_config = {});
+    std::future<Id> create_sender(RavennaSender::Configuration initial_config);
 
     /**
      * Removes the sender with the given id.
@@ -156,11 +156,11 @@ class RavennaNode {
     /**
      * Updates the configuration of the sender with the given id.
      * @param sender_id The id of the sender to update.
-     * @param update The configuration changes to apply.
+     * @param config The configuration changes to apply.
      * @return A future that will be set when the operation is complete.
      */
     std::future<tl::expected<void, std::string>>
-    update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update);
+    update_sender_configuration(Id sender_id, RavennaSender::Configuration config);
 
     /**
      * Sets the configuration of the NMOS node.
