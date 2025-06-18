@@ -73,17 +73,6 @@ void invalid_api_version_response(http::response<http::string_body>& res) {
 }
 
 /**
- * Sets the error response for an unsupported API version.
- * @param res The response to set.
- * @param version The unsupported API version.
- */
-void version_not_supported_response(http::response<http::string_body>& res, const rav::nmos::ApiVersion& version) {
-    set_error_response(
-        res, http::status::not_found, "Version not found", fmt::format("Version {} is not supported", version)
-    );
-}
-
-/**
  * Sets the response to indicate that the request was successful and optionally adds the body (if not empty).
  * @param res The response to set.
  * @param body The body of the response.
@@ -95,59 +84,48 @@ void ok_response(http::response<http::string_body>& res, std::string body) {
     res.prepare_payload();
 }
 
-/**
- * Checks if the given API version is supported.
- * @param version The API version to check.
- * @return True if the version is supported, false otherwise.
- */
-bool is_version_supported(const rav::nmos::ApiVersion& version) {
-    return std::any_of(
-        rav::nmos::Node::k_supported_api_versions.begin(), rav::nmos::Node::k_supported_api_versions.end(),
-        [&version](const auto& supported_version) {
-            return supported_version == version;
-        }
-    );
-}
-
-/**
- * Gets the valid API version from the request parameters.
- * @param res The response to set.
- * @param params The request parameters.
- * @param param_name The name of the parameter to check (default: "version").
- * @return The valid API version, or std::nullopt if not found or invalid.
- */
-std::optional<rav::nmos::ApiVersion> get_valid_version_from_parameters(
-    rav::HttpServer::Response& res, const rav::PathMatcher::Parameters& params,
+template<typename VersionsContainer>
+std::optional<rav::nmos::ApiVersion> get_valid_api_version_from_parameters(
+    const rav::PathMatcher::Parameters& params, const VersionsContainer& versions,
     const std::string_view param_name = "version"
 ) {
     const auto version_str = params.get(param_name);
     if (version_str == nullptr) {
-        invalid_api_version_response(res);
         return std::nullopt;
     }
-    const auto version = rav::nmos::ApiVersion::from_string(*version_str);
-    if (!version) {
-        invalid_api_version_response(res);
+    auto version = rav::nmos::ApiVersion::from_string(*version_str);
+
+    if (!version.has_value()) {
         return std::nullopt;
     }
-    if (!is_version_supported(*version)) {
-        version_not_supported_response(res, *version);
+
+    auto found = std::any_of(versions.begin(), versions.end(), [&version](const auto& supported_version) {
+        return supported_version == version;
+    });
+
+    if (!found) {
         return std::nullopt;
     }
+
     return version;
 }
 
 }  // namespace
 
-std::array<rav::nmos::ApiVersion, 2> rav::nmos::Node::k_supported_api_versions = {{
-    ApiVersion::v1_2(),
-    ApiVersion::v1_3(),
+std::array<rav::nmos::ApiVersion, 2> rav::nmos::Node::k_node_api_versions = {{
+    ApiVersion {1, 2},
+    ApiVersion {1, 3},
+}};
+
+std::array<rav::nmos::ApiVersion, 2> rav::nmos::Node::k_connection_api_versions = {{
+    ApiVersion {1, 0},
+    ApiVersion {1, 1},
 }};
 
 boost::system::result<void, rav::nmos::Error> rav::nmos::Node::Configuration::validate() const {
     bool version_valid = false;
 
-    for (auto& v : k_supported_api_versions) {
+    for (auto& v : k_node_api_versions) {
         if (v == api_version) {
             version_valid = true;
             break;
@@ -251,7 +229,7 @@ rav::nmos::Node::Node(
     configuration_.id = boost::uuids::random_generator()();
     self_.id = configuration_.id;
 
-    for (auto& v : k_supported_api_versions) {
+    for (auto& v : k_node_api_versions) {
         self_.api.versions.push_back(v.to_string());
     }
 
@@ -269,8 +247,10 @@ rav::nmos::Node::Node(
     });
 
     http_server_.get("/x-nmos", [](const HttpServer::Request&, HttpServer::Response& res, PathMatcher::Parameters&) {
-        ok_response(res, boost::json::serialize(boost::json::array({"node/"})));
+        ok_response(res, boost::json::serialize(boost::json::array({"node/", "connection/"})));
     });
+
+    // Node API
 
     http_server_.get(
         "/x-nmos/node",
@@ -279,7 +259,7 @@ rav::nmos::Node::Node(
             set_default_headers(res);
 
             boost::json::array versions;
-            for (const auto& version : k_supported_api_versions) {
+            for (const auto& version : k_node_api_versions) {
                 versions.push_back({fmt::format("{}/", version.to_string())});
             }
 
@@ -291,8 +271,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}",
         [](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             ok_response(
@@ -307,8 +287,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/self",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             ok_response(res, boost::json::serialize(boost::json::value_from(self_)));
@@ -318,8 +298,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/devices",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             ok_response(res, boost::json::serialize(boost::json::value_from(devices_)));
@@ -329,8 +309,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/devices/{device_id}",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             const auto* uuid_str = params.get("device_id");
@@ -359,8 +339,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/flows",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             ok_response(res, boost::json::serialize(boost::json::value_from(flows_)));
@@ -370,8 +350,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/flows/{flow_id}",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             const auto* uuid_str = params.get("flow_id");
@@ -398,8 +378,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/receivers",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             ok_response(res, boost::json::serialize(boost::json::value_from(receivers_)));
@@ -409,8 +389,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/receivers/{receiver_id}",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             const auto* uuid_str = params.get("receiver_id");
@@ -439,8 +419,8 @@ rav::nmos::Node::Node(
     http_server_.options(
         "/x-nmos/node/{version}/receivers/{receiver_id}/target",
         [](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             const auto* uuid_str = params.get("receiver_id");
@@ -464,8 +444,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/senders",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             ok_response(res, boost::json::serialize(boost::json::value_from(senders_)));
@@ -475,8 +455,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/senders/{sender_id}",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             const auto* uuid_str = params.get("sender_id");
@@ -505,8 +485,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/sources",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             ok_response(res, boost::json::serialize(boost::json::value_from(sources_)));
@@ -516,8 +496,8 @@ rav::nmos::Node::Node(
     http_server_.get(
         "/x-nmos/node/{version}/sources/{source_id}",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
-            if (!get_valid_version_from_parameters(res, params)) {
-                return;
+            if (!get_valid_api_version_from_parameters(params, k_node_api_versions).has_value()) {
+                return invalid_api_version_response(res);
             }
 
             const auto* uuid_str = params.get("source_id");
@@ -540,6 +520,46 @@ rav::nmos::Node::Node(
             }
 
             set_error_response(res, http::status::not_found, "Not found", "Source not found");
+        }
+    );
+
+    // Connection API
+
+    http_server_.get(
+        "/x-nmos/connection",
+        [](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters&) {
+            res.result(http::status::ok);
+            set_default_headers(res);
+
+            boost::json::array versions;
+            for (const auto& version : k_connection_api_versions) {
+                versions.push_back({fmt::format("{}/", version.to_string())});
+            }
+
+            res.body() = boost::json::serialize(versions);
+            res.prepare_payload();
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}",
+        [](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            ok_response(res, boost::json::serialize(boost::json::array({"bulk/", "single/"})));
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}/bulk",
+        [](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            ok_response(res, boost::json::serialize(boost::json::array({"senders/", "receivers/"})));
         }
     );
 
@@ -1022,6 +1042,18 @@ void rav::nmos::Node::send_updated_resources_async() {
     current_version_ = Version(new_version);
 }
 
+void rav::nmos::Node::update_device(Device& device) {
+    const auto endpoint = http_server_.get_local_endpoint();
+    device.controls.clear();
+    for (auto& [rank, ip] : network_interface_config_.get_interface_ipv4_addresses()) {
+        Device::Control control;
+        control.type = "urn:x-nmos:control:sr-ctrl/v1.1";
+        control.href = fmt::format("http://{}:{}/x-nmos/connection/v1.1", ip.to_string(), endpoint.port());
+        device.controls.push_back(control);
+    }
+    device.version = Version(get_local_clock().now());
+}
+
 const char* rav::nmos::to_string(const Node::Status& status) {
     switch (status) {
         case Node::Status::disabled:
@@ -1052,6 +1084,7 @@ bool rav::nmos::Node::add_or_update_device(Device device) {
 
     device.node_id = self_.id;
     device.version.update(get_local_clock().now());
+    update_device(device);
 
     bool updated = false;
     for (auto& existing_device : devices_) {
@@ -1341,11 +1374,15 @@ const rav::nmos::Node::RegistryInfo& rav::nmos::Node::get_registry_info() const 
     return registry_info_;
 }
 
-void rav::nmos::Node::set_network_interface_config(const NetworkInterfaceConfig& interface_config) {
+void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config) {
+    if (network_interface_config_ == config) {
+        return;  // No change in configuration, nothing to do.
+    }
+
     self_.interfaces.clear();
     const auto& system_interfaces = NetworkInterfaceList::get_system_interfaces();
 
-    for (const auto& [_, id] : interface_config.get_interfaces()) {
+    for (const auto& [_, id] : config.get_interfaces()) {
         auto* iface = system_interfaces.get_interface(id);
         if (iface == nullptr) {
             RAV_ERROR("Network interface with ID {} not found", id);
@@ -1361,7 +1398,7 @@ void rav::nmos::Node::set_network_interface_config(const NetworkInterfaceConfig&
         self_.interfaces.emplace_back(Self::Interface {std::nullopt, iface->get_mac_address()->to_string("-"), id});
     }
 
-    auto addrs = interface_config.get_interface_ipv4_addresses();
+    auto addrs = config.get_interface_ipv4_addresses();
     if (addrs.empty()) {
         RAV_ERROR("No IPv4 addresses found for the interface");
         return;
@@ -1375,17 +1412,23 @@ void rav::nmos::Node::set_network_interface_config(const NetworkInterfaceConfig&
         self_.api.endpoints.emplace_back(Self::Endpoint {ip.to_string(), http_endpoint.port(), "http", false});
     }
 
+    for (auto& device : devices_) {
+        update_device(device);
+    }
+
     self_.version.update(get_local_clock().now());
 
     if (status_ == Status::registered) {
         send_updated_resources_async();
     }
+
+    network_interface_config_ = std::move(config);
 }
 
 std::optional<size_t> rav::nmos::Node::index_of_supported_api_version(const ApiVersion& version) {
-    const auto it = std::find(k_supported_api_versions.begin(), k_supported_api_versions.end(), version);
-    if (it != k_supported_api_versions.end()) {
-        return std::distance(k_supported_api_versions.begin(), it);
+    const auto it = std::find(k_node_api_versions.begin(), k_node_api_versions.end(), version);
+    if (it != k_node_api_versions.end()) {
+        return std::distance(k_node_api_versions.begin(), it);
     }
     return std::nullopt;
 }

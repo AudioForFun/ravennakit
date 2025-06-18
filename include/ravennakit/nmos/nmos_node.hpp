@@ -38,7 +38,8 @@ namespace rav::nmos {
  */
 class Node: public ptp::Instance::Subscriber {
   public:
-    static std::array<ApiVersion, 2> k_supported_api_versions;
+    static std::array<ApiVersion, 2> k_node_api_versions;
+    static std::array<ApiVersion, 2> k_connection_api_versions;
     static constexpr auto k_default_timeout = std::chrono::milliseconds(2000);
     static constexpr auto k_internal_clock_name = "clk0";
     static constexpr auto k_ptp_clock_name = "clk1";
@@ -49,7 +50,7 @@ class Node: public ptp::Instance::Subscriber {
     struct Configuration {
         boost::uuids::uuid id;  // The UUID of the NMOS node.
         OperationMode operation_mode {OperationMode::mdns_p2p};
-        ApiVersion api_version {ApiVersion::v1_3()};
+        ApiVersion api_version {1, 3};
         std::string registry_address;  // For when operation_mode is registered and discover_mode is manual.
         bool enabled {false};          // Whether the node is enabled or not.
         uint16_t node_api_port {0};    // The port of the local node API.
@@ -280,9 +281,9 @@ class Node: public ptp::Instance::Subscriber {
 
     /**
      * Updates the node based on given network interface configuration.
-     * @param interface_config The network interface configuration to apply.
+     * @param config The network interface configuration to apply.
      */
-    void set_network_interface_config(const NetworkInterfaceConfig& interface_config);
+    void set_network_interface_config(NetworkInterfaceConfig config);
 
     /**
      * @param version The API version to check.
@@ -309,6 +310,7 @@ class Node: public ptp::Instance::Subscriber {
     Configuration configuration_;
     Status status_ {Status::disabled};
     int post_resource_error_count_ = 0;
+    NetworkInterfaceConfig network_interface_config_;
 
     std::optional<dnssd::ServiceDescription> selected_registry_;
     RegistryInfo registry_info_;
@@ -343,6 +345,7 @@ class Node: public ptp::Instance::Subscriber {
     void set_status(Status new_status);
     void update_all_resources_to_now();
     void send_updated_resources_async();
+    void update_device(Device& device);
 };
 
 const char* to_string(const Node::Status& status);

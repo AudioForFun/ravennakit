@@ -47,28 +47,28 @@ TEST_CASE("NMOS Registry Browser") {
     rav::nmos::RegistryBrowser browser(io_context, std::move(multicast_browser_factory));
 
     SECTION("When using OperationMode::mdns_p2p, a multicast browser should be created") {
-        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion::v1_3());
+        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion {1, 3});
         REQUIRE(multicast_browser);
         browser.stop();
         REQUIRE_FALSE(multicast_browser);
     }
 
     SECTION("When using OperationMode::manual, no browser should be created") {
-        browser.start(rav::nmos::OperationMode::manual, rav::nmos::ApiVersion::v1_3());
+        browser.start(rav::nmos::OperationMode::manual, rav::nmos::ApiVersion {1, 3});
         REQUIRE_FALSE(multicast_browser);
         browser.stop();
         REQUIRE_FALSE(multicast_browser);
     }
 
     SECTION("When using OperationMode::p2p, no browser should be created") {
-        browser.start(rav::nmos::OperationMode::p2p, rav::nmos::ApiVersion::v1_3());
+        browser.start(rav::nmos::OperationMode::p2p, rav::nmos::ApiVersion {1, 3});
         REQUIRE_FALSE(multicast_browser);
         browser.stop();
         REQUIRE_FALSE(multicast_browser);
     }
 
     SECTION("Discover mdns service") {
-        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion::v1_3());
+        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion {1, 3});
 
         int times_called = 0;
         browser.on_registry_discovered = [&](const rav::dnssd::ServiceDescription& desc) {
@@ -96,7 +96,7 @@ TEST_CASE("NMOS Registry Browser") {
     }
 
     SECTION("find_most_suitable_registry") {
-        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion::v1_3());
+        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion {1, 3});
         multicast_browser->mock_discovered_service("service1", "service1_name", "_nmos-register._tcp", "local.");
         multicast_browser->mock_resolved_service(
             "service1", "_nmos-register.local.", 1234,
@@ -117,7 +117,7 @@ TEST_CASE("NMOS Registry Browser") {
     }
 
     SECTION("Don't discover invalid services") {
-        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion::v1_3());
+        browser.start(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion {1, 3});
         browser.on_registry_discovered = [](const rav::dnssd::ServiceDescription&) {
             FAIL("Should not discover invalid service");
         };
@@ -169,41 +169,41 @@ TEST_CASE("NMOS Registry Browser") {
         };
 
         SECTION("Valid service") {
-            auto pri = rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3());
+            auto pri = rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion {1, 3});
             REQUIRE(pri.has_value());
             REQUIRE(*pri == 100);
         }
 
         SECTION("Valid service") {
             desc.reg_type = "_nmos-registration._tcp.";
-            auto pri = rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3());
+            auto pri = rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion {1, 3});
             REQUIRE(pri.has_value());
             REQUIRE(*pri == 100);
         }
 
         SECTION("Invalid reg_type") {
             desc.reg_type = "_nmos-invalid._tcp.";
-            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion {1, 3}));
         }
 
         SECTION("Invalid api_proto") {
             desc.txt["api_proto"] = "https";  // Not supported
-            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion {1, 3}));
         }
 
         SECTION("Invalid api_ver") {
             desc.txt["api_ver"] = "v1.0,v1.1,v1.2";
-            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion {1, 3}));
         }
 
         SECTION("Invalid api_auth") {
             desc.txt["api_auth"] = "true";  // Not supported
-            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion {1, 3}));
         }
 
         SECTION("Invalid pri") {
             desc.txt["pri"] = "n/a";  // Not a number
-            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion::v1_3()));
+            REQUIRE_FALSE(rav::nmos::RegistryBrowserBase::filter_and_get_pri(desc, rav::nmos::ApiVersion {1, 3}));
         }
     }
 }

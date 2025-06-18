@@ -99,10 +99,10 @@ class NodeTestHttpClient final: public rav::HttpClientBase {
 
 TEST_CASE("nmos::Node") {
     SECTION("Supported api versions") {
-        auto versions = rav::nmos::Node::k_supported_api_versions;
+        auto versions = rav::nmos::Node::k_node_api_versions;
         REQUIRE(versions.size() == 2);
-        REQUIRE(versions[0] == rav::nmos::ApiVersion::v1_2());
-        REQUIRE(versions[1] == rav::nmos::ApiVersion::v1_3());
+        REQUIRE(versions[0] == rav::nmos::ApiVersion {1, 2});
+        REQUIRE(versions[1] == rav::nmos::ApiVersion {1, 3});
     }
 
     SECTION("Test whether types are printable") {
@@ -138,7 +138,7 @@ TEST_CASE("nmos::Node") {
 
         rav::nmos::Node::Configuration config;
         config.operation_mode = rav::nmos::OperationMode::mdns_p2p;
-        config.api_version = rav::nmos::ApiVersion::v1_3();
+        config.api_version = rav::nmos::ApiVersion {1, 3};
         config.enabled = true;
         config.node_api_port = 8080;
 
@@ -156,7 +156,7 @@ TEST_CASE("nmos::Node") {
         REQUIRE(browser->calls_to_start.size() == 1);
         REQUIRE(
             browser->calls_to_start[0]
-            == std::make_tuple(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion::v1_3())
+            == std::make_tuple(rav::nmos::OperationMode::mdns_p2p, rav::nmos::ApiVersion {1, 3})
         );
         REQUIRE(browser->calls_to_stop == 0);
         REQUIRE(browser->calls_to_find_most_suitable_registry == 0);

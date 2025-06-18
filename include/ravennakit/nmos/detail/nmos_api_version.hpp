@@ -71,14 +71,6 @@ struct ApiVersion {
         return ApiVersion {*major, *minor};
     }
 
-    static constexpr ApiVersion v1_2() {
-        return {1, 2};
-    }
-
-    static constexpr ApiVersion v1_3() {
-        return {1, 3};
-    }
-
     friend bool operator==(const ApiVersion& lhs, const ApiVersion& rhs) {
         return lhs.major == rhs.major && lhs.minor == rhs.minor;
     }

@@ -53,7 +53,7 @@ class NetworkInterfaceConfig {
     /**
      * @return  A map of all network interfaces and their identifiers. The key is the rank of the interface.
      */
-    [[nodiscard]] std::map<Rank, NetworkInterface::Identifier> get_interfaces() const {
+    [[nodiscard]] const std::map<Rank, NetworkInterface::Identifier>& get_interfaces() const {
         return interfaces_;
     }
 
