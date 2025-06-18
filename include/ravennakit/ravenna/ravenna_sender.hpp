@@ -136,7 +136,7 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      * This allows to update only a subset of the configuration.
      * @param config The configuration to update.
      */
-    [[nodiscard]] tl::expected<void, std::string> set_configuration(const Configuration& config);
+    [[nodiscard]] tl::expected<void, std::string> set_configuration(Configuration config);
 
     /**
      * @returns The current configuration of the sender.

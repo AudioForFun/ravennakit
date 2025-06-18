@@ -184,7 +184,7 @@ uint32_t rav::RavennaSender::get_session_id() const {
     return session_id_;
 }
 
-tl::expected<void, std::string> rav::RavennaSender::set_configuration(const Configuration& config) {
+tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configuration config) {
     std::ignore = shared_context_.reclaim();  // TODO: Do somewhere else, maybe on a timer or something.
 
     // Validate the configuration
@@ -251,6 +251,12 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(const Conf
     bool announce = false;
     bool update_nmos = false;
 
+    if (config.enabled != configuration_.enabled) {
+        update_advertisement = true;
+        announce = true;
+        update_nmos = true;
+    }
+    
     if (config.session_name != configuration_.session_name) {
         update_advertisement = true;
         announce = true;
@@ -892,6 +898,7 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
         nmos_flow_.label = configuration_.session_name;
         nmos_source_.label = configuration_.session_name;
 
+        nmos_sender_.subscription.active = configuration_.enabled;
         nmos_sender_.interface_bindings.clear();
         for (const auto& dst : configuration_.destinations) {
             if (dst.enabled) {
