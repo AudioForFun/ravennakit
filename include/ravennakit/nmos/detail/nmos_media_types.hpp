@@ -14,8 +14,8 @@
 
 namespace rav::nmos {
 
-inline const char* audio_format_to_nmos_media_type(const AudioFormat& format) {
-    switch (format.encoding) {
+inline const char* audio_encoding_to_nmos_media_type(const AudioEncoding encoding) {
+    switch (encoding) {
         case AudioEncoding::undefined:
             return "audio/undefined";
         case AudioEncoding::pcm_s8:

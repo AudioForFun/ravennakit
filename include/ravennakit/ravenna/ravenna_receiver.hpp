@@ -28,6 +28,9 @@ namespace rav {
 
 class RavennaReceiver: public RavennaRtspClient::Subscriber {
   public:
+    /// List of supported audio encodings for the sender.
+    static constexpr auto k_supported_encodings = {AudioEncoding::pcm_s16, AudioEncoding::pcm_s24};
+
     /**
      * Defines the configuration for the receiver.
      * When no sdp_text is set, but the session_name is set, the SDP will be requested from the server.

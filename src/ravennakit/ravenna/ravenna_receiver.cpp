@@ -127,9 +127,10 @@ rav::RavennaReceiver::RavennaReceiver(
 ) :
     rtsp_client_(rtsp_client), rtp_audio_receiver_(io_context, rtp_receiver), id_(id) {
     nmos_receiver_.id = boost::uuids::random_generator()();
-    nmos_receiver_.caps.media_types.emplace_back(
-        nmos::audio_format_to_nmos_media_type(rtp_audio_receiver_.get_parameters().audio_format)
-    );
+
+    for (auto& encoding : k_supported_encodings) {
+        nmos_receiver_.caps.media_types.emplace_back(nmos::audio_encoding_to_nmos_media_type(encoding));
+    }
 
     rtp_audio_receiver_.on_data_received([this](const WrappingUint32 packet_timestamp) {
         for (auto* subscriber : subscribers_) {
@@ -409,11 +410,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_state(const bool up
     if (update_nmos) {
         nmos_receiver_.label = configuration_.session_name;
         nmos_receiver_.subscription.active = configuration_.enabled;
-
-        RAV_ASSERT(nmos_receiver_.caps.media_types.size() == 1, "Expected exactly one media type");
-        nmos_receiver_.caps.media_types.front() =
-            nmos::audio_format_to_nmos_media_type(rtp_audio_receiver_.get_parameters().audio_format);
-
+        nmos_receiver_.transport = "urn:x-nmos:transport:rtp.mcast";
         nmos_receiver_.interface_bindings.clear();
         for (const auto& [rank, id] : network_interface_config_.get_interfaces()) {
             nmos_receiver_.interface_bindings.push_back(id);

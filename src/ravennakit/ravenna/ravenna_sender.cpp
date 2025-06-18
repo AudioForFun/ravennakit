@@ -256,7 +256,7 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configurat
         announce = true;
         update_nmos = true;
     }
-    
+
     if (config.session_name != configuration_.session_name) {
         update_advertisement = true;
         announce = true;
@@ -897,7 +897,7 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
         nmos_sender_.label = configuration_.session_name;
         nmos_flow_.label = configuration_.session_name;
         nmos_source_.label = configuration_.session_name;
-
+        nmos_sender_.transport = "urn:x-nmos:transport:rtp.mcast";
         nmos_sender_.subscription.active = configuration_.enabled;
         nmos_sender_.interface_bindings.clear();
         for (const auto& dst : configuration_.destinations) {
@@ -916,7 +916,7 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
             nmos_source_.channels[i].label = fmt::format("Channel {}", i + 1);
         }
 
-        nmos_flow_.media_type = nmos::audio_format_to_nmos_media_type(audio_format);
+        nmos_flow_.media_type = nmos::audio_encoding_to_nmos_media_type(audio_format.encoding);
         nmos_flow_.sample_rate = {static_cast<int>(audio_format.sample_rate), 1};
         nmos_flow_.bit_depth = audio_format.bytes_per_sample() * 8;
 

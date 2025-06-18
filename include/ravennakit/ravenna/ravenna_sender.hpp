@@ -42,6 +42,9 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     /// to an audio device buffer size.
     static constexpr uint32_t k_max_num_frames = 4096;
 
+    /// List of supported audio encodings for the sender.
+    static constexpr auto k_supported_encodings = {AudioEncoding::pcm_s16, AudioEncoding::pcm_s24};
+
     /**
      * The destination of where a stream of packets should go. The sender can send to multiple destinations, but each
      * destination can only be used by one sender. The destination is defined by a port and an address.
