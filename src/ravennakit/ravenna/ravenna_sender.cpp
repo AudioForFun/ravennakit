@@ -185,52 +185,55 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configurat
         return tl::unexpected("no destinations set");
     }
 
-    int num_enabled_destinations = 0;
+    if (config.enabled) {
+        int num_enabled_destinations = 0;
+        for (const auto& dst : config.destinations) {
+            if (!dst.enabled) {
+                continue;
+            }
+            if (!dst.endpoint.address().is_unspecified() && !dst.endpoint.address().is_multicast()) {
+                return tl::unexpected(
+                    fmt::format("{} address must be multicast", dst.interface_by_rank.to_ordinal_latin())
+                );
+            }
+            num_enabled_destinations++;
+            auto* iface = network_interface_config_.get_interface(dst.interface_by_rank);
+            if (iface == nullptr) {
+                return tl::unexpected(fmt::format("{} interface not set", dst.interface_by_rank.to_ordinal_latin()));
+            }
+            if (dst.endpoint.address().is_unspecified()) {
+                return tl::unexpected(
+                    fmt::format("{} destination address is unspecified", dst.interface_by_rank.to_ordinal_latin())
+                );
+            }
+            if (dst.endpoint.port() == 0) {
+                return tl::unexpected(
+                    fmt::format("{} destination port is 0", dst.interface_by_rank.to_ordinal_latin())
+                );
+            }
+        }
 
-    for (const auto& dst : config.destinations) {
-        if (!dst.enabled) {
-            continue;
+        if (num_enabled_destinations == 0) {
+            return tl::unexpected("no enabled destinations");
         }
-        if (!dst.endpoint.address().is_unspecified() && !dst.endpoint.address().is_multicast()) {
-            return tl::unexpected(
-                fmt::format("{} address must be multicast", dst.interface_by_rank.to_ordinal_latin())
-            );
-        }
-        num_enabled_destinations++;
-        auto* iface = network_interface_config_.get_interface(dst.interface_by_rank);
-        if (iface == nullptr) {
-            return tl::unexpected(fmt::format("{} interface not set", dst.interface_by_rank.to_ordinal_latin()));
-        }
-        if (dst.endpoint.address().is_unspecified()) {
-            return tl::unexpected(
-                fmt::format("{} destination address is unspecified", dst.interface_by_rank.to_ordinal_latin())
-            );
-        }
-        if (dst.endpoint.port() == 0) {
-            return tl::unexpected(fmt::format("{} destination port is 0", dst.interface_by_rank.to_ordinal_latin()));
-        }
-    }
 
-    if (num_enabled_destinations == 0) {
-        return tl::unexpected("no enabled destinations");
-    }
+        if (config.ttl <= 0) {
+            return tl::unexpected("Invalid TTL");
+        }
 
-    if (config.ttl <= 0) {
-        return tl::unexpected("Invalid TTL");
-    }
-
-    const auto& audio_format = config.audio_format;
-    if (!audio_format.is_valid()) {
-        return tl::unexpected("Invalid audio format");
-    }
-    if (audio_format.ordering != AudioFormat::ChannelOrdering::interleaved) {
-        return tl::unexpected("Only interleaved audio formats are supported");
-    }
-    if (audio_format.byte_order != AudioFormat::ByteOrder::be) {
-        return tl::unexpected("Only big endian audio formats are supported");
-    }
-    if (!config.packet_time.is_valid()) {
-        return tl::unexpected("Invalid packet time");
+        const auto& audio_format = config.audio_format;
+        if (!audio_format.is_valid()) {
+            return tl::unexpected("Invalid audio format");
+        }
+        if (audio_format.ordering != AudioFormat::ChannelOrdering::interleaved) {
+            return tl::unexpected("Only interleaved audio formats are supported");
+        }
+        if (audio_format.byte_order != AudioFormat::ByteOrder::be) {
+            return tl::unexpected("Only big endian audio formats are supported");
+        }
+        if (!config.packet_time.is_valid()) {
+            return tl::unexpected("Invalid packet time");
+        }
     }
 
     // Determine changes
