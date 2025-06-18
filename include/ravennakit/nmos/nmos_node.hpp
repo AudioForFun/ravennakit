@@ -53,7 +53,7 @@ class Node: public ptp::Instance::Subscriber {
         ApiVersion api_version {1, 3};
         std::string registry_address;  // For when operation_mode is registered and discover_mode is manual.
         bool enabled {false};          // Whether the node is enabled or not.
-        uint16_t node_api_port {0};    // The port of the local node API.
+        uint16_t api_port {0};         // The port of the local APIs (the node and connection apis).
         std::string label;             // Freeform string label for the resource.
         std::string description;       // Detailed description of the resource.
 
@@ -76,7 +76,7 @@ class Node: public ptp::Instance::Subscriber {
         static boost::system::result<Configuration, std::string> from_json(const boost::json::value& json);
 
         [[nodiscard]] auto constexpr tie() const {
-            return std::tie(id, operation_mode, api_version, registry_address, enabled, label, description);
+            return std::tie(id, operation_mode, api_version, registry_address, enabled, label, description, api_port);
         }
 
         friend bool operator==(const Configuration& lhs, const Configuration& rhs) {
@@ -88,14 +88,15 @@ class Node: public ptp::Instance::Subscriber {
         }
     };
 
-    struct RegistryInfo {
+    struct StatusInfo {
         std::string name;
         std::string address;
+        uint16_t api_port{};
     };
 
     enum class Status { disabled, discovering, connecting, connected, registered, p2p, error };
 
-    SafeFunction<void(const Status& status, const RegistryInfo& registry_info)> on_status_changed;
+    SafeFunction<void(const Status& status, const StatusInfo& status_info)> on_status_changed;
     SafeFunction<void(const Configuration& config)> on_configuration_changed;
 
     explicit Node(
@@ -122,7 +123,8 @@ class Node: public ptp::Instance::Subscriber {
      * @param new_configuration The configuration to update.
      * @param force_update Whether to force the update even if the configuration didn't change.
      */
-    void set_configuration(Configuration new_configuration, bool force_update = false);
+    [[nodiscard]] tl::expected<void, Error>
+    set_configuration(Configuration new_configuration, bool force_update = false);
 
     /**
      * @return The current configuration of the NMOS node.
@@ -277,7 +279,7 @@ class Node: public ptp::Instance::Subscriber {
     /**
      * @return The current registry information.
      */
-    [[nodiscard]] const RegistryInfo& get_registry_info() const;
+    [[nodiscard]] const StatusInfo& get_registry_info() const;
 
     /**
      * Updates the node based on given network interface configuration.
@@ -313,7 +315,7 @@ class Node: public ptp::Instance::Subscriber {
     NetworkInterfaceConfig network_interface_config_;
 
     std::optional<dnssd::ServiceDescription> selected_registry_;
-    RegistryInfo registry_info_;
+    StatusInfo status_info_;
 
     HttpServer http_server_;
     std::unique_ptr<HttpClientBase> http_client_;

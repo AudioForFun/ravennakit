@@ -163,7 +163,7 @@ boost::json::value rav::nmos::Node::Configuration::to_json() const {
         {"api_version", api_version.to_string()},
         {"registry_address", registry_address},
         {"enabled", enabled},
-        {"node_api_port", node_api_port},
+        {"api_port", api_port},
         {"label", label},
         {"description", description},
     };
@@ -200,7 +200,7 @@ rav::nmos::Node::Configuration::from_json(const boost::json::value& json) {
 
         config.registry_address = json.at("registry_address").as_string();
         config.enabled = json.at("enabled").as_bool();
-        config.node_api_port = json.at("node_api_port").to_number<uint16_t>();
+        config.api_port = json.at("api_port").to_number<uint16_t>();
         config.label = json.at("label").as_string();
         config.description = json.at("description").as_string();
         return config;
@@ -595,9 +595,17 @@ void rav::nmos::Node::stop() {
     set_status(Status::disabled);
 }
 
-void rav::nmos::Node::set_configuration(Configuration new_configuration, const bool force_update) {
+tl::expected<void, rav::nmos::Error>
+rav::nmos::Node::set_configuration(Configuration new_configuration, const bool force_update) {
     if (new_configuration == configuration_ && !force_update) {
-        return;  // Nothing changed, so we should be in the correct state.
+        return {};  // Nothing changed, so we should be in the correct state.
+    }
+
+    if (new_configuration.enabled) {
+        const auto result = new_configuration.validate();
+        if (result.has_error()) {
+            return tl::unexpected(result.error());
+        }
     }
 
     bool unregister = false;
@@ -620,46 +628,45 @@ void rav::nmos::Node::set_configuration(Configuration new_configuration, const b
         unregister_async();  // Before configuration_ is overwritten
     }
 
-    const bool enablement_changed = configuration_.enabled != new_configuration.enabled;
-    const bool operation_mode_changed = configuration_.operation_mode != new_configuration.operation_mode;
+    bool restart = false;
+
+    if (configuration_.enabled != new_configuration.enabled) {
+        restart = true;
+    }
+
+    if (configuration_.operation_mode != new_configuration.operation_mode) {
+        restart = true;
+    }
+
+    if (configuration_.api_port != new_configuration.api_port) {
+        restart = true;
+    }
 
     configuration_ = std::move(new_configuration);
     update_self();
+
+    if (restart) {
+        stop_internal();
+    }
+
+    if (restart && configuration_.enabled) {
+        const auto result = start_internal();
+        if (result.has_error()) {
+            set_status(Status::error);
+            return tl::unexpected(result.error());
+        }
+    }
+
+    if (!configuration_.enabled) {
+        set_status(Status::disabled);
+    }
+
     if (status_ == Status::registered) {
         send_updated_resources_async();
     }
     on_configuration_changed(configuration_);
 
-    if (enablement_changed) {
-        if (configuration_.enabled) {
-            auto result = configuration_.validate();
-            if (result.has_error()) {
-                RAV_ERROR("Invalid configuration: {}", result.error());
-                set_status(Status::error);
-                return;
-            }
-
-            result = start_internal();
-            if (result.has_error()) {
-                RAV_ERROR("Failed to start NMOS node: {}", result.error());
-                set_status(Status::error);
-            }
-            return;
-        }
-
-        stop_internal();
-        set_status(Status::disabled);
-        return;
-    }
-
-    if (operation_mode_changed) {
-        stop_internal();
-        const auto result = start_internal();
-        if (result.has_error()) {
-            RAV_ERROR("Failed to start NMOS node: {}", result.error());
-            set_status(Status::error);
-        }
-    }
+    return {};
 }
 
 const rav::nmos::Node::Configuration& rav::nmos::Node::get_configuration() const {
@@ -667,7 +674,7 @@ const rav::nmos::Node::Configuration& rav::nmos::Node::get_configuration() const
 }
 
 boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() {
-    const auto result = http_server_.start("0.0.0.0", configuration_.node_api_port);
+    const auto result = http_server_.start("0.0.0.0", configuration_.api_port);
     if (result.has_error()) {
         RAV_ERROR("Failed to start HTTP server: {}", result.error().message());
         return Error::failed_to_start_http_server;
@@ -677,6 +684,8 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() 
     for (auto& endpoint : self_.api.endpoints) {
         endpoint.port = http_endpoint.port();
     }
+
+    status_info_.api_port = http_endpoint.port();
 
     // Start the HTTP client to connect to the registry.
     if (configuration_.operation_mode == OperationMode::manual) {
@@ -693,7 +702,7 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() 
             );
             return Error::invalid_registry_address;
         }
-        registry_info_.name = "(custom registry)";
+        status_info_.name = "(custom registry)";
         const auto port = url->port().empty() ? (url->scheme() == "https" ? "443" : "80") : url->port();
         connect_to_registry_async(url->host(), port);
         return {};
@@ -743,7 +752,7 @@ void rav::nmos::Node::stop_internal() {
     RAV_ASSERT(registry_browser_ != nullptr, "Registry browser should not be null");
     registry_browser_->stop();
     selected_registry_.reset();
-    registry_info_ = {};
+    status_info_ = {};
 }
 
 void rav::nmos::Node::register_async() {
@@ -918,7 +927,7 @@ void rav::nmos::Node::connect_to_registry_async() {
 
 void rav::nmos::Node::connect_to_registry_async(const std::string_view host, const std::string_view service) {
     http_client_->set_host(host, service);
-    registry_info_.address = fmt::format("http://{}:{}", host, service);
+    status_info_.address = fmt::format("http://{}:{}", host, service);
     set_status(Status::connecting);
     connect_to_registry_async();
 }
@@ -949,7 +958,7 @@ bool rav::nmos::Node::select_registry(const dnssd::ServiceDescription& desc) {
         return false;  // Already connected to this registry
     }
     selected_registry_ = desc;
-    registry_info_.name = desc.name;
+    status_info_.name = desc.name;
     connect_to_registry_async(selected_registry_->host_target, std::to_string(selected_registry_->port));
     return true;  // Successfully selected a new registry
 }
@@ -973,7 +982,7 @@ void rav::nmos::Node::set_status(const Status new_status) {
     if (status_ == Status::disabled) {
         selected_registry_.reset();
     }
-    on_status_changed(status_, registry_info_);
+    on_status_changed(status_, status_info_);
 }
 
 void rav::nmos::Node::update_all_resources_to_now() {
@@ -1370,8 +1379,8 @@ const rav::nmos::Node::Status& rav::nmos::Node::get_status() const {
     return status_;
 }
 
-const rav::nmos::Node::RegistryInfo& rav::nmos::Node::get_registry_info() const {
-    return registry_info_;
+const rav::nmos::Node::StatusInfo& rav::nmos::Node::get_registry_info() const {
+    return status_info_;
 }
 
 void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config) {

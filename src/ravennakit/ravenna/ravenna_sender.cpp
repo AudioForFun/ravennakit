@@ -187,7 +187,7 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configurat
 
     int num_enabled_destinations = 0;
 
-    for (const auto& dst : configuration_.destinations) {
+    for (const auto& dst : config.destinations) {
         if (!dst.enabled) {
             continue;
         }

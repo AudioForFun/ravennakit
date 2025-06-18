@@ -140,7 +140,7 @@ TEST_CASE("nmos::Node") {
         config.operation_mode = rav::nmos::OperationMode::mdns_p2p;
         config.api_version = rav::nmos::ApiVersion {1, 3};
         config.enabled = true;
-        config.node_api_port = 8080;
+        config.api_port = 8080;
 
         auto test_browser = std::make_unique<NodeTestRegistryBrowser>();
         auto* browser = test_browser.get();

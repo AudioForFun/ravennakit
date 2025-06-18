@@ -21,7 +21,7 @@ int main() {
 
     rav::nmos::Node::Configuration config;
     config.enabled = true;
-    config.node_api_port = 8000;  // Set the port for the NMOS node API
+    config.api_port = 8000;  // Set the port for the NMOS node API
 
     rav::ptp::Instance ptp_instance(io_context);
     rav::nmos::Node node(io_context, ptp_instance);

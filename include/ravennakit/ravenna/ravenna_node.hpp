@@ -100,7 +100,7 @@ class RavennaNode {
          * @param registry_info The updated NMOS registry information.
          */
         virtual void
-        nmos_node_status_changed(nmos::Node::Status status, const nmos::Node::RegistryInfo& registry_info) {
+        nmos_node_status_changed(nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
             std::ignore = status;
             std::ignore = registry_info;
         }
@@ -168,7 +168,7 @@ class RavennaNode {
      * @param update The configuration to set.
      * @return A future that will be set when the operation is complete.
      */
-    std::future<void> set_nmos_configuration(nmos::Node::Configuration update);
+    std::future<tl::expected<void, std::string>> set_nmos_configuration(nmos::Node::Configuration update);
 
     /**
      * Adds a subscriber to the node.

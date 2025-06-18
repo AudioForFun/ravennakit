@@ -31,7 +31,7 @@ rav::RavennaNode::RavennaNode() :
     };
 
     nmos_node_.on_status_changed =
-        [this](const nmos::Node::Status status, const nmos::Node::RegistryInfo& registry_info) {
+        [this](const nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
             for (const auto& s : subscribers_) {
                 s->nmos_node_status_changed(status, registry_info);
             }
@@ -197,14 +197,19 @@ rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::Confi
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
-std::future<void> rav::RavennaNode::set_nmos_configuration(nmos::Node::Configuration update) {
-    auto work = [this, u = std::move(update)] {
-        nmos_node_.set_configuration(u);
+std::future<tl::expected<void, std::string>>
+rav::RavennaNode::set_nmos_configuration(nmos::Node::Configuration update) {
+    auto work = [this, u = std::move(update)] ()-> tl::expected<void, std::string> {
+        auto result = nmos_node_.set_configuration(u);
+        if (!result) {
+            return tl::unexpected(fmt::format("Failed to set nmos configuration: {}", result.error()));
+        }
         nmos_device_.label = u.label;
         nmos_device_.description = u.description;
         if (!nmos_node_.add_or_update_device(nmos_device_)) {
-            RAV_ERROR("Failed to update NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
+            return tl::unexpected("Failed to update NMOS device configuration");
         }
+        return {};
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
@@ -571,7 +576,10 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json
                 if (!nmos_node_.remove_device(nmos_device_.id)) {
                     RAV_ERROR("Failed to remove NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
                 }
-                nmos_node_.set_configuration(*config);
+                auto result = nmos_node_.set_configuration(*config);
+                if (!result) {
+                    return tl::unexpected(fmt::format("Failed to set NMOS node configuration: {}", result.error()));
+                }
                 nmos_device_.id = nmos_device_id;
                 nmos_device_.label = config->label;
                 nmos_device_.description = config->description;
