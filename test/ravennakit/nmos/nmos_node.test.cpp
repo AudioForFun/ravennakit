@@ -316,7 +316,7 @@ TEST_CASE("nmos::Node") {
         }
 
         for (auto& receiver : node.get_receivers()) {
-            REQUIRE(receiver.get_device_id() != device_1_id);
+            REQUIRE(receiver.device_id != device_1_id);
         }
     }
 }

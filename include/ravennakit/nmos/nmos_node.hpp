@@ -16,7 +16,7 @@
 #include "detail/nmos_registry_browser.hpp"
 #include "models/nmos_device.hpp"
 #include "models/nmos_flow.hpp"
-#include "models/nmos_receiver.hpp"
+#include "models/nmos_receiver_audio.hpp"
 #include "models/nmos_self.hpp"
 #include "models/nmos_sender.hpp"
 #include "models/nmos_source.hpp"
@@ -183,14 +183,14 @@ class Node: public ptp::Instance::Subscriber {
      * @param receiver The receiver to set.
      * @return True if the receiver was set successfully, false otherwise.
      */
-    [[nodiscard]] bool add_or_update_receiver(Receiver receiver);
+    [[nodiscard]] bool add_or_update_receiver(ReceiverAudio receiver);
 
     /**
      * Finds a receiver by its uuid.
      * @param uuid The uuid of the receiver to find.
      * @return A pointer to the receiver if found, or nullptr if not found.
      */
-    [[nodiscard]] const Receiver* find_receiver(const boost::uuids::uuid& uuid) const;
+    [[nodiscard]] const ReceiverAudio* find_receiver(const boost::uuids::uuid& uuid) const;
 
     /**
      * Removes a receiver from the node by its uuid.
@@ -259,7 +259,7 @@ class Node: public ptp::Instance::Subscriber {
     /**
      * @return The list of receivers in the node.
      */
-    [[nodiscard]] const std::vector<Receiver>& get_receivers() const;
+    [[nodiscard]] const std::vector<ReceiverAudio>& get_receivers() const;
 
     /**
      * @return The list of senders in the node.
@@ -305,7 +305,7 @@ class Node: public ptp::Instance::Subscriber {
     Self self_;
     std::vector<Device> devices_;
     std::vector<Flow> flows_;
-    std::vector<Receiver> receivers_;
+    std::vector<ReceiverAudio> receivers_;
     std::vector<Sender> senders_;
     std::vector<Source> sources_;
 
@@ -338,7 +338,7 @@ class Node: public ptp::Instance::Subscriber {
     void connect_to_registry_async();
     void connect_to_registry_async(std::string_view host, std::string_view service);
 
-    [[nodiscard]] bool add_receiver_to_device(const Receiver& receiver);
+    [[nodiscard]] bool add_receiver_to_device(const ReceiverAudio& receiver);
     [[nodiscard]] bool add_sender_to_device(const Sender& sender);
 
     bool select_registry(const dnssd::ServiceDescription& desc);

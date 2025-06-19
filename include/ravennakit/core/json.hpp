@@ -22,6 +22,8 @@
 
     #define RAV_HAS_BOOST_JSON 1
     #include <boost/json.hpp>
+    #include <boost/json/value_to.hpp>    // Don't remove or suffer the errors
+    #include <boost/json/value_from.hpp>  // Don't remove or suffer the errors
 #else
     #define RAV_HAS_NLOHMANN_JSON 0
     #define RAV_HAS_BOOST_JSON 0

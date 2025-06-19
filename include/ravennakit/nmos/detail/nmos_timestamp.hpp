@@ -12,6 +12,7 @@
 
 #include "ravennakit/core/string_parser.hpp"
 #include "ravennakit/ptp/types/ptp_timestamp.hpp"
+#include "ravennakit/core/json.hpp"
 
 #include <cstdint>
 #include <string>
@@ -127,5 +128,10 @@ struct Timestamp {
 
 /// An nmos version is represented as TAI timestamp
 using Version = Timestamp;
+
+inline void
+tag_invoke(const boost::json::value_from_tag&, boost::json::value& jv, const Timestamp& timestamp) {
+    jv = timestamp.to_string();
+}
 
 }  // namespace rav::nmos

@@ -14,11 +14,14 @@
 #include "ravennakit/core/rollback.hpp"
 #include "ravennakit/core/util/stl_helpers.hpp"
 #include "ravennakit/core/util/todo.hpp"
+#include "ravennakit/nmos/models/nmos_activation_response.hpp"
 #include "ravennakit/nmos/models/nmos_api_error.hpp"
+#include "ravennakit/nmos/models/nmos_constraints_rtp.hpp"
+#include "ravennakit/nmos/models/nmos_receiver_transport_params_rtp.hpp"
 #include "ravennakit/nmos/models/nmos_self.hpp"
+#include "ravennakit/nmos/models/nmos_sender_transport_params_rtp.hpp"
+#include "ravennakit/nmos/models/nmos_transport_file.hpp"
 
-#include <boost/json/serialize.hpp>
-#include <boost/json/value_from.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/range.hpp>
 #include <boost/range/algorithm_ext/erase.hpp>
@@ -254,7 +257,7 @@ rav::nmos::Node::Node(
         ok_response(res, boost::json::serialize(boost::json::array({"node/", "connection/"})));
     });
 
-    // Node API
+    // MARK: Node API
 
     http_server_.get(
         "/x-nmos/node",
@@ -527,7 +530,7 @@ rav::nmos::Node::Node(
         }
     );
 
-    // Connection API
+    // MARK: Connection API
 
     http_server_.get(
         "/x-nmos/connection",
@@ -578,7 +581,7 @@ rav::nmos::Node::Node(
         }
     );
 
-    // Receivers
+    // MARK: Connection API - Receivers
 
     http_server_.get(
         "/x-nmos/connection/{version}/bulk/receivers",
@@ -613,9 +616,7 @@ rav::nmos::Node::Node(
             auto array = boost::json::array();
 
             for (auto& receiver : receivers_) {
-                array.push_back(
-                    boost::json::value_from(fmt::format("{}/", boost::uuids::to_string(receiver.get_id())))
-                );
+                array.push_back(boost::json::value_from(fmt::format("{}/", boost::uuids::to_string(receiver.id))));
             }
 
             ok_response(res, boost::json::serialize(array));
@@ -648,7 +649,147 @@ rav::nmos::Node::Node(
         }
     );
 
-    // Senders
+    http_server_.get(
+        "/x-nmos/connection/{version}/single/receivers/{receiver_id}/staged",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* receiver_id = params.get("receiver_id");
+            if (receiver_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid receiver ID", "No receiver ID provided");
+                return;
+            }
+
+            auto* receiver = find_receiver(boost::uuids::string_generator()(*receiver_id));
+            if (receiver == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Receiver not found");
+                return;
+            }
+
+            ActivationResponse activation_response;
+            boost::json::array transport_params({boost::json::value_from(ReceiverTransportParamsRtp {})});
+            TransportFile transport_file;
+
+            const boost::json::value value {
+                {"sender_id", boost::json::value_from(receiver->subscription.sender_id)},
+                {"master_enable", receiver->subscription.active},
+                {"activation", boost::json::value_from(activation_response)},
+                {"transport_params", transport_params},
+                {"transport_file", boost::json::value_from(transport_file)},
+            };
+
+            ok_response(res, boost::json::serialize(value));
+        }
+    );
+
+    http_server_.options(
+        "/x-nmos/connection/{version}/single/receivers/{receiver_id}/staged",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* receiver_id = params.get("receiver_id");
+            if (receiver_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid receiver ID", "No receiver ID provided");
+                return;
+            }
+
+            auto* receiver = find_receiver(boost::uuids::string_generator()(*receiver_id));
+            if (receiver == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Receiver not found");
+                return;
+            }
+
+            ok_response(res, {});
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}/single/receivers/{receiver_id}/active",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* receiver_id = params.get("receiver_id");
+            if (receiver_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid receiver ID", "No receiver ID provided");
+                return;
+            }
+
+            auto* receiver = find_receiver(boost::uuids::string_generator()(*receiver_id));
+            if (receiver == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Receiver not found");
+                return;
+            }
+
+            ActivationResponse activation_response;
+            boost::json::array transport_params({boost::json::value_from(ReceiverTransportParamsRtp {})});
+            TransportFile transport_file;
+
+            const boost::json::value value {
+                {"sender_id", boost::json::value_from(receiver->subscription.sender_id)},
+                {"master_enable", receiver->subscription.active},
+                {"activation", boost::json::value_from(activation_response)},
+                {"transport_params", transport_params},
+                {"transport_file", boost::json::value_from(transport_file)},
+            };
+
+            ok_response(res, boost::json::serialize(value));
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}/single/receivers/{receiver_id}/constraints",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* receiver_id = params.get("receiver_id");
+            if (receiver_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid receiver ID", "No receiver ID provided");
+                return;
+            }
+
+            auto* receiver = find_receiver(boost::uuids::string_generator()(*receiver_id));
+            if (receiver == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Receiver not found");
+                return;
+            }
+
+            const boost::json::array constraints({boost::json::value_from(ConstraintsRtp {})});
+            ok_response(res, boost::json::serialize(constraints));
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}/single/receivers/{receiver_id}/transporttype",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* receiver_id = params.get("receiver_id");
+            if (receiver_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid receiver ID", "No receiver ID provided");
+                return;
+            }
+
+            auto* receiver = find_receiver(boost::uuids::string_generator()(*receiver_id));
+            if (receiver == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Receiver not found");
+                return;
+            }
+
+            ok_response(res, boost::json::serialize(receiver->transport));
+        }
+    );
+
+    // MARK: Connection API - Senders
 
     http_server_.get(
         "/x-nmos/connection/{version}/bulk/senders",
@@ -657,8 +798,7 @@ rav::nmos::Node::Node(
                 return invalid_api_version_response(res);
             }
 
-            res.base().result(403);
-            res.base().reason("Forbidden");
+            set_error_response(res, http::status::forbidden, "Forbidden", {});
         }
     );
 
@@ -699,7 +839,7 @@ rav::nmos::Node::Node(
 
             const auto* sender_id = params.get("sender_id");
             if (sender_id == nullptr) {
-                set_error_response(res, http::status::bad_request, "Invalid receiver ID", "No receiver ID provided");
+                set_error_response(res, http::status::bad_request, "Invalid sender ID", "No sender ID provided");
                 return;
             }
 
@@ -719,7 +859,7 @@ rav::nmos::Node::Node(
     );
 
     http_server_.get(
-        "/x-nmos/connection/{version}/single/senders/{sender_id}/active",
+        "/x-nmos/connection/{version}/single/senders/{sender_id}/staged",
         [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
             if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
                 return invalid_api_version_response(res);
@@ -727,7 +867,7 @@ rav::nmos::Node::Node(
 
             const auto* sender_id = params.get("sender_id");
             if (sender_id == nullptr) {
-                set_error_response(res, http::status::bad_request, "Invalid receiver ID", "No receiver ID provided");
+                set_error_response(res, http::status::bad_request, "Invalid sender ID", "No sender ID provided");
                 return;
             }
 
@@ -737,12 +877,120 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            const boost::json::value value{
+            ActivationResponse activation_response;
+            boost::json::array transport_params({boost::json::value_from(SenderTransportParamsRtp {})});
+
+            const boost::json::value value {
                 {"receiver_id", boost::json::value_from(sender->subscription.receiver_id)},
                 {"master_enable", sender->subscription.active},
+                {"activation", boost::json::value_from(activation_response)},
+                {"transport_params", transport_params},
             };
 
             ok_response(res, boost::json::serialize(value));
+        }
+    );
+
+    http_server_.options(
+        "/x-nmos/connection/{version}/single/senders/{sender_id}/staged",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* sender_id = params.get("sender_id");
+            if (sender_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid sender ID", "No sender ID provided");
+                return;
+            }
+
+            auto* sender = find_sender(boost::uuids::string_generator()(*sender_id));
+            if (sender == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Sender not found");
+                return;
+            }
+
+            ok_response(res, {});
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}/single/senders/{sender_id}/active",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* sender_id = params.get("sender_id");
+            if (sender_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid sender ID", "No sender ID provided");
+                return;
+            }
+
+            auto* sender = find_sender(boost::uuids::string_generator()(*sender_id));
+            if (sender == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Sender not found");
+                return;
+            }
+
+            ActivationResponse activation_response;
+            boost::json::array transport_params({boost::json::value_from(SenderTransportParamsRtp {})});
+
+            const boost::json::value value {
+                {"receiver_id", boost::json::value_from(sender->subscription.receiver_id)},
+                {"master_enable", sender->subscription.active},
+                {"activation", boost::json::value_from(activation_response)},
+                {"transport_params", transport_params},
+            };
+
+            ok_response(res, boost::json::serialize(value));
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}/single/senders/{sender_id}/constraints",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* sender_id = params.get("sender_id");
+            if (sender_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid sender ID", "No sender ID provided");
+                return;
+            }
+
+            auto* sender = find_sender(boost::uuids::string_generator()(*sender_id));
+            if (sender == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Sender not found");
+                return;
+            }
+
+            const boost::json::array constraints({boost::json::value_from(ConstraintsRtp {})});
+            ok_response(res, boost::json::serialize(constraints));
+        }
+    );
+
+    http_server_.get(
+        "/x-nmos/connection/{version}/single/senders/{sender_id}/transporttype",
+        [this](const HttpServer::Request&, HttpServer::Response& res, const PathMatcher::Parameters& params) {
+            if (!get_valid_api_version_from_parameters(params, k_connection_api_versions).has_value()) {
+                return invalid_api_version_response(res);
+            }
+
+            const auto* sender_id = params.get("sender_id");
+            if (sender_id == nullptr) {
+                set_error_response(res, http::status::bad_request, "Invalid sender ID", "No sender ID provided");
+                return;
+            }
+
+            auto* sender = find_sender(boost::uuids::string_generator()(*sender_id));
+            if (sender == nullptr) {
+                set_error_response(res, http::status::not_found, "Not found", "Sender not found");
+                return;
+            }
+
+            ok_response(res, boost::json::serialize(sender->transport));
         }
     );
 
@@ -1115,10 +1363,10 @@ void rav::nmos::Node::connect_to_registry_async(const std::string_view host, con
     connect_to_registry_async();
 }
 
-bool rav::nmos::Node::add_receiver_to_device(const Receiver& receiver) {
+bool rav::nmos::Node::add_receiver_to_device(const ReceiverAudio& receiver) {
     for (auto& device : devices_) {
-        if (device.id == receiver.get_device_id()) {
-            device.receivers.push_back(receiver.get_id());
+        if (device.id == receiver.device_id) {
+            device.receivers.push_back(receiver.id);
             return true;
         }
     }
@@ -1190,7 +1438,7 @@ void rav::nmos::Node::update_all_resources_to_now() {
     }
 
     for (auto& receiver : receivers_) {
-        receiver.set_version(version);
+        receiver.version = version;
     }
 }
 
@@ -1226,7 +1474,7 @@ void rav::nmos::Node::send_updated_resources_async() {
     }
 
     for (auto& receiver : receivers_) {
-        if (receiver.get_version() > current_version_) {
+        if (receiver.version > current_version_) {
             post_resource_async("receiver", boost::json::value_from(receiver));
         }
     }
@@ -1348,8 +1596,8 @@ bool rav::nmos::Node::remove_device(boost::uuids::uuid uuid) {
         return s.get_device_id() == uuid;
     });
 
-    stl_remove_if(receivers_, [&uuid](const Receiver& r) {
-        return r.get_device_id() == uuid;
+    stl_remove_if(receivers_, [&uuid](const ReceiverAudio& r) {
+        return r.device_id == uuid;
     });
 
     const auto count = stl_remove_if(devices_, [&uuid](const Device& d) {
@@ -1385,17 +1633,18 @@ bool rav::nmos::Node::remove_flow(const boost::uuids::uuid& uuid) {
     return count > 0;
 }
 
-bool rav::nmos::Node::add_or_update_receiver(Receiver receiver) {
-    if (receiver.get_id().is_nil()) {
+bool rav::nmos::Node::add_or_update_receiver(ReceiverAudio receiver) {
+    if (receiver.id.is_nil()) {
         RAV_ERROR("Receiver ID should not be nil");
         return false;
     }
 
-    receiver.set_version(Version(get_local_clock().now()));
+    receiver.version = Version(get_local_clock().now());
 
-    const auto it = std::find_if(receivers_.begin(), receivers_.end(), [&receiver](const Receiver& existing_receiver) {
-        return existing_receiver.get_id() == receiver.get_id();
-    });
+    const auto it =
+        std::find_if(receivers_.begin(), receivers_.end(), [&receiver](const ReceiverAudio& existing_receiver) {
+            return existing_receiver.id == receiver.id;
+        });
 
     if (it != receivers_.end()) {
         *it = std::move(receiver);
@@ -1414,9 +1663,9 @@ bool rav::nmos::Node::add_or_update_receiver(Receiver receiver) {
     return true;
 }
 
-const rav::nmos::Receiver* rav::nmos::Node::find_receiver(const boost::uuids::uuid& uuid) const {
-    const auto it = std::find_if(receivers_.begin(), receivers_.end(), [uuid](const Receiver& receiver) {
-        return receiver.get_id() == uuid;
+const rav::nmos::ReceiverAudio* rav::nmos::Node::find_receiver(const boost::uuids::uuid& uuid) const {
+    const auto it = std::find_if(receivers_.begin(), receivers_.end(), [uuid](const ReceiverAudio& receiver) {
+        return receiver.id == uuid;
     });
     if (it != receivers_.end()) {
         return &*it;
@@ -1425,8 +1674,8 @@ const rav::nmos::Receiver* rav::nmos::Node::find_receiver(const boost::uuids::uu
 }
 
 bool rav::nmos::Node::remove_receiver(boost::uuids::uuid uuid) {
-    const auto count = stl_remove_if(receivers_, [&uuid](const Receiver& d) {
-        return d.get_id() == uuid;
+    const auto count = stl_remove_if(receivers_, [&uuid](const ReceiverAudio& d) {
+        return d.id == uuid;
     });
 
     if (status_ == Status::registered && count > 0) {
@@ -1546,7 +1795,7 @@ const std::vector<rav::nmos::Flow>& rav::nmos::Node::get_flows() const {
     return flows_;
 }
 
-const std::vector<rav::nmos::Receiver>& rav::nmos::Node::get_receivers() const {
+const std::vector<rav::nmos::ReceiverAudio>& rav::nmos::Node::get_receivers() const {
     return receivers_;
 }
 
