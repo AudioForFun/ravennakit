@@ -1,7 +1,7 @@
 #include "ravennakit/core/rollback.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 #if RAV_HAS_APPLE_DNSSD
 
@@ -12,14 +12,14 @@
     #include <iostream>
     #include <thread>
 
-rav::dnssd::BonjourAdvertiser::BonjourAdvertiser(asio::io_context& io_context) : service_socket_(io_context) {
+rav::dnssd::BonjourAdvertiser::BonjourAdvertiser(boost::asio::io_context& io_context) : service_socket_(io_context) {
     const int service_fd = DNSServiceRefSockFD(shared_connection_.service_ref());
 
     if (service_fd < 0) {
         RAV_THROW_EXCEPTION("Invalid file descriptor");
     }
 
-    service_socket_.assign(asio::ip::tcp::v6(), service_fd);  // Not sure about v6
+    service_socket_.assign(boost::asio::ip::tcp::v6(), service_fd);  // Not sure about v6
     async_process_results();
 }
 
@@ -39,12 +39,10 @@ rav::Id rav::dnssd::BonjourAdvertiser::register_service(
         flags |= kDNSServiceFlagsNoAutoRename;
     }
 
-    if (local_only) {
-        flags |= kDNSServiceInterfaceIndexLocalOnly;
-    }
+    const uint32_t interface_index = local_only ? kDNSServiceInterfaceIndexLocalOnly : kDNSServiceInterfaceIndexAny;
 
     const auto result = DNSServiceRegister(
-        &service_ref, flags, 0, name, reg_type.c_str(), domain, nullptr, htons(port), record.length(),
+        &service_ref, flags, interface_index, name, reg_type.c_str(), domain, nullptr, htons(port), record.length(),
         record.bytes_ptr(), register_service_callback, this
     );
 
@@ -68,14 +66,10 @@ void rav::dnssd::BonjourAdvertiser::unregister_service(Id id) {
     );
 }
 
-void rav::dnssd::BonjourAdvertiser::subscribe(Subscriber& s) {
-    subscribers_.push_back(s);
-}
-
 void rav::dnssd::BonjourAdvertiser::async_process_results() {
-    service_socket_.async_wait(asio::ip::tcp::socket::wait_read, [this](const asio::error_code& ec) {
+    service_socket_.async_wait(boost::asio::ip::tcp::socket::wait_read, [this](const boost::system::error_code& ec) {
         if (ec) {
-            if (ec != asio::error::operation_aborted) {
+            if (ec != boost::asio::error::operation_aborted) {
                 RAV_ERROR("Error in async_wait_for_results: {}", ec.message());
             }
             return;
@@ -85,10 +79,10 @@ void rav::dnssd::BonjourAdvertiser::async_process_results() {
 
         if (result != kDNSServiceErr_NoError) {
             RAV_ERROR("DNSServiceError: {}", dns_service_error_to_string(result));
-            emit(AdvertiserError {fmt::format("Process result error: {}", dns_service_error_to_string(result))});
+            on_error(fmt::format("Process result error: {}", dns_service_error_to_string(result)));
             if (++process_results_failed_attempts_ > 10) {
                 RAV_ERROR("Too many failed attempts to process results, stopping");
-                emit(AdvertiserError {"Too many failed attempts to process results, stopping"});
+                on_error("Too many failed attempts to process results, stopping");
                 return;
             }
         } else {
@@ -106,14 +100,14 @@ void rav::dnssd::BonjourAdvertiser::register_service_callback(
 ) {
     RAV_ASSERT(context != nullptr, "Expected non-null context");
 
-    auto* advertiser = static_cast<BonjourAdvertiser*>(context);
+    const auto* advertiser = static_cast<BonjourAdvertiser*>(context);
     if (error_code == kDNSServiceErr_NameConflict) {
-        advertiser->emit(NameConflict {reg_type, service_name});
+        advertiser->on_name_conflict(reg_type, service_name);
         return;
     }
 
     if (error_code != kDNSServiceErr_NoError) {
-        advertiser->emit(AdvertiserError {fmt::format("Failed to register service: {}", error_code)});
+        advertiser->on_error(fmt::format("Failed to register service: {}", error_code));
         return;
     }
 }

@@ -9,7 +9,7 @@
  */
 
 #include "ravennakit/core/containers/vector_buffer.hpp"
-#include "ravennakit/core/events.hpp"
+#include "ravennakit/core/events/event_emitter.hpp"
 
 #include <catch2/catch_all.hpp>
 
@@ -26,7 +26,7 @@ struct int_event {
 TEST_CASE("events", "[events]") {
     rav::VectorBuffer<std::string> fired_events;
 
-    rav::Events<str_event, int_event> events;
+    rav::EventEmitter<str_event, int_event> events;
     events.on<str_event>([&fired_events](const str_event& event) {
         fired_events.push_back(event.string);
     });

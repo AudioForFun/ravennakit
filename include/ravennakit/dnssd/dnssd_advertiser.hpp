@@ -1,39 +1,32 @@
 #pragma once
 
-#include <utility>
 #include <memory>
 
 #include "dnssd_service_description.hpp"
-#include "ravennakit/core/events.hpp"
-#include "ravennakit/core/linked_node.hpp"
-#include "ravennakit/core/result.hpp"
 #include "ravennakit/core/util/id.hpp"
+#include "ravennakit/core/util/safe_function.hpp"
 
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 
 namespace rav::dnssd {
 
 /**
- * Interface class which represents a dnssd advertiser object, which is able to present itself onto the network.
+ * Base class for all dnssd advertiser implementations.
  */
 class Advertiser {
   public:
     /**
-     * Event for when a service was discovered.
+     * Called when an error occurs during registration.
+     * @param error_message The error message.
      */
-    struct AdvertiserError {
-        const std::string& error_message;
-    };
+    SafeFunction<void(const std::string& error_message)> on_error;
 
     /**
-     * Event for when a DNS-SD service registration failed due to a name conflict.
+     * Called when a name conflict occurs during registration.
+     * @param reg_type The service type.
+     * @param name The service name.
      */
-    struct NameConflict {
-        const char* reg_type;
-        const char* name;
-    };
-
-    using Subscriber = LinkedNode<Events<AdvertiserError, NameConflict>>;
+    SafeFunction<void(const char* reg_type, const char* name)> on_name_conflict;
 
     explicit Advertiser() = default;
     virtual ~Advertiser() = default;
@@ -66,6 +59,8 @@ class Advertiser {
      * Updates the TXT record of this service. The given TXT record will replace the previous one.
      * Function is not thread safe.
      *
+     * Note: updating the TXT record will not trigger a callback for local_only services.
+     *
      * @param id
      * @param txt_record The new TXT record.
      * @throws When an error occurs during updating.
@@ -82,13 +77,7 @@ class Advertiser {
      * Creates the most appropriate dnssd_advertiser implementation for the platform.
      * @return The created dnssd_advertiser instance, or nullptr if no implementation is available.
      */
-    static std::unique_ptr<Advertiser> create(asio::io_context& io_context);
-
-    /**
-     * Subscribes given subscriber to the advertiser. The subscriber will receive future events.
-     * @param s The subscriber to subscribe.
-     */
-    virtual void subscribe(Subscriber& s) = 0;
+    static std::unique_ptr<Advertiser> create(boost::asio::io_context& io_context);
 };
 
 }  // namespace rav::dnssd

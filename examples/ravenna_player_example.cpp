@@ -18,7 +18,7 @@
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
 #include <CLI/App.hpp>
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 #include <utility>
 
 namespace examples {
@@ -31,9 +31,9 @@ static constexpr uint32_t k_frames_per_read = 1024;
 class wav_file_player: public rav::ptp::Instance::Subscriber {
   public:
     explicit wav_file_player(
-        asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
-        rav::ptp::Instance& ptp_instance, rav::Id::Generator& id_generator,
-        const asio::ip::address_v4& interface_address, const rav::File& file_to_play, const std::string& session_name
+        boost::asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
+        rav::ptp::Instance& ptp_instance, rav::Id::Generator& id_generator, const std::string& interface_search_string,
+        const rav::File& file_to_play, const std::string& session_name
     ) :
         ptp_instance_(ptp_instance), timer_(io_context) {
         if (!file_to_play.exists()) {
@@ -43,7 +43,15 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
         auto id = id_generator.next();
         auto sender =
             std::make_unique<rav::RavennaSender>(io_context, advertiser, rtsp_server, ptp_instance, id, id.value());
-        sender->set_interfaces({{rav::Rank::primary(), interface_address}});
+
+        auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface_search_string);
+        if (iface == nullptr) {
+            RAV_ERROR("No network interface found with search string: {}", interface_search_string);
+            return;
+        }
+        rav::NetworkInterfaceConfig interface_config;
+        interface_config.set_interface(rav::Rank::primary(), iface->get_identifier());
+        sender->set_network_interface_config(std::move(interface_config));
 
         auto file_input_stream = std::make_unique<rav::FileInputStream>(file_to_play);
         auto reader = std::make_unique<rav::WavAudioFormat::Reader>(std::move(file_input_stream));
@@ -55,11 +63,11 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
 
         audio_format_ = *format;
 
-        rav::RavennaSender::ConfigurationUpdate update;
-        update.session_name = session_name;
-        update.audio_format = audio_format_.with_byte_order(rav::AudioFormat::ByteOrder::be);
-        update.enabled = true;
-        const auto result = sender->set_configuration(update);
+        rav::RavennaSender::Configuration config;
+        config.session_name = session_name;
+        config.audio_format = audio_format_.with_byte_order(rav::AudioFormat::ByteOrder::be);
+        config.enabled = true;
+        const auto result = sender->set_configuration(config);
         if (!result) {
             throw std::runtime_error("Failed to update configuration for transmitter: " + result.error());
         }
@@ -104,7 +112,7 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
     uint32_t rtp_ts_ {};
     std::unique_ptr<rav::WavAudioFormat::Reader> reader_;
     std::unique_ptr<rav::RavennaSender> sender_;
-    asio::high_resolution_timer timer_;
+    boost::asio::high_resolution_timer timer_;
 
     void start_timer() {
 #if RAV_WINDOWS
@@ -117,8 +125,8 @@ class wav_file_player: public rav::ptp::Instance::Subscriber {
 #endif
 
         timer_.expires_after(expires_after);
-        timer_.async_wait([this](const asio::error_code ec) {
-            if (ec == asio::error::operation_aborted) {
+        timer_.async_wait([this](const boost::system::error_code ec) {
+            if (ec == boost::asio::error::operation_aborted) {
                 return;
             }
             if (ec) {
@@ -197,14 +205,14 @@ int main(int const argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    const auto interface_address = asio::ip::make_address_v4(interface_address_string);
+    const auto interface_address = boost::asio::ip::make_address_v4(interface_address_string);
 
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
 
     std::vector<std::unique_ptr<examples::wav_file_player>> wav_file_players;
 
     auto advertiser = rav::dnssd::Advertiser::create(io_context);
-    rav::rtsp::Server rtsp_server(io_context, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005));
+    rav::rtsp::Server rtsp_server(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 5005));
 
     // PTP
     rav::ptp::Instance ptp_instance(io_context);
@@ -222,7 +230,7 @@ int main(int const argc, char* argv[]) {
 
         wav_file_players.emplace_back(
             std::make_unique<examples::wav_file_player>(
-                io_context, *advertiser, rtsp_server, ptp_instance, id_generator, interface_address, file,
+                io_context, *advertiser, rtsp_server, ptp_instance, id_generator, interface_address_string, file,
                 file_session_name + " " + std::to_string(wav_file_players.size() + 1)
             )
         );

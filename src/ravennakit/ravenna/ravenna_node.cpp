@@ -14,9 +14,28 @@
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
 rav::RavennaNode::RavennaNode() :
-    rtsp_server_(io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
+    rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)),
+    ptp_instance_(io_context_) {
     rtp_receiver_ = std::make_unique<rtp::Receiver>(udp_receiver_);
     advertiser_ = dnssd::Advertiser::create(io_context_);
+
+    nmos_device_.id = boost::uuids::random_generator()();
+    if (!nmos_node_.add_or_update_device(nmos_device_)) {
+        RAV_ERROR("Failed to add NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
+    }
+
+    nmos_node_.on_configuration_changed = [this](const nmos::Node::Configuration& config) {
+        for (const auto& s : subscribers_) {
+            s->nmos_node_config_updated(config);
+        }
+    };
+
+    nmos_node_.on_status_changed =
+        [this](const nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
+            for (const auto& s : subscribers_) {
+                s->nmos_node_status_changed(status, registry_info);
+            }
+        };
 
     std::promise<std::thread::id> promise;
     auto f = promise.get_future();
@@ -41,19 +60,33 @@ rav::RavennaNode::RavennaNode() :
 }
 
 rav::RavennaNode::~RavennaNode() {
+    for (const auto& receiver : receivers_) {
+        receiver->set_nmos_node(nullptr);  // Prevent receiver from sending NMOS updates upon destruction
+    }
+    for (const auto& sender : senders_) {
+        sender->set_nmos_node(nullptr);  // Prevent receiver from sending NMOS updates upon destruction
+    }
     io_context_.stop();
     if (maintenance_thread_.joinable()) {
         maintenance_thread_.join();
     }
 }
 
-std::future<rav::Id> rav::RavennaNode::create_receiver(const RavennaReceiver::ConfigurationUpdate& initial_config) {
-    auto work = [this, initial_config]() mutable {
-        auto new_receiver = std::make_unique<RavennaReceiver>(
-            io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next(), initial_config
-        );
-        new_receiver->set_interfaces(config_.network_interfaces.get_interface_ipv4_addresses());
+std::future<tl::expected<rav::Id, std::string>>
+rav::RavennaNode::create_receiver(RavennaReceiver::Configuration initial_config) {
+    auto work = [this, initial_config]() mutable -> tl::expected<Id, std::string> {
+        auto new_receiver =
+            std::make_unique<RavennaReceiver>(io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next());
+        new_receiver->set_network_interface_config(config_.network_interfaces);
+        auto result = new_receiver->set_configuration(initial_config);
+        if (!result) {
+            RAV_ERROR("Failed to set receiver configuration: {}", result.error());
+            return tl::unexpected(result.error());
+        }
         const auto& it = receivers_.emplace_back(std::move(new_receiver));
+        RAV_ASSERT(!nmos_node_.get_devices().empty(), "NMOS node must have at least one device");
+        it->set_nmos_device_id(nmos_device_.id);
+        it->set_nmos_node(&nmos_node_);
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
         }
@@ -62,7 +95,7 @@ std::future<rav::Id> rav::RavennaNode::create_receiver(const RavennaReceiver::Co
         }
         return it->get_id();
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::remove_receiver(Id receiver_id) {
@@ -84,12 +117,12 @@ std::future<void> rav::RavennaNode::remove_receiver(Id receiver_id) {
             }
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<tl::expected<void, std::string>>
-rav::RavennaNode::update_receiver_configuration(Id receiver_id, RavennaReceiver::ConfigurationUpdate update) {
-    auto work = [this, receiver_id, u = std::move(update)]() -> tl::expected<void, std::string> {
+rav::RavennaNode::update_receiver_configuration(Id receiver_id, RavennaReceiver::Configuration config) {
+    auto work = [this, receiver_id, u = std::move(config)]() -> tl::expected<void, std::string> {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
                 return receiver->set_configuration(u);
@@ -97,17 +130,27 @@ rav::RavennaNode::update_receiver_configuration(Id receiver_id, RavennaReceiver:
         }
         return tl::unexpected("Sender not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
-std::future<rav::Id> rav::RavennaNode::create_sender(const RavennaSender::ConfigurationUpdate& initial_config) {
-    auto work = [this, initial_config]() mutable {
+std::future<tl::expected<rav::Id, std::string>>
+rav::RavennaNode::create_sender(RavennaSender::Configuration initial_config) {
+    auto work = [this, initial_config]() mutable -> tl::expected<Id, std::string> {
         auto new_sender = std::make_unique<RavennaSender>(
-            io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), generate_unique_session_id(),
-            initial_config
+            io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), generate_unique_session_id()
         );
-        new_sender->set_interfaces(config_.network_interfaces.get_interface_ipv4_addresses());
+        if (initial_config.session_name.empty()) {
+            initial_config.session_name = fmt::format("Sender {}", new_sender->get_session_id());
+        }
+        new_sender->set_network_interface_config(config_.network_interfaces);
+        auto result = new_sender->set_configuration(initial_config);
+        if (!result) {
+            RAV_ERROR("Failed to set sender configuration: {}", result.error());
+            return tl::unexpected(result.error());
+        }
         const auto& it = senders_.emplace_back(std::move(new_sender));
+        it->set_nmos_device_id(nmos_device_.id);
+        it->set_nmos_node(&nmos_node_);
         for (const auto& s : subscribers_) {
             s->ravenna_sender_added(*it);
         }
@@ -116,7 +159,7 @@ std::future<rav::Id> rav::RavennaNode::create_sender(const RavennaSender::Config
         }
         return it->get_id();
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
@@ -138,12 +181,12 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
             }
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<tl::expected<void, std::string>>
-rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update) {
-    auto work = [this, sender_id, u = std::move(update)]() -> tl::expected<void, std::string> {
+rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::Configuration config) {
+    auto work = [this, sender_id, u = std::move(config)]() -> tl::expected<void, std::string> {
         for (const auto& sender : senders_) {
             if (sender->get_id() == sender_id) {
                 return sender->set_configuration(u);
@@ -151,17 +194,39 @@ rav::RavennaNode::update_sender_configuration(Id sender_id, RavennaSender::Confi
         }
         return tl::unexpected("Sender not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
+}
+
+std::future<tl::expected<void, std::string>>
+rav::RavennaNode::set_nmos_configuration(nmos::Node::Configuration update) {
+    auto work = [this, u = std::move(update)] ()-> tl::expected<void, std::string> {
+        auto result = nmos_node_.set_configuration(u);
+        if (!result) {
+            return tl::unexpected(fmt::format("Failed to set nmos configuration: {}", result.error()));
+        }
+        nmos_device_.label = u.label;
+        nmos_device_.description = u.description;
+        if (!nmos_node_.add_or_update_device(nmos_device_)) {
+            return tl::unexpected("Failed to update NMOS device configuration");
+        }
+        return {};
+    };
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
     RAV_ASSERT(subscriber != nullptr, "Subscriber must be valid");
     auto work = [this, subscriber] {
         if (!subscribers_.add(subscriber)) {
-            RAV_WARNING("Failed to add subscriber to node");
+            RAV_ERROR("Failed to add subscriber to node");
+            return;
         }
         if (!browser_.subscribe(subscriber)) {
-            RAV_WARNING("Failed to add subscriber to browser");
+            RAV_ERROR("Failed to add subscriber to browser");
+            if (!subscribers_.remove(subscriber)) {
+                RAV_ERROR("Failed to remove subscriber from node");
+            }
+            return;
         }
         for (const auto& receiver : receivers_) {
             subscriber->ravenna_receiver_added(*receiver);
@@ -170,8 +235,10 @@ std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
             subscriber->ravenna_sender_added(*sender);
         }
         subscriber->network_interface_config_updated(config_.network_interfaces);
+        subscriber->nmos_node_config_updated(nmos_node_.get_configuration());
+        subscriber->nmos_node_status_changed(nmos_node_.get_status(), nmos_node_.get_registry_info());
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber) {
@@ -184,7 +251,7 @@ std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber) {
             RAV_WARNING("Failed to remove subscriber from node");
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
@@ -199,7 +266,7 @@ std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, Ravenn
         }
         RAV_WARNING("Receiver not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, RavennaReceiver::Subscriber* subscriber) {
@@ -214,7 +281,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, Ra
         }
         // Don't warn about not finding the receiver, as the receiver might have already been removed.
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe_to_sender(Id sender_id, RavennaSender::Subscriber* subscriber) {
@@ -229,7 +296,7 @@ std::future<void> rav::RavennaNode::subscribe_to_sender(Id sender_id, RavennaSen
         }
         RAV_WARNING("Sender not found");
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, RavennaSender::Subscriber* subscriber) {
@@ -244,7 +311,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, Ravenn
         }
         // Don't warn about not finding the sender, as the sender might have already been removed.
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::subscribe_to_ptp_instance(ptp::Instance::Subscriber* subscriber) {
@@ -253,7 +320,7 @@ std::future<void> rav::RavennaNode::subscribe_to_ptp_instance(ptp::Instance::Sub
             RAV_ERROR("Failed to add subscriber to PTP instance");
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance::Subscriber* subscriber) {
@@ -262,7 +329,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance:
             RAV_ERROR("Failed to remove subscriber from PTP instance");
         }
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<rav::rtp::AudioReceiver::SessionStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id, Rank rank) {
@@ -274,7 +341,7 @@ std::future<rav::rtp::AudioReceiver::SessionStats> rav::RavennaNode::get_stats_f
         }
         return rtp::AudioReceiver::SessionStats {};
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_sdp_for_receiver(Id receiver_id) {
@@ -286,7 +353,7 @@ std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_s
         }
         return std::nullopt;
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_receiver(Id receiver_id) {
@@ -299,7 +366,7 @@ std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_recei
         }
         return std::nullopt;
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
@@ -362,25 +429,26 @@ bool rav::RavennaNode::send_audio_data_realtime(
     return false;
 }
 
-std::future<void>
-rav::RavennaNode::set_network_interface_config(RavennaConfig::NetworkInterfaceConfig interface_config) {
+std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfaceConfig interface_config) {
     auto work = [this, config = std::move(interface_config)] {
         if (config_.network_interfaces == config) {
             return;  // Nothing changed
         }
 
         config_.network_interfaces = config;
-        const auto addresses = config_.network_interfaces.get_interface_ipv4_addresses();
 
         for (const auto& receiver : receivers_) {
-            receiver->set_interfaces(addresses);
+            receiver->set_network_interface_config(config_.network_interfaces);
         }
 
         for (const auto& sender : senders_) {
-            sender->set_interfaces(addresses);
+            sender->set_network_interface_config(config_.network_interfaces);
         }
 
+        nmos_node_.set_network_interface_config(config);
+
         // Add or update PTP ports based on the new configuration
+        const auto addresses = config_.network_interfaces.get_interface_ipv4_addresses();
         for (auto& [rank, address] : addresses) {
             auto it = ptp_ports_.find(rank);
             if (it == ptp_ports_.end()) {
@@ -415,7 +483,7 @@ rav::RavennaNode::set_network_interface_config(RavennaConfig::NetworkInterfaceCo
 
         RAV_INFO("{}", config.to_string());
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 bool rav::RavennaNode::is_maintenance_thread() const {
@@ -436,89 +504,129 @@ std::future<nlohmann::json> rav::RavennaNode::to_json() {
         root["config"] = config_.to_json();
         root["senders"] = senders;
         root["receivers"] = receivers;
+        root["nmos_node"]["configuration"] = boost_to_nlohmann_json(nmos_node_.get_configuration().to_json());
+        root["nmos_device_id"] = boost::uuids::to_string(nmos_device_.id);
         return root;
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json(const nlohmann::json& json) {
     auto work = [this, json]() -> tl::expected<void, std::string> {
         try {
+            // Configuration
+
             auto ravenna_config = RavennaConfig::from_json(json.at("config"));
             if (!ravenna_config) {
                 return tl::unexpected(ravenna_config.error());
             }
 
+            auto nmos_device_id = boost::uuids::string_generator()(json.at("nmos_device_id").get<std::string>());
+
+            // Senders
+
+            auto senders = json.at("senders");
+            std::vector<std::unique_ptr<RavennaSender>> new_senders;
+
+            for (auto& sender : senders) {
+                auto new_sender = std::make_unique<RavennaSender>(
+                    io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), 1
+                );
+                new_sender->set_network_interface_config(ravenna_config->network_interfaces);
+                if (auto result = new_sender->restore_from_json(sender); !result) {
+                    return tl::unexpected(result.error());
+                }
+                new_sender->set_nmos_device_id(nmos_device_id);
+                new_senders.push_back(std::move(new_sender));
+            }
+
+            // Receivers
+
+            auto receivers = json.at("receivers");
+            std::vector<std::unique_ptr<RavennaReceiver>> new_receivers;
+
+            for (auto& receiver : receivers) {
+                auto new_receiver =
+                    std::make_unique<RavennaReceiver>(io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next());
+                new_receiver->set_network_interface_config(ravenna_config->network_interfaces);
+                if (auto result = new_receiver->restore_from_json(receiver); !result) {
+                    return tl::unexpected(result.error());
+                }
+                new_receiver->set_nmos_device_id(nmos_device_id);
+                new_receivers.push_back(std::move(new_receiver));
+            }
+
             set_network_interface_config(ravenna_config->network_interfaces).wait();
 
-            auto interface_addresses = ravenna_config->network_interfaces.get_interface_ipv4_addresses();
+            // NMOS Node
 
-            {
-                auto senders = json.at("senders");
-                std::vector<std::unique_ptr<RavennaSender>> new_senders;
-
-                for (auto& sender : senders) {
-                    auto config = RavennaSender::ConfigurationUpdate::from_json(sender.at("configuration"));
-                    if (!config) {
-                        return tl::unexpected(config.error());
-                    }
-                    auto session_id = sender.at("session_id").get<uint32_t>();
-                    auto new_sender = std::make_unique<RavennaSender>(
-                        io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), session_id,
-                        *config
-                    );
-                    new_sender->set_interfaces(interface_addresses);
-                    new_senders.push_back(std::move(new_sender));
+            auto nmos_node = json.find("nmos_node");
+            if (nmos_node != json.end()) {
+                const auto& config_json = nlohmann_to_boost_json(nmos_node->at("configuration"));
+                if (!config_json.is_object()) {
+                    return tl::unexpected("invalid configuration JSON");
                 }
 
-                for (const auto& sender : senders_) {
-                    for (auto* s : subscribers_) {
-                        RAV_ASSERT(s != nullptr, "Subscriber must be valid");
-                        s->ravenna_sender_removed(sender->get_id());
-                    }
+                auto config = nmos::Node::Configuration::from_json(config_json);
+                if (config.has_error()) {
+                    return tl::unexpected(config.error());
                 }
 
-                std::swap(senders_, new_senders);
+                nmos_node_.stop();
+                if (!nmos_node_.remove_device(nmos_device_.id)) {
+                    RAV_ERROR("Failed to remove NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
+                }
+                auto result = nmos_node_.set_configuration(*config);
+                if (!result) {
+                    return tl::unexpected(fmt::format("Failed to set NMOS node configuration: {}", result.error()));
+                }
+                nmos_device_.id = nmos_device_id;
+                nmos_device_.label = config->label;
+                nmos_device_.description = config->description;
+                if (!nmos_node_.add_or_update_device(std::move(nmos_device_))) {
+                    RAV_ERROR("Failed to add NMOS device to node");
+                }
+            } else {
+                return tl::unexpected("No NMOS node state found in JSON");
+            }
 
-                for (const auto& sender : senders_) {
-                    for (auto* s : subscribers_) {
-                        RAV_ASSERT(s != nullptr, "Subscriber must be valid");
-                        s->ravenna_sender_added(*sender);
-                    }
+            // Swap senders
+
+            for (const auto& sender : senders_) {
+                sender->set_nmos_node(nullptr);
+                for (auto* s : subscribers_) {
+                    RAV_ASSERT(s != nullptr, "Subscriber must be valid");
+                    s->ravenna_sender_removed(sender->get_id());
                 }
             }
 
-            {
-                auto receivers = json.at("receivers");
-                std::vector<std::unique_ptr<RavennaReceiver>> new_receivers;
+            std::swap(senders_, new_senders);
 
-                for (auto& receiver : receivers) {
-                    auto config = RavennaReceiver::ConfigurationUpdate::from_json(receiver.at("configuration"));
-                    if (!config) {
-                        return tl::unexpected(config.error());
-                    }
-                    auto new_receiver = std::make_unique<RavennaReceiver>(
-                        io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next(), *config
-                    );
-
-                    new_receiver->set_interfaces(interface_addresses);
-                    new_receivers.push_back(std::move(new_receiver));
+            for (const auto& sender : senders_) {
+                sender->set_nmos_node(&nmos_node_);
+                for (auto* s : subscribers_) {
+                    RAV_ASSERT(s != nullptr, "Subscriber must be valid");
+                    s->ravenna_sender_added(*sender);
                 }
+            }
 
-                for (const auto& receiver : receivers_) {
-                    for (auto* s : subscribers_) {
-                        RAV_ASSERT(s != nullptr, "Subscriber must be valid");
-                        s->ravenna_receiver_removed(receiver->get_id());
-                    }
+            // Swap receivers
+
+            for (const auto& receiver : receivers_) {
+                receiver->set_nmos_node(nullptr);
+                for (auto* s : subscribers_) {
+                    RAV_ASSERT(s != nullptr, "Subscriber must be valid");
+                    s->ravenna_receiver_removed(receiver->get_id());
                 }
+            }
 
-                std::swap(receivers_, new_receivers);
+            std::swap(receivers_, new_receivers);
 
-                for (const auto& receiver : receivers_) {
-                    for (auto* s : subscribers_) {
-                        RAV_ASSERT(s != nullptr, "Subscriber must be valid");
-                        s->ravenna_receiver_added(*receiver);
-                    }
+            for (const auto& receiver : receivers_) {
+                receiver->set_nmos_node(&nmos_node_);
+                for (auto* s : subscribers_) {
+                    RAV_ASSERT(s != nullptr, "Subscriber must be valid");
+                    s->ravenna_receiver_added(*receiver);
                 }
             }
 
@@ -532,11 +640,11 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_json
 
         return {};
     };
-    return asio::dispatch(io_context_, asio::use_future(work));
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 bool rav::RavennaNode::update_realtime_shared_context() {
-    auto new_context = std::make_unique<realtime_shared_context>();
+    auto new_context = std::make_unique<RealtimeSharedContext>();
     for (auto& receiver : receivers_) {
         new_context->receivers.emplace_back(receiver.get());
     }

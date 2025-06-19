@@ -13,7 +13,7 @@
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_advertiser.hpp"
 
-std::unique_ptr<rav::dnssd::Advertiser> rav::dnssd::Advertiser::create(asio::io_context& io_context) {
+std::unique_ptr<rav::dnssd::Advertiser> rav::dnssd::Advertiser::create(boost::asio::io_context& io_context) {
 #if RAV_APPLE
     return std::make_unique<BonjourAdvertiser>(io_context);
 #elif RAV_WINDOWS

@@ -5,79 +5,95 @@
  * merged, published, distributed, sublicensed, or sold without a valid and
  * explicit agreement with Owllab.
  *
- * Copyright (c) 2025 Owllab. All rights reserved.
+ * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
 #pragma once
 
-#include "ravennakit/core/linked_node.hpp"
+#include <functional>
 
 namespace rav {
 
 /**
- * An alias for an event slot which can be used to subscribe to events.
+ * Wrapper around std::tuple for holding different kinds of events.
+ * @tparam E The events to be held.
  */
-template<typename... Args>
-using EventSlot = LinkedNode<std::function<void(Args...)>>;
-
-/**
- * An event emitter which can be used to subscribe to and emit events of a given type.
- * The way this class is designed makes it easy to use without thinking about memory management. When the EventSlot
- * goes out of scope it will unsubscribe itself from the event emitter (by removing itself from the internal linked
- * list) and when the EventSlot goes out of scope while there are existing EventSlot, it removes itself from the
- * list after which it cannot be dereferenced anymore. This class enables composition-based design, eliminating the need
- * for inheritance.
- * @tparam Args List of arguments to be emitted.
- */
-template<typename... Args>
+template<class... E>
 class EventEmitter {
   public:
-    using Node = LinkedNode<std::function<void(Args...)>>;
+    EventEmitter() = default;
+    virtual ~EventEmitter() = default;
+
+    EventEmitter(const EventEmitter&) = delete;
+    EventEmitter& operator=(const EventEmitter&) = delete;
+
+    EventEmitter(EventEmitter&&) = default;
+    EventEmitter& operator=(EventEmitter&&) = default;
+
+    template<class Type>
+    using handler = std::function<void(const Type&)>;
 
     /**
-     * Emits an event to all subscribers.
-     * @param args The arguments to pass to the subscribers.
+     * Registers a handler for given event type.
+     * @tparam Type The type of the event.
+     * @param f A valid handler to be registered.
      */
-    void operator()(Args... args) {
-        emit(args...);
+    template<class Type>
+    auto& on(handler<Type> f) {
+        get<Type>() = std::move(f);
+        return *this;
     }
 
     /**
-     * Connects a handle to the event emitter. The handle will be automatically removed when it goes out of scope.
-     * @param h The handle to connect.
+     * Deletes the handler for the given event type.
+     * @tparam Type The type of the event.
      */
-    void connect(Node& h) {
-        nodes_.push_back(h);
+    template<class Type>
+    void reset() noexcept {
+        get<Type>() = nullptr;
     }
 
     /**
-     * Subscribes to updates from the event emitter. The subscription will be automatically removed when the handle is
-     * destroyed. A new function can be assigned to the handle to change the subscription.
-     * @param f The function to be called when the event is emitted.
-     * @return A handle to the subscription.
+     * Deletes all handlers.
      */
-    [[nodiscard]] EventSlot<Args...> subscribe(std::function<void(Args...)> f) {
-        Node node(std::move(f));
-        nodes_.push_back(node);
-        return node;
+    virtual void reset() noexcept {
+        (reset<E>(), ...);
     }
 
     /**
-     * Emits an event to all subscribers.
-     * @param args The arguments to pass to the subscribers.
+     * Checks if there is a handler registered for the specific event.
+     * @tparam Type The type of the event.
+     * @return True if a handler is registered, false otherwise.
      */
-    void emit(Args... args) {
-        for (auto& s : nodes_) {
-            auto& f = s.value();
-            if (f == nullptr) {
-                continue;
-            }
-            f(args...);
+    template<class Type>
+    [[nodiscard]] bool has_handler() const noexcept {
+        return get<Type>() != nullptr;
+    }
+
+    /**
+     * Calls handler for given event type.
+     * @tparam Type The type of the event.
+     * @param event The event to publish.
+     */
+    template<class Type>
+    void emit(const Type& event) {
+        if (auto& h = get<Type>(); h) {
+            h(event);
         }
     }
 
   private:
-    Node nodes_;
+    std::tuple<handler<E>...> handlers {};
+
+    template<class Type>
+    const auto& get() const noexcept {
+        return std::get<handler<Type>>(handlers);
+    }
+
+    template<class Type>
+    auto& get() noexcept {
+        return std::get<handler<Type>>(handlers);
+    }
 };
 
 }  // namespace rav

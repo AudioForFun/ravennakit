@@ -13,52 +13,48 @@
 #include <catch2/catch_all.hpp>
 
 TEST_CASE("mock_browser") {
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
     rav::dnssd::MockBrowser browser(io_context);
 
     SECTION("Mock discovering and removing service") {
         std::vector<rav::dnssd::ServiceDescription> discovered_services;
         std::vector<rav::dnssd::ServiceDescription> removed_services;
 
-        rav::dnssd::Browser::Subscriber subscriber;
-        subscriber->on<rav::dnssd::Browser::ServiceDiscovered>([&](const auto& event) {
-            discovered_services.push_back(event.description);
-        });
-        subscriber->on<rav::dnssd::Browser::ServiceRemoved>([&](const auto& event) {
-            removed_services.push_back(event.description);
-        });
-        browser.subscribe(subscriber);
+        browser.on_service_discovered = [&](const auto& desc) {
+            discovered_services.push_back(desc);
+        };
+        browser.on_service_removed = [&](const auto& desc) {
+            removed_services.push_back(desc);
+        };
 
         browser.browse_for("reg_type");
-        browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
-        browser.mock_removing_service("fullname");
+        browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
+        browser.mock_removed_service("fullname");
 
         io_context.run();
 
         REQUIRE(discovered_services.size() == 1);
         REQUIRE(discovered_services[0].fullname == "fullname");
         REQUIRE(discovered_services[0].name == "name");
-        REQUIRE(discovered_services[0].reg_type == "reg_type");
-        REQUIRE(discovered_services[0].domain == "domain");
+        REQUIRE(discovered_services[0].reg_type == "reg_type.");
+        REQUIRE(discovered_services[0].domain == "domain.");
 
         REQUIRE(removed_services.size() == 1);
         REQUIRE(discovered_services[0].fullname == "fullname");
         REQUIRE(discovered_services[0].name == "name");
-        REQUIRE(discovered_services[0].reg_type == "reg_type");
-        REQUIRE(discovered_services[0].domain == "domain");
+        REQUIRE(discovered_services[0].reg_type == "reg_type.");
+        REQUIRE(discovered_services[0].domain == "domain.");
     }
 
     SECTION("Mock resolving a service") {
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
 
-        rav::dnssd::Browser::Subscriber subscriber;
-        subscriber->on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-            resolved_services.push_back(event.description);
-        });
-        browser.subscribe(subscriber);
+        browser.on_service_resolved = [&](const auto& desc) {
+            resolved_services.push_back(desc);
+        };
 
         browser.browse_for("reg_type");
-        browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
+        browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
         browser.mock_resolved_service("fullname", "host_target", 1234, {{"key", "value"}});
 
         io_context.run();
@@ -66,8 +62,8 @@ TEST_CASE("mock_browser") {
         REQUIRE(resolved_services.size() == 1);
         REQUIRE(resolved_services[0].fullname == "fullname");
         REQUIRE(resolved_services[0].name == "name");
-        REQUIRE(resolved_services[0].reg_type == "reg_type");
-        REQUIRE(resolved_services[0].domain == "domain");
+        REQUIRE(resolved_services[0].reg_type == "reg_type.");
+        REQUIRE(resolved_services[0].domain == "domain.");
         REQUIRE(resolved_services[0].host_target == "host_target");
         REQUIRE(resolved_services[0].port == 1234);
         REQUIRE(resolved_services[0].txt.size() == 1);
@@ -78,20 +74,24 @@ TEST_CASE("mock_browser") {
         std::vector<rav::dnssd::ServiceDescription> addresses_added;
         std::vector<rav::dnssd::ServiceDescription> addresses_removed;
 
-        rav::dnssd::Browser::Subscriber subscriber;
-        subscriber->on<rav::dnssd::Browser::AddressAdded>([&](const auto& event) {
-            addresses_added.push_back(event.description);
-        });
-        subscriber->on<rav::dnssd::Browser::AddressRemoved>([&](const auto& event) {
-            addresses_removed.push_back(event.description);
-        });
-        browser.subscribe(subscriber);
+        browser.on_address_added = [&](const rav::dnssd::ServiceDescription& desc, const std::string& address,
+                                       size_t interface_index) {
+            std::ignore = address;
+            std::ignore = interface_index;
+            addresses_added.push_back(desc);
+        };
+        browser.on_address_removed = [&](const rav::dnssd::ServiceDescription& desc, const std::string& address,
+                                         size_t interface_index) {
+            std::ignore = address;
+            std::ignore = interface_index;
+            addresses_removed.push_back(desc);
+        };
 
         browser.browse_for("reg_type");
-        browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
+        browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
         browser.mock_resolved_service("fullname", "host_target", 1234, {});
-        browser.mock_adding_address("fullname", "address", 1);
-        browser.mock_removing_address("fullname", "address", 1);
+        browser.mock_added_address("fullname", "address", 1);
+        browser.mock_removed_address("fullname", "address", 1);
 
         io_context.run();
 
@@ -108,16 +108,16 @@ TEST_CASE("mock_browser") {
 
     SECTION("Find service") {
         browser.browse_for("reg_type");
-        browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
+        browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
         REQUIRE(browser.find_service("name") == nullptr);
 
-        asio::post(io_context, [&] {
+        boost::asio::post(io_context, [&] {
             auto* service = browser.find_service("name");
             REQUIRE(service != nullptr);
             REQUIRE(service->fullname == "fullname");
             REQUIRE(service->name == "name");
-            REQUIRE(service->reg_type == "reg_type");
-            REQUIRE(service->domain == "domain");
+            REQUIRE(service->reg_type == "reg_type.");
+            REQUIRE(service->domain == "domain.");
         });
 
         io_context.run();
@@ -126,53 +126,53 @@ TEST_CASE("mock_browser") {
     SECTION("Get services") {
         browser.browse_for("reg_type");
         browser.browse_for("reg_type2");
-        browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
-        browser.mock_discovering_service("fullname2", "name2", "reg_type2", "domain2");
-        asio::post(io_context, [&] {
+        browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
+        browser.mock_discovered_service("fullname2", "name2", "reg_type2", "domain2");
+        boost::asio::post(io_context, [&] {
             auto services = browser.get_services();
             REQUIRE(services.size() == 2);
             REQUIRE(services[0].fullname == "fullname");
             REQUIRE(services[0].name == "name");
-            REQUIRE(services[0].reg_type == "reg_type");
-            REQUIRE(services[0].domain == "domain");
+            REQUIRE(services[0].reg_type == "reg_type.");
+            REQUIRE(services[0].domain == "domain.");
             REQUIRE(services[1].fullname == "fullname2");
             REQUIRE(services[1].name == "name2");
-            REQUIRE(services[1].reg_type == "reg_type2");
-            REQUIRE(services[1].domain == "domain2");
+            REQUIRE(services[1].reg_type == "reg_type2.");
+            REQUIRE(services[1].domain == "domain2.");
         });
         io_context.run();
     }
 
     SECTION("Subscribe") {
-        browser.browse_for("reg_type");
-        browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
-        browser.mock_resolved_service("fullname", "host_target", 1234, {});
-        browser.mock_adding_address("fullname", "address", 1);
-
-        io_context.run();
-
         std::vector<rav::dnssd::ServiceDescription> discovered_services;
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
         std::vector<rav::dnssd::ServiceDescription> addresses_added;
 
-        rav::dnssd::Browser::Subscriber subscriber;
-        subscriber->on<rav::dnssd::Browser::ServiceDiscovered>([&](const auto& event) {
-            discovered_services.push_back(event.description);
-        });
-        subscriber->on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-            resolved_services.push_back(event.description);
-        });
-        subscriber->on<rav::dnssd::Browser::AddressAdded>([&](const auto& event) {
-            addresses_added.push_back(event.description);
-        });
+        browser.on_service_discovered = [&](const auto& desc) {
+            discovered_services.push_back(desc);
+        };
+        browser.on_service_resolved = [&](const auto& desc) {
+            resolved_services.push_back(desc);
+        };
+        browser.on_address_added = [&](const rav::dnssd::ServiceDescription& desc, const std::string& address,
+                                       size_t interface_index) {
+            std::ignore = address;
+            std::ignore = interface_index;
+            addresses_added.push_back(desc);
+        };
 
-        browser.subscribe(subscriber);
+        browser.browse_for("reg_type");
+        browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
+        browser.mock_resolved_service("fullname", "host_target", 1234, {});
+        browser.mock_added_address("fullname", "address", 1);
+
+        io_context.run();
 
         REQUIRE(discovered_services.size() == 1);
         REQUIRE(discovered_services[0].fullname == "fullname");
         REQUIRE(discovered_services[0].name == "name");
-        REQUIRE(discovered_services[0].reg_type == "reg_type");
-        REQUIRE(discovered_services[0].domain == "domain");
+        REQUIRE(discovered_services[0].reg_type == "reg_type.");
+        REQUIRE(discovered_services[0].domain == "domain.");
 
         REQUIRE(resolved_services.size() == 1);
         REQUIRE(resolved_services[0].fullname == "fullname");
@@ -188,12 +188,12 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Mock discovering a service error cases") {
-        browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
+        browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
         REQUIRE_THROWS(io_context.run());
     }
 
     SECTION("Mock removing address error cases") {
-        browser.mock_removing_service("fullname");
+        browser.mock_removed_service("fullname");
         REQUIRE_THROWS(io_context.run());
     }
 
@@ -203,28 +203,28 @@ TEST_CASE("mock_browser") {
     }
 
     SECTION("Mock adding address error cases") {
-        browser.mock_adding_address("fullname", "address", 1);
+        browser.mock_added_address("fullname", "address", 1);
         REQUIRE_THROWS(io_context.run());
     }
 
     SECTION("Mock removing address error cases") {
         SECTION("Not browsing for") {
-            browser.mock_removing_address("fullname", "address", 1);
+            browser.mock_removed_address("fullname", "address", 1);
             REQUIRE_THROWS(io_context.run());
         }
 
         browser.browse_for("reg_type");
 
         SECTION("Interface not found") {
-            browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
-            browser.mock_removing_address("fullname", "address", 1);
+            browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
+            browser.mock_removed_address("fullname", "address", 1);
             REQUIRE_THROWS(io_context.run());
         }
 
         SECTION("Address not found") {
-            browser.mock_discovering_service("fullname", "name", "reg_type", "domain");
-            browser.mock_adding_address("fullname", "address", 1);
-            browser.mock_removing_address("fullname", "address2", 1);
+            browser.mock_discovered_service("fullname", "name", "reg_type", "domain");
+            browser.mock_added_address("fullname", "address", 1);
+            browser.mock_removed_address("fullname", "address2", 1);
             REQUIRE_THROWS(io_context.run());
         }
     }

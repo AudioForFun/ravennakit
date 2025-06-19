@@ -1,0 +1,279 @@
+/*
+ * Owllab License Agreement
+ *
+ * This software is provided by Owllab and may not be used, copied, modified,
+ * merged, published, distributed, sublicensed, or sold without a valid and
+ * explicit agreement with Owllab.
+ *
+ * Copyright (c) 2025 Owllab. All rights reserved.
+ */
+
+#pragma once
+
+#include "ravennakit/core/net/http/detail/http_fmt_adapters.hpp"
+
+#include <boost/asio.hpp>
+#include <boost/url.hpp>
+
+#include <string>
+#include <queue>
+
+namespace rav {
+
+namespace http = boost::beast::http;
+using tcp = boost::asio::ip::tcp;
+
+class HttpClientBase {
+  public:
+    virtual ~HttpClientBase() = default;
+
+    /// When no port is specified in the urls, the default port is used.
+    static constexpr auto k_default_port = "80";
+
+    using Request = http::request<http::string_body>;
+    using Response = http::response<http::string_body>;
+
+    /// Callback type for async requests.
+    using ResponseCallback = std::function<void(boost::system::result<http::response<http::string_body>> response)>;
+
+    /**
+     * Sets the host to connect to.
+     * @param url The url with the host info.
+     */
+    virtual void set_host(const boost::urls::url& url) = 0;
+
+    /**
+     * Sets the host to connect to.
+     * @param url The host to connect to.
+     */
+    virtual void set_host(std::string_view url) = 0;
+
+    /**
+     * Sets the host to connect to.
+     * @param host The host to connect to.
+     * @param service The service (port) to connect to.
+     */
+    virtual void set_host(std::string_view host, std::string_view service) = 0;
+
+    /**
+     * Asynchronous GET request.
+     * The callback's lifetime will be tied to the io_context so make sure referenced objects are kept alive until the
+     * callback is called.
+     * @param target The target to request.
+     * @param callback The callback to call when the request is complete.
+     */
+    virtual void get_async(std::string_view target, ResponseCallback callback) = 0;
+
+    /**
+     * Asynchronous POST request to the target of the URL, or the root if no target is specified.
+     * @param target The target to request.
+     * @param body The body to send with the request.
+     * @param callback The callback to call when the request is complete.
+     * @param content_type The content type of the body, e.g. "application/json". If not specified, defaults to
+     * "application/json".
+     */
+    virtual void
+    post_async(std::string_view target, std::string body, ResponseCallback callback, std::string_view content_type) = 0;
+
+    /**
+     * Asynchronous DELETE request to the target of the URL, or the root if no target is specified.
+     * @param target The target to request.
+     * @param callback The callback to call when the request is complete.
+     */
+    virtual void delete_async(std::string_view target, ResponseCallback callback) = 0;
+
+    /**
+     * Asynchronous request.
+     * @param method The HTTP method to use for the request.
+     * @param target The target to request.
+     * @param body The optional body to send with the request.
+     * @param content_type
+     * @param callback The callback to call when the request is complete.
+     */
+    virtual void request_async(
+        http::verb method, std::string_view target, std::string body, std::string_view content_type,
+        ResponseCallback callback
+    ) = 0;
+
+    /**
+     * Clears all scheduled requests if there are any. Otherwise, this function has no effect.
+     */
+    virtual void cancel_outstanding_requests() = 0;
+
+    /**
+     * @return The host that is currently set for this client.
+     */
+    [[nodiscard]] virtual const std::string& get_host() const = 0;
+
+    /**
+     * @return The service (port) that this current client is set for this client.
+     */
+    [[nodiscard]] virtual const std::string& get_service() const = 0;
+};
+
+/**
+ * A high level wrapper around boost::beast for making HTTP requests.
+ */
+class HttpClient: public HttpClientBase {
+  public:
+    /**
+     * Constructs a new HttpClient using the given io_context, but no url.
+     * @param io_context The io_context to use for the request.
+     * @param timeout_seconds The timeout in seconds for the requests. Defaults to 30 seconds.
+     */
+    explicit HttpClient(
+        boost::asio::io_context& io_context, std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
+    );
+
+    /**
+     * Constructs a new HttpClient using the given io_context and url.
+     * @param io_context The io_context to use for the request.
+     * @param url The url to request.
+     * @param timeout_seconds The timeout in seconds for the requests. Defaults to 30 seconds.
+     */
+    HttpClient(
+        boost::asio::io_context& io_context, std::string_view url,
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
+    );
+
+    /**
+     * Constructs a new HttpClient using the given io_context and url.
+     * @param io_context The io_context to use for the request.
+     * @param url The url to request.
+     * @param timeout_seconds The timeout in seconds for the requests. Defaults to 30 seconds.
+     */
+    HttpClient(
+        boost::asio::io_context& io_context, const boost::urls::url& url,
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
+    );
+
+    /**
+     * Constructs a new HttpClient using the given io_context and url.
+     * @param io_context The io_context to use for the request.
+     * @param endpoint The endpoint to request.
+     * @param timeout_seconds The timeout in seconds for the requests. Defaults to 30 seconds.
+     */
+    HttpClient(
+        boost::asio::io_context& io_context, const boost::asio::ip::tcp::endpoint& endpoint,
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
+    );
+
+    /**
+     * Constructs a new HttpClient using the given io_context and url.
+     * @param io_context The io_context to use for the request.
+     * @param address The address to request.
+     * @param port The port to request.
+     * @param timeout_seconds The timeout in seconds for the requests. Defaults to 30 seconds.
+     */
+    HttpClient(
+        boost::asio::io_context& io_context, const boost::asio::ip::address& address, uint16_t port,
+        std::chrono::milliseconds timeout_seconds = std::chrono::seconds(30)
+    );
+
+    ~HttpClient() override;
+
+    HttpClient(const HttpClient&) = delete;
+    HttpClient& operator=(const HttpClient&) = delete;
+    HttpClient(HttpClient&&) = delete;
+    HttpClient& operator=(HttpClient&&) = delete;
+
+    /**
+     * @copydoc HttpClientBase::set_host
+     */
+    void set_host(const boost::urls::url& url) override;
+
+    /**
+     * @copydoc HttpClientBase::set_host
+     */
+    void set_host(std::string_view url) override;
+
+    /**
+     * @copydoc HttpClientBase::set_host
+     */
+    void set_host(std::string_view host, std::string_view service) override;
+
+    /**
+     * @copydoc HttpClientBase::get_async
+     */
+    void get_async(std::string_view target, ResponseCallback callback) override;
+
+    /**
+     * @copydoc HttpClientBase::post_async
+     */
+    void post_async(
+        std::string_view target, std::string body, ResponseCallback callback, std::string_view content_type
+    ) override;
+
+    /**
+     * @copydoc HttpClientBase::request_async
+     */
+    void request_async(
+        http::verb method, std::string_view target, std::string body, std::string_view content_type,
+        ResponseCallback callback
+    ) override;
+
+    /**
+     * @copydoc HttpClientBase::delete_async
+     */
+    void delete_async(std::string_view target, ResponseCallback callback) override;
+
+    /**
+     * @copydoc HttpClientBase::cancel_outstanding_requests
+     */
+    void cancel_outstanding_requests() override;
+
+    /**
+     * @copydoc HttpClientBase::get_host
+     */
+    [[nodiscard]] const std::string& get_host() const override;
+
+    /**
+     * @copydoc HttpClientBase::get_service
+     */
+    [[nodiscard]] const std::string& get_service() const override;
+
+  private:
+    /**
+     * A session class that keeps itself alive and handles the connection and request/response cycle.
+     */
+    class Session: public std::enable_shared_from_this<Session> {
+      public:
+        enum class State { disconnected, resolving, connecting, connected, waiting_for_send, waiting_for_response };
+        explicit Session(
+            boost::asio::io_context& io_context, HttpClient* owner, std::chrono::milliseconds timeout_seconds
+        );
+
+        void send_requests();
+        void clear_owner();
+
+        ResponseCallback callback_;
+
+      private:
+        HttpClient* owner_ = nullptr;
+        std::chrono::milliseconds timeout_seconds_ = std::chrono::seconds(30);
+        boost::asio::ip::tcp::resolver resolver_;
+        boost::beast::tcp_stream stream_;
+        http::request<http::string_body> request_;
+        http::response<http::string_body> response_;
+        boost::beast::flat_buffer buffer_;
+        State state_ = State::disconnected;
+
+        void async_connect();
+        void async_send();
+        void on_resolve(const boost::beast::error_code& ec, const tcp::resolver::results_type& results);
+        void on_connect(const boost::beast::error_code& ec, const tcp::resolver::results_type::endpoint_type&);
+        void on_write(const boost::beast::error_code& ec, std::size_t bytes_transferred);
+        void on_read(boost::beast::error_code ec, std::size_t bytes_transferred);
+
+        bool take_next_request();
+    };
+
+    boost::asio::io_context& io_context_;
+    std::chrono::milliseconds timeout_seconds_ = std::chrono::seconds(30);
+    std::string host_;
+    std::string service_;
+    std::queue<std::pair<http::request<http::string_body>, ResponseCallback>> requests_;
+    std::shared_ptr<Session> session_;
+};
+
+}  // namespace rav

@@ -49,7 +49,7 @@ class NetworkInterfaceList {
      * @param address The address to search for.
      * @return The network interface if found, otherwise nullptr.
      */
-    [[nodiscard]] const NetworkInterface* find_by_address(const asio::ip::address& address) const;
+    [[nodiscard]] const NetworkInterface* find_by_address(const boost::asio::ip::address& address) const;
 
     /**
      * @returns The list of network interfaces.

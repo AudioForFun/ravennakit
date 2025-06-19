@@ -12,7 +12,7 @@
 #include "ravennakit/ptp/ptp_instance.hpp"
 
 #include <CLI/App.hpp>
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 
 /**
  * This example shows how to create a PTP client.
@@ -31,10 +31,10 @@ int main(int const argc, char* argv[]) {
     CLI11_PARSE(app, argc, argv);
 
     std::vector<rav::Subscription> subscriptions;
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
 
     rav::ptp::Instance ptp_instance(io_context);
-    auto result = ptp_instance.add_port(asio::ip::make_address_v4(interface_address));
+    auto result = ptp_instance.add_port(boost::asio::ip::make_address_v4(interface_address));
     if (!result) {
         RAV_TRACE("PTP Error: {}", static_cast<std::underlying_type_t<rav::ptp::Error>>(result.error()));
         return 1;

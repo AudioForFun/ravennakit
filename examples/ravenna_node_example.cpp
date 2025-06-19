@@ -16,11 +16,13 @@
 #include <CLI/App.hpp>
 #include <utility>
 
+// This example is not complete and is not intended to be used as-is.
+
 namespace examples {
 
 struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::Subscriber {
     explicit ravenna_node(const rav::NetworkInterface::Identifier& primary_interface) {
-        rav::RavennaConfig::NetworkInterfaceConfig config;
+        rav::NetworkInterfaceConfig config;
         config.set_interface(rav::Rank::primary(), primary_interface);
         node.set_network_interface_config(config);
         node.subscribe(this).wait();
@@ -30,20 +32,20 @@ struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::S
         node.unsubscribe(this).wait();
     }
 
-    void ravenna_node_discovered(const rav::dnssd::Browser::ServiceResolved& event) override {
-        RAV_INFO("RAVENNA node discovered: {}", event.description.to_string());
+    void ravenna_node_discovered(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA node discovered: {}", desc.to_string());
     }
 
-    void ravenna_node_removed(const rav::dnssd::Browser::ServiceRemoved& event) override {
-        RAV_INFO("RAVENNA node removed: {}", event.description.to_string());
+    void ravenna_node_removed(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA node removed: {}", desc.to_string());
     }
 
-    void ravenna_session_discovered(const rav::dnssd::Browser::ServiceResolved& event) override {
-        RAV_INFO("RAVENNA session discovered: {}", event.description.to_string());
+    void ravenna_session_discovered(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA session discovered: {}", desc.to_string());
     }
 
-    void ravenna_session_removed(const rav::dnssd::Browser::ServiceRemoved& event) override {
-        RAV_INFO("RAVENNA session removed: {}", event.description.to_string());
+    void ravenna_session_removed(const rav::dnssd::ServiceDescription& desc) override {
+        RAV_INFO("RAVENNA session removed: {}", desc.to_string());
     }
 
     void ravenna_sender_added(const rav::RavennaSender& sender) override {
@@ -63,9 +65,9 @@ struct ravenna_node final: rav::RavennaNode::Subscriber, rav::RavennaReceiver::S
     }
 
     void ravenna_receiver_configuration_updated(
-        const rav::Id receiver_id, const rav::RavennaReceiver::Configuration& configuration
+        const rav::RavennaReceiver& receiver, const rav::RavennaReceiver::Configuration& configuration
     ) override {
-        RAV_INFO("RAVENNA configuration updated for receiver {}", receiver_id.value());
+        RAV_INFO("RAVENNA configuration updated for receiver: {}", receiver.get_id().value());
         std::ignore = configuration;
     }
 
@@ -111,9 +113,10 @@ int main(int const argc, char* argv[]) {
     examples::ravenna_node node_example(primary_interface->get_identifier());
 
     for (auto& session : stream_names) {
-        rav::RavennaReceiver::ConfigurationUpdate config;
+        rav::RavennaReceiver::Configuration config;
         config.session_name = session;
         config.enabled = true;
+        config.delay_frames = 480;  // 10ms at 48KHz
         node_example.node.create_receiver(config).wait();
     }
 

@@ -22,7 +22,7 @@
 namespace examples {
 class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instance::Subscriber {
   public:
-    explicit loopback(std::string stream_name, const asio::ip::address_v4& interface_addr) :
+    explicit loopback(std::string stream_name, const std::string& interface_search_string) :
         stream_name_(std::move(stream_name)) {
         rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
         advertiser_ = rav::dnssd::Advertiser::create(io_context_);
@@ -31,11 +31,17 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         }
 
         rtsp_server_ = std::make_unique<rav::rtsp::Server>(
-            io_context_, asio::ip::tcp::endpoint(asio::ip::address_v4::any(), 5005)
+            io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 5005)
         );
 
+        const auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface_search_string);
+        if (iface == nullptr) {
+            RAV_ERROR("No network interface found with search string: {}", interface_search_string);
+            return;
+        }
+
         ptp_instance_ = std::make_unique<rav::ptp::Instance>(io_context_);
-        if (const auto result = ptp_instance_->add_port(interface_addr); !result) {
+        if (const auto result = ptp_instance_->add_port(iface->get_first_ipv4_address()); !result) {
             RAV_THROW_EXCEPTION("Failed to add PTP port: {}", to_string(result.error()));
         }
 
@@ -46,20 +52,24 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
         sender_ = std::make_unique<rav::RavennaSender>(
             io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, rav::Id::get_next_process_wide_unique_id(), 1
         );
-        sender_->set_interfaces({{rav::Rank::primary(), interface_addr}});
+
+        rav::NetworkInterfaceConfig interface_config;
+        interface_config.set_interface(rav::Rank::primary(), iface->get_identifier());
+
+        sender_->set_network_interface_config(std::move(interface_config));
 
         rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
 
-        rav::RavennaReceiver::ConfigurationUpdate update;
-        update.delay_frames = 480;  // 10ms at 48KHz
-        update.enabled = true;
-        update.session_name = stream_name_;
+        rav::RavennaReceiver::Configuration config;
+        config.delay_frames = 480;  // 10ms at 48KHz
+        config.enabled = true;
+        config.session_name = stream_name_;
 
         ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(
-            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id(), update
+            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
         );
-        ravenna_receiver_->set_interfaces({{rav::Rank::primary(), interface_addr}});
-        auto result = ravenna_receiver_->set_configuration(update);
+        ravenna_receiver_->set_network_interface_config(std::move(interface_config));
+        auto result = ravenna_receiver_->set_configuration(config);
         if (!result) {
             RAV_ERROR("Failed to update configuration: {}", result.error());
             return;
@@ -90,12 +100,12 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
 
         buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.streams.front().packet_time_frames);
 
-        rav::RavennaSender::ConfigurationUpdate update;
-        update.session_name = stream_name_ + "_loopback";
-        update.audio_format = parameters.audio_format;
-        update.enabled = true;
+        rav::RavennaSender::Configuration config;
+        config.session_name = stream_name_ + "_loopback";
+        config.audio_format = parameters.audio_format;
+        config.enabled = true;
 
-        auto result = sender_->set_configuration(update);
+        auto result = sender_->set_configuration(config);
         if (!result) {
             RAV_ERROR("Failed to update sender: {}", result.error());
         }
@@ -126,7 +136,7 @@ class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instan
 
   private:
     std::string stream_name_;
-    asio::io_context io_context_;
+    boost::asio::io_context io_context_;
     rav::UdpReceiver udp_receiver_ {io_context_};
     std::vector<uint8_t> buffer_;
     bool ptp_clock_stable_ = false;
@@ -167,10 +177,8 @@ int main(int const argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    const auto interface_address = asio::ip::make_address_v4(interface_address_string);
-
     // Receiving side
-    examples::loopback example(stream_name, interface_address);
+    examples::loopback example(stream_name, interface_address_string);
     example.run();
 
     return 0;

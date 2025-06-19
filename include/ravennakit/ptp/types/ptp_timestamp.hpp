@@ -173,7 +173,7 @@ struct Timestamp {
     }
 
     /**
-     * Create a ptp_timestamp from a buffer_view. Data is assumed to valid, and the buffer_view must be at least 10
+     * Create a ptp_timestamp from a buffer_view. Data is assumed to be valid, and the buffer_view must be at least 10
      * bytes long. No bounds checking is performed.
      * @param data The data to create the timestamp from. Assumed to be in network byte order.
      * @return The created ptp_timestamp.

@@ -24,19 +24,19 @@
 #include <random>
 
 namespace {
-const auto k_ptp_multicast_address = asio::ip::make_address_v4("224.0.1.129");
+const auto k_ptp_multicast_address = boost::asio::ip::make_address_v4("224.0.1.129");
 constexpr auto k_ptp_event_port = 319;
 constexpr auto k_ptp_general_port = 320;
 }  // namespace
 
 rav::ptp::Port::Port(
-    Instance& parent, asio::io_context& io_context, const asio::ip::address_v4& interface_address,
+    Instance& parent, boost::asio::io_context& io_context, const boost::asio::ip::address_v4& interface_address,
     const PortIdentity port_identity
 ) :
     parent_(parent),
     announce_receipt_timeout_timer_(io_context),
-    event_send_socket_(io_context, asio::ip::address_v4(), k_ptp_event_port),
-    general_send_socket_(io_context, asio::ip::address_v4(), k_ptp_general_port) {
+    event_send_socket_(io_context, boost::asio::ip::address_v4(), k_ptp_event_port),
+    general_send_socket_(io_context, boost::asio::ip::address_v4(), k_ptp_general_port) {
     RAV_ASSERT(!interface_address.is_unspecified(), "Interface address must not be unspecified");
     RAV_ASSERT(!interface_address.is_multicast(), "Interface address must not be multicast");
 
@@ -155,8 +155,8 @@ void rav::ptp::Port::schedule_announce_receipt_timeout() {
         + static_cast<int>(random_factor * announce_interval_ms);
 
     announce_receipt_timeout_timer_.expires_after(std::chrono::milliseconds(announce_receipt_timeout));
-    announce_receipt_timeout_timer_.async_wait([this](const std::error_code& error) {
-        if (error == asio::error::operation_aborted) {
+    announce_receipt_timeout_timer_.async_wait([this](const boost::system::error_code& error) {
+        if (error == boost::asio::error::operation_aborted) {
             return;
         }
         if (error) {
@@ -232,7 +232,7 @@ void rav::ptp::Port::trigger_announce_receipt_timeout_expires_event() {
     TRACY_ZONE_SCOPED;
 
     erbest_.reset();
-    if (parent_.default_ds().slave_only) {
+    if (parent_.get_default_ds().slave_only) {
         set_state(State::listening);
     } else {
         RAV_ASSERT_FALSE("Master state not implemented");
@@ -340,7 +340,7 @@ void rav::ptp::Port::on_state_changed(std::function<void(const Port&)> callback)
     on_state_changed_callback_ = std::move(callback);
 }
 
-void rav::ptp::Port::set_interface(const asio::ip::address_v4& interface_address) {
+void rav::ptp::Port::set_interface(const boost::asio::ip::address_v4& interface_address) {
     RAV_ASSERT(!interface_address.is_multicast(), "Interface address should not be multicast");
 
     if (interface_address == interface_address_) {

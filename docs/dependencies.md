@@ -4,11 +4,11 @@ This project requires the following dependencies:
 
 - [spdlog](https://github.com/gabime/spdlog) (MIT License)
 - [fmt](https://github.com/fmtlib/fmt) (MIT License)
-- [asio](https://github.com/chriskohlhoff/asio) (Boost Software License)
-- [tl-expected](https://github.com/TartanLlama/expected) (CC0 1.0 Universal)
+- [boost](https://www.boost.org/) (Boost Software License)
+- [tl-expected](https://github.com/TartanLlama/expected) (CC0 1.0 Universal) (will be replaced with boost::system::result)
 - [nanobench](https://github.com/martinus/nanobench) (MIT License)
 - [Bonjour SDK for Windows](https://developer.apple.com/bonjour/) (Apache 2.0 License)
-- [nlohmann-json](https://github.com/nlohmann/json) (MIT License)
+- [nlohmann-json](https://github.com/nlohmann/json) (MIT License) (will be replaced with boost::json)
 
 Optional:
 
@@ -23,5 +23,5 @@ Examples:
 - [portaudio](https://github.com/PortAudio/portaudio) (MIT License)
 - [cli11](https://github.com/CLIUtils/CLI11) (BSD 3-Clause License)
 
-All dependencies, except for Tracy, can be managed by vcpkg. There is a vcpkg.json file in the root of the project that
+Vcpkg can manage all dependencies, except for Tracy. There is a vcpkg.json file in the root of the project that
 can be used to install the dependencies, but it is recommended to set up CMake to use vcpkg.

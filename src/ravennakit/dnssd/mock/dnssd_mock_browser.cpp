@@ -11,30 +11,31 @@
 #include "ravennakit/dnssd/mock/dnssd_mock_browser.hpp"
 
 #include "ravennakit/core/exception.hpp"
+#include "ravennakit/core/string.hpp"
 
-rav::dnssd::MockBrowser::MockBrowser(asio::io_context& io_context) : io_context_(io_context) {}
+rav::dnssd::MockBrowser::MockBrowser(boost::asio::io_context& io_context) : io_context_(io_context) {}
 
-void rav::dnssd::MockBrowser::mock_discovering_service(
+void rav::dnssd::MockBrowser::mock_discovered_service(
     const std::string& fullname, const std::string& name, const std::string& reg_type, const std::string& domain
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         if (browsers_.find(reg_type) == browsers_.end()) {
             RAV_THROW_EXCEPTION("Not browsing for reg_type: {}", reg_type);
         }
-        dnssd::ServiceDescription service;
+        ServiceDescription service;
         service.fullname = fullname;
         service.name = name;
-        service.reg_type = reg_type;
-        service.domain = domain;
+        service.reg_type = string_ends_with(reg_type, ".") ? reg_type : reg_type + ".";
+        service.domain = string_ends_with(domain, ".") ? domain : domain + ".";
         const auto [it, inserted] = services_.emplace(fullname, service);
-        emit(ServiceDiscovered {it->second});
+        on_service_discovered(it->second);
     });
 }
 
 void rav::dnssd::MockBrowser::mock_resolved_service(
     const std::string& fullname, const std::string& host_target, const uint16_t port, const TxtRecord& txt_record
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
@@ -42,27 +43,27 @@ void rav::dnssd::MockBrowser::mock_resolved_service(
         it->second.host_target = host_target;
         it->second.port = port;
         it->second.txt = txt_record;
-        emit(ServiceResolved {it->second});
+        on_service_resolved(it->second);
     });
 }
 
-void rav::dnssd::MockBrowser::mock_adding_address(
+void rav::dnssd::MockBrowser::mock_added_address(
     const std::string& fullname, const std::string& address, const uint32_t interface_index
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
         }
         it->second.interfaces[interface_index].insert(address);
-        emit(AddressAdded {it->second, address, interface_index});
+        on_address_added(it->second, address, interface_index);
     });
 }
 
-void rav::dnssd::MockBrowser::mock_removing_address(
+void rav::dnssd::MockBrowser::mock_removed_address(
     const std::string& fullname, const std::string& address, uint32_t interface_index
 ) {
-    asio::dispatch(io_context_, [=] {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
@@ -79,17 +80,17 @@ void rav::dnssd::MockBrowser::mock_removing_address(
         if (iface->second.empty()) {
             it->second.interfaces.erase(iface);
         }
-        emit(AddressRemoved {it->second, address, interface_index});
+        on_address_removed(it->second, address, interface_index);
     });
 }
 
-void rav::dnssd::MockBrowser::mock_removing_service(const std::string& fullname) {
-    asio::dispatch(io_context_, [=] {
+void rav::dnssd::MockBrowser::mock_removed_service(const std::string& fullname) {
+    boost::asio::dispatch(io_context_, [=] {
         const auto it = services_.find(fullname);
         if (it == services_.end()) {
             RAV_THROW_EXCEPTION("Service not discovered: {}", fullname);
         }
-        emit(ServiceRemoved {it->second});
+        on_service_removed(it->second);
         services_.erase(it);
     });
 }
@@ -112,21 +113,9 @@ const rav::dnssd::ServiceDescription* rav::dnssd::MockBrowser::find_service(cons
 
 std::vector<rav::dnssd::ServiceDescription> rav::dnssd::MockBrowser::get_services() const {
     std::vector<ServiceDescription> result;
+    result.reserve(services_.size());
     for (auto& [_, service] : services_) {
         result.push_back(service);
     }
     return result;
-}
-
-void rav::dnssd::MockBrowser::subscribe(Subscriber& s) {
-    subscribers_.push_back(s);
-    for (auto& [fullname, service] : services_) {
-        s->emit(ServiceDiscovered {service});
-        s->emit(ServiceResolved {service});
-        for (auto& [iface_index, addrs] : service.interfaces) {
-            for (auto& addr : addrs) {
-                s->emit(AddressAdded {service, addr, iface_index});
-            }
-        }
-    }
 }

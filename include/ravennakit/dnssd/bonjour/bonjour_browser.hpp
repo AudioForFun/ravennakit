@@ -8,7 +8,7 @@
 #include "bonjour.hpp"
 #include "bonjour_process_results_thread.hpp"
 
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 
 #if RAV_HAS_APPLE_DNSSD
 
@@ -27,7 +27,7 @@ class BonjourBrowser: public Browser {
     /**
      * Represents a Bonjour service and holds state and methods for discovering and resolving services on the network.
      */
-    class service {
+    class Service {
       public:
         /**
          * Constructs a service.
@@ -37,7 +37,7 @@ class BonjourBrowser: public Browser {
          * @param domain The domain of the service (i.e. local.).
          * @param owner A reference to the owning BonjourBrowser.
          */
-        service(const char* fullname, const char* name, const char* type, const char* domain, BonjourBrowser& owner);
+        Service(const char* fullname, const char* name, const char* type, const char* domain, BonjourBrowser& owner);
 
         /**
          * Called when a service was resolved.
@@ -106,20 +106,17 @@ class BonjourBrowser: public Browser {
         );
     };
 
-    explicit BonjourBrowser(asio::io_context& io_context);
+    explicit BonjourBrowser(boost::asio::io_context& io_context);
     void browse_for(const std::string& service) override;
     [[nodiscard]] const ServiceDescription* find_service(const std::string& service_name) const override;
     [[nodiscard]] std::vector<ServiceDescription> get_services() const override;
 
-    void subscribe(Subscriber& s) override;
-
   private:
-    asio::ip::tcp::socket service_socket_;
+    boost::asio::ip::tcp::socket service_socket_;
     BonjourSharedConnection shared_connection_;
-    std::map<std::string, service> services_;                         // fullname -> service
+    std::map<std::string, Service> services_;                         // fullname -> service
     std::map<std::string, BonjourScopedDnsServiceRef> browsers_;  // reg_type -> DNSServiceRef
     size_t process_results_failed_attempts_ = 0;
-    Subscriber subscribers_;
 
     void async_process_results();
 
@@ -142,18 +139,6 @@ class BonjourBrowser: public Browser {
         DNSServiceRef browse_service_ref, DNSServiceFlags flags, uint32_t interface_index,
         DNSServiceErrorType error_code, const char* name, const char* type, const char* domain, void* context
     );
-
-    /**
-     * Emits given event to all subscribers.
-     * @tparam T The type of the event.
-     * @param event The event to emit.
-     */
-    template<class T>
-    void emit(const T& event) {
-        subscribers_.foreach ([&event](auto& n) {
-            n->emit(event);
-        });
-    }
 };
 
 }  // namespace rav::dnssd

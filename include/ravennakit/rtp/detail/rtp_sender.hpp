@@ -21,12 +21,12 @@ namespace rav::rtp {
  */
 class Sender {
   public:
-    Sender(asio::io_context& io_context, const asio::ip::address_v4& interface_address) :
+    Sender(boost::asio::io_context& io_context, const boost::asio::ip::address_v4& interface_address) :
         socket_(io_context), interface_address_(interface_address) {
-        socket_.open(asio::ip::udp::v4());
-        socket_.set_option(asio::ip::multicast::outbound_interface(interface_address));
-        socket_.set_option(asio::ip::multicast::enable_loopback(false));
-        socket_.set_option(asio::ip::udp::socket::reuse_address(true));
+        socket_.open(boost::asio::ip::udp::v4());
+        socket_.set_option(boost::asio::ip::multicast::outbound_interface(interface_address));
+        socket_.set_option(boost::asio::ip::multicast::enable_loopback(false));
+        socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
     }
 
     /**
@@ -34,11 +34,11 @@ class Sender {
      * @param packet Encoded RTP packet.
      * @param endpoint The endpoint to send the packet to.
      */
-    void send_to(const ByteBuffer& packet, const asio::ip::udp::endpoint& endpoint) {
+    void send_to(const ByteBuffer& packet, const boost::asio::ip::udp::endpoint& endpoint) {
         RAV_ASSERT(packet.data() != nullptr, "Packet data is null");
         RAV_ASSERT(packet.size() > 0, "Packet size is 0");
-        asio::error_code ec;
-        socket_.send_to(asio::buffer(packet.data(), packet.size()), endpoint, 0, ec);
+        boost::system::error_code ec;
+        socket_.send_to(boost::asio::buffer(packet.data(), packet.size()), endpoint, 0, ec);
         if (set_error(ec)) {
             RAV_ERROR("Failed to send RTP packet: {}", ec.message());
         }
@@ -49,11 +49,11 @@ class Sender {
      * @param packet Encoded RTP packet.
      * @param endpoint The endpoint to send the packet to.
      */
-    void send_to(const BufferView<const uint8_t>& packet, const asio::ip::udp::endpoint& endpoint) {
+    void send_to(const BufferView<const uint8_t>& packet, const boost::asio::ip::udp::endpoint& endpoint) {
         RAV_ASSERT(packet.data() != nullptr, "Packet data is null");
         RAV_ASSERT(!packet.empty(), "Packet is empty");
-        asio::error_code ec;
-        socket_.send_to(asio::buffer(packet.data(), packet.size()), endpoint, 0, ec);
+        boost::system::error_code ec;
+        socket_.send_to(boost::asio::buffer(packet.data(), packet.size()), endpoint, 0, ec);
         if (set_error(ec)) {
             RAV_ERROR("Failed to send RTP packet: {}", ec.message());
         }
@@ -65,11 +65,11 @@ class Sender {
      * @param data_size The size of the data to send.
      * @param endpoint The endpoint to send the packet to.
      */
-    void send_to(const uint8_t* data, const size_t data_size, const asio::ip::udp::endpoint& endpoint) {
+    void send_to(const uint8_t* data, const size_t data_size, const boost::asio::ip::udp::endpoint& endpoint) {
         RAV_ASSERT(data != nullptr, "Packet data is null");
         RAV_ASSERT(data_size != 0, "Packet is empty");
-        asio::error_code ec;
-        socket_.send_to(asio::buffer(data, data_size), endpoint, 0, ec);
+        boost::system::error_code ec;
+        socket_.send_to(boost::asio::buffer(data, data_size), endpoint, 0, ec);
         if (set_error(ec)) {
             RAV_ERROR("Failed to send RTP packet: {}", ec.message());
         }
@@ -79,9 +79,9 @@ class Sender {
      * Sets the interface to use for this sender.
      * @param interface_address The address of the interface to use.
      */
-    void set_interface(const asio::ip::address_v4& interface_address) {
-        asio::error_code ec;
-        socket_.set_option(asio::ip::multicast::outbound_interface(interface_address), ec);
+    void set_interface(const boost::asio::ip::address_v4& interface_address) {
+        boost::system::error_code ec;
+        socket_.set_option(boost::asio::ip::multicast::outbound_interface(interface_address), ec);
         if (ec) {
             RAV_ERROR("Failed to set interface: {}", ec.message());
         }
@@ -91,22 +91,22 @@ class Sender {
     /**
      * @return The interface address used by the sender.
      */
-    [[nodiscard]] const asio::ip::address_v4& get_interface_address() const {
+    [[nodiscard]] const boost::asio::ip::address_v4& get_interface_address() const {
         // TODO: Get the interface address from the socket (local endpoint)
         return interface_address_;
     }
 
   private:
-    asio::ip::udp::socket socket_;
-    asio::ip::address_v4 interface_address_;
-    asio::error_code last_error_;  // Used to avoid log spamming
+    boost::asio::ip::udp::socket socket_;
+    boost::asio::ip::address_v4 interface_address_;
+    boost::system::error_code last_error_;  // Used to avoid log spamming
 
     /**
      * Convenience function to set the error code and prevent log spamming.
      * @param ec The error code to set.
      * @return The error code if it's not the same as the last error, otherwise an empty error code.
      */
-    asio::error_code set_error(const asio::error_code& ec) {
+    boost::system::error_code set_error(const boost::system::error_code& ec) {
         if (ec == last_error_) {
             return {};
         }

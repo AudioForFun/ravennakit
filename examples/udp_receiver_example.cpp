@@ -46,9 +46,8 @@ int main() {
     rav::set_log_level_from_env();
     rav::do_system_checks();
 
-    const auto interface1 = asio::ip::make_address_v4("192.168.15.53");
-    const auto interface2 = asio::ip::make_address_v4("192.168.15.57");
-    asio::io_context io_context;
+    const auto interface1 = boost::asio::ip::make_address_v4("192.168.15.53");
+    boost::asio::io_context io_context;
 
     rav::UdpReceiver udp_receiver(io_context);
 
@@ -61,7 +60,7 @@ int main() {
     }
 
     // Subscribe to multicast traffic on interface 1
-    if (!udp_receiver.subscribe(&subscriber2, asio::ip::make_address_v4("239.15.55.1"), interface1, 5004)) {
+    if (!udp_receiver.subscribe(&subscriber2, boost::asio::ip::make_address_v4("239.15.55.1"), interface1, 5004)) {
         throw std::runtime_error("Failed to subscribe to interface 2");
     }
 

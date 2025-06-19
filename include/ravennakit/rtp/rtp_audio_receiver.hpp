@@ -17,7 +17,7 @@
 #include "detail/rtp_packet_stats.hpp"
 #include "detail/rtp_receiver.hpp"
 #include "ravennakit/aes67/aes67_constants.hpp"
-#include "ravennakit/core/exclusive_access_guard.hpp"
+#include "ravennakit/core/util/exclusive_access_guard.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
 #include "ravennakit/core/sync/rcu.hpp"
@@ -97,7 +97,7 @@ class AudioReceiver: public Receiver::Subscriber {
         PacketStats::Counters packet_stats;
     };
 
-    AudioReceiver(asio::io_context& io_context, Receiver& rtp_receiver);
+    AudioReceiver(boost::asio::io_context& io_context, Receiver& rtp_receiver);
     ~AudioReceiver() override;
 
     AudioReceiver(const AudioReceiver&) = delete;
@@ -173,7 +173,7 @@ class AudioReceiver: public Receiver::Subscriber {
      * Sets the interface address for the receiver.
      * @param interface_addresses A map of interface addresses to set. The key is the rank of the interface address.
      */
-    void set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses);
+    void set_interfaces(const std::map<Rank, boost::asio::ip::address_v4>& interface_addresses);
 
     /**
      * Sets a callback for when data is received.
@@ -248,14 +248,14 @@ class AudioReceiver: public Receiver::Subscriber {
     };
 
     Receiver& rtp_receiver_;
-    asio::steady_timer maintenance_timer_;
+    boost::asio::steady_timer maintenance_timer_;
     ExclusiveAccessGuard realtime_access_guard_;
 
     Parameters parameters_;
     uint32_t delay_frames_ {};
     bool enabled_ {};
 
-    std::map<Rank, asio::ip::address_v4> interface_addresses_;
+    std::map<Rank, boost::asio::ip::address_v4> interface_addresses_;
     std::vector<std::unique_ptr<StreamContext>> stream_contexts_;
 
     bool is_running_ {false};

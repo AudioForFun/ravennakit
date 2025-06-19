@@ -19,6 +19,7 @@ namespace rav {
 
 /**
  * URI parser and encoder. Should be enough for the common case, but it's not a full implementation.
+ * TODO: Replace with boost::urls.
  */
 struct Uri {
     std::string scheme;

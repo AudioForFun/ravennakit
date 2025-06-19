@@ -11,48 +11,52 @@
 #pragma once
 
 #include "ravenna_rtsp_client.hpp"
-#include "ravennakit/core/exclusive_access_guard.hpp"
+#include "ravennakit/core/util/exclusive_access_guard.hpp"
 #include "ravennakit/core/containers/fifo_buffer.hpp"
 #include "ravennakit/core/util/id.hpp"
+#include "ravennakit/nmos/nmos_node.hpp"
+#include "ravennakit/nmos/models/nmos_receiver_audio.hpp"
 #include "ravennakit/rtp/rtp_audio_receiver.hpp"
 #include "ravennakit/rtp/detail/rtp_filter.hpp"
 #include "ravennakit/rtp/detail/rtp_packet_stats.hpp"
 #include "ravennakit/rtp/detail/rtp_receiver.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
 
+#include <boost/uuid/random_generator.hpp>
+
 namespace rav {
 
 class RavennaReceiver: public RavennaRtspClient::Subscriber {
   public:
+    /// List of supported audio encodings for the sender.
+    static constexpr auto k_supported_encodings = {AudioEncoding::pcm_s16, AudioEncoding::pcm_s24};
+
     /**
      * Defines the configuration for the receiver.
+     * When no sdp_text is set, but the session_name is set, the SDP will be requested from the server.
      */
     struct Configuration {
+        sdp::SessionDescription sdp;
         std::string session_name;
         uint32_t delay_frames {};
         bool enabled {};
+        bool auto_update_sdp {true};  // When true, the receiver will connect to the RTSP server for SDP updates.
 
         /**
          * @return The configuration as a JSON object.
          */
         [[nodiscard]] nlohmann::json to_json() const;
-    };
-
-    /**
-     * Struct for updating the configuration of the receiver. Only the fields that are set are taken into account, which
-     * allows for partial updates.
-     */
-    struct ConfigurationUpdate {
-        std::optional<std::string> session_name;
-        std::optional<uint32_t> delay_frames;
-        std::optional<bool> enabled;
 
         /**
-         * Creates a configuration update from a JSON object.
+         * Creates a configuration object from a JSON object.
          * @param json The JSON object to convert.
-         * @return A configuration update object if the JSON is valid, otherwise an error message.
+         * @return A configuration object if the JSON is valid, otherwise an error message.
          */
-        static tl::expected<ConfigurationUpdate, std::string> from_json(const nlohmann::json& json);
+        static tl::expected<Configuration, std::string> from_json(const nlohmann::json& json);
+
+        static Configuration default_config() {
+            return Configuration {{}, {}, 480, true, true};
+        }
     };
 
     /**
@@ -72,11 +76,12 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
 
         /**
          * Called when the configuration of the stream has changed.
-         * @param receiver_id The id of the receiver.
+         * @param receiver The id of the receiver.
          * @param configuration The new configuration.
          */
-        virtual void ravenna_receiver_configuration_updated(const Id receiver_id, const Configuration& configuration) {
-            std::ignore = receiver_id;
+        virtual void
+        ravenna_receiver_configuration_updated(const RavennaReceiver& receiver, const Configuration& configuration) {
+            std::ignore = receiver;
             std::ignore = configuration;
         }
 
@@ -115,8 +120,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     };
 
     explicit RavennaReceiver(
-        asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id,
-        ConfigurationUpdate initial_config = {}
+        boost::asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id
     );
     ~RavennaReceiver() override;
 
@@ -132,11 +136,16 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     [[nodiscard]] Id get_id() const;
 
     /**
+     * @return The unique UUID of the receiver.
+     */
+    [[nodiscard]] const boost::uuids::uuid& get_uuid() const;
+
+    /**
      * Updates the configuration of the receiver. Only takes into account the fields in the configuration that are set.
      * This allows to update only a subset of the configuration.
-     * @param update The configuration changes to apply.
+     * @param config The configuration changes to apply.
      */
-    [[nodiscard]] tl::expected<void, std::string> set_configuration(const ConfigurationUpdate& update);
+    [[nodiscard]] tl::expected<void, std::string> set_configuration(Configuration config);
 
     /**
      * @returns The current configuration of the receiver.
@@ -158,6 +167,18 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     [[nodiscard]] bool unsubscribe(const Subscriber* subscriber);
 
     /**
+     * Sets the NMOS node for the receiver.
+     * @param nmos_node The NMOS node to set. May be nullptr if NMOS is not used.
+     */
+    void set_nmos_node(nmos::Node* nmos_node);
+
+    /**
+     * Sets the NMOS device ID for the receiver.
+     * @param device_id The device ID to set.
+     */
+    void set_nmos_device_id(const boost::uuids::uuid& device_id);
+
+    /**
      * @return The SDP for the session.
      */
     std::optional<sdp::SessionDescription> get_sdp() const;
@@ -169,15 +190,22 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     [[nodiscard]] std::optional<std::string> get_sdp_text() const;
 
     /**
-     * Sets the interface address for the receiver.
-     * @param interface_addresses A map of interface addresses to set. The key is the rank of the interface address.
+     * Sets the network interface config for the receiver.
+     * @param network_interface_config The configuration of the network interface to use.
      */
-    void set_interfaces(const std::map<Rank, asio::ip::address_v4>& interface_addresses);
+    void set_network_interface_config(NetworkInterfaceConfig network_interface_config);
 
     /**
      * @return A JSON representation of the sender.
      */
-    nlohmann::json to_json() const;
+    [[nodiscard]] nlohmann::json to_json() const;
+
+    /**
+     * Restores the receiver from a JSON representation.
+     * @param json The JSON representation of the receiver.
+     * @return A result indicating whether the restoration was successful or not.
+     */
+    [[nodiscard]] tl::expected<void, std::string> restore_from_json(const nlohmann::json& json);
 
     /**
      * Reads data from the buffer at the given timestamp.
@@ -224,12 +252,16 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
 
   private:
     RavennaRtspClient& rtsp_client_;
+    nmos::Node* nmos_node_ {nullptr};
     rtp::AudioReceiver rtp_audio_receiver_;
     Id id_;
     Configuration configuration_;
+    NetworkInterfaceConfig network_interface_config_;
+    nmos::ReceiverAudio nmos_receiver_;
     SubscriberList<Subscriber> subscribers_;
 
-    void update_sdp(const sdp::SessionDescription& sdp);
+    void handle_announced_sdp(const sdp::SessionDescription& sdp);
+    tl::expected<void, std::string> update_state(bool update_rtsp, bool update_nmos);
 };
 
 }  // namespace rav

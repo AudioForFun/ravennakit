@@ -17,7 +17,7 @@
 
 #include <portaudio.h>
 #include <CLI/App.hpp>
-#include <asio/io_context.hpp>
+#include <boost/asio/io_context.hpp>
 #include <utility>
 
 namespace examples {
@@ -162,23 +162,32 @@ class portaudio_stream {
 class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
   public:
     explicit ravenna_receiver(
-        const std::string& stream_name, std::string audio_device_name, const std::string& interface_address
+        const std::string& stream_name, std::string audio_device_name, const std::string& interface_search_string
     ) :
         audio_device_name_(std::move(audio_device_name)) {
         rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
 
         rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
 
-        rav::RavennaReceiver::ConfigurationUpdate update;
-        update.delay_frames = 480;  // 10ms at 48KHz
-        update.enabled = true;
-        update.session_name = stream_name;
+        rav::RavennaReceiver::Configuration config;
+        config.delay_frames = 480;  // 10ms at 48KHz
+        config.enabled = true;
+        config.session_name = stream_name;
 
         ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(
             io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
         );
-        ravenna_receiver_->set_interfaces({{rav::Rank::primary(), asio::ip::make_address_v4(interface_address)}});
-        auto result = ravenna_receiver_->set_configuration(update);
+
+        auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface_search_string);
+        if (iface == nullptr) {
+            RAV_ERROR("No network interface found with search string: {}", interface_search_string);
+            return;
+        }
+        rav::NetworkInterfaceConfig interface_config;
+        interface_config.set_interface(rav::Rank::primary(), iface->get_identifier());
+
+        ravenna_receiver_->set_network_interface_config(std::move(interface_config));
+        auto result = ravenna_receiver_->set_configuration(config);
         if (!result) {
             RAV_ERROR("Failed to update configuration: {}", result.error());
             return;
@@ -228,7 +237,7 @@ class ravenna_receiver: public rav::RavennaReceiver::Subscriber {
     }
 
   private:
-    asio::io_context io_context_;
+    boost::asio::io_context io_context_;
     rav::UdpReceiver udp_receiver_ {io_context_};
     rav::RavennaBrowser browser_ {io_context_};
     std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;

@@ -10,10 +10,10 @@
 
 #include "ravennakit/core/net/sockets/udp_receiver.hpp"
 
-rav::UdpReceiver::UdpReceiver(asio::io_context& io_context) : io_context_(io_context) {}
+rav::UdpReceiver::UdpReceiver(boost::asio::io_context& io_context) : io_context_(io_context) {}
 
 bool rav::UdpReceiver::subscribe(
-    Subscriber* subscriber, const asio::ip::address_v4& interface_address, const uint16_t port
+    Subscriber* subscriber, const boost::asio::ip::address_v4& interface_address, const uint16_t port
 ) {
     RAV_ASSERT(subscriber != nullptr, "Subscriber should not be nullptr");
     RAV_ASSERT(!interface_address.is_multicast(), "Interface address should not be multicast");
@@ -31,8 +31,8 @@ bool rav::UdpReceiver::subscribe(
 }
 
 bool rav::UdpReceiver::subscribe(
-    Subscriber* subscriber, const asio::ip::address_v4& multicast_address,
-    const asio::ip::address_v4& interface_address, const uint16_t port
+    Subscriber* subscriber, const boost::asio::ip::address_v4& multicast_address,
+    const boost::asio::ip::address_v4& interface_address, const uint16_t port
 ) {
     RAV_ASSERT(subscriber != nullptr, "Subscriber should not be nullptr");
     RAV_ASSERT(multicast_address.is_multicast(), "Multicast address is not multicast");
@@ -42,7 +42,7 @@ bool rav::UdpReceiver::subscribe(
 #if RAV_WINDOWS
     auto& context = find_or_create_socket_context({interface_address, port});
 #else
-    auto& context = find_or_create_socket_context({asio::ip::address_v4::any(), port});
+    auto& context = find_or_create_socket_context({boost::asio::ip::address_v4::any(), port});
 #endif
 
     return context.add_subscriber(subscriber, {multicast_address, interface_address});
@@ -58,7 +58,7 @@ void rav::UdpReceiver::unsubscribe(const Subscriber* subscriber) {
     }
 }
 
-rav::UdpReceiver::SocketContext::SocketContext(asio::io_context& io_context, asio::ip::udp::endpoint local_endpoint) :
+rav::UdpReceiver::SocketContext::SocketContext(boost::asio::io_context& io_context, boost::asio::ip::udp::endpoint local_endpoint) :
     local_endpoint_(std::move(local_endpoint)), socket_(io_context, local_endpoint_) {
     RAV_ASSERT(!local_endpoint.address().is_multicast(), "Interface address should not be a multicast address");
     RAV_ASSERT(local_endpoint.port() != 0, "Port should not be 0");
@@ -122,7 +122,7 @@ bool rav::UdpReceiver::SocketContext::remove_subscriber(const Subscriber* subscr
     return true;
 }
 
-const asio::ip::udp::endpoint& rav::UdpReceiver::SocketContext::local_endpoint() const {
+const boost::asio::ip::udp::endpoint& rav::UdpReceiver::SocketContext::local_endpoint() const {
     return local_endpoint_;
 }
 
@@ -158,7 +158,7 @@ void rav::UdpReceiver::SocketContext::handle_recv_event(const ExtendedUdpSocket:
     }
 }
 
-rav::UdpReceiver::SocketContext* rav::UdpReceiver::find_socket_context(const asio::ip::udp::endpoint& endpoint) const {
+rav::UdpReceiver::SocketContext* rav::UdpReceiver::find_socket_context(const boost::asio::ip::udp::endpoint& endpoint) const {
     for (auto& ctx : sockets_) {
         if (ctx->local_endpoint() == endpoint) {
             return ctx.get();
@@ -168,7 +168,7 @@ rav::UdpReceiver::SocketContext* rav::UdpReceiver::find_socket_context(const asi
 }
 
 rav::UdpReceiver::SocketContext&
-rav::UdpReceiver::find_or_create_socket_context(const asio::ip::udp::endpoint& endpoint) {
+rav::UdpReceiver::find_or_create_socket_context(const boost::asio::ip::udp::endpoint& endpoint) {
     auto* context = find_socket_context(endpoint);
     if (context != nullptr) {
         return *context;

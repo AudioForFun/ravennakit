@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "ravennakit/core/subscriber_list.hpp"
+#include "ravennakit/core/events/subscriber_list.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 
 namespace rav {
@@ -29,30 +29,30 @@ class RavennaBrowser {
 
         /**
          * Called when a node is discovered.
-         * @param event The event containing the service description.
+         * @param desc The service description of the discovered node.
          */
-        virtual void ravenna_node_discovered([[maybe_unused]] const dnssd::Browser::ServiceResolved& event) {}
+        virtual void ravenna_node_discovered([[maybe_unused]] const dnssd::ServiceDescription& desc) {}
 
         /**
          * Called when a node is removed.
-         * @param event The event containing the service description.
+         * @param desc The service description of the removed node.
          */
-        virtual void ravenna_node_removed([[maybe_unused]] const dnssd::Browser::ServiceRemoved& event) {}
+        virtual void ravenna_node_removed([[maybe_unused]] const dnssd::ServiceDescription& desc) {}
 
         /**
          * Called when a session is discovered.
-         * @param event The event containing the service description.
+         * @param desc The service description of the discovered session.
          */
-        virtual void ravenna_session_discovered([[maybe_unused]] const dnssd::Browser::ServiceResolved& event) {}
+        virtual void ravenna_session_discovered([[maybe_unused]] const dnssd::ServiceDescription& desc) {}
 
         /**
          * Called when a session is removed.
-         * @param event The event containing the service description.
+         * @param desc The service description of the removed session.
          */
-        virtual void ravenna_session_removed([[maybe_unused]] const dnssd::Browser::ServiceRemoved& event) {}
+        virtual void ravenna_session_removed([[maybe_unused]] const dnssd::ServiceDescription& desc) {}
     };
 
-    explicit RavennaBrowser(asio::io_context& io_context);
+    explicit RavennaBrowser(boost::asio::io_context& io_context);
 
     /**
      * Finds a node by its name.
@@ -84,10 +84,7 @@ class RavennaBrowser {
 
   private:
     std::unique_ptr<dnssd::Browser> node_browser_;
-    dnssd::Browser::Subscriber node_browser_subscriber_;
-
     std::unique_ptr<dnssd::Browser> session_browser_;
-    dnssd::Browser::Subscriber session_browser_subscriber_;
 
     SubscriberList<Subscriber> subscribers_;
 };

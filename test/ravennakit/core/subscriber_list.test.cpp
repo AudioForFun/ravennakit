@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/core/subscriber_list.hpp"
+#include "ravennakit/core/events/subscriber_list.hpp"
 
 #include <catch2/catch_all.hpp>
 

@@ -18,7 +18,7 @@
         #define TracyFunction __PRETTY_FUNCTION__
     #endif
 
-START_IGNORE_WARNINGS
+BEGIN_IGNORE_WARNINGS
     #include <tracy/Tracy.hpp>
 END_IGNORE_WARNINGS
 

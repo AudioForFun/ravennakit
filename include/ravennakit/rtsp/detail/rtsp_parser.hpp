@@ -13,14 +13,14 @@
 #include "rtsp_request.hpp"
 #include "rtsp_response.hpp"
 #include "ravennakit/core/containers/string_buffer.hpp"
-#include "ravennakit/core/events.hpp"
+#include "../../core/events/event_emitter.hpp"
 
 namespace rav::rtsp {
 
 /**
  * Parses RTSP messages.
  */
-class Parser final: public Events<Request, Response> {
+class Parser final: public EventEmitter<Request, Response> {
   public:
     /**
      * The status of parsing.

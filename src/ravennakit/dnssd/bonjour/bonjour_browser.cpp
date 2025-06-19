@@ -10,7 +10,7 @@
 
     #include <mutex>
 
-rav::dnssd::BonjourBrowser::service::service(
+rav::dnssd::BonjourBrowser::Service::Service(
     const char* fullname, const char* name, const char* type, const char* domain, BonjourBrowser& owner
 ) :
     owner_(owner) {
@@ -20,7 +20,7 @@ rav::dnssd::BonjourBrowser::service::service(
     description_.domain = domain;
 }
 
-void rav::dnssd::BonjourBrowser::service::resolve_on_interface(uint32_t index) {
+void rav::dnssd::BonjourBrowser::Service::resolve_on_interface(uint32_t index) {
     if (resolvers_.find(index) != resolvers_.end()) {
         RAV_WARNING("Already resolving on interface {}", index);
         return;
@@ -36,32 +36,30 @@ void rav::dnssd::BonjourBrowser::service::resolve_on_interface(uint32_t index) {
     );
 
     if (result != kDNSServiceErr_NoError) {
-        owner_.emit(BrowseError {fmt::format("Resolve on interface error: {}", dns_service_error_to_string(result))});
+        owner_.on_error(fmt::format("Resolve on interface error: {}", dns_service_error_to_string(result)));
         return;
     }
 
     resolvers_.insert({index, BonjourScopedDnsServiceRef(resolveServiceRef)});
 }
 
-void rav::dnssd::BonjourBrowser::service::resolve_callback(
+void rav::dnssd::BonjourBrowser::Service::resolve_callback(
     [[maybe_unused]] DNSServiceRef serviceRef, [[maybe_unused]] DNSServiceFlags flags, uint32_t interface_index,
     DNSServiceErrorType error_code, [[maybe_unused]] const char* fullname, const char* host_target, uint16_t port,
     const uint16_t txt_len, const unsigned char* txt_record, void* context
 ) {
-    auto* browser_service = static_cast<service*>(context);
+    auto* browser_service = static_cast<Service*>(context);
 
     if (error_code != kDNSServiceErr_NoError) {
-        browser_service->owner_.emit(
-            BrowseError {fmt::format("Resolve error: {}", dns_service_error_to_string(error_code))}
-        );
+        browser_service->owner_.on_error(fmt::format("Resolve error: {}", dns_service_error_to_string(error_code)));
         return;
     }
 
-    browser_service->description_.host_target = host_target;
+    browser_service->description_.host_target = string_remove_suffix(host_target, ".");
     browser_service->description_.port = ntohs(port);
     browser_service->description_.txt = BonjourTxtRecord::get_txt_record_from_raw_bytes(txt_record, txt_len);
 
-    browser_service->owner_.emit(ServiceResolved {browser_service->description_});
+    browser_service->owner_.on_service_resolved(browser_service->description_);
 
     DNSServiceRef getAddrInfoServiceRef = browser_service->owner_.shared_connection_.service_ref();
 
@@ -71,21 +69,19 @@ void rav::dnssd::BonjourBrowser::service::resolve_callback(
     );
 
     if (result != kDNSServiceErr_NoError) {
-        browser_service->owner_.emit(
-            BrowseError {fmt::format("Get addr info error: {}", dns_service_error_to_string(result))}
-        );
+        browser_service->owner_.on_error(fmt::format("Get addr info error: {}", dns_service_error_to_string(result)));
         return;
     }
 
     browser_service->get_addrs_.insert({interface_index, BonjourScopedDnsServiceRef(getAddrInfoServiceRef)});
 }
 
-void rav::dnssd::BonjourBrowser::service::get_addr_info_callback(
+void rav::dnssd::BonjourBrowser::Service::get_addr_info_callback(
     [[maybe_unused]] DNSServiceRef sd_ref, [[maybe_unused]] DNSServiceFlags flags, const uint32_t interface_index,
     const DNSServiceErrorType error_code, [[maybe_unused]] const char* hostname, const struct sockaddr* address,
     [[maybe_unused]] uint32_t ttl, void* context
 ) {
-    auto* browser_service = static_cast<service*>(context);
+    auto* browser_service = static_cast<Service*>(context);
 
     if (error_code == kDNSServiceErr_Timeout) {
         browser_service->get_addrs_.erase(interface_index);
@@ -93,8 +89,8 @@ void rav::dnssd::BonjourBrowser::service::get_addr_info_callback(
     }
 
     if (error_code != kDNSServiceErr_NoError) {
-        browser_service->owner_.emit(
-            BrowseError {fmt::format("Get addr info error: {}", dns_service_error_to_string(error_code))}
+        browser_service->owner_.on_error(
+            fmt::format("Get addr info error: {}", dns_service_error_to_string(error_code))
         );
         return;
     }
@@ -117,14 +113,14 @@ void rav::dnssd::BonjourBrowser::service::get_addr_info_callback(
     const auto found_interface = browser_service->description_.interfaces.find(interface_index);
     if (found_interface != browser_service->description_.interfaces.end()) {
         const auto result = found_interface->second.insert(ip_addr);
-        browser_service->owner_.emit(AddressAdded {browser_service->description_, *result.first, interface_index});
-    } else {
-        browser_service->owner_.emit(BrowseError {fmt::format("Interface with id \"{}\" not found", interface_index)});
+        browser_service->owner_.on_address_added(browser_service->description_, *result.first, interface_index);
         return;
     }
+
+    browser_service->owner_.on_error(fmt::format("Interface with id \"{}\" not found", interface_index));
 }
 
-size_t rav::dnssd::BonjourBrowser::service::remove_interface(uint32_t index) {
+size_t rav::dnssd::BonjourBrowser::Service::remove_interface(uint32_t index) {
     const auto found_interface = description_.interfaces.find(index);
     if (found_interface == description_.interfaces.end()) {
         RAV_ERROR("Interface with id \"{}\" not found", index);
@@ -133,7 +129,7 @@ size_t rav::dnssd::BonjourBrowser::service::remove_interface(uint32_t index) {
 
     if (description_.interfaces.size() > 1) {
         for (auto& addr : found_interface->second) {
-            owner_.emit(AddressRemoved {description_, addr, index});
+            owner_.on_address_removed(description_, addr, index);
         }
     }
 
@@ -144,25 +140,25 @@ size_t rav::dnssd::BonjourBrowser::service::remove_interface(uint32_t index) {
     return description_.interfaces.size();
 }
 
-const rav::dnssd::ServiceDescription& rav::dnssd::BonjourBrowser::service::description() const noexcept {
+const rav::dnssd::ServiceDescription& rav::dnssd::BonjourBrowser::Service::description() const noexcept {
     return description_;
 }
 
-rav::dnssd::BonjourBrowser::BonjourBrowser(asio::io_context& io_context) : service_socket_(io_context) {
+rav::dnssd::BonjourBrowser::BonjourBrowser(boost::asio::io_context& io_context) : service_socket_(io_context) {
     const int service_fd = DNSServiceRefSockFD(shared_connection_.service_ref());
 
     if (service_fd < 0) {
         RAV_THROW_EXCEPTION("Invalid file descriptor");
     }
 
-    service_socket_.assign(asio::ip::tcp::v6(), service_fd);
+    service_socket_.assign(boost::asio::ip::tcp::v6(), service_fd);
     async_process_results();
 }
 
 void rav::dnssd::BonjourBrowser::async_process_results() {
-    service_socket_.async_wait(asio::ip::tcp::socket::wait_read, [this](const asio::error_code& ec) {
+    service_socket_.async_wait(boost::asio::ip::tcp::socket::wait_read, [this](const boost::system::error_code& ec) {
         if (ec) {
-            if (ec != asio::error::operation_aborted) {
+            if (ec != boost::asio::error::operation_aborted) {
                 RAV_ERROR("Error in async_wait_for_results: {}", ec.message());
             }
             return;
@@ -172,10 +168,10 @@ void rav::dnssd::BonjourBrowser::async_process_results() {
 
         if (result != kDNSServiceErr_NoError) {
             RAV_ERROR("DNSServiceError: {}", dns_service_error_to_string(result));
-            emit(BrowseError {fmt::format("Process result error: {}", dns_service_error_to_string(result))});
+            on_error(fmt::format("Process result error: {}", dns_service_error_to_string(result)));
             if (++process_results_failed_attempts_ > 10) {
                 RAV_ERROR("Too many failed attempts to process results, stopping");
-                emit(BrowseError {"Too many failed attempts to process results, stopping"});
+                on_error("Too many failed attempts to process results, stopping");
                 return;
             }
         } else {
@@ -193,9 +189,7 @@ void rav::dnssd::BonjourBrowser::browse_reply(
     auto* browser = static_cast<BonjourBrowser*>(context);
 
     if (error_code != kDNSServiceErr_NoError) {
-        browser->emit(
-            BrowseError {fmt::format("Browser repy called with error: {}", dns_service_error_to_string(error_code))}
-        );
+        browser->on_error(fmt::format("Browser repy called with error: {}", dns_service_error_to_string(error_code)));
         return;
     }
 
@@ -207,9 +201,7 @@ void rav::dnssd::BonjourBrowser::browse_reply(
     char fullname[kDNSServiceMaxDomainName] = {};
     const auto result = DNSServiceConstructFullName(fullname, name, type, domain);
     if (result != kDNSServiceErr_NoError) {
-        browser->emit(
-            BrowseError {fmt::format("Failed to construct full name: {}", dns_service_error_to_string(result))}
-        );
+        browser->on_error(fmt::format("Failed to construct full name: {}", dns_service_error_to_string(result)));
         return;
     }
 
@@ -217,21 +209,21 @@ void rav::dnssd::BonjourBrowser::browse_reply(
         // Insert a new service if not already present
         auto s = browser->services_.find(fullname);
         if (s == browser->services_.end()) {
-            s = browser->services_.insert({fullname, service(fullname, name, type, domain, *browser)}).first;
+            s = browser->services_.insert({fullname, Service(fullname, name, type, domain, *browser)}).first;
 
-            browser->emit(ServiceDiscovered {s->second.description()});
+            browser->on_service_discovered(s->second.description());
         }
 
         s->second.resolve_on_interface(interface_index);
     } else {
         auto const foundService = browser->services_.find(fullname);
         if (foundService == browser->services_.end()) {
-            browser->emit(BrowseError {fmt::format("Service with fullname \"{}\" not found", fullname)});
+            browser->on_error(fmt::format("Service with fullname \"{}\" not found", fullname));
         }
 
         if (foundService->second.remove_interface(interface_index) == 0) {
             // We just removed the last interface
-            browser->emit(ServiceRemoved {foundService->second.description()});
+            browser->on_service_removed(foundService->second.description());
 
             // Remove the BrowseResult (as there are not interfaces left)
             browser->services_.erase(foundService);
@@ -263,8 +255,7 @@ void rav::dnssd::BonjourBrowser::browse_for(const std::string& service) {
     // From here the serviceRef is under RAII inside the ScopedDnsServiceRef class
 }
 
-const rav::dnssd::ServiceDescription* rav::dnssd::BonjourBrowser::find_service(const std::string& service_name
-) const {
+const rav::dnssd::ServiceDescription* rav::dnssd::BonjourBrowser::find_service(const std::string& service_name) const {
     for (auto& service : services_) {
         if (service.second.description().name == service_name) {
             return &service.second.description();
@@ -275,23 +266,11 @@ const rav::dnssd::ServiceDescription* rav::dnssd::BonjourBrowser::find_service(c
 
 std::vector<rav::dnssd::ServiceDescription> rav::dnssd::BonjourBrowser::get_services() const {
     std::vector<ServiceDescription> result;
+    result.reserve(services_.size());
     for (auto& service : services_) {
         result.push_back(service.second.description());
     }
     return result;
-}
-
-void rav::dnssd::BonjourBrowser::subscribe(Subscriber& s) {
-    subscribers_.push_back(s);
-    for (auto& [fullname, service] : services_) {
-        s->emit(ServiceDiscovered {service.description()});
-        s->emit(ServiceResolved {service.description()});
-        for (auto& [iface_index, addrs] : service.description().interfaces) {
-            for (auto& addr : addrs) {
-                s->emit(AddressAdded {service.description(), addr, iface_index});
-            }
-        }
-    }
 }
 
 #endif

@@ -25,8 +25,8 @@ namespace {
 
 #if RAV_WINDOWS
 size_t receive_from_socket(
-    asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf, asio::ip::udp::endpoint& src_endpoint,
-    asio::ip::udp::endpoint& dst_endpoint, uint64_t& recv_time, asio::error_code& ec
+    boost::asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf, boost::asio::ip::udp::endpoint& src_endpoint,
+    boost::asio::ip::udp::endpoint& dst_endpoint, uint64_t& recv_time, boost::system::error_code& ec
 ) {
     TRACY_ZONE_SCOPED;
     // Set up the message structure
@@ -49,7 +49,7 @@ size_t receive_from_socket(
     DWORD bytes_received = 0;
     auto wsa_recv_msg = rav::windows::wsa_recv_msg_function::get_global();
     if (wsa_recv_msg(socket.native_handle(), &msg, &bytes_received, nullptr, nullptr) == SOCKET_ERROR) {
-        ec = asio::error_code(WSAGetLastError(), asio::system_category());
+        ec = boost::system::error_code(WSAGetLastError(), boost::system::system_category());
         return 0;
     }
     recv_time = rav::HighResolutionClock::now();
@@ -57,7 +57,7 @@ size_t receive_from_socket(
     if (src_addr.sa_family == AF_INET) {
         const auto* addr_in = reinterpret_cast<const sockaddr_in*>(&src_addr);
         src_endpoint =
-            asio::ip::udp::endpoint(asio::ip::address_v4(ntohl(addr_in->sin_addr.s_addr)), ntohs(addr_in->sin_port));
+            boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(addr_in->sin_addr.s_addr)), ntohs(addr_in->sin_port));
     }
 
     // Process control messages to get the destination IP
@@ -66,8 +66,8 @@ size_t receive_from_socket(
             auto* pktinfo = reinterpret_cast<IN_PKTINFO*>(WSA_CMSG_DATA(cmsg));
             IN_ADDR dest_addr = pktinfo->ipi_addr;
 
-            dst_endpoint = asio::ip::udp::endpoint(
-                asio::ip::address_v4(ntohl(dest_addr.s_addr)), socket.local_endpoint(ec).port()
+            dst_endpoint = boost::asio::ip::udp::endpoint(
+                boost::asio::ip::address_v4(ntohl(dest_addr.s_addr)), socket.local_endpoint(ec).port()
             );
 
             if (ec) {
@@ -84,8 +84,8 @@ size_t receive_from_socket(
 }
 #else
 size_t receive_from_socket(
-    asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf, asio::ip::udp::endpoint& src_endpoint,
-    asio::ip::udp::endpoint& dst_endpoint, uint64_t& recv_time, asio::error_code& ec
+    boost::asio::ip::udp::socket& socket, std::array<uint8_t, 1500>& data_buf, boost::asio::ip::udp::endpoint& src_endpoint,
+    boost::asio::ip::udp::endpoint& dst_endpoint, uint64_t& recv_time, boost::system::error_code& ec
 ) {
     TRACY_ZONE_SCOPED;
     sockaddr_in src_addr {};
@@ -107,7 +107,7 @@ size_t receive_from_socket(
     const ssize_t received_bytes = recvmsg(socket.native_handle(), &msg, 0);
     recv_time = rav::HighResolutionClock::now();
     if (received_bytes < 0) {
-        ec = asio::error_code(errno, asio::system_category());
+        ec = boost::system::error_code(errno, boost::system::system_category());
         return 0;
     }
 
@@ -116,12 +116,12 @@ size_t receive_from_socket(
         if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_RECVDSTADDR_PKTINFO) {
             const auto* dst_addr = reinterpret_cast<struct in_addr*>(CMSG_DATA(cmsg));
             dst_endpoint =
-                asio::ip::udp::endpoint(asio::ip::address_v4(ntohl(dst_addr->s_addr)), ntohs(src_addr.sin_port));
+                boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(dst_addr->s_addr)), ntohs(src_addr.sin_port));
         }
     }
 
     src_endpoint =
-        asio::ip::udp::endpoint(asio::ip::address_v4(ntohl(src_addr.sin_addr.s_addr)), ntohs(src_addr.sin_port));
+        boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(src_addr.sin_addr.s_addr)), ntohs(src_addr.sin_port));
 
     return static_cast<size_t>(received_bytes);
 }
@@ -131,29 +131,29 @@ size_t receive_from_socket(
 
 class rav::ExtendedUdpSocket::Impl: public std::enable_shared_from_this<Impl> {
   public:
-    explicit Impl(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint);
+    explicit Impl(boost::asio::io_context& io_context, const boost::asio::ip::udp::endpoint& endpoint);
 
     void start(HandlerType handler);
     void stop();
 
     void async_receive();
-    void send(const uint8_t* data, size_t size, const asio::ip::udp::endpoint& endpoint);
+    void send(const uint8_t* data, size_t size, const boost::asio::ip::udp::endpoint& endpoint);
 
-    asio::error_code
-    join_multicast_group(const asio::ip::address& multicast_address, const asio::ip::address& interface_address);
+    boost::system::error_code
+    join_multicast_group(const boost::asio::ip::address& multicast_address, const boost::asio::ip::address& interface_address);
 
-    asio::error_code
-    leave_multicast_group(const asio::ip::address_v4& multicast_address, const asio::ip::address_v4& interface_address);
+    boost::system::error_code
+    leave_multicast_group(const boost::asio::ip::address_v4& multicast_address, const boost::asio::ip::address_v4& interface_address);
 
-    [[nodiscard]] asio::error_code set_multicast_outbound_interface(const asio::ip::address_v4& interface_address);
+    [[nodiscard]] boost::system::error_code set_multicast_outbound_interface(const boost::asio::ip::address_v4& interface_address);
 
-    asio::error_code set_multicast_loopback(bool enable);
+    boost::system::error_code set_multicast_loopback(bool enable);
 
     void set_dscp_value(int value);
 
   private:
-    asio::ip::udp::socket socket_;
-    asio::ip::udp::endpoint sender_endpoint_ {};  // For receiving the senders address.
+    boost::asio::ip::udp::socket socket_;
+    boost::asio::ip::udp::endpoint sender_endpoint_ {};  // For receiving the senders address.
     std::array<uint8_t, 1500> recv_data_ {};
     HandlerType handler_;
 
@@ -177,30 +177,30 @@ void rav::ExtendedUdpSocket::Impl::set_dscp_value(const int value) {
     }
 #else
     // Note: this does not work on Windows, unfortunately. It's a whole other story to get this going on Windows...
-    socket_.set_option(asio::detail::socket_option::integer<IPPROTO_IP, IP_TOS>(value << 2));
+    socket_.set_option(boost::asio::detail::socket_option::integer<IPPROTO_IP, IP_TOS>(value << 2));
 #endif
 }
 
-asio::error_code rav::ExtendedUdpSocket::Impl::set_multicast_loopback(const bool enable) {
-    asio::error_code ec;
-    socket_.set_option(asio::ip::multicast::enable_loopback(enable), ec);
+boost::system::error_code rav::ExtendedUdpSocket::Impl::set_multicast_loopback(const bool enable) {
+    boost::system::error_code ec;
+    socket_.set_option(boost::asio::ip::multicast::enable_loopback(enable), ec);
     return ec;
 }
 
-asio::error_code
-rav::ExtendedUdpSocket::Impl::set_multicast_outbound_interface(const asio::ip::address_v4& interface_address) {
-    asio::error_code ec;
-    socket_.set_option(asio::ip::multicast::outbound_interface(interface_address), ec);
+boost::system::error_code
+rav::ExtendedUdpSocket::Impl::set_multicast_outbound_interface(const boost::asio::ip::address_v4& interface_address) {
+    boost::system::error_code ec;
+    socket_.set_option(boost::asio::ip::multicast::outbound_interface(interface_address), ec);
     return ec;
 }
 
 void rav::ExtendedUdpSocket::Impl::send(
-    const uint8_t* data, const size_t size, const asio::ip::udp::endpoint& endpoint
+    const uint8_t* data, const size_t size, const boost::asio::ip::udp::endpoint& endpoint
 ) {
     RAV_ASSERT(data != nullptr, "Data must not be null");
     RAV_ASSERT(size > 0, "Size must be greater than 0");
-    asio::error_code ec;
-    const auto sent = socket_.send_to(asio::buffer(data, size), endpoint, 0, ec);
+    boost::system::error_code ec;
+    const auto sent = socket_.send_to(boost::asio::buffer(data, size), endpoint, 0, ec);
     if (ec) {
         RAV_ERROR("Failed to send data: {}", ec.message());
         return;
@@ -220,7 +220,7 @@ void rav::ExtendedUdpSocket::Impl::stop() {
 
     // (No need to call shutdown on the sockets as they are datagram sockets).
 
-    asio::error_code ec;
+    boost::system::error_code ec;
     socket_.close(ec);
     if (ec) {
         RAV_ERROR("Failed to close socket: {}", ec.message());
@@ -245,25 +245,25 @@ void rav::ExtendedUdpSocket::Impl::start(HandlerType handler) {
     );
 }
 
-rav::ExtendedUdpSocket::Impl::Impl(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
+rav::ExtendedUdpSocket::Impl::Impl(boost::asio::io_context& io_context, const boost::asio::ip::udp::endpoint& endpoint) :
     socket_(io_context) {
     socket_.open(endpoint.protocol());
-    socket_.set_option(asio::ip::udp::socket::reuse_address(true));
+    socket_.set_option(boost::asio::ip::udp::socket::reuse_address(true));
     socket_.bind(endpoint);
     socket_.non_blocking(true);
-    socket_.set_option(asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
+    socket_.set_option(boost::asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
 }
 
 void rav::ExtendedUdpSocket::Impl::async_receive() {
     auto self = shared_from_this();
-    socket_.async_wait(asio::socket_base::wait_read, [self](std::error_code ec) {
+    socket_.async_wait(boost::asio::socket_base::wait_read, [self](boost::system::error_code ec) {
         TRACY_ZONE_SCOPED;
         if (ec) {
-            if (ec == asio::error::operation_aborted) {
+            if (ec == boost::asio::error::operation_aborted) {
                 RAV_TRACE("Operation aborted");
                 return;
             }
-            if (ec == asio::error::eof) {
+            if (ec == boost::asio::error::eof) {
                 RAV_TRACE("EOF");
                 return;
             }
@@ -288,8 +288,8 @@ void rav::ExtendedUdpSocket::Impl::async_receive() {
                 break;
             }
 
-            asio::ip::udp::endpoint src_endpoint;
-            asio::ip::udp::endpoint dst_endpoint;
+            boost::asio::ip::udp::endpoint src_endpoint;
+            boost::asio::ip::udp::endpoint dst_endpoint;
             uint64_t recv_time = 0;
             const auto bytes_received =
                 receive_from_socket(self->socket_, self->recv_data_, src_endpoint, dst_endpoint, recv_time, ec);
@@ -313,11 +313,11 @@ void rav::ExtendedUdpSocket::Impl::async_receive() {
     });
 }
 
-asio::error_code rav::ExtendedUdpSocket::Impl::join_multicast_group(
-    const asio::ip::address& multicast_address, const asio::ip::address& interface_address
+boost::system::error_code rav::ExtendedUdpSocket::Impl::join_multicast_group(
+    const boost::asio::ip::address& multicast_address, const boost::asio::ip::address& interface_address
 ) {
-    asio::error_code ec;
-    socket_.set_option(asio::ip::multicast::join_group(multicast_address.to_v4(), interface_address.to_v4()), ec);
+    boost::system::error_code ec;
+    socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address.to_v4(), interface_address.to_v4()), ec);
 
     if (ec) {
         RAV_ERROR("Failed to join multicast group: {}", ec.message());
@@ -338,11 +338,11 @@ asio::error_code rav::ExtendedUdpSocket::Impl::join_multicast_group(
     return {};
 }
 
-asio::error_code rav::ExtendedUdpSocket::Impl::leave_multicast_group(
-    const asio::ip::address_v4& multicast_address, const asio::ip::address_v4& interface_address
+boost::system::error_code rav::ExtendedUdpSocket::Impl::leave_multicast_group(
+    const boost::asio::ip::address_v4& multicast_address, const boost::asio::ip::address_v4& interface_address
 ) {
-    asio::error_code ec;
-    socket_.set_option(asio::ip::multicast::leave_group(multicast_address, interface_address), ec);
+    boost::system::error_code ec;
+    socket_.set_option(boost::asio::ip::multicast::leave_group(multicast_address, interface_address), ec);
     if (ec) {
         RAV_ERROR("Failed to leave multicast group: {}", ec.message());
         return ec;
@@ -368,13 +368,13 @@ void rav::ExtendedUdpSocket::start(HandlerType handler) const {
 }
 
 void rav::ExtendedUdpSocket::send(
-    const uint8_t* data, const size_t size, const asio::ip::udp::endpoint& endpoint
+    const uint8_t* data, const size_t size, const boost::asio::ip::udp::endpoint& endpoint
 ) const {
     impl_->send(data, size, endpoint);
 }
 
-asio::error_code rav::ExtendedUdpSocket::join_multicast_group(
-    const asio::ip::address_v4& multicast_address, const asio::ip::address_v4& interface_address
+boost::system::error_code rav::ExtendedUdpSocket::join_multicast_group(
+    const boost::asio::ip::address_v4& multicast_address, const boost::asio::ip::address_v4& interface_address
 ) const {
     if (impl_ == nullptr) {
         RAV_WARNING("No implementation available");
@@ -383,8 +383,8 @@ asio::error_code rav::ExtendedUdpSocket::join_multicast_group(
     return impl_->join_multicast_group(multicast_address, interface_address);
 }
 
-asio::error_code rav::ExtendedUdpSocket::leave_multicast_group(
-    const asio::ip::address_v4& multicast_address, const asio::ip::address_v4& interface_address
+boost::system::error_code rav::ExtendedUdpSocket::leave_multicast_group(
+    const boost::asio::ip::address_v4& multicast_address, const boost::asio::ip::address_v4& interface_address
 ) const {
     if (impl_ == nullptr) {
         RAV_WARNING("No implementation available");
@@ -393,8 +393,8 @@ asio::error_code rav::ExtendedUdpSocket::leave_multicast_group(
     return impl_->leave_multicast_group(multicast_address, interface_address);
 }
 
-asio::error_code
-rav::ExtendedUdpSocket::set_multicast_outbound_interface(const asio::ip::address_v4& interface_address) const {
+boost::system::error_code
+rav::ExtendedUdpSocket::set_multicast_outbound_interface(const boost::asio::ip::address_v4& interface_address) const {
     if (impl_ == nullptr) {
         RAV_WARNING("No implementation available");
         return {};
@@ -402,7 +402,7 @@ rav::ExtendedUdpSocket::set_multicast_outbound_interface(const asio::ip::address
     return impl_->set_multicast_outbound_interface(interface_address);
 }
 
-asio::error_code rav::ExtendedUdpSocket::set_multicast_loopback(const bool enable) const {
+boost::system::error_code rav::ExtendedUdpSocket::set_multicast_loopback(const bool enable) const {
     if (impl_ == nullptr) {
         RAV_WARNING("No implementation available");
         return {};
@@ -410,13 +410,13 @@ asio::error_code rav::ExtendedUdpSocket::set_multicast_loopback(const bool enabl
     return impl_->set_multicast_loopback(enable);
 }
 
-rav::ExtendedUdpSocket::ExtendedUdpSocket(asio::io_context& io_context, const asio::ip::udp::endpoint& endpoint) :
+rav::ExtendedUdpSocket::ExtendedUdpSocket(boost::asio::io_context& io_context, const boost::asio::ip::udp::endpoint& endpoint) :
     impl_(std::make_shared<Impl>(io_context, endpoint)) {}
 
 rav::ExtendedUdpSocket::ExtendedUdpSocket(
-    asio::io_context& io_context, const asio::ip::address& interface_address, const uint16_t port
+    boost::asio::io_context& io_context, const boost::asio::ip::address& interface_address, const uint16_t port
 ) :
-    ExtendedUdpSocket(io_context, asio::ip::udp::endpoint(interface_address, port)) {}
+    ExtendedUdpSocket(io_context, boost::asio::ip::udp::endpoint(interface_address, port)) {}
 
 rav::ExtendedUdpSocket::~ExtendedUdpSocket() {
     if (impl_) {

@@ -28,7 +28,7 @@ TEST_CASE("dnssd | Browse and advertise") {
 
     SECTION("On systems other than Apple and Windows, dnssd is not implemented") {
 #if !RAV_HAS_DNSSD
-        asio::io_context io_context;
+        boost::asio::io_context io_context;
         auto advertiser = rav::dnssd::Advertiser::create(io_context);
         REQUIRE_FALSE(advertiser);
         auto browser = rav::dnssd::Browser::create(io_context);
@@ -40,7 +40,7 @@ TEST_CASE("dnssd | Browse and advertise") {
 #if !RAV_HAS_DNSSD
         return;
 #endif
-        asio::io_context io_context;
+        boost::asio::io_context io_context;
 
         std::vector<rav::dnssd::ServiceDescription> discovered_services;
         std::vector<rav::dnssd::ServiceDescription> resolved_services;
@@ -51,23 +51,21 @@ TEST_CASE("dnssd | Browse and advertise") {
         const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
         auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, txt_record, false, true);
 
-        rav::dnssd::Browser::Subscriber subscriber;
-        subscriber->on<rav::dnssd::Browser::ServiceDiscovered>([&](const auto& event) {
-            discovered_services.push_back(event.description);
-        });
-        subscriber->on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-            resolved_services.push_back(event.description);
-            advertiser->unregister_service(id);
-        });
-        subscriber->on<rav::dnssd::Browser::ServiceRemoved>([&](const auto& event) {
-            removed_services.push_back(event.description);
-            io_context.stop();
-        });
-
         auto browser = rav::dnssd::Browser::create(io_context);
         REQUIRE(browser);
 
-        browser->subscribe(subscriber);
+        browser->on_service_discovered = [&](const auto& desc) {
+            discovered_services.push_back(desc);
+        };
+        browser->on_service_resolved = [&](const auto& desc) {
+            resolved_services.push_back(desc);
+            advertiser->unregister_service(id);
+        };
+        browser->on_service_removed = [&](const auto& desc) {
+            removed_services.push_back(desc);
+            io_context.stop();
+        };
+
         browser->browse_for(reg_type);
 
         io_context.run_for(std::chrono::seconds(10));
@@ -107,31 +105,30 @@ TEST_CASE("dnssd | Update a txt record") {
 
     const auto reg_type = generate_random_reg_type();
 
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
     std::optional<rav::dnssd::ServiceDescription> updated_service;
 
     const auto advertiser = rav::dnssd::Advertiser::create(io_context);
     RAV_ASSERT(advertiser, "Expected a dnssd advertiser");
     const rav::dnssd::TxtRecord txt_record {{"key1", "value1"}, {"key2", "value2"}};
-    const auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false, true);
+    // Note: when local_only is true, the txt record update will not trigger a callback
+    const auto id = advertiser->register_service(reg_type, "test", nullptr, 1234, {}, false, false);
 
     const auto browser = rav::dnssd::Browser::create(io_context);
     RAV_ASSERT(browser, "Expected a dnssd browser");
     bool updated = false;
-    rav::dnssd::Browser::Subscriber subscriber;
-    subscriber->on<rav::dnssd::Browser::ServiceResolved>([&](const auto& event) {
-        if (event.description.txt.empty() && !updated) {
+    browser->on_service_resolved = [&](const auto& desc) {
+        if (desc.txt.empty() && !updated) {
             advertiser->update_txt_record(id, txt_record);
             updated = true;
         }
 
-        if (event.description.txt == txt_record) {
-            updated_service = event.description;
+        if (desc.txt == txt_record) {
+            updated_service = desc;
             io_context.stop();
         }
-    });
+    };
 
-    browser->subscribe(subscriber);
     browser->browse_for(reg_type);
 
     io_context.run_for(std::chrono::seconds(10));

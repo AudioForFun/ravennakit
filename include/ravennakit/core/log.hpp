@@ -63,31 +63,31 @@
     #include "ravennakit/core/format.hpp"
 
     #ifndef RAV_TRACE
-        #define RAV_TRACE(...) fmt::println(__VA_ARGS__)
+        #define RAV_TRACE(...) fmt::println("[T] " __VA_ARGS__)
     #endif
 
     #ifndef RAV_DEBUG
-        #define RAV_DEBUG(...) fmt::println(__VA_ARGS__)
+        #define RAV_DEBUG(...) fmt::println("[D] " __VA_ARGS__)
     #endif
 
     #ifndef RAV_CRITICAL
-        #define RAV_CRITICAL(...) fmt::println(__VA_ARGS__)
+        #define RAV_CRITICAL(...) fmt::println("[C] " __VA_ARGS__)
     #endif
 
     #ifndef RAV_ERROR
-        #define RAV_ERROR(...) fmt::println(__VA_ARGS__)
+        #define RAV_ERROR(...) fmt::println("[E] " __VA_ARGS__)
     #endif
 
     #ifndef RAV_WARNING
-        #define RAV_WARNING(...) fmt::println(__VA_ARGS__)
+        #define RAV_WARNING(...) fmt::println("[W] " __VA_ARGS__)
     #endif
 
     #ifndef RAV_INFO
-        #define RAV_INFO(...) fmt::println(__VA_ARGS__)
+        #define RAV_INFO(...) fmt::println("[I] " __VA_ARGS__)
     #endif
 
     #ifndef RAV_LOG
-        #define RAV_LOG(...) fmt::println(__VA_ARGS__)
+        #define RAV_LOG(...) fmt::println("[L] " __VA_ARGS__)
     #endif
 
 #endif
@@ -110,6 +110,44 @@
 namespace rav {
 
 /**
+ * Sets the log level for the application based on the given string.
+ * The following are valid values:
+ *  - TRACE
+ *  - DEBUG
+ *  - INFO (default)
+ *  - WARN
+ *  - ERROR
+ *  - CRITICAL
+ *  - OFF
+ * @param level The log level as string, case insensitive.
+ * TODO: Implement log level setting for fmt.
+ */
+inline void set_log_level(const char* level) {
+#if RAV_ENABLE_SPDLOG
+    if (string_compare_case_insensitive(level, "TRACE")) {
+        spdlog::set_level(spdlog::level::trace);
+    } else if (string_compare_case_insensitive(level, "DEBUG")) {
+        spdlog::set_level(spdlog::level::debug);
+    } else if (string_compare_case_insensitive(level, "INFO")) {
+        spdlog::set_level(spdlog::level::info);
+    } else if (string_compare_case_insensitive(level, "WARN")) {
+        spdlog::set_level(spdlog::level::warn);
+    } else if (string_compare_case_insensitive(level, "ERROR")) {
+        spdlog::set_level(spdlog::level::err);
+    } else if (string_compare_case_insensitive(level, "CRITICAL")) {
+        spdlog::set_level(spdlog::level::critical);
+    } else if (string_compare_case_insensitive(level, "OFF")) {
+        spdlog::set_level(spdlog::level::off);
+    } else {
+        fmt::println("Invalid log level: {}. Setting log level to info.", level);
+        spdlog::set_level(spdlog::level::info);
+    }
+#else
+    std::ignore = level;
+#endif
+}
+
+/**
  * Tries to find given environment variable and set the log level accordingly.
  * The following are valid values for the log level:
  *  - TRACE
@@ -125,31 +163,13 @@ namespace rav {
  * @param env_var The environment variable to read the log level from.
  */
 inline void set_log_level_from_env(const char* env_var = "RAV_LOG_LEVEL") {
-    if (const auto env_value = rav::get_env(env_var)) {
-#if RAV_ENABLE_SPDLOG
-        if (string_compare_case_insensitive(*env_value, "TRACE")) {
-            spdlog::set_level(spdlog::level::trace);
-        } else if (string_compare_case_insensitive(*env_value, "DEBUG")) {
-            spdlog::set_level(spdlog::level::debug);
-        } else if (string_compare_case_insensitive(*env_value, "INFO")) {
-            spdlog::set_level(spdlog::level::info);
-        } else if (string_compare_case_insensitive(*env_value, "WARN")) {
-            spdlog::set_level(spdlog::level::warn);
-        } else if (string_compare_case_insensitive(*env_value, "ERROR")) {
-            spdlog::set_level(spdlog::level::err);
-        } else if (string_compare_case_insensitive(*env_value, "CRITICAL")) {
-            spdlog::set_level(spdlog::level::critical);
-        } else if (string_compare_case_insensitive(*env_value, "OFF")) {
-            spdlog::set_level(spdlog::level::off);
-        } else {
-            fmt::println("Invalid value for {}: {}. Setting log level to info.", env_var, *env_value);
-            spdlog::set_level(spdlog::level::info);
-        }
-#endif
+    if (const auto env_value = get_env(env_var)) {
+        set_log_level(env_value->c_str());
     } else {
 #if RAV_ENABLE_SPDLOG
         spdlog::set_level(spdlog::level::info);
 #endif
     }
 }
-}  // namespace rav::log
+
+}  // namespace rav

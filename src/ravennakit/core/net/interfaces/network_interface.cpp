@@ -20,7 +20,7 @@
     #include <ifaddrs.h>
     #include <iomanip>
     #include <arpa/inet.h>
-    #include <asio/ip/address.hpp>
+    #include <boost/asio/ip/address.hpp>
     #include <netinet/in.h>
     #include <sys/socket.h>
     #if RAV_APPLE
@@ -236,13 +236,13 @@ tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get
         if (ifa->ifa_addr) {
             if (ifa->ifa_addr->sa_family == AF_INET) {
                 const sockaddr_in* sa = reinterpret_cast<struct sockaddr_in*>(ifa->ifa_addr);
-                asio::ip::address_v4 addr_v4(ntohl(sa->sin_addr.s_addr));
+                boost::asio::ip::address_v4 addr_v4(ntohl(sa->sin_addr.s_addr));
                 it->addresses_.emplace_back(addr_v4);
             } else if (ifa->ifa_addr->sa_family == AF_INET6) {
                 const sockaddr_in6* sa = reinterpret_cast<struct sockaddr_in6*>(ifa->ifa_addr);
-                asio::ip::address_v6::bytes_type bytes;
+                boost::asio::ip::address_v6::bytes_type bytes;
                 std::memcpy(bytes.data(), &sa->sin6_addr, sizeof(bytes));
-                asio::ip::address_v6 addr_v6(bytes, sa->sin6_scope_id);
+                boost::asio::ip::address_v6 addr_v6(bytes, sa->sin6_scope_id);
                 it->addresses_.emplace_back(addr_v6);
     #if RAV_APPLE
             } else if (ifa->ifa_addr->sa_family == AF_LINK) {
@@ -356,13 +356,13 @@ tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get
              unicast = unicast->Next) {
             if (unicast->Address.lpSockaddr->sa_family == AF_INET) {
                 const sockaddr_in* sa = reinterpret_cast<struct sockaddr_in*>(unicast->Address.lpSockaddr);
-                asio::ip::address_v4 addr_v4(ntohl(sa->sin_addr.s_addr));
+                boost::asio::ip::address_v4 addr_v4(ntohl(sa->sin_addr.s_addr));
                 it->addresses_.emplace_back(addr_v4);
             } else if (unicast->Address.lpSockaddr->sa_family == AF_INET6) {
                 const auto* ipv6 = reinterpret_cast<const sockaddr_in6*>(unicast->Address.lpSockaddr);
-                asio::ip::address_v6::bytes_type bytes;
+                boost::asio::ip::address_v6::bytes_type bytes;
                 std::memcpy(bytes.data(), &ipv6->sin6_addr, bytes.size());
-                it->addresses_.emplace_back(asio::ip::address_v6(bytes, adapter->Ipv6IfIndex));
+                it->addresses_.emplace_back(boost::asio::ip::address_v6(bytes, adapter->Ipv6IfIndex));
             }
         }
 

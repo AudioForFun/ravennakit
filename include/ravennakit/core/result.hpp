@@ -17,6 +17,7 @@ namespace rav {
 
 /**
  * A result type which holds either a value or an error.
+ * TODO: Replace with boost::system::result.
  * @tparam T The value type.
  * @tparam E The error type.
  */
@@ -24,7 +25,7 @@ template<class T, class E>
 class Result {
   public:
     /**
-     * Creates an ok result with given value.
+     * Creates an ok result with the given value.
      * @param value The value.
      * @return The result.
      */
@@ -87,8 +88,8 @@ class Result {
     explicit Result() = default;
 
     // Warning: this constructor triggers undefined behavior sanitizer when running as x86_64 on Apple Silicon
-    // I failed to reproduce the issue as a minimum reproducible example, so it seems to be specific to this codebase.
-    // explicit result(std::variant<T, E> value) : value_(std::move(value)) {}
+    // I failed to reproduce the issue as a minimum reproducible example, so it seems specific to this codebase.
+    // `explicit result(std::variant<T, E> value) : value_(std::move(value)) {}`
 };
 
 /**

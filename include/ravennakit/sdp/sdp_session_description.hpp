@@ -194,6 +194,7 @@ class SessionDescription {
     /**
      * Converts the session description to a string.
      * @return The session description as a string.
+     * TODO: Always return a string without validating.
      */
     [[nodiscard]] tl::expected<std::string, std::string> to_string(const char* newline = k_sdp_crlf) const;
 

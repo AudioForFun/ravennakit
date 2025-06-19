@@ -8,7 +8,7 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/core/linked_node.hpp"
+#include "../../../../include/ravennakit/core/util/linked_node.hpp"
 #include "ravennakit/core/format.hpp"
 
 #include <iostream>

@@ -11,8 +11,7 @@
 #pragma once
 
 #include "ravenna_browser.hpp"
-#include "ravennakit/core/events.hpp"
-#include "ravennakit/core/linked_node.hpp"
+#include "../core/events/event_emitter.hpp"
 #include "ravennakit/dnssd/dnssd_browser.hpp"
 #include "ravennakit/rtsp/rtsp_client.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
@@ -47,7 +46,7 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
         virtual void on_announced([[maybe_unused]] const AnnouncedEvent& event) {}
     };
 
-    explicit RavennaRtspClient(asio::io_context& io_context, RavennaBrowser& browser);
+    explicit RavennaRtspClient(boost::asio::io_context& io_context, RavennaBrowser& browser);
     ~RavennaRtspClient() override;
 
     /**
@@ -84,10 +83,10 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
     /**
      * @return The io_context used by this client.
      */
-    [[nodiscard]] asio::io_context& get_io_context() const;
+    [[nodiscard]] boost::asio::io_context& get_io_context() const;
 
     // ravenna_browser::subscriber overrides
-    void ravenna_session_discovered(const dnssd::Browser::ServiceResolved& event) override;
+    void ravenna_session_discovered(const dnssd::ServiceDescription& desc) override;
 
   private:
     struct SessionContext {
@@ -105,13 +104,13 @@ class RavennaRtspClient: public RavennaBrowser::Subscriber {
         rtsp::Client client;
     };
 
-    asio::io_context& io_context_;
+    boost::asio::io_context& io_context_;
     RavennaBrowser& browser_;
     std::vector<SessionContext> sessions_;
     std::vector<std::unique_ptr<ConnectionContext>> connections_;
 
     ConnectionContext& find_or_create_connection(const std::string& host_target, uint16_t port);
-    ConnectionContext* find_connection(const std::string& host_target, uint16_t port) const;
+    [[nodiscard]] ConnectionContext* find_connection(const std::string& host_target, uint16_t port) const;
     void update_session_with_service(SessionContext& session, const dnssd::ServiceDescription& service);
     void do_maintenance();
     void handle_incoming_sdp(const std::string& sdp_text);

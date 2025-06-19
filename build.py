@@ -425,7 +425,7 @@ def main():
 
         parser.add_argument("--macos-notarization-bundle-id",
                             help="Specify the bundle id for notarization (macOS only)",
-                            default="com.owllad.RavennaSDK")
+                            default="com.soundondigital.RavennaSDK")
 
         parser.add_argument("--macos-notarization-username",
                             help="Specify the username for notarization (macOS only)",

@@ -15,10 +15,12 @@
 #include "ravenna_rtsp_client.hpp"
 #include "ravenna_receiver.hpp"
 #include "ravenna_sender.hpp"
+#include "ravenna_sender.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
 #include "ravennakit/core/sync/realtime_shared_object.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
+#include "ravennakit/nmos/nmos_node.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"
@@ -85,10 +87,29 @@ class RavennaNode {
         }
 
         /**
-         * Called when the network interface configuration is updated.
-         * @param config The new network interface configuration.
+         * Called when the NMOS configuration is updated.
+         * @param config The updated NMOS configuration.
          */
-        virtual void network_interface_config_updated(const RavennaConfig::NetworkInterfaceConfig& config) {
+        virtual void nmos_node_config_updated(const nmos::Node::Configuration& config) {
+            std::ignore = config;
+        }
+
+        /**
+         * Called when the NMOS node state changed.
+         * @param status The updated NMOS node state.
+         * @param registry_info The updated NMOS registry information.
+         */
+        virtual void
+        nmos_node_status_changed(nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
+            std::ignore = status;
+            std::ignore = registry_info;
+        }
+
+        /**
+         * Called when the network interface configuration is updated.
+         * @param config The updated network interface configuration.
+         */
+        virtual void network_interface_config_updated(const NetworkInterfaceConfig& config) {
             std::ignore = config;
         }
     };
@@ -101,7 +122,8 @@ class RavennaNode {
      * @param initial_config The initial configuration for the receiver. Optional.
      * @return The ID of the created receiver, which might be invalid if the receiver couldn't be created.
      */
-    [[nodiscard]] std::future<Id> create_receiver(const RavennaReceiver::ConfigurationUpdate& initial_config = {});
+    [[nodiscard]] std::future<tl::expected<Id, std::string>>
+    create_receiver(RavennaReceiver::Configuration initial_config);
 
     /**
      * Removes the receiver with the given id.
@@ -113,17 +135,17 @@ class RavennaNode {
     /**
      * Updates the configuration of the receiver with the given id.
      * @param receiver_id The id of the receiver to update.
-     * @param update The configuration changes to apply.
+     * @param config The configuration changes to apply.
      * @return A future that will be set when the operation is complete.
      */
     std::future<tl::expected<void, std::string>>
-    update_receiver_configuration(Id receiver_id, RavennaReceiver::ConfigurationUpdate update);
+    update_receiver_configuration(Id receiver_id, RavennaReceiver::Configuration config);
 
     /**
      * Creates a sender for the given session.
      * @return The ID of the created sender, which might be invalid if the sender couldn't be created.
      */
-    std::future<Id> create_sender(const RavennaSender::ConfigurationUpdate& initial_config = {});
+    std::future<tl::expected<Id, std::string>> create_sender(RavennaSender::Configuration initial_config);
 
     /**
      * Removes the sender with the given id.
@@ -135,11 +157,18 @@ class RavennaNode {
     /**
      * Updates the configuration of the sender with the given id.
      * @param sender_id The id of the sender to update.
-     * @param update The configuration changes to apply.
+     * @param config The configuration changes to apply.
      * @return A future that will be set when the operation is complete.
      */
     std::future<tl::expected<void, std::string>>
-    update_sender_configuration(Id sender_id, RavennaSender::ConfigurationUpdate update);
+    update_sender_configuration(Id sender_id, RavennaSender::Configuration config);
+
+    /**
+     * Sets the configuration of the NMOS node.
+     * @param update The configuration to set.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<tl::expected<void, std::string>> set_nmos_configuration(nmos::Node::Configuration update);
 
     /**
      * Adds a subscriber to the node.
@@ -271,7 +300,7 @@ class RavennaNode {
      * @param interface_config The interfaces to use. If empty, operations will be stopped.
      * @return A future that will be set when the operation is complete.
      */
-    std::future<void> set_network_interface_config(RavennaConfig::NetworkInterfaceConfig interface_config);
+    std::future<void> set_network_interface_config(NetworkInterfaceConfig interface_config);
 
     /**
      * @return True if this method is called on the maintenance thread, false otherwise.
@@ -291,7 +320,7 @@ class RavennaNode {
     std::future<tl::expected<void, std::string>> restore_from_json(const nlohmann::json& json);
 
     /**
-     * Schedules some work on the maintenance thread using asio::dispatch. This is useful for synchronizing with
+     * Schedules some work on the maintenance thread using boost::asio::dispatch. This is useful for synchronizing with
      * callbacks from the node and to offload work from the main (UI) thread. If passing using asio::use_future, the
      * future will be set when the work is complete.
      *
@@ -306,7 +335,7 @@ class RavennaNode {
      */
     template<typename CompletionToken>
     auto dispatch(CompletionToken&& token) {
-        return asio::dispatch(io_context_, token);
+        return boost::asio::dispatch(io_context_, token);
     }
 
     /**
@@ -325,16 +354,16 @@ class RavennaNode {
      */
     template<typename CompletionToken>
     auto post(CompletionToken&& token) {
-        return asio::post(io_context_, token);
+        return boost::asio::post(io_context_, token);
     }
 
   private:
-    struct realtime_shared_context {
+    struct RealtimeSharedContext {
         std::vector<RavennaReceiver*> receivers;
         std::vector<RavennaSender*> senders;
     };
 
-    asio::io_context io_context_;
+    boost::asio::io_context io_context_;
     UdpReceiver udp_receiver_ {io_context_};
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
@@ -348,11 +377,14 @@ class RavennaNode {
     std::unique_ptr<dnssd::Advertiser> advertiser_;
     rtsp::Server rtsp_server_;
     ptp::Instance ptp_instance_;
-    std::map<Rank, uint16_t> ptp_ports_; // Mapping between interface by rank and ptp port number
+    std::map<Rank, uint16_t> ptp_ports_;  // Mapping between interface by rank and ptp port number
     std::vector<std::unique_ptr<RavennaSender>> senders_;
 
+    nmos::Node nmos_node_ {io_context_, ptp_instance_};
+    nmos::Device nmos_device_;
+
     SubscriberList<Subscriber> subscribers_;
-    RealtimeSharedObject<realtime_shared_context> realtime_shared_context_;
+    RealtimeSharedObject<RealtimeSharedContext> realtime_shared_context_;
     RavennaConfig config_;
 
     [[nodiscard]] bool update_realtime_shared_context();

@@ -68,7 +68,7 @@ struct PortIdentity {
      * the clock identity is valid.
      * @return True if valid, or false otherwise.
      */
-    bool is_valid() const {
+    [[nodiscard]] bool is_valid() const {
         return port_number >= k_port_number_min && port_number <= k_port_number_max && clock_identity.is_valid();
     }
 

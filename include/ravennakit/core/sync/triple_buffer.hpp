@@ -18,6 +18,7 @@ namespace rav {
 /**
  * A single-producer, single-consumer triple buffer. The producer and consumer can be on different threads. Access to
  * the buffer is wait-free for both sides.
+ * TODO: Replace with boost::lockfree::spsc_value.
  * @tparam T The type of the data to be stored in the buffer.
  */
 template<class T>

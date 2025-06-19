@@ -108,7 +108,7 @@ rav::rtsp::Parser::result rav::rtsp::Parser::parse(StringBuffer& input) {
 }
 
 void rav::rtsp::Parser::reset() noexcept {
-    Events::reset();
+    EventEmitter::reset();
     state_ = state::start;
     start_line_.clear();
     headers_.clear();

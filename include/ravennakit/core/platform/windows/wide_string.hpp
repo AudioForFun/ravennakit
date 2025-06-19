@@ -36,14 +36,14 @@ std::string wide_string_to_string(PWCHAR wchar_str) {
 
     // Determine the size of the output string
     int size_needed = WideCharToMultiByte(
-        CP_UTF8,         // Code page: UTF-8
-        0,               // Conversion flags
+        CP_UTF8,       // Code page: UTF-8
+        0,             // Conversion flags
         wchar_str,     // Input wide string
         wchar_length,  // Length of the input string
-        nullptr,         // Output buffer (nullptr to calculate size)
-        0,               // Size of the output buffer
-        nullptr,         // Default char (not used for UTF-8)
-        nullptr          // UsedDefaultChar flag (not used for UTF-8)
+        nullptr,       // Output buffer (nullptr to calculate size)
+        0,             // Size of the output buffer
+        nullptr,       // Default char (not used for UTF-8)
+        nullptr        // UsedDefaultChar flag (not used for UTF-8)
     );
 
     if (size_needed == 0) {
@@ -56,14 +56,14 @@ std::string wide_string_to_string(PWCHAR wchar_str) {
 
     // Perform the actual conversion
     auto result = WideCharToMultiByte(
-        CP_UTF8,                // Code page: UTF-8
-        0,                      // Conversion flags
-        wchar_str,            // Input wide string
-        wchar_length,         // Length of the input string
-        output.data(),          // Output buffer
-        size_needed,             // Size of the output buffer
-        nullptr,                // Default char (not used for UTF-8)
-        nullptr                 // UsedDefaultChar flag (not used for UTF-8)
+        CP_UTF8,        // Code page: UTF-8
+        0,              // Conversion flags
+        wchar_str,      // Input wide string
+        wchar_length,   // Length of the input string
+        output.data(),  // Output buffer
+        size_needed,    // Size of the output buffer
+        nullptr,        // Default char (not used for UTF-8)
+        nullptr         // UsedDefaultChar flag (not used for UTF-8)
     );
 
     if (result == 0) {

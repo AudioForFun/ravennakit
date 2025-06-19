@@ -13,7 +13,7 @@
 #include "rtsp_parser.hpp"
 #include "ravennakit/core/containers/string_buffer.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 namespace rav::rtsp {
 
@@ -84,7 +84,7 @@ class Connection final: public std::enable_shared_from_this<Connection> {
         }
     };
 
-    static std::shared_ptr<Connection> create(asio::ip::tcp::socket socket) {
+    static std::shared_ptr<Connection> create(boost::asio::ip::tcp::socket socket) {
         return std::shared_ptr<Connection>(new Connection(std::move(socket)));
     }
 
@@ -131,7 +131,7 @@ class Connection final: public std::enable_shared_from_this<Connection> {
     /**
      * Connects to the given host and port.
      */
-    void async_connect(const asio::ip::tcp::resolver::results_type& results);
+    void async_connect(const boost::asio::ip::tcp::resolver::results_type& results);
 
     /**
      * Sends data to the server. Function is async and will return immediately.
@@ -143,16 +143,16 @@ class Connection final: public std::enable_shared_from_this<Connection> {
      * @return The remote endpoint of the connection.
      * @throws If the connection is not established.
      */
-    asio::ip::tcp::endpoint remote_endpoint() const;
+    boost::asio::ip::tcp::endpoint remote_endpoint() const;
 
   private:
-    asio::ip::tcp::socket socket_;
+    boost::asio::ip::tcp::socket socket_;
     StringBuffer input_buffer_;
     StringBuffer output_buffer_;
     Parser parser_;
     Subscriber* subscriber_ {};
 
-    explicit Connection(asio::ip::tcp::socket socket);
+    explicit Connection(boost::asio::ip::tcp::socket socket);
 
     void async_write();
     void async_read_some();

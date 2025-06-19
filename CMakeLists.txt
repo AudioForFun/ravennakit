@@ -49,10 +49,18 @@ find_package(fmt CONFIG REQUIRED)
 find_package(Catch2 CONFIG REQUIRED)
 find_package(CLI11 CONFIG REQUIRED)
 find_package(portaudio CONFIG REQUIRED)
-find_package(asio CONFIG REQUIRED)
-target_compile_definitions(asio::asio INTERFACE ASIO_NO_DEPRECATED ASIO_NO_DYNAMIC_BUFFER_V1)
 find_package(nanobench CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(boost_asio CONFIG REQUIRED)
+find_package(boost_container CONFIG REQUIRED)
+find_package(boost_beast CONFIG REQUIRED)
+find_package(boost_url CONFIG REQUIRED)
+find_package(boost_circular_buffer CONFIG REQUIRED)
+find_package(boost_lockfree CONFIG REQUIRED)
+find_package(boost_json CONFIG REQUIRED)
+find_package(boost_signals2 CONFIG REQUIRED)
+
+target_compile_definitions(Boost::asio INTERFACE BOOST_ASIO_NO_DEPRECATED)
 
 #########
 # Tracy #
@@ -93,14 +101,20 @@ target_link_libraries(ravennakit
         rav_recommended_warning_flags
         rav_recommended_lto_flags
         PUBLIC
-        asio::asio
         fmt::fmt
         nlohmann_json::nlohmann_json
         $<$<BOOL:${RAV_ENABLE_SPDLOG}>:spdlog::spdlog>
+        Boost::asio
+        Boost::beast
+        Boost::url
+        Boost::circular_buffer
+        Boost::lockfree
+        Boost::json
+        Boost::signals2
 )
 
 if (APPLE)
-    target_link_libraries(ravennakit PUBLIC "-framework SystemConfiguration")
+    target_link_libraries(ravennakit PUBLIC "-framework CoreFoundation -framework SystemConfiguration")
 endif ()
 
 target_compile_definitions(ravennakit

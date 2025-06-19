@@ -12,7 +12,7 @@
 
 #include "ravennakit/core/platform.hpp"
 #include "ravennakit/core/expected.hpp"
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
 #if RAV_WINDOWS
 
@@ -22,7 +22,7 @@
 namespace rav {
 
 /**
- * A wrapper around Window's tedious QOS api... As alternative to IP_TOS.
+ * A wrapper around Window's tedious QOS api... As an alternative to IP_TOS which is not supported on Windows.
  * You'll need administrator privileges for this.
  */
 class qos_flow {
@@ -53,14 +53,14 @@ class qos_flow {
     qos_flow& operator=(qos_flow&&) noexcept = delete;
 
     /**
-     * Adds given socket to the flow.
+     * Adds a given socket to the flow.
      * @param socket Socket to add.
      * @return True on success, or false on failure.
      */
-    bool add_socket_to_flow(asio::ip::udp::socket& socket) {
+    bool add_socket_to_flow(boost::asio::ip::udp::socket& socket) {
         SOCKET native_socket_handle = socket.native_handle();
 
-        asio::error_code ec;
+        boost::system::error_code ec;
         auto endpoint = socket.local_endpoint(ec);
         if (ec) {
             RAV_ERROR("Failed to get local endpoint");
@@ -68,7 +68,7 @@ class qos_flow {
         }
         auto local_address = endpoint.address();
         if (!local_address.is_v4()) {
-            RAV_ERROR("Socket must be ipv4");  // ipv6 not supported at the moment, but can be.
+            RAV_ERROR("Socket must be ipv4");  // ipv6 not supported at the moment but can be.
             return false;
         }
 

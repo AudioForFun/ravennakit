@@ -20,6 +20,7 @@ namespace rav {
 
 /**
  * A fixed size buffer that overwrites the oldest element when the buffer is full.
+ * TODO: Replace with boost::circular_buffer.
  * @tparam T The type of the elements stored in the buffer.
  */
 template<class T>

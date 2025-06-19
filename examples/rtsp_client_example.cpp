@@ -36,7 +36,7 @@ int main(int const argc, char* argv[]) {
 
     CLI11_PARSE(app, argc, argv);
 
-    asio::io_context io_context;
+    boost::asio::io_context io_context;
 
     rav::rtsp::Client client(io_context);
 

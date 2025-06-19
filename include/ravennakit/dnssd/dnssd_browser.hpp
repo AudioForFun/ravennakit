@@ -1,84 +1,60 @@
 #pragma once
 
 #include "dnssd_service_description.hpp"
-#include "ravennakit/core/events.hpp"
-#include "ravennakit/core/linked_node.hpp"
+#include "ravennakit/core/util/safe_function.hpp"
 
-#include <asio.hpp>
+#include <boost/asio.hpp>
 
-#include <functional>
 #include <memory>
 
 namespace rav::dnssd {
 
 /**
- * Interface class which represents a Bonjour browser.
+ * Base class for dnssd browser implementations.
  */
 class Browser {
   public:
     /**
-     * Event for when a service was discovered.
-     * Note: this event will be emitted asynchronously from a background thread.
+     * Called when a service was discovered.
+     * @param description The service description of the discovered service.
      */
-    struct ServiceDiscovered {
-        /// The service description of the discovered service.
-        const ServiceDescription& description;
-    };
+    SafeFunction<void(const ServiceDescription& description)> on_service_discovered;
 
     /**
-     * Event for when a service was removed.
-     * Note: this event will be emitted asynchronously from a background thread.
+     * Called when a service was removed.
+     * @param description The service description of the removed service.
      */
-    struct ServiceRemoved {
-        /// The service description of the removed service.
-        const ServiceDescription& description;
-    };
+    SafeFunction<void(const ServiceDescription& description)> on_service_removed;
 
     /**
-     * Event for when a service was resolved (i.e. address information was resolved).
-     * Note: this event will be emitted asynchronously from a background thread.
+     * Called when a service was resolved.
+     * @param description The service description of the resolved service.
      */
-    struct ServiceResolved {
-        /// The service description of the resolved service.
-        const ServiceDescription& description;
-    };
+    SafeFunction<void(const ServiceDescription& description)> on_service_resolved;
 
     /**
-     * Event for when the service became available on given address.
-     * Note: this event will be emitted asynchronously from a background thread.
+     * Called when a service became available on given address.
+     * @param description The service description of the service for which the address was added.
+     * @param address The address which was added.
+     * @param interface_index The index of the interface on which the address was added.
      */
-    struct AddressAdded {
-        /// The service description of the service for which the address was added.
-        const ServiceDescription& description;
-        /// The address which was added.
-        const std::string& address;
-        /// The index of the interface on which the address was added.
-        uint32_t interface_index;
-    };
+    SafeFunction<void(const ServiceDescription& description, const std::string& address, uint32_t interface_index)>
+        on_address_added;
 
     /**
-     * Event for when the service became unavailable on given address.
-     * Note: this event will be emitted asynchronously from a background thread.
+     * Called when a service became unavailable on given address.
+     * @param description The service description of the service for which the address was removed.
+     * @param address The address which was removed.
+     * @param interface_index The index of the interface on which the address was removed.
      */
-    struct AddressRemoved {
-        /// The service description of the service for which the address was removed.
-        const ServiceDescription& description;
-        /// The address which was removed.
-        const std::string& address;
-        /// The index of the interface on which the address was removed.
-        uint32_t interface_index;
-    };
+    SafeFunction<void(const ServiceDescription& description, const std::string& address, uint32_t interface_index)>
+        on_address_removed;
 
     /**
-     * Event for when an error occurred during browsing for a service.
-     * Note: this event might be emitted asynchronously from a background thread.
+     * Called when an error occurred during browsing for a service.
+     * @param error_message A message describing the error.
      */
-    struct BrowseError {
-        const std::string& error_message;
-    };
-
-    using Subscriber = LinkedNode<
-        Events<ServiceDiscovered, ServiceRemoved, ServiceResolved, AddressAdded, AddressRemoved, BrowseError>>;
+    SafeFunction<void(const std::string& error_message)> on_error;
 
     virtual ~Browser() = default;
 
@@ -94,7 +70,7 @@ class Browser {
      * Creates the most appropriate dnssd_browser implementation for the platform.
      * @return The created dnssd_browser instance, or nullptr if no implementation is available.
      */
-    static std::unique_ptr<Browser> create(asio::io_context& io_context);
+    static std::unique_ptr<Browser> create(boost::asio::io_context& io_context);
 
     /**
      * Tries to find a service by its name.
@@ -107,13 +83,6 @@ class Browser {
      * @returns A list of existing services.
      */
     [[nodiscard]] virtual std::vector<ServiceDescription> get_services() const = 0;
-
-    /**
-     * Subscribes given subscriber to the browser. The subscriber will receive future events as well event to get
-     * up-to-date with the current state (i.e. existing discovered services).
-     * @param s The subscriber to subscribe.
-     */
-    virtual void subscribe(Subscriber& s) = 0;
 };
 
 }  // namespace rav::dnssd

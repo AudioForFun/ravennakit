@@ -71,7 +71,7 @@ const rav::NetworkInterface* rav::NetworkInterfaceList::find_by_string(const std
     return nullptr;
 }
 
-const rav::NetworkInterface* rav::NetworkInterfaceList::find_by_address(const asio::ip::address& address) const {
+const rav::NetworkInterface* rav::NetworkInterfaceList::find_by_address(const boost::asio::ip::address& address) const {
     for (auto& interface : interfaces_) {
         for (const auto& addr : interface.get_addresses()) {
             if (addr == address) {

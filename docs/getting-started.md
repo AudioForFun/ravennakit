@@ -74,7 +74,7 @@ int main() {
     rav::do_system_checks();
 
     rav::rtp::rtp_receiver::configuration config;
-    config.interface_address = asio::ip::make_address("192.168.1.1");  // Fill in the address of the NIC to use
+    config.interface_address = boost::asio::ip::make_address("192.168.1.1");  // Fill in the address of the NIC to use
 
     rav::ravenna_node ravenna_node(config);
     ravenna_node_subscriber node_subscriber;

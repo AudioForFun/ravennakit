@@ -7,7 +7,7 @@
 
 #include <map>
 #include <mutex>
-#include <asio/ip/tcp.hpp>
+#include <boost/asio/ip/tcp.hpp>
 
 #if RAV_HAS_APPLE_DNSSD
 
@@ -28,7 +28,7 @@ class BonjourAdvertiser: public Advertiser {
      * It is assumed that the io_context is run by a single thread.
      * @param io_context The context to use for the processing results.
      */
-    explicit BonjourAdvertiser(asio::io_context& io_context);
+    explicit BonjourAdvertiser(boost::asio::io_context& io_context);
 
     Id register_service(
         const std::string& reg_type, const char* name, const char* domain, uint16_t port, const TxtRecord& txt_record,
@@ -38,20 +38,17 @@ class BonjourAdvertiser: public Advertiser {
     void update_txt_record(Id id, const TxtRecord& txt_record) override;
     void unregister_service(Id id) override;
 
-    void subscribe(Subscriber& s) override;
-
   private:
     struct registered_service {
         Id id;
         BonjourScopedDnsServiceRef service_ref;
     };
 
-    asio::ip::tcp::socket service_socket_;
+    boost::asio::ip::tcp::socket service_socket_;
     BonjourSharedConnection shared_connection_;
     Id::Generator id_generator_;
     std::vector<registered_service> registered_services_;
     size_t process_results_failed_attempts_ = 0;
-    Subscriber subscribers_;
 
     void async_process_results();
 
@@ -61,18 +58,6 @@ class BonjourAdvertiser: public Advertiser {
     );
 
     registered_service* find_registered_service(Id id);
-
-    /**
-     * Emits fiven event to all subscribers.
-     * @tparam T The type of the event.
-     * @param event The event to emit.
-     */
-    template<class T>
-    void emit(const T& event) {
-        subscribers_.foreach ([&event](auto& s) {
-            s->emit(event);
-        });
-    }
 };
 
 }  // namespace rav::dnssd

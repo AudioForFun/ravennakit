@@ -59,7 +59,7 @@ class MacAddress {
             RAV_THROW_EXCEPTION("Invalid MAC address format: {}", str);
         }
         for (size_t i = 0; i < 6; ++i) {
-            auto number = rav::ston<uint8_t>(std::string_view(parts[i]), true, 16);
+            auto number = rav::string_to_int<uint8_t>(std::string_view(parts[i]), true, 16);
             if (!number) {
                 RAV_THROW_EXCEPTION("Failed to parse MAC address part: {}", parts[i]);
             }
@@ -87,10 +87,10 @@ class MacAddress {
     /**
      * @return The MAC address as a string.
      */
-    [[nodiscard]] std::string to_string() const {
+    [[nodiscard]] std::string to_string(const char* separator = ":") const {
         return fmt::format(
-            "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}", address_[0], address_[1], address_[2], address_[3],
-            address_[4], address_[5]
+            "{:02x}{}{:02x}{}{:02x}{}{:02x}{}{:02x}{}{:02x}", address_[0], separator, address_[1], separator,
+            address_[2], separator, address_[3], separator, address_[4], separator, address_[5]
         );
     }
 
