@@ -9,7 +9,6 @@
  */
 
 #include "ravennakit/core/uri.hpp"
-
 #include "ravennakit/core/string_parser.hpp"
 
 rav::Uri rav::Uri::parse(const std::string& encoded_uri) {
