@@ -1874,6 +1874,12 @@ std::optional<size_t> rav::nmos::Node::index_of_supported_api_version(const ApiV
     return std::nullopt;
 }
 
+boost::json::object rav::nmos::Node::to_json() const {
+    return boost::json::object {
+        {"configuration", boost::json::value_from(configuration_.to_json())},
+    };
+}
+
 void rav::nmos::Node::ptp_parent_changed(const ptp::ParentDs& parent) {
     if (self_.clocks.size() <= k_clock_ptp_index) {
         RAV_ERROR("PTP clock index out of bounds: {}", k_clock_ptp_index);
@@ -1918,4 +1924,19 @@ void rav::nmos::Node::ptp_port_changed_state(const ptp::Port&) {
     if (status_ == Status::registered) {
         send_updated_resources_async();
     }
+}
+
+void rav::nmos::tag_invoke(
+    const boost::json::value_from_tag&, boost::json::value& jv, const Node::Configuration& config
+) {
+    jv = {
+        {"id", to_string(config.id)},
+        {"operation_mode", to_string(config.operation_mode)},
+        {"api_version", config.api_version.to_string()},
+        {"registry_address", config.registry_address},
+        {"enabled", config.enabled},
+        {"api_port", config.api_port},
+        {"label", config.label},
+        {"description", config.description},
+    };
 }

@@ -91,7 +91,7 @@ class Node: public ptp::Instance::Subscriber {
     struct StatusInfo {
         std::string name;
         std::string address;
-        uint16_t api_port{};
+        uint16_t api_port {};
     };
 
     enum class Status { disabled, discovering, connecting, connected, registered, p2p, error };
@@ -293,6 +293,11 @@ class Node: public ptp::Instance::Subscriber {
      */
     [[nodiscard]] static std::optional<size_t> index_of_supported_api_version(const ApiVersion& version);
 
+    /**
+     * @returns A JSON representation of the node.
+     */
+    boost::json::object to_json() const;
+
     void ptp_parent_changed(const ptp::ParentDs& parent) override;
     void ptp_port_changed_state(const ptp::Port& port) override;
 
@@ -351,5 +356,7 @@ class Node: public ptp::Instance::Subscriber {
 };
 
 const char* to_string(const Node::Status& status);
+
+void tag_invoke(const boost::json::value_from_tag&, boost::json::value& jv, const Node::Configuration& config);
 
 }  // namespace rav::nmos
