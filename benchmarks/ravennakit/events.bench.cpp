@@ -9,7 +9,6 @@
  */
 
 #include "ravennakit/core/events/event_emitter.hpp"
-#include "ravennakit/core/sync/triple_buffer.hpp"
 
 #include <catch2/catch_all.hpp>
 #include <nanobench.h>
