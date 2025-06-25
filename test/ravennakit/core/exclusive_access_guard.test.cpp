@@ -9,7 +9,6 @@
  */
 
 #include "ravennakit/core/util/exclusive_access_guard.hpp"
-#include "ravennakit/core/timeout.hpp"
 
 #include <future>
 #include <thread>

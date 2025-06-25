@@ -10,7 +10,7 @@
 
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/system.hpp"
-#include "ravennakit/core/tracy.hpp"
+#include "ravennakit/core/util/tracy.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 #include "ravennakit/ravenna/ravenna_receiver.hpp"

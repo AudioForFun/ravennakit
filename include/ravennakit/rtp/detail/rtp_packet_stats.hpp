@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "ravennakit/core/tracy.hpp"
+#include "ravennakit/core/util/tracy.hpp"
 #include "ravennakit/core/util/wrapping_uint.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 
