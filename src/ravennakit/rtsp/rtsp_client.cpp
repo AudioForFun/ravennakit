@@ -96,15 +96,15 @@ void rav::rtsp::Client::async_send_request(const Request& request) const {
 }
 
 void rav::rtsp::Client::on_connect(Connection& connection) {
-    events_.emit(Connection::ConnectEvent {connection});
+    on_connect_event(Connection::ConnectEvent {connection});
 }
 
 void rav::rtsp::Client::on_request(Connection& connection, const Request& request) {
-    events_.emit(Connection::RequestEvent {connection, request});
+    on_request_event(Connection::RequestEvent {connection, request});
 }
 
 void rav::rtsp::Client::on_response(Connection& connection, const Response& response) {
-    events_.emit(Connection::ResponseEvent {connection, response});
+    on_response_event(Connection::ResponseEvent {connection, response});
 }
 
 void rav::rtsp::Client::async_resolve_connect(

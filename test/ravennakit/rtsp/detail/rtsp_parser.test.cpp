@@ -23,7 +23,7 @@ TEST_CASE("rav::rtsp::Parser") {
 
         int response_count = 0;
 
-        parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        parser.on_response = [&](const rav::rtsp::Response& response) {
             REQUIRE(response.rtsp_version_major == 1);
             REQUIRE(response.rtsp_version_minor == 0);
             REQUIRE(response.status_code == 200);
@@ -34,7 +34,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(response.rtsp_headers.get_or_default("Content-Length") == std::to_string(sdp.size()));
             REQUIRE(response.data == sdp);
             response_count++;
-        });
+        };
 
         input.write("RTSP/1.0 200 OK\r\nCSeq: 2\r\nContent-Type: application/sdp\r\nContent-");
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::indeterminate);
@@ -51,7 +51,7 @@ TEST_CASE("rav::rtsp::Parser") {
 
         REQUIRE(response_count == 1);
 
-        parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        parser.on_response = [&](const rav::rtsp::Response& response) {
             REQUIRE(response.rtsp_version_major == 1);
             REQUIRE(response.rtsp_version_minor == 0);
             REQUIRE(response.status_code == 400);
@@ -62,7 +62,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(response.rtsp_headers.get_or_default("Content-Length") == "22");
             REQUIRE(response.data == "Invalid header format.");
             response_count++;
-        });
+        };
 
         input.write("Type: text/plain\r\nContent-Length: 22\r\n\r\nInvalid header format.");
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
@@ -81,7 +81,7 @@ TEST_CASE("rav::rtsp::Parser") {
         int response_count = 0;
 
         rav::rtsp::Parser parser;
-        parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        parser.on_response = [&](const rav::rtsp::Response& response) {
             REQUIRE(response.rtsp_version_major == 1);
             REQUIRE(response.rtsp_version_minor == 0);
             REQUIRE(response.status_code == 200);
@@ -96,7 +96,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(response.rtsp_headers.get_or_default("Content-Length") == "0");
             REQUIRE(response.data.empty());
             response_count++;
-        });
+        };
 
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
         REQUIRE(response_count == 2);
@@ -113,7 +113,7 @@ TEST_CASE("rav::rtsp::Parser") {
         int response_count = 0;
 
         rav::rtsp::Parser parser;
-        parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        parser.on_response = [&](const rav::rtsp::Response& response) {
             REQUIRE(response.rtsp_version_major == 1);
             REQUIRE(response.rtsp_version_minor == 0);
             REQUIRE(response.status_code == 200);
@@ -129,7 +129,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(response.data.size() == 18);
             REQUIRE(response.data == "rtsp_response_data");
             response_count++;
-        });
+        };
 
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
         REQUIRE(response_count == 2);
@@ -147,7 +147,7 @@ TEST_CASE("rav::rtsp::Parser") {
         int response_count = 0;
 
         rav::rtsp::Parser parser;
-        parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        parser.on_response = [&](const rav::rtsp::Response& response) {
             REQUIRE(response.rtsp_version_major == 1);
             REQUIRE(response.rtsp_version_minor == 0);
             REQUIRE(response.status_code == 200);
@@ -158,7 +158,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(response.data.size() == data.size());
             REQUIRE(response.data == data);
             response_count++;
-        });
+        };
 
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
         REQUIRE(response_count == 1);
@@ -173,7 +173,7 @@ TEST_CASE("rav::rtsp::Parser") {
             int request_count = 0;
 
             rav::rtsp::Parser parser;
-            parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+            parser.on_request = [&](const rav::rtsp::Request& request) {
                 REQUIRE(request.method == "DESCRIBE");
                 REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
                 REQUIRE(request.rtsp_version_major == 1);
@@ -181,7 +181,7 @@ TEST_CASE("rav::rtsp::Parser") {
                 REQUIRE(request.rtsp_headers.empty());
                 REQUIRE(request.data.empty());
                 request_count++;
-            });
+            };
 
             REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
             REQUIRE(request_count == 2);
@@ -196,7 +196,7 @@ TEST_CASE("rav::rtsp::Parser") {
             int request_count = 0;
 
             rav::rtsp::Parser parser;
-            parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+            parser.on_request = [&](const rav::rtsp::Request& request) {
                 REQUIRE(request.method == "DESCRIBE");
                 REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
                 REQUIRE(request.rtsp_version_major == 1);
@@ -209,7 +209,7 @@ TEST_CASE("rav::rtsp::Parser") {
                 );
                 REQUIRE(request.data.empty());
                 request_count++;
-            });
+            };
 
             REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
             REQUIRE(request_count == 2);
@@ -224,7 +224,7 @@ TEST_CASE("rav::rtsp::Parser") {
             int request_count = 0;
 
             rav::rtsp::Parser parser;
-            parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+            parser.on_request = [&](const rav::rtsp::Request& request) {
                 REQUIRE(request.method == "DESCRIBE");
                 REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
                 REQUIRE(request.rtsp_version_major == 1);
@@ -237,7 +237,7 @@ TEST_CASE("rav::rtsp::Parser") {
                 }
                 REQUIRE(request.data == "this_is_the_part_called_data");
                 request_count++;
-            });
+            };
 
             REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
             REQUIRE(request_count == 2);
@@ -258,7 +258,7 @@ TEST_CASE("rav::rtsp::Parser") {
             int request_count = 0;
 
             rav::rtsp::Parser parser;
-            parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+            parser.on_request = [&](const rav::rtsp::Request& request) {
                 REQUIRE(request.method == "DESCRIBE");
                 REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
                 REQUIRE(request.rtsp_version_major == 1);
@@ -271,7 +271,7 @@ TEST_CASE("rav::rtsp::Parser") {
                 );
                 REQUIRE(request.data.empty());
                 request_count++;
-            });
+            };
 
             REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
             REQUIRE(request_count == 4);
@@ -282,7 +282,7 @@ TEST_CASE("rav::rtsp::Parser") {
         int request_count = 0;
 
         rav::rtsp::Parser parser;
-        parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+        parser.on_request = [&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "DESCRIBE");
             REQUIRE(request.uri == "rtsp://server.example.com/fizzle/foo");
             REQUIRE(request.rtsp_version_major == 1);
@@ -291,7 +291,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(request.rtsp_headers.get_or_default("Content-Length") == "28");
             REQUIRE(request.data == "this_is_the_part_called_data");
             request_count++;
-        });
+        };
 
         rav::StringBuffer input("DESCRIBE rtsp://server.example.com/fizzle/foo RTSP/1.0\r\nContent");
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::indeterminate);
@@ -307,7 +307,7 @@ TEST_CASE("rav::rtsp::Parser") {
 
         REQUIRE(request_count == 1);
 
-        parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+        parser.on_request = [&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "OPTIONS");
             REQUIRE(request.uri == "rtsp://server2.example.com/fizzle/foo");
             REQUIRE(request.rtsp_version_major == 1);
@@ -316,7 +316,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(request.rtsp_headers.get_or_default("Content-Length") == "5");
             REQUIRE(request.data == "data2");
             request_count++;
-        });
+        };
 
         input.write(".com/fizzle/foo RTSP/1.0\r\nContent-Length: 5\r\n\r\ndata2");
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
@@ -335,7 +335,7 @@ TEST_CASE("rav::rtsp::Parser") {
         int request_count = 0;
 
         rav::rtsp::Parser parser;
-        parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+        parser.on_request = [&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "ANNOUNCE");
             REQUIRE(request.uri.empty());
             REQUIRE(request.rtsp_version_major == 1);
@@ -345,7 +345,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(request.rtsp_headers.get_or_default("connection") == "Keep-Alive");
             REQUIRE(request.data == sdp);
             request_count++;
-        });
+        };
 
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
         REQUIRE(request_count == 1);
@@ -367,7 +367,7 @@ TEST_CASE("rav::rtsp::Parser") {
 
         rav::rtsp::Parser parser;
 
-        parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        parser.on_response = [&](const rav::rtsp::Response& response) {
             REQUIRE(response.rtsp_version_major == 1);
             REQUIRE(response.rtsp_version_minor == 0);
             REQUIRE(response.status_code == 200);
@@ -378,9 +378,9 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(response.data.size() == sdp.size());
             REQUIRE(response.data == sdp);
             response_count++;
-        });
+        };
 
-        parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request& request) {
+        parser.on_request = [&](const rav::rtsp::Request& request) {
             REQUIRE(request.method == "ANNOUNCE");
             REQUIRE(request.uri.empty());
             REQUIRE(request.rtsp_version_major == 1);
@@ -390,7 +390,7 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(request.rtsp_headers.get_or_default("connection") == "Keep-Alive");
             REQUIRE(request.data == sdp);
             request_count++;
-        });
+        };
 
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::good);
         REQUIRE(request_count == 1);
@@ -432,7 +432,7 @@ TEST_CASE("rav::rtsp::Parser") {
         int request_count = 0;
         int response_count = 0;
 
-        parser.on<rav::rtsp::Response>([&](const rav::rtsp::Response& response) {
+        parser.on_response = [&](const rav::rtsp::Response& response) {
             REQUIRE(response.rtsp_version_major == 1);
             REQUIRE(response.rtsp_version_minor == 0);
             REQUIRE(response.status_code == 200);
@@ -441,11 +441,11 @@ TEST_CASE("rav::rtsp::Parser") {
             REQUIRE(response.rtsp_headers.get_or_default("cseq") == "3");
             REQUIRE(response.data.empty());
             response_count++;
-        });
+        };
 
-        parser.on<rav::rtsp::Request>([&](const rav::rtsp::Request&) {
+        parser.on_request = [&](const rav::rtsp::Request&) {
             request_count++;
-        });
+        };
 
         REQUIRE(parser.parse(input) == rav::rtsp::Parser::result::indeterminate);
     }

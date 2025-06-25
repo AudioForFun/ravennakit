@@ -21,8 +21,10 @@
 #include <tl/expected.hpp>
 
 /**
+ * Deprecated!
  * Utility macro to return early if an expression evaluates to false.
  * @param expr The expression to check and return if false.
+ * TODO: Remove
  */
 #define OK_OR_RETURN(expr)                 \
     do {                                   \
