@@ -25,26 +25,26 @@ struct TimeActiveField {
     int64_t start_time {0};
     /// The stop time of the session.
     int64_t stop_time {0};
-
-    /**
-     * Validates the values of this structure.
-     * @return A result indicating success or failure. When validation fails, the error message will contain a
-     * description.
-     */
-    [[nodiscard]] tl::expected<void, std::string> validate() const;
-
-    /**
-     * Converts the time field to a string.
-     * @return The time field as a string, or an error message if the conversion fails.
-     */
-    [[nodiscard]] tl::expected<std::string, std::string> to_string() const;
-
-    /**
-     * Parses a time field from a string.
-     * @param line The string to parse.
-     * @return A pair containing the parse result and the time field.
-     */
-    static tl::expected<TimeActiveField, std::string> parse_new(std::string_view line);
 };
+
+/**
+ * Parses a time field from a string.
+ * @param line The string to parse.
+ * @return A pair containing the parse result and the time field.
+ */
+[[nodiscard]] tl::expected<TimeActiveField, std::string> parse_time_active_field(std::string_view line);
+
+/**
+ * Converts the time field to an SDP compatible string.
+ * @return The time field as a string.
+ */
+[[nodiscard]] std::string to_string(const TimeActiveField& time_active_field);
+
+/**
+ * Validates the values of this structure.
+ * @return A result indicating success or failure. When validation fails, the error message will contain a
+ * description.
+ */
+[[nodiscard]] tl::expected<void, std::string> validate(const TimeActiveField& time_active_field);
 
 }  // namespace rav::sdp

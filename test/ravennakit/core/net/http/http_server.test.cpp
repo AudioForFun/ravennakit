@@ -41,7 +41,7 @@ TEST_CASE("rav::HttpServer") {
             fmt::println("Response: {}", response.value());
             REQUIRE(response.has_value());
             REQUIRE(response->result() == boost::beast::http::status::not_found);
-            // server.stop(); TODO: We should do this, but there is a 5-second timeout somehow.
+            // server.stop(); FIXME: We should do this, but there is a 5-second timeout somehow.
             io_context.stop();
         });
 
@@ -98,7 +98,7 @@ TEST_CASE("rav::HttpServer") {
             REQUIRE(response.has_value());
             REQUIRE(response->result() == boost::beast::http::status::ok);
             REQUIRE(response->body() == "**");
-            // server.stop(); TODO: We should do this, but there is a 5-second timeout somehow.
+            // server.stop(); FIXME: We should do this, but there is a 5-second timeout somehow.
             io_context.stop();
         });
 

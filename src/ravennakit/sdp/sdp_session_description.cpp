@@ -63,7 +63,7 @@ rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 't': {
-                auto time_active = sdp::TimeActiveField::parse_new(*line);
+                auto time_active = parse_time_active_field(*line);
                 if (!time_active) {
                     return tl::unexpected(time_active.error());
                 }
@@ -245,11 +245,7 @@ tl::expected<std::string, std::string> rav::sdp::SessionDescription::to_string(c
     fmt::format_to(std::back_inserter(sdp), "s={}{}", session_name_.empty() ? "-" : session_name(), newline);
 
     // Time active
-    auto time = time_active_.to_string();
-    if (!time) {
-        return time;
-    }
-    fmt::format_to(std::back_inserter(sdp), "{}{}", time.value(), newline);
+    fmt::format_to(std::back_inserter(sdp), "{}{}", sdp::to_string(time_active_), newline);
 
     // Group duplication
     if (group_.has_value()) {
