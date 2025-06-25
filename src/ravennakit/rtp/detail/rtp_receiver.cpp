@@ -12,7 +12,7 @@
 #include "ravennakit/rtp/rtcp_packet_view.hpp"
 #include "ravennakit/rtp/detail/rtp_receiver.hpp"
 
-#include "ravennakit/core/events/subscriber_list.hpp"
+#include "ravennakit/core/util/subscriber_list.hpp"
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/core/util/tracy.hpp"
 
