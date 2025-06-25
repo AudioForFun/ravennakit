@@ -14,6 +14,7 @@
 #include "env.hpp"
 #include "string.hpp"
 
+#include <atomic>
 #include <cstdlib>
 
 #ifndef RAV_ENABLE_SPDLOG
