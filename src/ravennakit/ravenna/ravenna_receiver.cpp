@@ -172,7 +172,7 @@ tl::expected<rav::rtp::AudioReceiver::Stream, std::string> create_stream_from_me
 
     if (selected_connection_info == nullptr) {
         // Find connection info in the session description session level
-        if (const auto& conn = sdp.connection_info()) {
+        if (const auto& conn = sdp.connection_info) {
             if (is_connection_info_valid(*conn)) {
                 selected_connection_info = &*conn;
             }
@@ -218,7 +218,7 @@ tl::expected<rav::rtp::AudioReceiver::Stream, std::string> create_stream_from_me
             RAV_WARNING("No suitable source filters found in SDP");
         }
     } else {
-        const auto& sdp_source_filters = sdp.source_filters();
+        const auto& sdp_source_filters = sdp.source_filters;
         if (!sdp_source_filters.empty()) {
             if (filter.add_filters(sdp_source_filters) == 0) {
                 RAV_WARNING("No suitable source filters found in SDP");
@@ -235,7 +235,7 @@ tl::expected<rav::rtp::AudioReceiver::Stream, std::string> create_stream_from_me
 
 const rav::sdp::MediaDescription*
 find_media_description_by_mid(const rav::sdp::SessionDescription& sdp, const std::string& mid) {
-    for (const auto& media_description : sdp.media_descriptions()) {
+    for (const auto& media_description : sdp.media_descriptions) {
         if (media_description.mid == mid) {
             return &media_description;
         }
@@ -249,7 +249,7 @@ tl::expected<rav::rtp::AudioReceiver::Parameters, std::string>
 rav::RavennaReceiver::create_audio_receiver_parameters(const sdp::SessionDescription& sdp) {
     rtp::AudioReceiver::Parameters parameters;
 
-    for (auto& media_description : sdp.media_descriptions()) {
+    for (auto& media_description : sdp.media_descriptions) {
         if (media_description.media_type != "audio") {
             RAV_WARNING("Unsupported media type: {}", media_description.media_type);
             continue;
@@ -292,7 +292,7 @@ rav::RavennaReceiver::create_audio_receiver_parameters(const sdp::SessionDescrip
         parameters.streams.push_back(*stream);
 
         if (auto mid = media_description.mid) {
-            const auto group = sdp.get_group();
+            const auto group = sdp.group;
             if (!group) {
                 RAV_WARNING("No group found for mid '{}'", *mid);
                 break;  // No group found, treating the found stream as the primary
@@ -350,7 +350,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_state(const bool up
     auto parameters = create_audio_receiver_parameters(configuration_.sdp);
 
     if (!configuration_.auto_update_sdp) {
-        configuration_.session_name = configuration_.sdp.session_name();
+        configuration_.session_name = configuration_.sdp.session_name;
     }
 
     rtp_audio_receiver_.set_delay_frames(configuration_.delay_frames);
@@ -517,7 +517,7 @@ void rav::tag_invoke(
         {"delay_frames", config.delay_frames},
         {"enabled", config.enabled},
         {"auto_update_sdp", config.auto_update_sdp},
-        {"sdp", config.sdp.to_string().value_or("")}
+        {"sdp", rav::sdp::to_string(config.sdp)}
     };
 }
 
@@ -528,6 +528,6 @@ rav::tag_invoke(const boost::json::value_to_tag<RavennaReceiver::Configuration>&
     config.delay_frames = jv.at("delay_frames").to_number<uint32_t>();
     config.enabled = jv.at("enabled").as_bool();
     config.auto_update_sdp = jv.at("auto_update_sdp").as_bool();
-    config.sdp = sdp::SessionDescription::parse_new(jv.at("sdp").as_string().c_str()).value();
+    config.sdp = sdp::parse_session_description(jv.at("sdp").as_string().c_str()).value();
     return config;
 }

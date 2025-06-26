@@ -20,9 +20,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "v=0\r\n"
             "o=- 13 0 IN IP4 192.168.15.52\r\n"
             "s=Anubis_610120_13\r\n";
-        auto result = rav::sdp::SessionDescription::parse_new(crlf);
+        auto result = rav::sdp::parse_session_description(crlf);
         REQUIRE(result);
-        REQUIRE(result->version() == 0);
+        REQUIRE(result->version == 0);
     }
 
     SECTION("Test n delimited string") {
@@ -30,14 +30,14 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "v=0\n"
             "o=- 13 0 IN IP4 192.168.15.52\n"
             "s=Anubis_610120_13\n";
-        auto result = rav::sdp::SessionDescription::parse_new(n);
+        auto result = rav::sdp::parse_session_description(n);
         REQUIRE(result);
-        REQUIRE(result->version() == 0);
+        REQUIRE(result->version == 0);
     }
 
     SECTION("Test string without newline") {
         constexpr auto str = "bbb";
-        auto result = rav::sdp::SessionDescription::parse_new(str);
+        auto result = rav::sdp::parse_session_description(str);
         REQUIRE_FALSE(result);
     }
 
@@ -65,11 +65,11 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=recvonly\r\n"
             "a=midi-pre2:50040 0,0;0,1\r\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_anubis_sdp);
+        auto result = rav::sdp::parse_session_description(k_anubis_sdp);
         REQUIRE(result);
 
         SECTION("Parse a description from an Anubis") {
-            REQUIRE(result->version() == 0);
+            REQUIRE(result->version == 0);
         }
 
         SECTION("Test version") {
@@ -77,11 +77,11 @@ TEST_CASE("rav::sdp::SessionDescription") {
                 "v=1\r\n"
                 "o=- 13 0 IN IP4 192.168.15.52\r\n"
                 "s=Anubis_610120_13\r\n";
-            REQUIRE_FALSE(rav::sdp::SessionDescription::parse_new(sdp));
+            REQUIRE_FALSE(rav::sdp::parse_session_description(sdp));
         }
 
         SECTION("Test origin") {
-            const auto& origin = result->origin();
+            const auto& origin = result->origin;
             REQUIRE(origin.username == "-");
             REQUIRE(origin.session_id == "13");
             REQUIRE(origin.session_version == 0);
@@ -91,7 +91,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Test connection") {
-            const auto& connection = result->connection_info();
+            const auto& connection = result->connection_info;
             REQUIRE(connection.has_value());
             REQUIRE(connection->network_type == rav::sdp::NetwType::internet);
             REQUIRE(connection->address_type == rav::sdp::AddrType::ipv4);
@@ -99,17 +99,17 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Test session name") {
-            REQUIRE(result->session_name() == "Anubis_610120_13");
+            REQUIRE(result->session_name == "Anubis_610120_13");
         }
 
         SECTION("Test time") {
-            auto time = result->time_active();
+            auto time = result->time_active;
             REQUIRE(time.start_time == 0);
             REQUIRE(time.stop_time == 0);
         }
 
         SECTION("Test media") {
-            const auto& descriptions = result->media_descriptions();
+            const auto& descriptions = result->media_descriptions;
             REQUIRE(descriptions.size() == 1);
 
             const auto& media = descriptions[0];
@@ -179,11 +179,11 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Media direction") {
-            REQUIRE(result->direction() == rav::sdp::MediaDirection::sendrecv);
+            REQUIRE(!result->media_direction.has_value());
         }
 
         SECTION("Test refclk on session") {
-            const auto& refclk = result->ref_clock();
+            const auto& refclk = result->reference_clock;
             REQUIRE(refclk.has_value());
             REQUIRE(refclk->source_ == rav::sdp::ReferenceClock::ClockSource::ptp);
             REQUIRE(refclk->ptp_version_ == rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008);
@@ -192,14 +192,14 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Test mediaclk attribute") {
-            auto media_clock = result->media_clock().value();
+            auto media_clock = result->media_clock.value();
             REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
             REQUIRE(media_clock.offset.value() == 0);
             REQUIRE_FALSE(media_clock.rate.has_value());
         }
 
         SECTION("Test clock-domain") {
-            auto clock_domain = result->clock_domain().value();
+            auto clock_domain = result->ravenna_clock_domain.value();
             REQUIRE(clock_domain.source == rav::sdp::RavennaClockDomain::SyncSource::ptp_v2);
             REQUIRE(clock_domain.domain == 0);
         }
@@ -220,26 +220,26 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=ts-refclk:ptp=IEEE1588-2008:39-A7-94-FF-FE-07-CB-D0:0\n"
             "a=mediaclk:direct=963214424\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_aes67_sdp);
+        auto result = rav::sdp::parse_session_description(k_aes67_sdp);
         REQUIRE(result);
         auto session = *result;
-        REQUIRE(session.version() == 0);
-        REQUIRE(session.origin().username == "-");
-        REQUIRE(session.origin().session_id == "1311738121");
-        REQUIRE(session.origin().session_version == 1311738121);
-        REQUIRE(session.origin().network_type == rav::sdp::NetwType::internet);
-        REQUIRE(session.origin().address_type == rav::sdp::AddrType::ipv4);
-        REQUIRE(session.origin().unicast_address == "192.168.1.1");
-        REQUIRE(session.session_name() == "Stage left I/O");
-        REQUIRE(session.connection_info().has_value());
-        REQUIRE(session.connection_info()->network_type == rav::sdp::NetwType::internet);
-        REQUIRE(session.connection_info()->address_type == rav::sdp::AddrType::ipv4);
-        REQUIRE(session.connection_info()->address == "239.0.0.1");
-        REQUIRE(session.connection_info()->ttl == 32);
-        REQUIRE(session.time_active().start_time == 0);
-        REQUIRE(session.time_active().stop_time == 0);
-        REQUIRE(session.media_descriptions().size() == 1);
-        const auto& media = session.media_descriptions()[0];
+        REQUIRE(session.version == 0);
+        REQUIRE(session.origin.username == "-");
+        REQUIRE(session.origin.session_id == "1311738121");
+        REQUIRE(session.origin.session_version == 1311738121);
+        REQUIRE(session.origin.network_type == rav::sdp::NetwType::internet);
+        REQUIRE(session.origin.address_type == rav::sdp::AddrType::ipv4);
+        REQUIRE(session.origin.unicast_address == "192.168.1.1");
+        REQUIRE(session.session_name == "Stage left I/O");
+        REQUIRE(session.connection_info.has_value());
+        REQUIRE(session.connection_info->network_type == rav::sdp::NetwType::internet);
+        REQUIRE(session.connection_info->address_type == rav::sdp::AddrType::ipv4);
+        REQUIRE(session.connection_info->address == "239.0.0.1");
+        REQUIRE(session.connection_info->ttl == 32);
+        REQUIRE(session.time_active.start_time == 0);
+        REQUIRE(session.time_active.stop_time == 0);
+        REQUIRE(session.media_descriptions.size() == 1);
+        const auto& media = session.media_descriptions[0];
         REQUIRE(media.media_type == "audio");
         REQUIRE(media.port == 5004);
         REQUIRE(media.number_of_ports == 1);
@@ -281,28 +281,28 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=ts-refclk:ptp=IEEE1588-2008:39-A7-94-FF-FE-07-CB-D0:0\n"
             "a=mediaclk:direct=2216659908\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_aes67_sdp);
+        auto result = rav::sdp::parse_session_description(k_aes67_sdp);
         if (!result) {
             FAIL(result.error());
         }
         auto session = std::move(*result);
-        REQUIRE(session.version() == 0);
-        REQUIRE(session.origin().username == "audio");
-        REQUIRE(session.origin().session_id == "1311738121");
-        REQUIRE(session.origin().session_version == 1311738121);
-        REQUIRE(session.origin().network_type == rav::sdp::NetwType::internet);
-        REQUIRE(session.origin().address_type == rav::sdp::AddrType::ipv4);
-        REQUIRE(session.origin().unicast_address == "192.168.1.1");
-        REQUIRE(session.session_name() == "Stage left I/O");
-        REQUIRE(session.connection_info().has_value());
-        REQUIRE(session.connection_info()->network_type == rav::sdp::NetwType::internet);
-        REQUIRE(session.connection_info()->address_type == rav::sdp::AddrType::ipv4);
-        REQUIRE(session.connection_info()->address == "192.168.1.1");
-        REQUIRE_FALSE(session.connection_info()->ttl.has_value());
-        REQUIRE(session.time_active().start_time == 0);
-        REQUIRE(session.time_active().stop_time == 0);
-        REQUIRE(session.media_descriptions().size() == 1);
-        const auto& media = session.media_descriptions()[0];
+        REQUIRE(session.version == 0);
+        REQUIRE(session.origin.username == "audio");
+        REQUIRE(session.origin.session_id == "1311738121");
+        REQUIRE(session.origin.session_version == 1311738121);
+        REQUIRE(session.origin.network_type == rav::sdp::NetwType::internet);
+        REQUIRE(session.origin.address_type == rav::sdp::AddrType::ipv4);
+        REQUIRE(session.origin.unicast_address == "192.168.1.1");
+        REQUIRE(session.session_name == "Stage left I/O");
+        REQUIRE(session.connection_info.has_value());
+        REQUIRE(session.connection_info->network_type == rav::sdp::NetwType::internet);
+        REQUIRE(session.connection_info->address_type == rav::sdp::AddrType::ipv4);
+        REQUIRE(session.connection_info->address == "192.168.1.1");
+        REQUIRE_FALSE(session.connection_info->ttl.has_value());
+        REQUIRE(session.time_active.start_time == 0);
+        REQUIRE(session.time_active.stop_time == 0);
+        REQUIRE(session.media_descriptions.size() == 1);
+        const auto& media = session.media_descriptions[0];
         REQUIRE(media.media_type == "audio");
         REQUIRE(media.port == 5004);
         REQUIRE(media.number_of_ports == 1);
@@ -354,11 +354,11 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=recvonly\r\n"
             "a=midi-pre2:50040 0,0;0,1\r\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_anubis_sdp);
+        auto result = rav::sdp::parse_session_description(k_anubis_sdp);
         REQUIRE(result);
 
         SECTION("Session level source filter") {
-            const auto& filters = result->source_filters();
+            const auto& filters = result->source_filters;
             REQUIRE(filters.size() == 1);
             const auto& filter = filters[0];
             REQUIRE(filter.mode == rav::sdp::FilterMode::include);
@@ -371,7 +371,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Test media") {
-            const auto& descriptions = result->media_descriptions();
+            const auto& descriptions = result->media_descriptions;
             REQUIRE(descriptions.size() == 1);
 
             const auto& media = descriptions[0];
@@ -417,20 +417,17 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=recvonly\r\n"
             "a=midi-pre2:50040 0,0;0,1\r\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_anubis_sdp);
+        auto result = rav::sdp::parse_session_description(k_anubis_sdp);
         REQUIRE(result);
 
         SECTION("Unknown attributes on session") {
-            const auto& attributes = result->attributes();
-            REQUIRE(attributes.size() == 1);
-            REQUIRE(attributes.at("unknown-attribute-session") == "unknown-attribute-session-value");
+            REQUIRE(result->attributes.size() == 1);
+            REQUIRE(result->attributes.at("unknown-attribute-session") == "unknown-attribute-session-value");
         }
 
         SECTION("Test media") {
-            const auto& descriptions = result->media_descriptions();
-            REQUIRE(descriptions.size() == 1);
-
-            const auto& media = descriptions[0];
+            REQUIRE(result->media_descriptions.size() == 1);
+            const auto& media = result->media_descriptions[0];
 
             SECTION("Unknown attributes on media") {
                 const auto& attributes = media.attributes;
@@ -457,11 +454,11 @@ TEST_CASE("rav::sdp::SessionDescription") {
         origin.unicast_address = "192.168.15.52";
 
         rav::sdp::SessionDescription sdp;
-        sdp.set_origin(origin);
-        sdp.set_session_name("Anubis Combo LR");
-        sdp.set_time_active({0, 0});
+        sdp.origin = origin;
+        sdp.session_name = "Anubis Combo LR";
+        sdp.time_active = {0, 0};
 
-        REQUIRE(sdp.to_string().value() == expected);
+        REQUIRE(rav::sdp::to_string(sdp) == expected);
 
         SECTION("Connection info (optional if media descriptions all have their own connection info)") {
             rav::sdp::ConnectionInfoField connection_info;
@@ -469,20 +466,20 @@ TEST_CASE("rav::sdp::SessionDescription") {
             connection_info.address_type = rav::sdp::AddrType::ipv4;
             connection_info.address = "239.1.16.51";
             connection_info.ttl = 15;
-            sdp.set_connection_info(connection_info);
+            sdp.connection_info = connection_info;
             expected += "c=IN IP4 239.1.16.51/15\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
-        REQUIRE(sdp.to_string().value() == expected);
+        REQUIRE(rav::sdp::to_string(sdp) == expected);
 
         SECTION("RAVENNA clock-domain attribute") {
             rav::sdp::RavennaClockDomain clock_domain;
             clock_domain.source = rav::sdp::RavennaClockDomain::SyncSource::ptp_v2;
             clock_domain.domain = 0;
-            sdp.set_clock_domain(clock_domain);
+            sdp.ravenna_clock_domain = clock_domain;
             expected += "a=clock-domain:PTPv2 0\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Reference clock attribute") {
@@ -490,24 +487,24 @@ TEST_CASE("rav::sdp::SessionDescription") {
                 rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008,
                 "00-1D-C1-FF-FE-51-9E-F7", 0
             };
-            sdp.set_ref_clock(ref_clock);
+            sdp.reference_clock = ref_clock;
             expected += "a=ts-refclk:ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Media direction attribute") {
-            sdp.set_media_direction(rav::sdp::MediaDirection::recvonly);
+            sdp.media_direction = rav::sdp::MediaDirection::recvonly;
             expected += "a=recvonly\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Media clock attribute") {
             rav::sdp::MediaClockSource media_clock {
                 rav::sdp::MediaClockSource::ClockMode::direct, 0, rav::Fraction<int>({1000, 1001})
             };
-            sdp.set_media_clock(media_clock);
+            sdp.media_clock = media_clock;
             expected += "a=mediaclk:direct=0 rate=1000/1001\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Source filters") {
@@ -518,9 +515,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
                 "239.1.16.51",
                 {"192.168.16.51"}
             };
-            sdp.add_source_filter(filter);
+            sdp.add_or_update_source_filter(filter);
             expected += "a=source-filter: incl IN IP4 239.1.16.51 192.168.16.51\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         rav::sdp::MediaDescription md1;
@@ -529,8 +526,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
         md1.number_of_ports = 1;
         md1.protocol = "RTP/AVP";
         md1.add_or_update_format({98, "L16", 44100, 2});
-        md1.connection_infos.push_back({rav::sdp::NetwType::internet, rav::sdp::AddrType::ipv4, "192.168.1.1", 15, {}}
-        );
+        md1.connection_infos.push_back({rav::sdp::NetwType::internet, rav::sdp::AddrType::ipv4, "192.168.1.1", 15, {}});
         md1.ptime = 20.f;
         md1.max_ptime = 60.f;
         md1.media_direction = rav::sdp::MediaDirection::recvonly;
@@ -543,7 +539,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
         md1.ravenna_clock_domain = rav::sdp::RavennaClockDomain {rav::sdp::RavennaClockDomain::SyncSource::ptp_v2, 1};
         md1.ravenna_sync_time = 1234;
         md1.ravenna_clock_deviation = std::optional<rav::Fraction<unsigned>>({1001, 1000});
-        sdp.add_media_description(md1);
+        sdp.media_descriptions.push_back(md1);
 
         expected +=
             "m=audio 5004 RTP/AVP 98\r\n"
@@ -558,7 +554,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=sync-time:1234\r\n"
             "a=clock-deviation:1001/1000\r\n";
 
-        REQUIRE(sdp.to_string().value() == expected);
+        REQUIRE(rav::sdp::to_string(sdp) == expected);
     }
 
     SECTION("session_description | To string SPS") {
@@ -576,18 +572,18 @@ TEST_CASE("rav::sdp::SessionDescription") {
         origin.unicast_address = "192.168.15.52";
 
         rav::sdp::SessionDescription sdp;
-        sdp.set_origin(origin);
-        sdp.set_session_name("Anubis Combo LR");
-        sdp.set_time_active({0, 0});
+        sdp.origin = origin;
+        sdp.session_name = "Anubis Combo LR";
+        sdp.time_active = {0, 0};
 
-        REQUIRE(sdp.to_string().value() == expected);
+        REQUIRE(rav::sdp::to_string(sdp) == expected);
 
         rav::sdp::Group group;
         group.type = rav::sdp::Group::Type::dup;
         group.tags.push_back("primary");
         group.tags.push_back("secondary");
 
-        sdp.set_group(group);
+        sdp.group = group;
 
         expected += "a=group:DUP primary secondary\r\n";
 
@@ -597,20 +593,20 @@ TEST_CASE("rav::sdp::SessionDescription") {
             connection_info.address_type = rav::sdp::AddrType::ipv4;
             connection_info.address = "239.1.16.51";
             connection_info.ttl = 15;
-            sdp.set_connection_info(connection_info);
+            sdp.connection_info = connection_info;
             expected += "c=IN IP4 239.1.16.51/15\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
-        REQUIRE(sdp.to_string().value() == expected);
+        REQUIRE(rav::sdp::to_string(sdp) == expected);
 
         SECTION("RAVENNA clock-domain attribute") {
             rav::sdp::RavennaClockDomain clock_domain;
             clock_domain.source = rav::sdp::RavennaClockDomain::SyncSource::ptp_v2;
             clock_domain.domain = 0;
-            sdp.set_clock_domain(clock_domain);
+            sdp.ravenna_clock_domain = clock_domain;
             expected += "a=clock-domain:PTPv2 0\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Reference clock attribute") {
@@ -618,24 +614,24 @@ TEST_CASE("rav::sdp::SessionDescription") {
                 rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008,
                 "00-1D-C1-FF-FE-51-9E-F7", 0
             };
-            sdp.set_ref_clock(ref_clock);
+            sdp.reference_clock = ref_clock;
             expected += "a=ts-refclk:ptp=IEEE1588-2008:00-1D-C1-FF-FE-51-9E-F7:0\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Media direction attribute") {
-            sdp.set_media_direction(rav::sdp::MediaDirection::recvonly);
+            sdp.media_direction = rav::sdp::MediaDirection::recvonly;
             expected += "a=recvonly\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Media clock attribute") {
             rav::sdp::MediaClockSource media_clock {
                 rav::sdp::MediaClockSource::ClockMode::direct, 0, rav::Fraction<int>({1000, 1001})
             };
-            sdp.set_media_clock(media_clock);
+            sdp.media_clock = media_clock;
             expected += "a=mediaclk:direct=0 rate=1000/1001\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         SECTION("Source filters") {
@@ -646,9 +642,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
                 "239.1.16.51",
                 {"192.168.16.51"}
             };
-            sdp.add_source_filter(filter);
+            sdp.add_or_update_source_filter(filter);
             expected += "a=source-filter: incl IN IP4 239.1.16.51 192.168.16.51\r\n";
-            REQUIRE(sdp.to_string().value() == expected);
+            REQUIRE(rav::sdp::to_string(sdp) == expected);
         }
 
         rav::sdp::MediaDescription primary;
@@ -674,7 +670,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
         primary.ravenna_sync_time = 1234;
         primary.ravenna_clock_deviation = std::optional<rav::Fraction<unsigned>>({1001, 1000});
         primary.mid = "primary";
-        sdp.add_media_description(primary);
+        sdp.media_descriptions.push_back(primary);
 
         expected +=
             "m=audio 5004 RTP/AVP 98\r\n"
@@ -713,7 +709,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
         secondary.ravenna_sync_time = 1234;
         secondary.ravenna_clock_deviation = std::optional<rav::Fraction<unsigned>>({1001, 1000});
         secondary.mid = "secondary";
-        sdp.add_media_description(secondary);
+        sdp.media_descriptions.push_back(secondary);
 
         expected +=
             "m=audio 5004 RTP/AVP 98\r\n"
@@ -729,7 +725,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=sync-time:1234\r\n"
             "a=clock-deviation:1001/1000\r\n";
 
-        REQUIRE(sdp.to_string().value() == expected);
+        REQUIRE(rav::sdp::to_string(sdp) == expected);
     }
 
     SECTION("session_description | To string - regenerate Anubis SDP") {
@@ -759,11 +755,8 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=recvonly\r\n"
             "a=midi-pre2:50040 0,0;0,1\r\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_anubis_sdp);
+        auto result = rav::sdp::parse_session_description(k_anubis_sdp);
         REQUIRE(result);
-
-        auto sdp_txt = result->to_string().value();
-        fmt::println("{}", sdp_txt);
 
         // Slightly different order
         auto expected =
@@ -788,7 +781,7 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=source-filter: incl IN IP4 239.1.15.52 192.168.15.52\r\n"
             "a=framecount:48\r\n";
 
-        REQUIRE(sdp_txt == expected);
+        REQUIRE(rav::sdp::to_string(*result) == expected);
     }
 
     SECTION("session_description | SPS description from Mic-8") {
@@ -827,11 +820,11 @@ TEST_CASE("rav::sdp::SessionDescription") {
             "a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0\r\n"
             "a=mediaclk:direct=0\r\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_mic8_sdp);
+        auto result = rav::sdp::parse_session_description(k_mic8_sdp);
         REQUIRE(result);
 
         SECTION("Test origin") {
-            const auto& origin = result->origin();
+            const auto& origin = result->origin;
             REQUIRE(origin.username == "-");
             REQUIRE(origin.session_id == "1731086923289383");
             REQUIRE(origin.session_version == 0);
@@ -841,27 +834,27 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Test session name") {
-            REQUIRE(result->session_name() == "MADI-1");
+            REQUIRE(result->session_name == "MADI-1");
         }
 
         SECTION("Test time") {
-            auto time = result->time_active();
+            auto time = result->time_active;
             REQUIRE(time.start_time == 0);
             REQUIRE(time.stop_time == 0);
         }
 
         SECTION("Test clock-domain") {
-            auto clock_domain = result->clock_domain().value();
+            auto clock_domain = result->ravenna_clock_domain.value();
             REQUIRE(clock_domain.source == rav::sdp::RavennaClockDomain::SyncSource::ptp_v2);
             REQUIRE(clock_domain.domain == 0);
         }
 
         SECTION("Test sync-time") {
-            REQUIRE(result->sync_time().value() == 0);
+            REQUIRE(result->ravenna_sync_time.value() == 0);
         }
 
         SECTION("Test refclk on session") {
-            const auto& refclk = result->ref_clock();
+            const auto& refclk = result->reference_clock;
             REQUIRE(refclk.has_value());
             REQUIRE(refclk->source_ == rav::sdp::ReferenceClock::ClockSource::ptp);
             REQUIRE(refclk->ptp_version_ == rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008);
@@ -870,23 +863,22 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Test mediaclk attribute") {
-            auto media_clock = result->media_clock().value();
+            auto media_clock = result->media_clock.value();
             REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
             REQUIRE(media_clock.offset.value() == 0);
             REQUIRE_FALSE(media_clock.rate.has_value());
         }
 
         SECTION("Test group") {
-            const auto& group = result->get_group();
-            REQUIRE(group);
-            REQUIRE(group->type == rav::sdp::Group::Type::dup);
-            REQUIRE(group->tags.size() == 2);
-            REQUIRE(group->tags[0] == "primary");
-            REQUIRE(group->tags[1] == "secondary");
+            REQUIRE(result->group);
+            REQUIRE(result->group->type == rav::sdp::Group::Type::dup);
+            REQUIRE(result->group->tags.size() == 2);
+            REQUIRE(result->group->tags[0] == "primary");
+            REQUIRE(result->group->tags[1] == "secondary");
         }
 
         SECTION("Test media") {
-            const auto& descriptions = result->media_descriptions();
+            const auto& descriptions = result->media_descriptions;
             REQUIRE(descriptions.size() == 2);
 
             SECTION("Primary") {

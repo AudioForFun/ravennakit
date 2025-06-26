@@ -467,23 +467,9 @@ void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) 
         return;
     }
 
-    const auto sdp_debug_string = sdp->to_string("\n");
-    if (!sdp_debug_string) {
-        RAV_ERROR("Failed to build SDP debug string: {}", sdp_debug_string.error());
-        event.rtsp_connection.async_send_response(error_response);
-        return;
-    }
+    RAV_TRACE("SDP:\n{}", rav::sdp::to_string(*sdp, "\n"));
 
-    RAV_TRACE("SDP:\n{}", sdp_debug_string.value());
-
-    const auto sdp_string = sdp->to_string("\r\n");
-    if (!sdp_string) {
-        RAV_ERROR("Failed to encode SDP");
-        event.rtsp_connection.async_send_response(error_response);
-        return;
-    }
-
-    auto response = rtsp::Response(200, "OK", *sdp_string);
+    auto response = rtsp::Response(200, "OK", rav::sdp::to_string(*sdp));
     if (const auto* cseq = event.rtsp_request.rtsp_headers.get("cseq")) {
         response.rtsp_headers.set(*cseq);
     }
@@ -513,19 +499,13 @@ void rav::RavennaSender::send_announce() const {
         return;
     }
 
-    auto sdp_string = sdp->to_string("\r\n");
-    if (!sdp_string) {
-        RAV_ERROR("Failed to encode SDP");
-        return;
-    }
-
     const auto interface_address_string =
         network_interface_config_.get_interface_ipv4_address(Rank::primary()).to_string();
 
     rtsp::Request request;
     request.method = "ANNOUNCE";
     request.rtsp_headers.set("content-type", "application/sdp");
-    request.data = std::move(*sdp_string);
+    request.data = sdp::to_string(*sdp);
     request.uri =
         Uri::encode("rtsp", interface_address_string + ":" + std::to_string(rtsp_server_.port()), rtsp_path_by_name_);
     std::ignore = rtsp_server_.send_request(rtsp_path_by_name_, request);
@@ -576,11 +556,11 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
     };
 
     sdp::SessionDescription sdp;
-    sdp.set_origin(origin);
-    sdp.set_session_name(configuration_.session_name);
-    sdp.set_clock_domain(clock_domain);
-    sdp.set_ref_clock(ref_clock);
-    sdp.set_media_clock(media_clk);
+    sdp.origin = origin;
+    sdp.session_name = configuration_.session_name;
+    sdp.ravenna_clock_domain = clock_domain;
+    sdp.reference_clock = ref_clock;
+    sdp.media_clock = media_clk;
 
     auto num_active_destinations = 0;
     for (auto& dst : configuration_.destinations) {
@@ -638,11 +618,11 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
             group.tags.push_back(dst.interface_by_rank.to_ordinal_latin());
         }
 
-        sdp.add_media_description(std::move(media));
+        sdp.media_descriptions.push_back(std::move(media));
     }
 
     if (!group.tags.empty()) {
-        sdp.set_group(group);
+        sdp.group = group;
     }
 
     return sdp;

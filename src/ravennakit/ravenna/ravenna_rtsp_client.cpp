@@ -219,14 +219,14 @@ void rav::RavennaRtspClient::do_maintenance() {
 }
 
 void rav::RavennaRtspClient::handle_incoming_sdp(const std::string& sdp_text) {
-    auto sdp = sdp::SessionDescription::parse_new(sdp_text);
+    auto sdp = sdp::parse_session_description(sdp_text);
     if (!sdp) {
         RAV_ERROR("Failed to parse SDP: {}", sdp.error());
         return;
     }
 
     for (auto& session : sessions_) {
-        if (session.session_name == sdp->session_name()) {
+        if (session.session_name == sdp->session_name) {
             session.sdp_ = *sdp;
             session.sdp_text_ = sdp_text;
 

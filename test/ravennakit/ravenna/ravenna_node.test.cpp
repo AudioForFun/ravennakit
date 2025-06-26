@@ -29,8 +29,7 @@ TEST_CASE("rav::RavennaNode") {
     receiver1.enabled = false;
     receiver1.session_name = "Receiver 1";
     receiver1.sdp =
-        rav::sdp::SessionDescription::parse_new("v=0\r\no=- 13 0 IN IP4 192.168.15.52\r\ns=Anubis_610120_13\r\n")
-            .value();
+        rav::sdp::parse_session_description("v=0\r\no=- 13 0 IN IP4 192.168.15.52\r\ns=Anubis_610120_13\r\n").value();
 
     rav::RavennaReceiver::Configuration receiver2;
     receiver2.auto_update_sdp = true;
@@ -38,8 +37,7 @@ TEST_CASE("rav::RavennaNode") {
     receiver2.enabled = false;
     receiver2.session_name = "Receiver 2";
     receiver2.sdp =
-        rav::sdp::SessionDescription::parse_new("v=0\r\no=- 13 0 IN IP4 192.168.15.52\r\ns=Anubis_610120_13\r\n")
-            .value();
+        rav::sdp::parse_session_description("v=0\r\no=- 13 0 IN IP4 192.168.15.52\r\ns=Anubis_610120_13\r\n").value();
 
     rav::RavennaSender::Destination primary;
     primary.enabled = true;

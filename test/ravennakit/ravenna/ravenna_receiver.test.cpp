@@ -38,7 +38,7 @@ TEST_CASE("rav::RavennaReceiver") {
             "a=recvonly\r\n"
             "a=midi-pre2:50040 0,0;0,1\r\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_anubis_sdp);
+        auto result = rav::sdp::parse_session_description(k_anubis_sdp);
         REQUIRE(result);
 
         auto parameters = rav::RavennaReceiver::create_audio_receiver_parameters(*result);
@@ -95,7 +95,7 @@ TEST_CASE("rav::RavennaReceiver") {
             "a=ts-refclk:ptp=IEEE1588-2008:00-0B-72-FF-FE-07-DC-FC:0\r\n"
             "a=mediaclk:direct=0\r\n";
 
-        auto result = rav::sdp::SessionDescription::parse_new(k_mic8_sdp);
+        auto result = rav::sdp::parse_session_description(k_mic8_sdp);
         REQUIRE(result);
 
         auto parameters = rav::RavennaReceiver::create_audio_receiver_parameters(*result);
@@ -129,7 +129,7 @@ TEST_CASE("rav::RavennaReceiver") {
         config.enabled = false;
         config.delay_frames = 480;
         config.sdp =
-            rav::sdp::SessionDescription::parse_new("v=0\r\no=- 1731086923289383 0 IN IP4 192.168.4.8\r\n").value();
+            rav::sdp::parse_session_description("v=0\r\no=- 1731086923289383 0 IN IP4 192.168.4.8\r\n").value();
 
         rav::test_ravenna_receiver_configuration_json(config, boost::json::value_from(config));
 
@@ -154,7 +154,7 @@ TEST_CASE("rav::RavennaReceiver") {
         config.enabled = false;
         config.delay_frames = 480;
         config.sdp =
-            rav::sdp::SessionDescription::parse_new("v=0\r\no=- 1731086923289383 0 IN IP4 192.168.4.8\r\n").value();
+            rav::sdp::parse_session_description("v=0\r\no=- 1731086923289383 0 IN IP4 192.168.4.8\r\n").value();
 
         auto json = boost::json::value_from(config);
         auto restored = boost::json::value_to<rav::RavennaReceiver::Configuration>(json);
@@ -191,6 +191,5 @@ void rav::test_ravenna_receiver_configuration_json(
     REQUIRE(json.at("auto_update_sdp") == config.auto_update_sdp);
     REQUIRE(json.at("enabled") == config.enabled);
     REQUIRE(json.at("delay_frames") == config.delay_frames);
-    auto sdp = config.sdp.to_string().value();
-    REQUIRE(json.at("sdp").as_string() == sdp);
+    REQUIRE(json.at("sdp").as_string() == rav::sdp::to_string(config.sdp));
 }
