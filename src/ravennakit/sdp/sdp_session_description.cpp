@@ -51,7 +51,7 @@ rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 'c': {
-                auto result = ConnectionInfoField::parse_new(*line);
+                auto result = parse_connection_info(*line);
                 if (!result) {
                     return tl::unexpected(result.error());
                 }
@@ -63,7 +63,7 @@ rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 't': {
-                auto time_active = parse_time_active_field(*line);
+                auto time_active = parse_time_active(*line);
                 if (!time_active) {
                     return tl::unexpected(time_active.error());
                 }
@@ -258,11 +258,7 @@ tl::expected<std::string, std::string> rav::sdp::SessionDescription::to_string(c
 
     // Connection info
     if (connection_info_.has_value()) {
-        auto connection = connection_info_->to_string();
-        if (!connection) {
-            return connection.error();
-        }
-        fmt::format_to(std::back_inserter(sdp), "{}{}", connection.value(), newline);
+        fmt::format_to(std::back_inserter(sdp), "{}{}", sdp::to_string(*connection_info_), newline);
     }
 
     // Clock domain

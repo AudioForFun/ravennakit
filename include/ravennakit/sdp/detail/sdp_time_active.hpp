@@ -32,7 +32,7 @@ struct TimeActiveField {
  * @param line The string to parse.
  * @return A pair containing the parse result and the time field.
  */
-[[nodiscard]] tl::expected<TimeActiveField, std::string> parse_time_active_field(std::string_view line);
+[[nodiscard]] tl::expected<TimeActiveField, std::string> parse_time_active(std::string_view line);
 
 /**
  * Converts the time field to an SDP compatible string.

@@ -12,7 +12,7 @@
 
 #include "ravennakit/core/string_parser.hpp"
 
-tl::expected<rav::sdp::TimeActiveField, std::string> rav::sdp::parse_time_active_field(std::string_view line) {
+tl::expected<rav::sdp::TimeActiveField, std::string> rav::sdp::parse_time_active(std::string_view line) {
     StringParser parser(line);
 
     if (!parser.skip("t=")) {

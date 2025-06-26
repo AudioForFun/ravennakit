@@ -13,42 +13,7 @@
 #include "ravennakit/core/string_parser.hpp"
 #include "ravennakit/sdp/detail/sdp_constants.hpp"
 
-tl::expected<void, std::string> rav::sdp::ConnectionInfoField::validate() const {
-    if (network_type == NetwType::undefined) {
-        return tl::unexpected("connection: network type is undefined");
-    }
-    if (address_type == AddrType::undefined) {
-        return tl::unexpected("connection: address type is undefined");
-    }
-    if (address.empty()) {
-        return tl::unexpected("connection: address is empty");
-    }
-    if (address_type == AddrType::ipv4) {
-        if (!ttl.has_value()) {
-            return tl::unexpected("connection: ttl is required for ipv4 address");
-        }
-    } else if (address_type == AddrType::ipv6) {
-        if (ttl.has_value()) {
-            return tl::unexpected("connection: ttl is not allowed for ipv6 address");
-        }
-    }
-    return {};
-}
-
-tl::expected<std::string, std::string> rav::sdp::ConnectionInfoField::to_string() const {
-    auto result = validate();
-    if (!validate()) {
-        return tl::unexpected(result.error());
-    }
-    return fmt::format(
-        "c={} {} {}{}{}", sdp::to_string(network_type), sdp::to_string(address_type), address,
-        ttl.has_value() ? "/" + std::to_string(ttl.value()) : "",
-        number_of_addresses.has_value() ? "/" + std::to_string(number_of_addresses.value()) : ""
-    );
-}
-
-tl::expected<rav::sdp::ConnectionInfoField, std::string>
-rav::sdp::ConnectionInfoField::parse_new(const std::string_view line) {
+tl::expected<rav::sdp::ConnectionInfoField, std::string> rav::sdp::parse_connection_info(const std::string_view line) {
     StringParser parser(line);
 
     if (!parser.skip("c=")) {
@@ -59,8 +24,8 @@ rav::sdp::ConnectionInfoField::parse_new(const std::string_view line) {
 
     // Network type
     if (const auto network_type = parser.split(' ')) {
-        if (*network_type == sdp::k_sdp_inet) {
-            info.network_type = sdp::NetwType::internet;
+        if (*network_type == k_sdp_inet) {
+            info.network_type = NetwType::internet;
         } else {
             return tl::unexpected("connection: invalid network type");
         }
@@ -70,10 +35,10 @@ rav::sdp::ConnectionInfoField::parse_new(const std::string_view line) {
 
     // Address type
     if (const auto address_type = parser.split(' ')) {
-        if (*address_type == sdp::k_sdp_ipv4) {
-            info.address_type = sdp::AddrType::ipv4;
-        } else if (*address_type == sdp::k_sdp_ipv6) {
-            info.address_type = sdp::AddrType::ipv6;
+        if (*address_type == k_sdp_ipv4) {
+            info.address_type = AddrType::ipv4;
+        } else if (*address_type == k_sdp_ipv6) {
+            info.address_type = AddrType::ipv6;
         } else {
             return tl::unexpected("connection: invalid address type");
         }
@@ -91,7 +56,7 @@ rav::sdp::ConnectionInfoField::parse_new(const std::string_view line) {
     }
 
     // Parse optional ttl and number of addresses
-    if (info.address_type == sdp::AddrType::ipv4) {
+    if (info.address_type == AddrType::ipv4) {
         if (auto ttl = parser.read_int<int32_t>()) {
             info.ttl = *ttl;
         } else {
@@ -117,4 +82,34 @@ rav::sdp::ConnectionInfoField::parse_new(const std::string_view line) {
     }
 
     return info;
+}
+
+std::string rav::sdp::to_string(const ConnectionInfoField& field) {
+    return fmt::format(
+        "c={} {} {}{}{}", to_string(field.network_type), to_string(field.address_type), field.address,
+        field.ttl.has_value() ? "/" + std::to_string(field.ttl.value()) : "",
+        field.number_of_addresses.has_value() ? "/" + std::to_string(field.number_of_addresses.value()) : ""
+    );
+}
+
+tl::expected<void, std::string> rav::sdp::validate(const ConnectionInfoField& field) {
+    if (field.network_type == NetwType::undefined) {
+        return tl::unexpected("connection: network type is undefined");
+    }
+    if (field.address_type == AddrType::undefined) {
+        return tl::unexpected("connection: address type is undefined");
+    }
+    if (field.address.empty()) {
+        return tl::unexpected("connection: address is empty");
+    }
+    if (field.address_type == AddrType::ipv4) {
+        if (!field.ttl.has_value()) {
+            return tl::unexpected("connection: ttl is required for ipv4 address");
+        }
+    } else if (field.address_type == AddrType::ipv6) {
+        if (field.ttl.has_value()) {
+            return tl::unexpected("connection: ttl is not allowed for ipv6 address");
+        }
+    }
+    return {};
 }

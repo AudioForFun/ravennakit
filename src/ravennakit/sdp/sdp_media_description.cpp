@@ -432,11 +432,7 @@ tl::expected<std::string, std::string> rav::sdp::MediaDescription::to_string(con
 
     // Connection info
     for (const auto& conn : connection_infos_) {
-        const auto txt = conn.to_string();
-        if (!txt) {
-            return tl::make_unexpected(validated.error());
-        }
-        fmt::format_to(std::back_inserter(result), "{}{}", txt.value(), newline);
+        fmt::format_to(std::back_inserter(result), "{}{}", sdp::to_string(conn), newline);
     }
 
     // Session information

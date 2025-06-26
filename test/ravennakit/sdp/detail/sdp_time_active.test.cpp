@@ -14,19 +14,19 @@
 
 TEST_CASE("rav::sdp::TimeActiveField") {
     SECTION("Test time field") {
-        auto time = rav::sdp::parse_time_active_field("t=123456789 987654321");
+        auto time = rav::sdp::parse_time_active("t=123456789 987654321");
         REQUIRE(time);
         REQUIRE(time->start_time == 123456789);
         REQUIRE(time->stop_time == 987654321);
     }
 
     SECTION("Test invalid time field") {
-        auto result = rav::sdp::parse_time_active_field("t=123456789 ");
+        auto result = rav::sdp::parse_time_active("t=123456789 ");
         REQUIRE_FALSE(result);
     }
 
     SECTION("Test invalid time field") {
-        auto result = rav::sdp::parse_time_active_field("t=");
+        auto result = rav::sdp::parse_time_active("t=");
         REQUIRE_FALSE(result);
     }
 }

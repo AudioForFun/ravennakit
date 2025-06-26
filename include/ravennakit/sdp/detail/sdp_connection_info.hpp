@@ -29,25 +29,25 @@ struct ConnectionInfoField {
     std::optional<int32_t> ttl;
     /// Optional number of addresses
     std::optional<int32_t> number_of_addresses;
-
-    /**
-     * Validates the connection info.
-     * @return An error message if the connection info is invalid.
-     */
-    [[nodiscard]] tl::expected<void, std::string> validate() const;
-
-    /**
-     * Converts the connection info to a string.
-     * @return The connection info as a string.
-     */
-    [[nodiscard]] tl::expected<std::string, std::string> to_string() const;
-
-    /**
-     * Parses a connection info field from a string.
-     * @param line The string to parse.
-     * @return A result object containing either the newly parsed value, or an error string.
-     */
-    static tl::expected<ConnectionInfoField, std::string> parse_new(std::string_view line);
 };
 
-}
+/**
+ * Parses a connection info field from a string.
+ * @param line The string to parse.
+ * @return A result object containing either the newly parsed value, or an error string.
+ */
+tl::expected<ConnectionInfoField, std::string> parse_connection_info(std::string_view line);
+
+/**
+ * Converts the connection info to a string.
+ * @return The connection info as a string.
+ */
+std::string to_string(const ConnectionInfoField& field);
+
+/**
+ * Validates the connection info.
+ * @return An error message if the connection info is invalid.
+ */
+[[nodiscard]] tl::expected<void, std::string> validate(const ConnectionInfoField& field);
+
+}  // namespace rav::sdp
