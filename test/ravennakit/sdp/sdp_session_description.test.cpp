@@ -149,9 +149,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
 
             SECTION("Test mediaclk on media") {
                 const auto& media_clock = media.media_clock().value();
-                REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-                REQUIRE(media_clock.offset().value() == 0);
-                REQUIRE_FALSE(media_clock.rate().has_value());
+                REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+                REQUIRE(media_clock.offset.value() == 0);
+                REQUIRE_FALSE(media_clock.rate.has_value());
             }
 
             SECTION("Test source-filter on media") {
@@ -193,9 +193,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
 
         SECTION("Test mediaclk attribute") {
             auto media_clock = result->media_clock().value();
-            REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-            REQUIRE(media_clock.offset().value() == 0);
-            REQUIRE_FALSE(media_clock.rate().has_value());
+            REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+            REQUIRE(media_clock.offset.value() == 0);
+            REQUIRE_FALSE(media_clock.rate.has_value());
         }
 
         SECTION("Test clock-domain") {
@@ -261,9 +261,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
         REQUIRE(refclk.domain() == 0);
         REQUIRE(media.media_clock().has_value());
         const auto& media_clock = media.media_clock().value();
-        REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-        REQUIRE(media_clock.offset().value() == 963214424);
-        REQUIRE_FALSE(media_clock.rate().has_value());
+        REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+        REQUIRE(media_clock.offset.value() == 963214424);
+        REQUIRE_FALSE(media_clock.rate.has_value());
     }
 
     SECTION("session_description | description from AES67 spec 2") {
@@ -324,9 +324,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
         REQUIRE(refclk.domain() == 0);
         REQUIRE(media.media_clock().has_value());
         const auto& media_clock = media.media_clock().value();
-        REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-        REQUIRE(media_clock.offset().value() == 2216659908);
-        REQUIRE_FALSE(media_clock.rate().has_value());
+        REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+        REQUIRE(media_clock.offset.value() == 2216659908);
+        REQUIRE_FALSE(media_clock.rate.has_value());
     }
 
     SECTION("session_description | source filters") {
@@ -502,9 +502,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Media clock attribute") {
-            rav::sdp::MediaClockSource media_clock(
+            rav::sdp::MediaClockSource media_clock {
                 rav::sdp::MediaClockSource::ClockMode::direct, 0, rav::Fraction<int>({1000, 1001})
-            );
+            };
             sdp.set_media_clock(media_clock);
             expected += "a=mediaclk:direct=0 rate=1000/1001\r\n";
             REQUIRE(sdp.to_string().value() == expected);
@@ -627,9 +627,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
         }
 
         SECTION("Media clock attribute") {
-            rav::sdp::MediaClockSource media_clock(
+            rav::sdp::MediaClockSource media_clock {
                 rav::sdp::MediaClockSource::ClockMode::direct, 0, rav::Fraction<int>({1000, 1001})
-            );
+            };
             sdp.set_media_clock(media_clock);
             expected += "a=mediaclk:direct=0 rate=1000/1001\r\n";
             REQUIRE(sdp.to_string().value() == expected);
@@ -861,9 +861,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
 
         SECTION("Test mediaclk attribute") {
             auto media_clock = result->media_clock().value();
-            REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-            REQUIRE(media_clock.offset().value() == 0);
-            REQUIRE_FALSE(media_clock.rate().has_value());
+            REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+            REQUIRE(media_clock.offset.value() == 0);
+            REQUIRE_FALSE(media_clock.rate.has_value());
         }
 
         SECTION("Test group") {
@@ -917,9 +917,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
 
                 SECTION("Test mediaclk on media") {
                     const auto& media_clock = media.media_clock().value();
-                    REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-                    REQUIRE(media_clock.offset().value() == 0);
-                    REQUIRE_FALSE(media_clock.rate().has_value());
+                    REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+                    REQUIRE(media_clock.offset.value() == 0);
+                    REQUIRE_FALSE(media_clock.rate.has_value());
                 }
 
                 SECTION("Test source-filter on media") {
@@ -983,9 +983,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
 
                 SECTION("Test mediaclk on media") {
                     const auto& media_clock = media.media_clock().value();
-                    REQUIRE(media_clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-                    REQUIRE(media_clock.offset().value() == 0);
-                    REQUIRE_FALSE(media_clock.rate().has_value());
+                    REQUIRE(media_clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+                    REQUIRE(media_clock.offset.value() == 0);
+                    REQUIRE_FALSE(media_clock.rate.has_value());
                 }
 
                 SECTION("Test source-filter on media") {

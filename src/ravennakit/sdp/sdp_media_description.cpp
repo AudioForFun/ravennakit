@@ -150,7 +150,7 @@ tl::expected<void, std::string> rav::sdp::MediaDescription::parse_attribute(cons
         }
     } else if (key == MediaClockSource::k_attribute_name) {
         if (const auto value = parser.read_until_end()) {
-            auto clock = sdp::MediaClockSource::parse_new(*value);
+            auto clock = parse_media_clock_source(*value);
             if (!clock) {
                 return tl::unexpected(clock.error());
             }
@@ -236,7 +236,7 @@ uint16_t rav::sdp::MediaDescription::port() const {
     return port_;
 }
 
-void rav::sdp::MediaDescription::set_port(uint16_t port) {
+void rav::sdp::MediaDescription::set_port(const uint16_t port) {
     port_ = port;
 }
 
@@ -477,11 +477,7 @@ tl::expected<std::string, std::string> rav::sdp::MediaDescription::to_string(con
 
     // Media clock
     if (media_clock_) {
-        auto clock = media_clock_->to_string();
-        if (!clock) {
-            return tl::make_unexpected(clock.error());
-        }
-        fmt::format_to(std::back_inserter(result), "{}{}", clock.value(), newline);
+        fmt::format_to(std::back_inserter(result), "{}{}", sdp::to_string(*media_clock_), newline);
     }
 
     // Clock domain (RAVENNA Specific)

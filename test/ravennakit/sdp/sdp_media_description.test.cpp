@@ -106,11 +106,11 @@ TEST_CASE("rav::sdp::MediaDescription") {
             media->parse_attribute("a=mediaclk:direct=5 rate=48000/1");
             REQUIRE(media->media_clock().has_value());
             const auto& clock = media->media_clock().value();
-            REQUIRE(clock.mode() == rav::sdp::MediaClockSource::ClockMode::direct);
-            REQUIRE(clock.offset().value() == 5);
-            REQUIRE(clock.rate().has_value());
-            REQUIRE(clock.rate().value().numerator == 48000);
-            REQUIRE(clock.rate().value().denominator == 1);
+            REQUIRE(clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
+            REQUIRE(clock.offset.value() == 5);
+            REQUIRE(clock.rate.has_value());
+            REQUIRE(clock.rate.value().numerator == 48000);
+            REQUIRE(clock.rate.value().denominator == 1);
         }
 
         SECTION("Test clock-deviation attribute") {

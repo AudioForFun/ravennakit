@@ -282,11 +282,7 @@ tl::expected<std::string, std::string> rav::sdp::SessionDescription::to_string(c
 
     // Media clock source
     if (media_clock_.has_value()) {
-        auto clock = media_clock_->to_string();
-        if (!clock) {
-            return clock;
-        }
-        fmt::format_to(std::back_inserter(sdp), "{}{}", clock.value(), newline);
+        fmt::format_to(std::back_inserter(sdp), "{}{}", sdp::to_string(*media_clock_), newline);
     }
 
     // Source filters
@@ -356,7 +352,7 @@ tl::expected<void, std::string> rav::sdp::SessionDescription::parse_attribute(co
         }
     } else if (key == MediaClockSource::k_attribute_name) {
         if (const auto value = parser.read_until_end()) {
-            auto clock = MediaClockSource::parse_new(*value);
+            auto clock = parse_media_clock_source(*value);
             if (!clock) {
                 return tl::unexpected(clock.error());
             }
