@@ -531,7 +531,8 @@ TEST_CASE("rav::sdp::SessionDescription") {
         md1.set_max_ptime(60.f);
         md1.set_direction(rav::sdp::MediaDirection::recvonly);
         md1.set_ref_clock(
-            {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1}
+            {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1
+            }
         );
         md1.set_media_clock(
             {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::Fraction<int>>({48000, 1})}
@@ -579,9 +580,9 @@ TEST_CASE("rav::sdp::SessionDescription") {
         REQUIRE(sdp.to_string().value() == expected);
 
         rav::sdp::Group group;
-        group.set_type(rav::sdp::Group::Type::dup);
-        group.add_tag("primary");
-        group.add_tag("secondary");
+        group.type = rav::sdp::Group::Type::dup;
+        group.tags.push_back("primary");
+        group.tags.push_back("secondary");
 
         sdp.set_group(group);
 
@@ -655,7 +656,8 @@ TEST_CASE("rav::sdp::SessionDescription") {
         primary.set_max_ptime(60.f);
         primary.set_direction(rav::sdp::MediaDirection::recvonly);
         primary.set_ref_clock(
-            {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1}
+            {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1
+            }
         );
         primary.set_media_clock(
             {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::Fraction<int>>({48000, 1})}
@@ -691,7 +693,8 @@ TEST_CASE("rav::sdp::SessionDescription") {
         secondary.set_max_ptime(60.f);
         secondary.set_direction(rav::sdp::MediaDirection::recvonly);
         secondary.set_ref_clock(
-            {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1}
+            {rav::sdp::ReferenceClock::ClockSource::ptp, rav::sdp::ReferenceClock::PtpVersion::IEEE_1588_2008, "gmid", 1
+            }
         );
         secondary.set_media_clock(
             {rav::sdp::MediaClockSource::ClockMode::direct, 5, std::optional<rav::Fraction<int>>({48000, 1})}
@@ -866,12 +869,10 @@ TEST_CASE("rav::sdp::SessionDescription") {
         SECTION("Test group") {
             const auto& group = result->get_group();
             REQUIRE(group);
-            REQUIRE(group->get_type() == rav::sdp::Group::Type::dup);
-
-            auto tags = group->get_tags();
-            REQUIRE(tags.size() == 2);
-            REQUIRE(tags[0] == "primary");
-            REQUIRE(tags[1] == "secondary");
+            REQUIRE(group->type == rav::sdp::Group::Type::dup);
+            REQUIRE(group->tags.size() == 2);
+            REQUIRE(group->tags[0] == "primary");
+            REQUIRE(group->tags[1] == "secondary");
         }
 
         SECTION("Test media") {

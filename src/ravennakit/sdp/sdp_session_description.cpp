@@ -39,7 +39,7 @@ rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 'o': {
-                auto result = sdp::OriginField::parse_new(*line);
+                auto result = OriginField::parse_new(*line);
                 if (!result) {
                     return tl::unexpected(result.error());
                 }
@@ -71,7 +71,7 @@ rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 'm': {
-                auto desc = sdp::MediaDescription::parse_new(*line);
+                auto desc = MediaDescription::parse_new(*line);
                 if (!desc) {
                     return tl::unexpected(desc.error());
                 }
@@ -156,7 +156,7 @@ rav::sdp::MediaDirection rav::sdp::SessionDescription::direction() const {
     if (media_direction_.has_value()) {
         return *media_direction_;
     }
-    return sdp::MediaDirection::sendrecv;
+    return MediaDirection::sendrecv;
 }
 
 std::optional<rav::sdp::ReferenceClock> rav::sdp::SessionDescription::ref_clock() const {
@@ -249,11 +249,7 @@ tl::expected<std::string, std::string> rav::sdp::SessionDescription::to_string(c
 
     // Group duplication
     if (group_.has_value()) {
-        auto group = group_->to_string();
-        if (!group) {
-            return group;
-        }
-        fmt::format_to(std::back_inserter(sdp), "{}{}", group.value(), newline);
+        fmt::format_to(std::back_inserter(sdp), "{}{}", sdp::to_string(*group_), newline);
     }
 
     // Connection info
@@ -342,25 +338,25 @@ tl::expected<void, std::string> rav::sdp::SessionDescription::parse_attribute(co
         return tl::unexpected("attribute: expecting key");
     }
 
-    if (key == sdp::k_sdp_sendrecv) {
-        media_direction_ = sdp::MediaDirection::sendrecv;
-    } else if (key == sdp::k_sdp_sendonly) {
-        media_direction_ = sdp::MediaDirection::sendonly;
-    } else if (key == sdp::k_sdp_recvonly) {
-        media_direction_ = sdp::MediaDirection::recvonly;
-    } else if (key == sdp::k_sdp_inactive) {
-        media_direction_ = sdp::MediaDirection::inactive;
-    } else if (key == sdp::k_sdp_ts_refclk) {
+    if (key == k_sdp_sendrecv) {
+        media_direction_ = MediaDirection::sendrecv;
+    } else if (key == k_sdp_sendonly) {
+        media_direction_ = MediaDirection::sendonly;
+    } else if (key == k_sdp_recvonly) {
+        media_direction_ = MediaDirection::recvonly;
+    } else if (key == k_sdp_inactive) {
+        media_direction_ = MediaDirection::inactive;
+    } else if (key == k_sdp_ts_refclk) {
         if (const auto value = parser.read_until_end()) {
-            auto ref_clock = sdp::ReferenceClock::parse_new(*value);
+            auto ref_clock = ReferenceClock::parse_new(*value);
             if (!ref_clock) {
                 return tl::unexpected(ref_clock.error());
             }
             reference_clock_ = std::move(*ref_clock);
         }
-    } else if (key == sdp::MediaClockSource::k_attribute_name) {
+    } else if (key == MediaClockSource::k_attribute_name) {
         if (const auto value = parser.read_until_end()) {
-            auto clock = sdp::MediaClockSource::parse_new(*value);
+            auto clock = MediaClockSource::parse_new(*value);
             if (!clock) {
                 return tl::unexpected(clock.error());
             }
@@ -392,7 +388,7 @@ tl::expected<void, std::string> rav::sdp::SessionDescription::parse_attribute(co
         }
     } else if (key == k_sdp_group) {
         if (const auto value = parser.read_until_end()) {
-            auto group = Group::parse_new(*value);
+            auto group = parse_group(*value);
             if (!group.has_value()) {
                 return tl::unexpected(group.error());
             }

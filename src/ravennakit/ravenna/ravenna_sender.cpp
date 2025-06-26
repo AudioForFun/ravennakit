@@ -9,12 +9,9 @@
  */
 
 #include "ravennakit/ravenna/ravenna_sender.hpp"
-#include "ravennakit/ravenna/ravenna_sender.hpp"
-
 #include "ravennakit/aes67/aes67_constants.hpp"
 #include "ravennakit/core/audio/audio_data.hpp"
 #include "ravennakit/nmos/detail/nmos_media_types.hpp"
-#include "ravennakit/rtp/rtp_packet_view.hpp"
 
 #include <boost/uuid/string_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -638,13 +635,13 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
 
         if (num_active_destinations > 1) {
             media.set_mid(dst.interface_by_rank.to_ordinal_latin());
-            group.add_tag(dst.interface_by_rank.to_ordinal_latin());
+            group.tags.push_back(dst.interface_by_rank.to_ordinal_latin());
         }
 
         sdp.add_media_description(std::move(media));
     }
 
-    if (!group.empty()) {
+    if (!group.tags.empty()) {
         sdp.set_group(group);
     }
 
@@ -951,13 +948,13 @@ rav::tag_invoke(const boost::json::value_to_tag<RavennaSender::Destination>&, co
 
 rav::RavennaSender::Configuration
 rav::tag_invoke(const boost::json::value_to_tag<RavennaSender::Configuration>&, const boost::json::value& jv) {
-    rav::RavennaSender::Configuration config;
+    RavennaSender::Configuration config;
     config.session_name = jv.at("session_name").as_string();
-    config.destinations = boost::json::value_to<std::vector<rav::RavennaSender::Destination>>(jv.at("destinations"));
+    config.destinations = boost::json::value_to<std::vector<RavennaSender::Destination>>(jv.at("destinations"));
     config.ttl = jv.at("ttl").to_number<int32_t>();
     config.payload_type = jv.at("payload_type").to_number<uint8_t>();
-    config.packet_time = boost::json::value_to<rav::aes67::PacketTime>(jv.at("packet_time"));
-    config.audio_format = boost::json::value_to<rav::AudioFormat>(jv.at("audio_format"));
+    config.packet_time = boost::json::value_to<aes67::PacketTime>(jv.at("packet_time"));
+    config.audio_format = boost::json::value_to<AudioFormat>(jv.at("audio_format"));
     config.enabled = jv.at("enabled").as_bool();
 
     return config;

@@ -298,12 +298,12 @@ rav::RavennaReceiver::create_audio_receiver_parameters(const sdp::SessionDescrip
                 break;  // No group found, treating the found stream as the primary
             }
 
-            if (group->get_type() != sdp::Group::Type::dup) {
-                RAV_WARNING("Unsupported group type: {}", static_cast<int>(group->get_type()));
+            if (group->type != sdp::Group::Type::dup) {
+                RAV_WARNING("Unsupported group type: {}", static_cast<int>(group->type));
                 break;  // Unsupported group type
             }
 
-            auto tags = group->get_tags();
+            auto tags = group->tags;
             if (std::find(tags.begin(), tags.end(), *mid) == tags.end()) {
                 RAV_WARNING("Mid '{}' not found in group tags", *mid);
                 break;  // Mid not found in group tags
