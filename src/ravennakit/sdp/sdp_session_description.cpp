@@ -39,7 +39,7 @@ rav::sdp::SessionDescription::parse_new(const std::string& sdp_text) {
                 break;
             }
             case 'o': {
-                auto result = OriginField::parse_new(*line);
+                auto result = parse_origin(*line);
                 if (!result) {
                     return tl::unexpected(result.error());
                 }
@@ -235,11 +235,7 @@ tl::expected<std::string, std::string> rav::sdp::SessionDescription::to_string(c
     fmt::format_to(std::back_inserter(sdp), "v={}{}", version_, newline);
 
     // Origin
-    auto origin = origin_.to_string();
-    if (!origin) {
-        return origin;
-    }
-    fmt::format_to(std::back_inserter(sdp), "{}{}", origin.value(), newline);
+    fmt::format_to(std::back_inserter(sdp), "{}{}", sdp::to_string(origin_), newline);
 
     // Session name
     fmt::format_to(std::back_inserter(sdp), "s={}{}", session_name_.empty() ? "-" : session_name(), newline);

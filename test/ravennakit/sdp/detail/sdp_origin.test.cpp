@@ -14,7 +14,7 @@
 
 TEST_CASE("rav::sdp::OriginField") {
     SECTION("Parse origin line") {
-        auto origin = rav::sdp::OriginField::parse_new("o=- 13 0 IN IP4 192.168.15.52");
+        auto origin = rav::sdp::parse_origin("o=- 13 0 IN IP4 192.168.15.52");
         REQUIRE(origin);
         REQUIRE(origin->username == "-");
         REQUIRE(origin->session_id == "13");
@@ -24,16 +24,25 @@ TEST_CASE("rav::sdp::OriginField") {
         REQUIRE(origin->unicast_address == "192.168.15.52");
     }
 
-    SECTION("To string") {
+    SECTION("Validate") {
         rav::sdp::OriginField origin;
-        REQUIRE(origin.to_string().error() == "origin: session id is empty");
+        REQUIRE(rav::sdp::validate(origin).error() == "origin: session id is empty");
         origin.session_id = "13";
-        REQUIRE(origin.to_string().error() == "origin: unicast address is empty");
+        REQUIRE(rav::sdp::validate(origin).error() == "origin: unicast address is empty");
         origin.unicast_address = "192.168.15.52";
-        REQUIRE(origin.to_string().error() == "origin: network type is undefined");
+        REQUIRE(rav::sdp::validate(origin).error() == "origin: network type is undefined");
         origin.network_type = rav::sdp::NetwType::internet;
-        REQUIRE(origin.to_string().error() == "origin: address type is undefined");
+        REQUIRE(rav::sdp::validate(origin).error() == "origin: address type is undefined");
         origin.address_type = rav::sdp::AddrType::ipv4;
-        REQUIRE(origin.to_string().value() == "o=- 13 0 IN IP4 192.168.15.52");
+        REQUIRE(rav::sdp::validate(origin));
+    }
+
+    SECTION("") {
+        rav::sdp::OriginField origin;
+        origin.session_id = "13";
+        origin.unicast_address = "192.168.15.52";
+        origin.network_type = rav::sdp::NetwType::internet;
+        origin.address_type = rav::sdp::AddrType::ipv4;
+        REQUIRE(rav::sdp::to_string(origin) == "o=- 13 0 IN IP4 192.168.15.52");
     }
 }

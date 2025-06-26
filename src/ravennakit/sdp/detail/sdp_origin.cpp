@@ -12,39 +12,7 @@
 #include "ravennakit/core/string_parser.hpp"
 #include "ravennakit/sdp/detail/sdp_constants.hpp"
 
-tl::expected<void, std::string> rav::sdp::OriginField::validate() const {
-    if (session_id.empty()) {
-        return tl::unexpected("origin: session id is empty");
-    }
-
-    if (unicast_address.empty()) {
-        return tl::unexpected("origin: unicast address is empty");
-    }
-
-    if (network_type == NetwType::undefined) {
-        return tl::unexpected("origin: network type is undefined");
-    }
-
-    if (address_type == AddrType::undefined) {
-        return tl::unexpected("origin: address type is undefined");
-    }
-
-    return {};
-}
-
-tl::expected<std::string, std::string> rav::sdp::OriginField::to_string() const {
-    auto result = validate();
-    if (!result) {
-        return tl::unexpected(result.error());
-    }
-
-    return fmt::format(
-        "o={} {} {} {} {} {}", username.empty() ? "-" : username, session_id, session_version,
-        sdp::to_string(network_type), sdp::to_string(address_type), unicast_address
-    );
-}
-
-tl::expected<rav::sdp::OriginField, std::string> rav::sdp::OriginField::parse_new(std::string_view line) {
+tl::expected<rav::sdp::OriginField, std::string> rav::sdp::parse_origin(std::string_view line) {
     StringParser parser(line);
 
     if (!parser.skip("o=")) {
@@ -106,4 +74,31 @@ tl::expected<rav::sdp::OriginField, std::string> rav::sdp::OriginField::parse_ne
     }
 
     return o;
+}
+
+std::string rav::sdp::to_string(const OriginField& field) {
+    return fmt::format(
+        "o={} {} {} {} {} {}", field.username.empty() ? "-" : field.username, field.session_id, field.session_version,
+        to_string(field.network_type), to_string(field.address_type), field.unicast_address
+    );
+}
+
+tl::expected<void, std::string> rav::sdp::validate(const OriginField& field) {
+    if (field.session_id.empty()) {
+        return tl::unexpected("origin: session id is empty");
+    }
+
+    if (field.unicast_address.empty()) {
+        return tl::unexpected("origin: unicast address is empty");
+    }
+
+    if (field.network_type == NetwType::undefined) {
+        return tl::unexpected("origin: network type is undefined");
+    }
+
+    if (field.address_type == AddrType::undefined) {
+        return tl::unexpected("origin: address type is undefined");
+    }
+
+    return {};
 }
