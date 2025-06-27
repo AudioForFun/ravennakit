@@ -15,7 +15,6 @@
 #include "detail/ptp_measurement.hpp"
 #include "ravennakit/core/util/tracy.hpp"
 #include "ravennakit/core/util.hpp"
-#include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/math/running_average.hpp"
 #include "ravennakit/core/math/sliding_stats.hpp"
 #include "ravennakit/core/util/throttle.hpp"

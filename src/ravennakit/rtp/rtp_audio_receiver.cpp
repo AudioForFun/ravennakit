@@ -10,9 +10,9 @@
 
 #include "ravennakit/rtp/rtp_audio_receiver.hpp"
 
+#include "ravennakit/core/clock.hpp"
 #include "ravennakit/core/util/exclusive_access_guard.hpp"
 #include "ravennakit/core/audio/audio_data.hpp"
-#include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/types/int24.hpp"
 
 rav::rtp::AudioReceiver::AudioReceiver(boost::asio::io_context& io_context, Receiver& rtp_receiver) :
@@ -228,7 +228,7 @@ const char* rav::rtp::AudioReceiver::to_string(const State state) {
 }
 
 rav::rtp::AudioReceiver::StreamContext::StreamContext(Stream info) :
-    stream_info(std::move(info)), last_packet_time_ns(HighResolutionClock::now()) {}
+    stream_info(std::move(info)), last_packet_time_ns(clock::now_monotonic_high_resolution_ns()) {}
 
 void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_event) {
     TRACY_ZONE_SCOPED;
@@ -387,7 +387,7 @@ void rav::rtp::AudioReceiver::update_shared_context() {
 void rav::rtp::AudioReceiver::do_maintenance() {
     // Check if streams became are no longer receiving data
     // TODO: Make this global for all streams or stream specific
-    const auto now = HighResolutionClock::now();
+    const auto now = clock::now_monotonic_high_resolution_ns();
 
     for (auto& stream_context : stream_contexts_) {
         if (stream_context->state == State::ok || stream_context->state == State::ok_no_consumer) {

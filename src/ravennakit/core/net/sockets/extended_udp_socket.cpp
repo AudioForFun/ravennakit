@@ -9,9 +9,8 @@
  */
 
 #include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
-
+#include "ravennakit/core/clock.hpp"
 #include "ravennakit/core/util/tracy.hpp"
-#include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/platform/windows/wsa_recv_msg_function.hpp"
 #include "ravennakit/core/platform/windows/qos_flow.hpp"
 
@@ -52,7 +51,7 @@ size_t receive_from_socket(
         ec = boost::system::error_code(WSAGetLastError(), boost::system::system_category());
         return 0;
     }
-    recv_time = rav::HighResolutionClock::now();
+    recv_time = rav::clock::now_monotonic_high_resolution_ns();
 
     if (src_addr.sa_family == AF_INET) {
         const auto* addr_in = reinterpret_cast<const sockaddr_in*>(&src_addr);
@@ -105,7 +104,7 @@ size_t receive_from_socket(
     msg.msg_flags = 0;
 
     const ssize_t received_bytes = recvmsg(socket.native_handle(), &msg, 0);
-    recv_time = rav::HighResolutionClock::now();
+    recv_time = rav::clock::now_monotonic_high_resolution_ns();
     if (received_bytes < 0) {
         ec = boost::system::error_code(errno, boost::system::system_category());
         return 0;

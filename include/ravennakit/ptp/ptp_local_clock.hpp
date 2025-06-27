@@ -10,8 +10,8 @@
 
 #pragma once
 
+#include "ravennakit/core/clock.hpp"
 #include "ravennakit/core/util/tracy.hpp"
-#include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "types/ptp_timestamp.hpp"
 
 namespace rav::ptp {
@@ -127,7 +127,7 @@ class LocalClock {
     bool calibrated_ = false;
 
     static Timestamp system_monotonic_now() {
-        return Timestamp(HighResolutionClock::now());
+        return Timestamp(clock::now_monotonic_high_resolution_ns());
     }
 };
 

@@ -10,8 +10,11 @@
 
 #include "ravennakit/ravenna/ravenna_node.hpp"
 
-#include <utility>
+#include "ravennakit/core/platform/apple/priority.hpp"
+#include "ravennakit/core/platform/windows/thread_characteristics.hpp"
 #include "ravennakit/ravenna/ravenna_sender.hpp"
+
+#include <utility>
 
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)),
@@ -43,7 +46,17 @@ rav::RavennaNode::RavennaNode() :
         p.set_value(std::this_thread::get_id());
 #if RAV_APPLE
         pthread_setname_np("ravenna_node_maintenance");
+        constexpr auto min_packet_time = 125 * 1000;       // 125us
+        constexpr auto max_packet_time = 4 * 1000 * 1000;  // 4ms
+        if (!set_thread_realtime(min_packet_time, max_packet_time, max_packet_time * 2)) {
+            RAV_ERROR("Failed to set thread realtime");
+        }
 #endif
+
+#if RAV_WINDOWS
+        WindowsThreadCharacteristics set_thread_characteristics(TEXT("Pro Audio"));
+#endif
+
         while (true) {
             try {
                 while (!io_context_.stopped()) {
@@ -74,11 +87,11 @@ rav::RavennaNode::~RavennaNode() {
 
 std::future<tl::expected<rav::Id, std::string>>
 rav::RavennaNode::create_receiver(RavennaReceiver::Configuration initial_config) {
-    auto work = [this, initial_config]() mutable -> tl::expected<Id, std::string> {
+    auto work = [this, config = std::move(initial_config)]() mutable -> tl::expected<Id, std::string> {
         auto new_receiver =
             std::make_unique<RavennaReceiver>(io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next());
         new_receiver->set_network_interface_config(network_interface_config_);
-        auto result = new_receiver->set_configuration(initial_config);
+        auto result = new_receiver->set_configuration(std::move(config));
         if (!result) {
             RAV_ERROR("Failed to set receiver configuration: {}", result.error());
             return tl::unexpected(result.error());

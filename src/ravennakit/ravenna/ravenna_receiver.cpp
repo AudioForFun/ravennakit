@@ -12,7 +12,6 @@
 
 #include "ravennakit/aes67/aes67_packet_time.hpp"
 #include "ravennakit/core/audio/audio_data.hpp"
-#include "ravennakit/core/chrono/high_resolution_clock.hpp"
 #include "ravennakit/core/util/todo.hpp"
 #include "ravennakit/nmos/detail/nmos_media_types.hpp"
 #include "ravennakit/rtp/detail/rtp_filter.hpp"
