@@ -19,22 +19,39 @@
 
 namespace rav {
 
-inline bool set_thread_realtime(const int period_ms, const int computation_ms, const int constraint_ms) {
-    thread_time_constraint_policy time_constraint_policy{};
+[[nodiscard]] inline bool
+set_thread_realtime(const uint64_t period_ns, const uint64_t computation_ns, const uint64_t constraint_ns) {
+    RAV_ASSERT(
+        constraint_ns >= computation_ns,
+        "Because the constraint sets a maximum bound for computation, it must be larger than the value for computation."
+    );
+
+    thread_time_constraint_policy time_constraint_policy {};
     const thread_port_t thread_port = pthread_mach_thread_np(pthread_self());
 
     // https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/scheduler/scheduler.html
     // https://developer.apple.com/library/archive/qa/qa1398/_index.html
 
-    time_constraint_policy.period = period_ms;            // HZ/160
-    time_constraint_policy.computation = computation_ms;  // HZ/3300;
-    time_constraint_policy.constraint = constraint_ms;    // HZ/2200;
+    time_constraint_policy.period = static_cast<uint32_t>(mach_nanoseconds_to_absolute_time(period_ns));
+    time_constraint_policy.computation = static_cast<uint32_t>(mach_nanoseconds_to_absolute_time(computation_ns));
+    time_constraint_policy.constraint = static_cast<uint32_t>(mach_nanoseconds_to_absolute_time(constraint_ns));
     time_constraint_policy.preemptible = 1;
 
-    const int result = thread_policy_set(
+    int result = thread_policy_set(
         thread_port, THREAD_TIME_CONSTRAINT_POLICY, reinterpret_cast<thread_policy_t>(&time_constraint_policy),
         THREAD_TIME_CONSTRAINT_POLICY_COUNT
     );
+
+    if (result == KERN_INVALID_ARGUMENT && computation_ns > 50 * 1000 * 1000) {
+        // Taken from JUCE: testing has shown that passing a computation value > 50ms can lead to thread_policy_set
+        // returning an error indicating that an invalid argument was passed. If that happens this code tries to limit
+        // that value in the hope of resolving the issue.
+        time_constraint_policy.computation = 50 * 1000 * 1000;
+        result = thread_policy_set(
+            thread_port, THREAD_TIME_CONSTRAINT_POLICY, reinterpret_cast<thread_policy_t>(&time_constraint_policy),
+            THREAD_TIME_CONSTRAINT_POLICY_COUNT
+        );
+    }
 
     if (result != KERN_SUCCESS) {
         return false;
