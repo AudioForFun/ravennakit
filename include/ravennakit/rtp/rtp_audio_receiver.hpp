@@ -103,7 +103,7 @@ class AudioReceiver: public Receiver::Subscriber {
      * The timestamp will monotonically increase, but might have gaps because out-of-order and dropped packets.
      * @param callback The callback to call when data is received.
      */
-    SafeFunction<void(WrappingUint32 packet_timestamp)> on_data_received_callback;
+    SafeFunction<void(WrappingUint32 packet_timestamp)> on_data_received;
 
     /**
      * Sets a callback for when data is ready to be consumed.
@@ -113,13 +113,13 @@ class AudioReceiver: public Receiver::Subscriber {
      * basically lost, not lost but late packets) will be ignored.
      * @param callback The callback to call when data is ready to be consumed.
      */
-    SafeFunction<void(WrappingUint32 packet_timestamp)> on_data_ready_callback;
+    SafeFunction<void(WrappingUint32 packet_timestamp)> on_data_ready;
 
     /**
      * Sets a callback for when the state of the receiver changes.
      * @param callback The callback to call when the state changes.
      */
-    SafeFunction<void(const Stream& stream, State state)> on_state_changed_callback;
+    SafeFunction<void(const Stream& stream, State state)> on_state_changed;
 
     AudioReceiver(boost::asio::io_context& io_context, Receiver& rtp_receiver);
     ~AudioReceiver() override;

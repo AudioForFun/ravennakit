@@ -198,18 +198,6 @@ void rav::rtp::AudioReceiver::set_interfaces(const std::map<Rank, boost::asio::i
     start();
 }
 
-void rav::rtp::AudioReceiver::on_data_received(std::function<void(WrappingUint32 packet_timestamp)> callback) {
-    on_data_received_callback_ = std::move(callback);
-}
-
-void rav::rtp::AudioReceiver::on_data_ready(std::function<void(WrappingUint32 packet_timestamp)> callback) {
-    on_data_ready_callback_ = std::move(callback);
-}
-
-void rav::rtp::AudioReceiver::on_state_changed(std::function<void(const Stream& stream, State state)> callback) {
-    on_state_changed_callback_ = std::move(callback);
-}
-
 const char* rav::rtp::AudioReceiver::to_string(const State state) {
     switch (state) {
         case State::idle:
@@ -306,20 +294,16 @@ void rav::rtp::AudioReceiver::on_rtp_packet(const Receiver::RtpPacketEvent& rtp_
         if (const auto diff = seq_.update(rtp_event.packet.sequence_number())) {
             if (diff >= 1) {
                 // Only call back with monotonically increasing sequence numbers
-                if (on_data_received_callback_) {
-                    on_data_received_callback_(packet_timestamp);
-                }
+                on_data_received(packet_timestamp);
             }
 
             if (packet_timestamp - lock->delay_frames >= *rtp_ts_) {
                 // Make sure to inserts calls for missing packets
                 for (uint16_t i = 0; i < *diff; ++i) {
-                    if (on_data_ready_callback_) {
-                        on_data_ready_callback_(
-                            packet_timestamp - lock->delay_frames
-                            - (*diff - 1u - i) * stream_context->stream_info.packet_time_frames
-                        );
-                    }
+                    on_data_ready(
+                        packet_timestamp - lock->delay_frames
+                        - (*diff - 1u - i) * stream_context->stream_info.packet_time_frames
+                    );
                 }
             }
         }
@@ -467,9 +451,7 @@ void rav::rtp::AudioReceiver::set_state(StreamContext& stream_context, const Sta
     }
     stream_context.state = new_state;
     RAV_TRACE("Session {} changed state to: {}", stream_context.stream_info.session.to_string(), to_string(new_state));
-    if (on_state_changed_callback_) {
-        on_state_changed_callback_(stream_context.stream_info, new_state);
-    }
+    on_state_changed(stream_context.stream_info, new_state);
 }
 
 void rav::rtp::AudioReceiver::start() {

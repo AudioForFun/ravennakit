@@ -102,25 +102,24 @@ rav::RavennaReceiver::RavennaReceiver(
         nmos_receiver_.caps.media_types.emplace_back(nmos::audio_encoding_to_nmos_media_type(encoding));
     }
 
-    rtp_audio_receiver_.on_data_received([this](const WrappingUint32 packet_timestamp) {
+    rtp_audio_receiver_.on_data_received = [this](const WrappingUint32 packet_timestamp) {
         for (auto* subscriber : subscribers_) {
             subscriber->on_data_received(packet_timestamp);
         }
-    });
+    };
 
-    rtp_audio_receiver_.on_data_ready([this](const WrappingUint32 packet_timestamp) {
+    rtp_audio_receiver_.on_data_ready = [this](const WrappingUint32 packet_timestamp) {
         for (auto* subscriber : subscribers_) {
             subscriber->on_data_ready(packet_timestamp);
         }
-    });
+    };
 
-    rtp_audio_receiver_.on_state_changed(
+    rtp_audio_receiver_.on_state_changed =
         [this](const rtp::AudioReceiver::Stream& session, const rtp::AudioReceiver::State state) {
             for (auto* subscriber : subscribers_) {
                 subscriber->ravenna_receiver_stream_state_updated(session, state);
             }
-        }
-    );
+        };
 }
 
 rav::RavennaReceiver::~RavennaReceiver() {
