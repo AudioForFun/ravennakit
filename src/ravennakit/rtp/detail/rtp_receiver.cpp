@@ -38,42 +38,15 @@ typedef BOOL(PASCAL* LPFN_WSARECVMSG)(
 
 namespace {
 
-bool has_socket(
-    rav::rtp::Receiver3& receiver, const boost::asio::ip::udp::endpoint& connection_endpoint,
-    const boost::asio::ip::address_v4& interface_address
-) {
-    for (auto& ctx : receiver.sockets) {
-        if (ctx.connection_endpoint == connection_endpoint && ctx.interface_address == interface_address) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool setup_socket(
-    boost::asio::ip::udp::socket& socket, const boost::asio::ip::udp::endpoint& connection_endpoint,
-    const boost::asio::ip::address_v4& interface_address
-) {
-    auto interface_endpoint = boost::asio::ip::udp::endpoint(interface_address, connection_endpoint.port());
-
-#if !RAV_WINDOWS
-    if (connection_endpoint.address().is_multicast()) {
-        interface_endpoint.address(connection_endpoint.address());  // Windows cannot bind to a multicast address
-    }
-#endif
+bool setup_socket(boost::asio::ip::udp::socket& socket, const uint16_t port) {
+    const auto endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4::any(), port);
 
     try {
         socket.open(boost::asio::ip::udp::v4());
         socket.set_option(boost::asio::ip::udp::socket::reuse_address(true));
-        socket.bind(interface_endpoint);
+        socket.bind(endpoint);
         socket.non_blocking(true);
         socket.set_option(boost::asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
-
-        if (connection_endpoint.address().is_multicast()) {
-            socket.set_option(
-                boost::asio::ip::multicast::join_group(connection_endpoint.address().to_v4(), interface_address)
-            );
-        }
     } catch (const std::exception& e) {
         RAV_ERROR("Failed to setup receive socket: {}", e.what());
         socket.close();
@@ -83,99 +56,185 @@ bool setup_socket(
     return true;
 }
 
-bool add_socket(
-    rav::rtp::Receiver3& receiver, const boost::asio::ip::udp::endpoint& endpoint,
-    const boost::asio::ip::address_v4& interface_address, boost::asio::io_context& io_context
-) {
+boost::asio::ip::udp::socket*
+get_or_create_socket(rav::rtp::Receiver3& receiver, const uint16_t port, boost::asio::io_context& io_context) {
+    // Try to find existing socket
+    for (auto& ctx : receiver.sockets) {
+        if (ctx.port == port) {
+            return &ctx.socket;
+        }
+    }
+
+    // Try to reuse existing socket slot
     for (auto& ctx : receiver.sockets) {
         if (ctx.state.load(std::memory_order_acquire) != rav::rtp::Receiver3::State::available) {
             continue;  // Slot not available, try next one
         }
-        ctx.connection_endpoint = endpoint;
-        ctx.interface_address = interface_address;
-        if (!setup_socket(ctx.socket, ctx.connection_endpoint, ctx.interface_address)) {
-            return false;
+        if (!setup_socket(ctx.socket, port)) {
+            return nullptr;
         }
+        ctx.port = port;
         ctx.state.store(rav::rtp::Receiver3::State::ready, std::memory_order_release);
+        return &ctx.socket;
     }
 
+    // Try to add new socket
     if (receiver.sockets.size() >= decltype(receiver.sockets)::max_size()) {
-        return false;  // No space left
+        return nullptr;  // No space left
     }
 
     auto& it = receiver.sockets.emplace_back(io_context);
-    it.connection_endpoint = endpoint;
-    it.interface_address = interface_address;
-    if (!setup_socket(it.socket, it.connection_endpoint, it.interface_address)) {
-        return false;
+    if (!setup_socket(it.socket, port)) {
+        return nullptr;
     }
+    it.port = port;
     it.state.store(rav::rtp::Receiver3::State::ready, std::memory_order_release);
-    return true;
+    return &it.socket;
+}
+
+uint32_t count_multicast_groups(
+    rav::rtp::Receiver3& receiver, const boost::asio::ip::address_v4& multicast_group,
+    const boost::asio::ip::address_v4& interface_address, const uint16_t port
+) {
+    RAV_ASSERT(multicast_group.is_multicast(), "Multicast group should be a multicast address");
+    RAV_ASSERT(!interface_address.is_unspecified(), "Interface address should not be unspecified");
+    RAV_ASSERT(!interface_address.is_multicast(), "Interface address should not be a multicast address");
+    RAV_ASSERT(port > 0, "Port must be a non-zero value");
+
+    uint32_t total = 0;
+    for (size_t i = 0; i < receiver.interface_addresses.size(); i++) {
+        if (receiver.interface_addresses[i] != interface_address) {
+            continue;
+        }
+        for (auto& reader : receiver.readers) {
+            if (reader.sessions[i].connection_address == multicast_group && reader.sessions[i].rtp_port == port) {
+                total++;
+            }
+        }
+    }
+    return total;
 }
 
 }  // namespace
 
-bool rav::rtp::Receiver3::add_stream(
-    const Id id, const ArrayOfSessions& sessions, const ArrayOfFilters& filters,
-    const ArrayOfAddresses& interface_addresses, boost::asio::io_context& io_context
-) {
-    RAV_ASSERT(sessions.size() == filters.size(), "Sessions and filters should have an equal amount");
-    RAV_ASSERT(
-        sessions.size() == interface_addresses.size(), "Sessions and interface addresses should have an equal amount"
-    );
+rav::rtp::Receiver3::Receiver3() {
+    join_multicast_group = [](boost::asio::ip::udp::socket& socket, const boost::asio::ip::address_v4& multicast_group,
+                              const boost::asio::ip::address_v4& interface_address) {
+        RAV_ASSERT(multicast_group.is_multicast(), "Multicast group should be a multicast address");
+        RAV_ASSERT(!interface_address.is_unspecified(), "Interface address should not be unspecified");
+        RAV_ASSERT(!interface_address.is_multicast(), "Interface address should not be a multicast address");
 
-    for (auto& stream : streams) {
+        boost::system::error_code ec;
+        socket.set_option(boost::asio::ip::multicast::join_group(multicast_group, interface_address), ec);
+        if (ec) {
+            RAV_ERROR("Failed to join multicast group: {}", ec.message());
+            return false;
+        }
+        return true;
+    };
+
+    leave_multicast_group = [](boost::asio::ip::udp::socket& socket, const boost::asio::ip::address_v4& multicast_group,
+                               const boost::asio::ip::address_v4& interface_address) {
+        RAV_ASSERT(multicast_group.is_multicast(), "Multicast group should be a multicast address");
+        RAV_ASSERT(!interface_address.is_unspecified(), "Interface address should not be unspecified");
+        RAV_ASSERT(!interface_address.is_multicast(), "Interface address should not be a multicast address");
+
+        boost::system::error_code ec;
+        socket.set_option(boost::asio::ip::multicast::leave_group(multicast_group, interface_address), ec);
+        if (ec) {
+            RAV_ERROR("Failed to leave multicast group: {}", ec.message());
+            return false;
+        }
+        return true;
+    };
+}
+
+void rav::rtp::Receiver3::set_interface_addresses(const ArrayOfAddresses& addresses) {
+    for (size_t i = 0; i < interface_addresses.size(); i++) {
+        if (interface_addresses[i] != addresses[i]) {
+            if (!interface_addresses[i].is_unspecified()) {
+                // Leave existing group (sessions[i], interface_addresses[i])
+            }
+
+            if (!addresses[i].is_unspecified()) {
+                // Join group (sessions[i], addresses[i])
+            }
+        }
+    }
+
+    interface_addresses = addresses;
+}
+
+bool rav::rtp::Receiver3::add_reader(
+    const Id id, const ArrayOfSessions& sessions, const ArrayOfFilters& filters, boost::asio::io_context& io_context
+) {
+    RAV_ASSERT(sessions.size() == filters.size(), "Should be equal");
+    RAV_ASSERT(sessions.size() == interface_addresses.size(), "Should be equal");
+
+    for (auto& stream : readers) {
         if (stream.id == id) {
             RAV_WARNING("A stream for given id already exists");
             return false;  // Stream already exists
         }
     }
 
-    RedundantStream* stream = nullptr;
+    Reader* reader = nullptr;
 
-    for (auto& e : streams) {
+    for (auto& e : readers) {
         if (e.state.load(std::memory_order_acquire) != State::available) {
             continue;  // Not available to use
         }
-        stream = &e;
+        reader = &e;
         break;
     }
 
-    if (stream == nullptr) {
-        if (streams.size() >= decltype(streams)::max_size()) {
+    if (reader == nullptr) {
+        if (readers.size() >= decltype(readers)::max_size()) {
             RAV_TRACE("No space available for stream");
             return false;  // No space left
         }
-        stream = &streams.emplace_back();
+        reader = &readers.emplace_back();
     }
 
-    stream->id = id;
-    stream->sessions = sessions;
-    stream->filters = filters;
-    while (stream->fifo.pop()) {}  // Clear the fifo
-    stream->receive_buffer.clear();
+    reader->id = id;
+    reader->sessions = sessions;
+    reader->filters = filters;
+    reader->fifo.consume_all([](const auto&) {});
+    reader->receive_buffer.clear();
 
-    for (size_t i = 0; i < stream->sessions.size(); ++i) {
-        if (!stream->sessions[i].valid()) {
+    for (size_t i = 0; i < reader->sessions.size(); ++i) {
+        auto& session = reader->sessions[i];
+        if (!session.valid()) {
             continue;
         }
-        if (interface_addresses[i].is_multicast()) {
-            RAV_ERROR("Interface address should not be multicast");
+        const auto endpoint = boost::asio::ip::udp::endpoint(session.connection_address, session.rtp_port);
+
+        auto* socket = get_or_create_socket(*this, endpoint.port(), io_context);
+        if (socket == nullptr) {
+            RAV_ERROR("Failed to create receive socket");
             continue;
         }
-        if (interface_addresses[i].is_unspecified()) {
-            RAV_ERROR("Interface address should not be unspecified");
-            continue;  // No valid interface address
-        }
-        const auto endpoint =
-            boost::asio::ip::udp::endpoint(stream->sessions[i].connection_address, stream->sessions[i].rtp_port);
-        if (!has_socket(*this, endpoint, interface_addresses[i])) {
-            add_socket(*this, endpoint, interface_addresses[i], io_context);
+
+        auto& interface_address = interface_addresses[i];
+        if (session.connection_address.is_multicast()) {
+            if (!interface_address.is_unspecified()) {
+                const auto count = count_multicast_groups(
+                    *this, session.connection_address.to_v4(), interface_address, session.rtp_port
+                );
+                // 1 because the reader being set up is also counted
+                if (count == 1) {
+                    if (!join_multicast_group(*socket, session.connection_address.to_v4(), interface_address)) {
+                        RAV_ERROR("Failed to join multicast group");
+                    }
+                }
+            }
         }
     }
-    stream->state.store(State::ready, std::memory_order_release);
+
+    reader->state.store(State::ready, std::memory_order_release);
     return true;
 }
+
 
 void rav::rtp::Receiver3::read_incoming_packets() {
     for (auto& ctx : sockets) {
@@ -214,7 +273,7 @@ void rav::rtp::Receiver3::read_incoming_packets() {
             continue;  // Invalid RTP packet
         }
 
-        for (auto& stream : streams) {
+        for (auto& stream : readers) {
             if (stream.state.load(std::memory_order_acquire) != State::ready) {
                 continue;  // Slot not ready for processing
             };
@@ -249,7 +308,7 @@ void rav::rtp::Receiver3::read_incoming_packets() {
 
     for (auto& ctx : sockets) {
         if (ctx.state.load(std::memory_order_acquire) == State::should_be_closed) {
-            ctx.socket.close(); // TODO: Can we defer this call to close to the maintenance thread?
+            ctx.socket.close();  // TODO: Can we defer this call to close to the maintenance thread?
             ctx.state.store(State::available, std::memory_order_release);
         }
     }

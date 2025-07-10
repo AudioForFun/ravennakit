@@ -16,10 +16,12 @@
 #include "../rtp_packet_view.hpp"
 #include "rtp_session.hpp"
 #include "ravennakit/aes67/aes67_constants.hpp"
+#include "ravennakit/core/net/asio/asio_helpers.hpp"
 #include "ravennakit/core/util/subscriber_list.hpp"
 #include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
 #include "ravennakit/core/net/sockets/udp_receiver.hpp"
 #include "ravennakit/core/util/id.hpp"
+#include "ravennakit/core/util/safe_function.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/container/static_vector.hpp>
@@ -31,13 +33,13 @@
 namespace rav::rtp {
 
 struct Receiver3 {
-    static constexpr auto k_max_num_redundant_streams = 16;
-    static constexpr auto k_max_num_rtp_sessions_per_stream = 2;
-    static constexpr auto k_max_num_sessions = k_max_num_redundant_streams * k_max_num_rtp_sessions_per_stream;
+    static constexpr auto k_max_num_readers = 16;
+    static constexpr auto k_max_num_redundant_sessions = 2;
+    static constexpr auto k_max_num_sessions = k_max_num_readers * k_max_num_redundant_sessions;
 
-    using ArrayOfSessions = std::array<Session, k_max_num_rtp_sessions_per_stream>;
-    using ArrayOfFilters = std::array<Filter, k_max_num_rtp_sessions_per_stream>;
-    using ArrayOfAddresses = std::array<boost::asio::ip::address_v4, k_max_num_rtp_sessions_per_stream>;
+    using ArrayOfSessions = std::array<Session, k_max_num_redundant_sessions>;
+    using ArrayOfFilters = std::array<Filter, k_max_num_redundant_sessions>;
+    using ArrayOfAddresses = std::array<ip_address_v4, k_max_num_redundant_sessions>;
     using PacketBuffer = std::array<uint8_t, aes67::constants::k_mtu>;
     using PacketFifo =
         boost::lockfree::spsc_queue<PacketBuffer, boost::lockfree::capacity<20>, boost::lockfree::fixed_sized<true>>;
@@ -54,13 +56,15 @@ struct Receiver3 {
     struct SocketWithContext {
         explicit SocketWithContext(boost::asio::io_context& io_context) : socket(io_context) {}
 
-        boost::asio::ip::udp::socket socket;
-        boost::asio::ip::udp::endpoint connection_endpoint;
-        boost::asio::ip::address_v4 interface_address;
+        udp_socket socket;
+        uint16_t port {};
         std::atomic<State> state {State::available};
     };
 
-    struct RedundantStream {
+    /**
+     * Holds the structures to receive incoming data from redundant sources into a single buffer.
+     */
+    struct Reader {
         Id id;
         ArrayOfSessions sessions;
         ArrayOfFilters filters;
@@ -69,12 +73,21 @@ struct Receiver3 {
         std::atomic<State> state {State::available};
     };
 
-    boost::container::static_vector<RedundantStream, k_max_num_redundant_streams> streams;
+    boost::container::static_vector<Reader, k_max_num_readers> readers;
     boost::container::static_vector<SocketWithContext, k_max_num_sessions> sockets;
+    ArrayOfAddresses interface_addresses;
 
-    bool add_stream(
-        Id id, const ArrayOfSessions& sessions, const ArrayOfFilters& filters,
-        const ArrayOfAddresses& interface_addresses, boost::asio::io_context& io_context
+    /// Function for joining a multicast group. Can be overridden to alter behaviour, for example for unit testing.
+    SafeFunction<bool(udp_socket&, ip_address_v4, ip_address_v4)> join_multicast_group;
+
+    /// Function for leaving a multicast group. Can be overridden to alter behaviour, for example for unit testing.
+    SafeFunction<bool(udp_socket&, ip_address_v4, ip_address_v4)> leave_multicast_group;
+
+    Receiver3();
+
+    void set_interface_addresses(const ArrayOfAddresses& addresses);
+    bool add_reader(
+        Id id, const ArrayOfSessions& sessions, const ArrayOfFilters& filters, boost::asio::io_context& io_context
     );
     void read_incoming_packets();
 };
