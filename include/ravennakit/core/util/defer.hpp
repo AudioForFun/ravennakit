@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "log.hpp"
+#include "../log.hpp"
 
 #include <functional>
 #include <vector>
@@ -22,26 +22,20 @@ namespace rav {
  * This serves as an alternative to the 'goto cleanup' pattern in C, providing a mechanism to roll back changes
  * if subsequent operations fail. The class is exception-safe if given function is exception safe.
  */
-class ScopedRollback {
+template<class Fn>
+class Defer {
   public:
-    /**
-     * Default constructor that initializes an empty rollback object.
-     */
-    ScopedRollback() = default;
-
     /**
      * Constructs a rollback object with an initial rollback function.
      * @param rollback_function The function to execute upon destruction if not committed.
      */
-    explicit ScopedRollback(std::function<void()>&& rollback_function) {
-        rollback_function_ = std::move(rollback_function);
-    }
+    explicit Defer(Fn&& rollback_function) : rollback_function_(std::move(rollback_function)) {}
 
     /**
      * Destructor that executes all registered rollback functions if not committed.
      */
-    ~ScopedRollback() {
-        if (rollback_function_) {
+    ~Defer() {
+        if (call_upon_destruction_) {
             try {
                 rollback_function_();
             } catch (const std::exception& e) {
@@ -50,21 +44,22 @@ class ScopedRollback {
         }
     }
 
-    ScopedRollback(const ScopedRollback&) = delete;
-    ScopedRollback& operator=(const ScopedRollback&) = delete;
+    Defer(const Defer&) = delete;
+    Defer& operator=(const Defer&) = delete;
 
-    ScopedRollback(ScopedRollback&&) = delete;
-    ScopedRollback& operator=(ScopedRollback&&) = delete;
+    Defer(Defer&&) = delete;
+    Defer& operator=(Defer&&) = delete;
 
     /**
      * Clears the stored function (if there is one) without calling it.
      */
     void reset() {
-        rollback_function_ = {};
+        call_upon_destruction_ = false;
     }
 
   private:
-    std::function<void()> rollback_function_;
+    Fn rollback_function_;
+    bool call_upon_destruction_ = true;
 };
 
 }  // namespace rav
