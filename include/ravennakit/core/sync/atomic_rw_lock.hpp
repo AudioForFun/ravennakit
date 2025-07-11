@@ -32,10 +32,15 @@ class AtomicRwLock {
     bool lock_exclusive() {
         for (size_t i = 0; i < k_loop_upper_bound; ++i) {
             uint32_t prev_readers = readers.load(std::memory_order_acquire);
-            if (prev_readers == 0) {
-                if (readers.compare_exchange_weak(prev_readers, k_has_writer)) {
+            if (prev_readers <= 1) {
+                if (readers.compare_exchange_weak(prev_readers, std::numeric_limits<uint32_t>::max())) {
                     return true;
                 }
+            }
+
+            if (prev_readers % 2 == 0) {
+                // Indicate that there is a writer waiting by making reader count uneven
+                readers.compare_exchange_weak(prev_readers, prev_readers + 1);
             }
 
             if (i >= k_yield_threshold) {
@@ -52,8 +57,8 @@ class AtomicRwLock {
      */
     bool try_lock_exclusive() {
         uint32_t prev_readers = readers.load(std::memory_order_acquire);
-        if (prev_readers == 0) {
-            if (readers.compare_exchange_strong(prev_readers, k_has_writer)) {
+        if (prev_readers <= 1) {
+            if (readers.compare_exchange_strong(prev_readers, std::numeric_limits<uint32_t>::max())) {
                 return true;
             }
         }
@@ -66,7 +71,7 @@ class AtomicRwLock {
      */
     void unlock_exclusive() {
         const uint32_t prev_readers = readers.load(std::memory_order_acquire);
-        if (prev_readers != k_has_writer) {
+        if (prev_readers != std::numeric_limits<uint32_t>::max()) {
             RAV_ASSERT_FALSE("Not exclusively locked");
             return;
         }
@@ -80,12 +85,13 @@ class AtomicRwLock {
     bool lock_shared() {
         for (size_t i = 0; i < k_loop_upper_bound; ++i) {
             uint32_t prev_readers = readers.load(std::memory_order_acquire);
-            if (prev_readers + 2 == k_has_writer) {
-                RAV_ERROR("Max number of readers reached");
-                return false;
-            }
-            if (prev_readers != k_has_writer) {
-                if (readers.compare_exchange_weak(prev_readers, prev_readers + 1)) {
+
+            if (prev_readers % 2 == 0 && prev_readers < std::numeric_limits<uint32_t>::max()) {
+                if (prev_readers >= std::numeric_limits<uint32_t>::max() - 2) {
+                    RAV_ERROR("Too many readers");
+                    return false;
+                }
+                if (readers.compare_exchange_weak(prev_readers, prev_readers + 2)) {
                     return true;
                 }
             }
@@ -104,8 +110,13 @@ class AtomicRwLock {
      */
     bool try_lock_shared() {
         uint32_t prev_readers = readers.load(std::memory_order_acquire);
-        if (prev_readers != k_has_writer) {
-            if (readers.compare_exchange_strong(prev_readers, prev_readers + 1)) {
+
+        if (prev_readers % 2 == 0 && prev_readers < std::numeric_limits<uint32_t>::max()) {
+            if (prev_readers >= std::numeric_limits<uint32_t>::max() - 2) {
+                RAV_ERROR("Too many readers");
+                return false;
+            }
+            if (readers.compare_exchange_weak(prev_readers, prev_readers + 2)) {
                 return true;
             }
         }
@@ -118,15 +129,14 @@ class AtomicRwLock {
      */
     void unlock_shared() {
         const uint32_t prev_readers = readers.load(std::memory_order_acquire);
-        if (prev_readers == k_has_writer || prev_readers == 0) {
+        if (prev_readers == std::numeric_limits<uint32_t>::max() || prev_readers == 0) {
             RAV_ASSERT_FALSE("Not shared locked");
             return;
         }
-        readers.fetch_sub(1, std::memory_order_release);
+        readers.fetch_sub(2, std::memory_order_release);
     }
 
   private:
-    const uint32_t k_has_writer = 0xffffffff;
     std::atomic<uint32_t> readers {0};
 };
 
