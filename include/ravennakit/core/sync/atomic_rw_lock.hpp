@@ -26,54 +26,46 @@ class AtomicRwLock {
     const uint32_t k_yield_threshold = 10;      // The number of iterations after which a function will start yielding
     const uint32_t k_sleep_threshold = 10'000;  // The number of iterations after which a function will start sleeping.
 
-    struct ExclusiveAccessGuard {
-        ExclusiveAccessGuard(AtomicRwLock& lock, const bool was_locked) : rw_lock(lock), holds_lock(was_locked) {}
-
-        ~ExclusiveAccessGuard() {
-            if (holds_lock) {
-                rw_lock.unlock_exclusive();
-            }
+    struct Exclusive {
+        static void unlock(AtomicRwLock* lock) {
+            lock->unlock_exclusive();
         }
-
-        ExclusiveAccessGuard(const ExclusiveAccessGuard& other) = delete;
-        ExclusiveAccessGuard& operator=(const ExclusiveAccessGuard& other) = delete;
-
-        ExclusiveAccessGuard(ExclusiveAccessGuard&& other) noexcept = delete;
-        ExclusiveAccessGuard& operator=(ExclusiveAccessGuard&& other) noexcept = delete;
-
-        /// @returns True if this guard holds a lock, or false if it doesn't.
-        explicit operator bool() const {
-            return holds_lock;
-        }
-
-      private:
-        AtomicRwLock& rw_lock;
-        bool holds_lock = false;
     };
 
-    struct SharedAccessGuard {
-        SharedAccessGuard(AtomicRwLock& lock, const bool was_locked) : rw_lock(lock), holds_lock(was_locked) {}
+    struct Shared {
+        static void unlock(AtomicRwLock* lock) {
+            lock->unlock_shared();
+        }
+    };
 
-        ~SharedAccessGuard() {
-            if (holds_lock) {
-                rw_lock.unlock_shared();
+    template<typename T>
+    struct AccessGuard {
+        explicit AccessGuard(AtomicRwLock* lock) : rw_lock(lock) {}
+
+        ~AccessGuard() {
+            if (rw_lock) {
+                T::unlock(rw_lock);
             }
         }
 
-        SharedAccessGuard(const SharedAccessGuard& other) = delete;
-        SharedAccessGuard& operator=(const SharedAccessGuard& other) = delete;
+        AccessGuard(const AccessGuard& other) = delete;
+        AccessGuard& operator=(const AccessGuard& other) = delete;
 
-        SharedAccessGuard(SharedAccessGuard&& other) noexcept = delete;
-        SharedAccessGuard& operator=(SharedAccessGuard&& other) noexcept = delete;
+        AccessGuard(AccessGuard&& other) noexcept {
+            if (this != &other) {
+                std::swap(rw_lock, other.rw_lock);
+            }
+        }
+
+        AccessGuard& operator=(AccessGuard&& other) noexcept = delete;
 
         /// @returns True if this guard holds a lock, or false if it doesn't.
         explicit operator bool() const {
-            return holds_lock;
+            return rw_lock != nullptr;
         }
 
       private:
-        AtomicRwLock& rw_lock;
-        bool holds_lock = false;
+        AtomicRwLock* rw_lock {};
     };
 
     /**
@@ -82,18 +74,18 @@ class AtomicRwLock {
      * Wait-free: no
      * @return True if the lock was acquired, or false if the loop upper bound was reached.
      */
-    [[nodiscard]] ExclusiveAccessGuard lock_exclusive() {
-        for (size_t i = 0; i < k_loop_upper_bound; ++i) {
-            uint32_t prev_readers = readers.load(std::memory_order_acquire);
-            if (prev_readers <= 1) {
-                if (readers.compare_exchange_weak(prev_readers, std::numeric_limits<uint32_t>::max())) {
-                    return {*this, true};
-                }
-            }
+    [[nodiscard]] AccessGuard<Exclusive> lock_exclusive() {
+        // Try taking the shortcut
+        if (auto guard = try_lock_exclusive()) {
+            return guard;
+        }
 
-            if (prev_readers % 2 == 0) {
-                // Indicate that there is a writer waiting by making reader count uneven
-                readers.compare_exchange_weak(prev_readers, prev_readers + 1);
+        for (size_t i = 0; i < k_loop_upper_bound; ++i) {
+            uint32_t waiting_state = k_exclusive_lock_waiting_bit;
+            readers.fetch_or(waiting_state, std::memory_order_release);
+
+            if (readers.compare_exchange_strong(waiting_state, k_exclusive_lock_bit, std::memory_order_acq_rel)) {
+                return AccessGuard<Exclusive>(this);
             }
 
             if (i >= k_sleep_threshold) {
@@ -102,24 +94,26 @@ class AtomicRwLock {
                 std::this_thread::yield();
             }
         }
+
+        readers.fetch_and(~k_exclusive_lock_waiting_bit, std::memory_order_release);
+
         RAV_ERROR("Loop upper bound reached");
-        return {*this, false};
+        return AccessGuard<Exclusive>(nullptr);
     }
 
     /**
      * Attempts to acquire an exclusive lock.
+     * Note: this call can fail if a reader is trying to get access at the same time.
      * Thread safe: yes
      * Wait-free: yes
      * @return True if the lock was acquired, or false if not.
      */
-    [[nodiscard]] ExclusiveAccessGuard try_lock_exclusive() {
-        uint32_t prev_readers = readers.load(std::memory_order_acquire);
-        if (prev_readers <= 1) {
-            if (readers.compare_exchange_strong(prev_readers, std::numeric_limits<uint32_t>::max())) {
-                return {*this, true};
-            }
+    [[nodiscard]] AccessGuard<Exclusive> try_lock_exclusive() {
+        uint32_t e = 0;
+        if (readers.compare_exchange_strong(e, k_exclusive_lock_bit, std::memory_order_acq_rel)) {
+            return AccessGuard<Exclusive>(this);
         }
-        return {*this, false};
+        return AccessGuard<Exclusive>(nullptr);
     }
 
     /**
@@ -128,18 +122,10 @@ class AtomicRwLock {
      * Wait-free: no
      * @return True if the lock was acquired, or false if the loop upper bound was reached.
      */
-    [[nodiscard]] SharedAccessGuard lock_shared() {
+    [[nodiscard]] AccessGuard<Shared> lock_shared() {
         for (size_t i = 0; i < k_loop_upper_bound; ++i) {
-            uint32_t prev_readers = readers.load(std::memory_order_acquire);
-
-            if (prev_readers % 2 == 0 && prev_readers < std::numeric_limits<uint32_t>::max()) {
-                if (prev_readers >= std::numeric_limits<uint32_t>::max() - 2) {
-                    RAV_ERROR("Too many readers");
-                    return {*this, false};
-                }
-                if (readers.compare_exchange_weak(prev_readers, prev_readers + 2)) {
-                    return {*this, true};
-                }
+            if (auto guard = try_lock_shared()) {
+                return guard;
             }
 
             if (i >= k_sleep_threshold) {
@@ -149,31 +135,58 @@ class AtomicRwLock {
             }
         }
         RAV_ERROR("Loop upper bound reached");
-        return {*this, false};
+        return AccessGuard<Shared>(nullptr);
     }
 
     /**
-     * Attempts to acquire a shared lock.
+     * Attempts to acquire a shared lock. This will always succeed when there is no exclusive lock.
+     * This call will always succeed if there are no writers (waiting).
      * Thread safe: yes
      * Wait-free: yes
      * @return True if the lock was acquired, or false if not.
      */
-    [[nodiscard]] SharedAccessGuard try_lock_shared() {
+    [[nodiscard]] AccessGuard<Shared> try_lock_shared() {
         uint32_t prev_readers = readers.load(std::memory_order_acquire);
 
-        if (prev_readers % 2 == 0 && prev_readers < std::numeric_limits<uint32_t>::max()) {
-            if (prev_readers >= std::numeric_limits<uint32_t>::max() - 2) {
-                RAV_ERROR("Too many readers");
-                return {*this, false};
-            }
-            if (readers.compare_exchange_weak(prev_readers, prev_readers + 2)) {
-                return {*this, true};
-            }
+        if (prev_readers >= k_readers_mask) {
+            return AccessGuard<Shared>(nullptr);
         }
-        return {*this, false};
+
+        prev_readers = readers.fetch_add(1, std::memory_order_acq_rel);
+
+        if (prev_readers >= k_readers_mask) {
+            readers.fetch_sub(1, std::memory_order_release);
+            return AccessGuard<Shared>(nullptr);
+        }
+
+        return AccessGuard<Shared>(this);
+    }
+
+    /**
+     * @return True if shared locked. This is a relaxed check and cannot be used to draw any conclusions.
+     */
+    [[nodiscard]] bool is_locked_shared() const {
+        return (readers.load(std::memory_order_relaxed) & k_readers_mask) > 0;
+    }
+
+    /**
+     * @return True if locked exclusively. This is a relaxed check and cannot be used to draw any conclusions.
+     */
+    [[nodiscard]] bool is_locked_exclusively() const {
+        return readers.load(std::memory_order_relaxed) & k_exclusive_lock_bit;
+    }
+
+    /**
+     * @return True if locked shared or exclusively. This is a relaxed check and cannot be used to draw any conclusions.
+     */
+    [[nodiscard]] bool is_locked() const {
+        return readers.load(std::memory_order_relaxed) > 0;
     }
 
   private:
+    static constexpr uint32_t k_exclusive_lock_bit = 1u << 30;
+    static constexpr uint32_t k_exclusive_lock_waiting_bit = 1u << 31;
+    static constexpr uint32_t k_readers_mask = 0xFFFFFF;
     std::atomic<uint32_t> readers {0};
 
     /**
@@ -183,27 +196,20 @@ class AtomicRwLock {
      * Wait-free: yes
      */
     void unlock_exclusive() {
-        const uint32_t prev_readers = readers.load(std::memory_order_acquire);
-        if (prev_readers != std::numeric_limits<uint32_t>::max()) {
-            RAV_ASSERT_FALSE("Not exclusively locked");
-            return;
-        }
-        readers.store(0, std::memory_order_release);
+        const auto prev = readers.fetch_and(~k_exclusive_lock_bit, std::memory_order_acq_rel);
+        RAV_ASSERT(prev & k_exclusive_lock_bit, "Was not locked exclusively");
     }
 
     /**
      * Releases the shared lock. Only call this when a successful call to lock_shared or try_lock_shared was
      * made before.
      * Thread safe: only when called from a thread which holds a shared lock
-     * Wait-free: no
+     * Wait-free: yes
      */
     void unlock_shared() {
-        const uint32_t prev_readers = readers.load(std::memory_order_acquire);
-        if (prev_readers == std::numeric_limits<uint32_t>::max() || prev_readers == 0) {
-            RAV_ASSERT_FALSE("Not shared locked");
-            return;
-        }
-        readers.fetch_sub(2, std::memory_order_release);
+        const auto prev = readers.fetch_sub(1, std::memory_order_acq_rel);
+        RAV_ASSERT((prev & k_exclusive_lock_bit) == 0, "Is locked exclusively");
+        RAV_ASSERT((prev & k_readers_mask) > 0, "Is not locked shared");
     }
 };
 

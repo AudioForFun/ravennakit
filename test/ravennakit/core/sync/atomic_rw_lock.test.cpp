@@ -30,16 +30,25 @@ TEST_CASE("rav::AtomicRwLock") {
             auto guard = lock.lock_exclusive();
             REQUIRE(guard);
 
+            REQUIRE(lock.is_locked());
+            REQUIRE(lock.is_locked_exclusively());
+
             auto guard2 = lock.try_lock_shared();
             REQUIRE_FALSE(guard2);
 
             auto guard3 = lock.try_lock_exclusive();
             REQUIRE_FALSE(guard3);
+
+            REQUIRE(lock.is_locked());
+            REQUIRE(lock.is_locked_exclusively());
         }
 
         {
             auto guard = lock.lock_shared();
             REQUIRE(guard);
+
+            REQUIRE(lock.is_locked());
+            REQUIRE(lock.is_locked_shared());
 
             auto guard2 = lock.lock_shared();
             REQUIRE(guard2);
@@ -49,16 +58,28 @@ TEST_CASE("rav::AtomicRwLock") {
 
             auto guard4 = lock.try_lock_exclusive();
             REQUIRE_FALSE(guard4);
+
+            REQUIRE(lock.is_locked());
+            REQUIRE(lock.is_locked_shared());
         }
 
-        auto guard = lock.lock_exclusive();
-        REQUIRE(guard);
+        {
+            auto guard = lock.lock_exclusive();
+            REQUIRE(guard);
+
+            REQUIRE(lock.is_locked());
+            REQUIRE(lock.is_locked_exclusively());
+        }
+
+        REQUIRE_FALSE(lock.is_locked());
+        REQUIRE_FALSE(lock.is_locked_shared());
+        REQUIRE_FALSE(lock.is_locked_exclusively());
     }
 
     SECTION("Multiple writers, multiple readers") {
         rav::AtomicRwLock lock;
 
-        std::atomic_bool error {};
+        std::atomic<bool> error {};
         std::atomic<int8_t> exclusive_counter {};
 
         std::vector<std::thread> readers;
@@ -137,7 +158,7 @@ TEST_CASE("rav::AtomicRwLock") {
                     if (exclusive_counter.fetch_sub(1, std::memory_order_relaxed) != 1) {
                         error = true;
                         return;
-                    };
+                    }
                 }
             });
         }
@@ -155,5 +176,42 @@ TEST_CASE("rav::AtomicRwLock") {
         }
 
         REQUIRE_FALSE(error);
+    }
+
+    SECTION("Try lock shared should always succeed when not locked exclusively") {
+        static constexpr size_t iterations = 100'000;
+        static constexpr int num_readers = 10;
+
+        rav::AtomicRwLock lock;
+        std::atomic failure {false};
+        std::vector<std::thread> readers;
+        std::atomic<int8_t> num_readers_ready {};
+        readers.reserve(10);
+
+        for (size_t i = 0; i < readers.capacity(); ++i) {
+            readers.emplace_back([&lock, &num_readers_ready, &failure] {
+                num_readers_ready.fetch_add(1);
+
+                while (num_readers_ready.load() < num_readers) {
+                    std::this_thread::yield();
+                }
+
+                for (size_t times = 0; times < iterations; ++times) {
+                    if (failure) {
+                        break;
+                    }
+                    const auto guard = lock.try_lock_shared();
+                    if (!guard) {
+                        failure = true;
+                    }
+                }
+            });
+        }
+
+        for (auto& reader : readers) {
+            reader.join();
+        }
+
+        REQUIRE_FALSE(failure);
     }
 }
