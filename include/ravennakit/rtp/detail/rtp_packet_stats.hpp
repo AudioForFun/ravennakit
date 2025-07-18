@@ -32,6 +32,8 @@ class PacketStats {
         uint32_t dropped {};
         /// The number of packets which were too late for consumer.
         uint32_t too_late {};
+        /// The difference between the average interval and the min/max interval.
+        double jitter {};  // Note used by this class, but can be filled in externally.
 
         [[nodiscard]] auto tie() const {
             return std::tie(out_of_order, too_late, duplicates, dropped);
@@ -54,10 +56,10 @@ class PacketStats {
             return result;
         }
 
-        std::string to_string() {
+        std::string to_string() const {
             return fmt::format(
-                "out_of_order: {}, duplicates: {}, dropped: {}, too_late: {}", out_of_order, duplicates, dropped,
-                too_late
+                "out_of_order: {}, duplicates: {}, dropped: {}, too_late: {}, jitter: {}", out_of_order, duplicates,
+                dropped, too_late, jitter
             );
         }
     };
@@ -93,6 +95,7 @@ class PacketStats {
 
             for (uint16_t i = 1; i < *diff; i++) {
                 ++totals_.dropped;
+                // TODO: avoid heap allocation (since this is used on the network thread).
                 dropped_packets_.push_back(sequence_number - i);
                 dirty_ = true;
             }
@@ -171,4 +174,4 @@ class PacketStats {
     }
 };
 
-}  // namespace rav
+}  // namespace rav::rtp

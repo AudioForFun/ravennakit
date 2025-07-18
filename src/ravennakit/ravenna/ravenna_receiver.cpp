@@ -185,19 +185,16 @@ std::optional<uint32_t> rav::RavennaReceiver::read_data_realtime(
     uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
 ) {
     return rtp_receiver_.read_data_realtime(id_, buffer, buffer_size, at_timestamp);
-    // return rtp_audio_receiver_.read_data_realtime(buffer, buffer_size, at_timestamp);
 }
 
 std::optional<uint32_t> rav::RavennaReceiver::read_audio_data_realtime(
     const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
 ) {
     return rtp_receiver_.read_audio_data_realtime(id_, output_buffer, at_timestamp);
-    // return rtp_audio_receiver_.read_audio_data_realtime(output_buffer, at_timestamp);
 }
 
-rav::rtp::AudioReceiver::SessionStats rav::RavennaReceiver::get_stream_stats(const Rank rank) const {
-    return {};  // TODO: Replace
-    // return rtp_audio_receiver_.get_session_stats(rank);
+std::optional<rav::rtp::PacketStats::Counters> rav::RavennaReceiver::get_packet_stats(const Rank rank) const {
+    return rtp_receiver_.get_packet_stats(id_, rank.value());
 }
 
 const rav::nmos::ReceiverAudio& rav::RavennaReceiver::get_nmos_receiver() const {
@@ -207,7 +204,7 @@ const rav::nmos::ReceiverAudio& rav::RavennaReceiver::get_nmos_receiver() const 
 rav::RavennaReceiver::RavennaReceiver(
     boost::asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver3& receiver3, const Id id
 ) :
-    io_context_(io_context), rtsp_client_(rtsp_client), rtp_receiver_(receiver3), id_(id) {
+    rtsp_client_(rtsp_client), rtp_receiver_(receiver3), id_(id) {
     nmos_receiver_.id = boost::uuids::random_generator()();
 
     for (auto& encoding : k_supported_encodings) {

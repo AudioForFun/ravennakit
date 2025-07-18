@@ -54,8 +54,8 @@ class SlidingStats {
     /**
      * @return The last calculated average of the values in the window.
      */
-    [[nodiscard]] double average() const {
-        return average_;
+    [[nodiscard]] double mean() const {
+        return mean_;
     }
 
     /**
@@ -74,7 +74,7 @@ class SlidingStats {
         }
         double variance = 0.0;
         for (auto& v : window_) {
-            variance += (v - average_) * (v - average_);
+            variance += (v - mean_) * (v - mean_);
         }
         return variance / static_cast<double>(window_.size());
     }
@@ -115,11 +115,18 @@ class SlidingStats {
     }
 
     /**
+     * @return The peak deviation from mean (or some form of jitter).
+     */
+    double peak_deviation_from_mean() const {
+        return std::max(std::fabs(mean_ - min_), std::fabs(mean_ - max_));
+    }
+
+    /**
      * @return The statistics of the values in the window as a struct. Convenient when data needs to be copied.
      */
     [[nodiscard]] Stats get_stats() const {
         const auto var = variance();
-        return {average_, median_, min_, max_, var, standard_deviation(var), window_.size()};
+        return {mean_, median_, min_, max_, var, standard_deviation(var), window_.size()};
     }
 
     /**
@@ -143,7 +150,7 @@ class SlidingStats {
         if (is_within(stddev, 0.0, 0.0)) {
             return false;
         }
-        return std::fabs((value - average_) / stddev) > threshold;
+        return std::fabs((value - mean_) / stddev) > threshold;
     }
 
     /**
@@ -153,7 +160,7 @@ class SlidingStats {
     [[nodiscard]] std::string to_string(const double multiply_factor = 1.0) const {
         const auto v = variance();
         return fmt::format(
-            "average={}, median={}, min={}, max={}, variance={}, stddev={}, count={}", average_ * multiply_factor,
+            "average={}, median={}, min={}, max={}, variance={}, stddev={}, count={}", mean_ * multiply_factor,
             median_ * multiply_factor, min_ * multiply_factor, max_ * multiply_factor, v * multiply_factor,
             standard_deviation(v) * multiply_factor, window_.size()
         );
@@ -166,7 +173,7 @@ class SlidingStats {
         window_.clear();
         sorted_data_.clear();
         median_ = {};
-        average_ = {};
+        mean_ = {};
         min_ = {};
         max_ = {};
     }
@@ -174,10 +181,10 @@ class SlidingStats {
   private:
     boost::circular_buffer<double> window_;
     std::vector<double> sorted_data_;
-    double average_ {};  // Last calculated average value
-    double median_ {};   // Last calculated median value
-    double min_ {};      // Last calculated minimum value
-    double max_ {};      // Last calculated maximum value
+    double mean_ {};    // Last calculated average value
+    double median_ {};  // Last calculated median value
+    double min_ {};     // Last calculated minimum value
+    double max_ {};     // Last calculated maximum value
 
     /**
      * @return The standard deviation of the values in the window.
@@ -189,7 +196,7 @@ class SlidingStats {
     void recalculate() {
         if (window_.empty()) {
             median_ = 0.0;
-            average_ = 0.0;
+            mean_ = 0.0;
             min_ = 0.0;
             max_ = 0.0;
             return;
@@ -204,7 +211,7 @@ class SlidingStats {
             min_ = std::min(min_, e);
             max_ = std::max(max_, e);
         }
-        average_ = sum / static_cast<double>(window_.size());
+        mean_ = sum / static_cast<double>(window_.size());
         std::sort(sorted_data_.begin(), sorted_data_.end());
         const size_t n = sorted_data_.size();
         if (n % 2 == 1) {

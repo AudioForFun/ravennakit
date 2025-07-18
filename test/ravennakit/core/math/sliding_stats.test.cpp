@@ -17,23 +17,23 @@ TEST_CASE("rav::SlidingStats") {
     SECTION("average") {
         rav::SlidingStats avg(5);
         REQUIRE(avg.count() == 0);
-        REQUIRE(rav::is_within(avg.average(), 0.0, 0.0));
+        REQUIRE(rav::is_within(avg.mean(), 0.0, 0.0));
         avg.add(1);
         avg.add(2);
         avg.add(3);
         avg.add(4);
         avg.add(5);
         REQUIRE(avg.count() == 5);
-        REQUIRE(rav::is_within(avg.average(), 3.0, 0.0));
+        REQUIRE(rav::is_within(avg.mean(), 3.0, 0.0));
         avg.add(6);
         REQUIRE(avg.count() == 5);
-        REQUIRE(rav::is_within(avg.average(), 4.0, 0.0));
+        REQUIRE(rav::is_within(avg.mean(), 4.0, 0.0));
         avg.add(7);
         REQUIRE(avg.count() == 5);
-        REQUIRE(rav::is_within(avg.average(), 5.0, 0.0));
+        REQUIRE(rav::is_within(avg.mean(), 5.0, 0.0));
         avg.reset();
         REQUIRE(avg.count() == 0);
-        REQUIRE(rav::is_within(avg.average(), 0.0, 0.0));
+        REQUIRE(rav::is_within(avg.mean(), 0.0, 0.0));
     }
 
     SECTION("median") {

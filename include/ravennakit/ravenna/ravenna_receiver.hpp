@@ -220,7 +220,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     /**
      * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
      */
-    [[nodiscard]] rtp::AudioReceiver::SessionStats get_stream_stats(Rank rank) const;
+    [[nodiscard]] std::optional<rav::rtp::PacketStats::Counters> get_packet_stats(Rank rank) const;
 
     /**
      * @return The NMOS receiver of this receiver.
@@ -231,7 +231,6 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     void on_announced(const RavennaRtspClient::AnnouncedEvent& event) override;
 
   private:
-    boost::asio::io_context& io_context_;
     RavennaRtspClient& rtsp_client_;
     rtp::Receiver3& rtp_receiver_;
     nmos::Node* nmos_node_ {nullptr};

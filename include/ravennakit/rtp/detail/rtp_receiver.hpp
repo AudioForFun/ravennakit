@@ -11,12 +11,14 @@
 #pragma once
 
 #include "rtp_filter.hpp"
+#include "rtp_packet_stats.hpp"
 #include "rtp_ringbuffer.hpp"
 #include "../rtcp_packet_view.hpp"
 #include "../rtp_packet_view.hpp"
 #include "rtp_session.hpp"
 #include "ravennakit/aes67/aes67_constants.hpp"
 #include "ravennakit/core/audio/audio_buffer_view.hpp"
+#include "ravennakit/core/math/sliding_stats.hpp"
 #include "ravennakit/core/net/asio/asio_helpers.hpp"
 #include "ravennakit/core/util/subscriber_list.hpp"
 #include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
@@ -28,6 +30,7 @@
 #include <boost/asio.hpp>
 #include <boost/container/static_vector.hpp>
 #include <boost/lockfree/spsc_queue.hpp>
+#include <boost/lockfree/spsc_value.hpp>
 
 namespace rav::rtp {
 
@@ -89,9 +92,9 @@ struct Receiver3 {
             if (!audio_format.is_valid()) {
                 return false;
             }
-            for (auto& stream : streams ) {
+            for (auto& stream : streams) {
                 if (stream.is_valid()) {
-                    return true; // At least one stream needs to be valid.
+                    return true;  // At least one stream needs to be valid.
                 }
             }
             return false;
@@ -113,6 +116,11 @@ struct Receiver3 {
         ip_address_v4 interface;
         FifoBuffer<PacketBuffer, Fifo::Spsc> packets;
         FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;  // TODO: Which thread reads this?
+        PacketStats packet_stats;
+        boost::lockfree::spsc_value<PacketStats::Counters, boost::lockfree::allow_multiple_reads<true>>
+            packet_stats_counters;
+        SlidingStats packet_interval_stats {1000}; // For calculating jitter
+        WrappingUint64 last_packet_time_ns;
 
         void reset();
     };
@@ -123,16 +131,23 @@ struct Receiver3 {
     struct Reader {
         AtomicRwLock rw_lock;
         Id id;
+        AudioFormat audio_format;
         std::array<StreamContext, k_max_num_redundant_sessions> streams;
 
-        AudioFormat audio_format;
-        std::atomic_bool consumer_active_ {false};  // TODO: ???
+        std::atomic_bool consumer_active {false};  // TODO: ???
 
-        // Audio thread:
+        // Network thread
+        std::optional<WrappingUint32> rtp_ts;
+        WrappingUint16 seq;
+
+        // Audio thread
         Ringbuffer receive_buffer;
         std::vector<uint8_t> read_audio_data_buffer;
         std::optional<WrappingUint32> first_packet_timestamp;
         WrappingUint32 next_ts;
+
+        /// Resets this struct to initial state, except for the rw_lock which is not touched.
+        void reset();
     };
 
     /// Function for joining a multicast group. Can be overridden to alter behaviour. Used for unit testing.
@@ -205,6 +220,13 @@ struct Receiver3 {
      */
     [[nodiscard]] std::optional<uint32_t>
     read_audio_data_realtime(Id id, AudioBufferView<float> output_buffer, std::optional<uint32_t> at_timestamp);
+
+    /**
+     * @param reader_id The id of the reader to get statistics from.
+     * @param stream_index The index of the stream to get stats from.
+     * @return The statistics for given stream index, or nullopt if no statistics could be read.
+     */
+    std::optional<PacketStats::Counters> get_packet_stats(Id reader_id, size_t stream_index);
 };
 
 /**

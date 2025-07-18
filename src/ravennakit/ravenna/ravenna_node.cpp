@@ -376,14 +376,15 @@ std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance:
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
-std::future<rav::rtp::AudioReceiver::SessionStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id, Rank rank) {
-    auto work = [this, receiver_id, rank] {
+std::future<std::optional<rav::rtp::PacketStats::Counters>>
+rav::RavennaNode::get_stats_for_receiver(Id receiver_id, Rank rank) {
+    auto work = [this, receiver_id, rank]() -> std::optional<rtp::PacketStats::Counters> {
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
-                return receiver->get_stream_stats(rank);
+                return receiver->get_packet_stats(rank);
             }
         }
-        return rtp::AudioReceiver::SessionStats {};
+        return std::nullopt;
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }

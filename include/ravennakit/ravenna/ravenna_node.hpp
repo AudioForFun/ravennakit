@@ -229,7 +229,8 @@ class RavennaNode {
      * @param rank The rank of the stream to get the statistics for.
      * @return The packet statistics for the stream, or an empty structure if the stream doesn't exist.
      */
-    [[nodiscard]] std::future<rtp::AudioReceiver::SessionStats> get_stats_for_receiver(Id receiver_id, Rank rank);
+    [[nodiscard]] std::future<std::optional<rav::rtp::PacketStats::Counters>>
+    get_stats_for_receiver(Id receiver_id, Rank rank);
 
     /**
      * Get the SDP for the receiver with the given id.

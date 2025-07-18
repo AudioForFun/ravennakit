@@ -129,6 +129,7 @@ namespace {
 ) {
     RAV_ASSERT(parameters.streams.size() == interfaces.size(), "Unequal size");
     RAV_ASSERT(parameters.audio_format.is_valid(), "Invalid format");
+    RAV_ASSERT(reader.rw_lock.is_locked_exclusively(), "Expecting the reader to be locked exclusively");
 
     reader.id = id;
 
@@ -276,7 +277,7 @@ void do_realtime_maintenance(rav::rtp::Receiver3::Reader& reader) {
 
     RAV_ASSERT(reader.rw_lock.is_locked_shared(), "Reader must be shared locked");
 
-    if (reader.consumer_active_.exchange(true) == false) {
+    if (reader.consumer_active.exchange(true) == false) {
         for (auto& stream : reader.streams) {
             stream.packets.pop_all();
             stream.packets_too_old.pop_all();
@@ -370,6 +371,25 @@ void rav::rtp::Receiver3::StreamContext::reset() {
     interface = {};
     packets.reset();
     packets_too_old.reset();
+    packet_stats.reset();
+    packet_stats_counters.write({});
+    packet_interval_stats.reset();
+    last_packet_time_ns = {};
+}
+
+void rav::rtp::Receiver3::Reader::reset() {
+    id = {};
+    audio_format = {};
+    for (auto& stream : streams) {
+        stream.reset();
+    }
+    consumer_active = false;
+    rtp_ts = {};
+    seq = 0;
+    receive_buffer.clear();
+    read_audio_data_buffer = {};
+    first_packet_timestamp = {};
+    next_ts = {};
 }
 
 rav::rtp::Receiver3::Receiver3(boost::asio::io_context& io_context) {
@@ -503,28 +523,24 @@ bool rav::rtp::Receiver3::add_reader(
 }
 
 bool rav::rtp::Receiver3::remove_reader(const Id id) {
-    for (auto& e : readers) {
-        if (e.id == id) {
-            const auto guard = e.rw_lock.lock_exclusive();
+    for (auto& reader : readers) {
+        if (reader.id == id) {
+            const auto guard = reader.rw_lock.lock_exclusive();
             if (!guard) {
                 RAV_ERROR("Failed to exclusively lock reader");
                 return false;
             }
 
-            for (auto& stream : e.streams) {
+            for (auto& stream : reader.streams) {
                 if (stream.session.valid() && stream.session.connection_address.is_multicast()
                     && !stream.interface.is_unspecified()) {
                     std::ignore = leave_multicast_group_if_last(
                         *this, stream.session.connection_address.to_v4(), stream.interface, stream.session.rtp_port
                     );
                 }
-                stream.reset();
             }
 
-            e.id = {};
-            e.receive_buffer.clear();
-            // TODO: Should we reset more fields here?
-
+            reader.reset();
             close_unused_sockets(*this);
 
             return true;
@@ -602,15 +618,35 @@ void rav::rtp::Receiver3::read_incoming_packets() {
                     continue;
                 }
 
+                if (!reader.rtp_ts.has_value()) {
+                    reader.seq = view.sequence_number();
+                    reader.rtp_ts = view.timestamp();
+                    stream.last_packet_time_ns = recv_time;
+                }
+
                 PacketBuffer packet;
                 std::memcpy(packet.data(), receive_buffer.data(), bytes_received);
 
                 if (!stream.packets.push(packet)) {
                     // RAV_ERROR("Failed to push data to fifo");
                     TRACY_MESSAGE("Failed to push packet");
-                    reader.consumer_active_ = false;
+                    reader.consumer_active = false;
                     // TODO: Make sure consumer_active change is notified
                 }
+
+                while (auto seq = stream.packets_too_old.pop()) {
+                    stream.packet_stats.mark_packet_too_late(*seq);
+                }
+
+                if (const auto interval = stream.last_packet_time_ns.update(recv_time)) {
+                    TRACY_PLOT("packet interval (ms)", static_cast<double>(*interval) / 1'000'000.0);
+                    stream.packet_interval_stats.add(static_cast<double>(*interval) / 1'000'000.0);
+                }
+
+                std::ignore = stream.packet_stats.update(view.sequence_number());
+                auto stats = stream.packet_stats.get_total_counts();
+                stats.jitter = stream.packet_interval_stats.peak_deviation_from_mean();
+                stream.packet_stats_counters.write(stats);
             }
         }
     }
@@ -705,6 +741,28 @@ std::optional<uint32_t> rav::rtp::Receiver3::read_audio_data_realtime(
         }
 
         return read_at;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<rav::rtp::PacketStats::Counters>
+rav::rtp::Receiver3::get_packet_stats(const Id reader_id, const size_t stream_index) {
+    for (auto& reader : readers) {
+        if (reader.id != reader_id) {
+            continue;
+        }
+        const auto guard = reader.rw_lock.try_lock_shared();
+        if (!guard) {
+            continue;
+        }
+
+        if (stream_index >= reader.streams.size()) {
+            RAV_ASSERT_FALSE("Index out of bounds");
+            return std::nullopt;
+        }
+
+        return reader.streams[stream_index].packet_stats_counters.read(boost::lockfree::uses_optional);
     }
 
     return std::nullopt;
