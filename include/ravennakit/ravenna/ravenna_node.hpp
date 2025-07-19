@@ -224,15 +224,6 @@ class RavennaNode {
     [[nodiscard]] std::future<void> unsubscribe_from_ptp_instance(ptp::Instance::Subscriber* subscriber);
 
     /**
-     * Get the packet statistics for the given stream, if the stream for the given ID exists.
-     * @param receiver_id The ID of the stream to get the packet statistics for.
-     * @param rank The rank of the stream to get the statistics for.
-     * @return The packet statistics for the stream, or an empty structure if the stream doesn't exist.
-     */
-    [[nodiscard]] std::future<std::optional<rtp::PacketStats::Counters>>
-    get_stats_for_receiver(Id receiver_id, Rank rank);
-
-    /**
      * Get the SDP for the receiver with the given id.
      * @param receiver_id The id of the receiver to get the SDP for.
      * @return The SDP for the receiver.

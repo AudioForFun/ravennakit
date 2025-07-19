@@ -422,15 +422,14 @@ bool rav::RavennaReceiver::subscribe(Subscriber* subscriber) {
     if (subscribers_.add(subscriber)) {
         subscriber->ravenna_receiver_configuration_updated(*this, configuration_);
         subscriber->ravenna_receiver_parameters_updated(reader_parameters_);
-        // TODO: Reimplement:
-        // for (auto& stream : reader_parameters_.streams) {
-        //     const auto state = rtp_audio_receiver_.get_state_for_stream(stream.session);
-        //     if (!state) {
-        //         RAV_ERROR("Failed to get state for stream {}", stream.session.to_string());
-        //         continue;
-        //     }
-        //     subscriber->ravenna_receiver_stream_state_updated(stream, *state);
-        // }
+        for (size_t i = 0; i < reader_parameters_.streams.size(); i++) {
+            const auto state = rtp_receiver_.get_stream_state(id_, 0);
+            if (!state) {
+                RAV_ERROR("Failed to get state for stream {}", reader_parameters_.streams[i].session.to_string());
+                continue;
+            }
+            subscriber->ravenna_receiver_stream_state_updated(reader_parameters_.streams[i], *state);
+        }
         return true;
     }
     return false;

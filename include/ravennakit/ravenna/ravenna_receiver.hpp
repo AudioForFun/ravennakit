@@ -255,7 +255,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     nmos::ReceiverAudio nmos_receiver_;
     SubscriberList<Subscriber> subscribers_;
     rtp::Receiver3::ReaderParameters reader_parameters_;
-    std::array<rtp::Receiver3::StreamState, rtp::Receiver3::k_max_num_redundant_sessions> streams_states_;
+    std::array<rtp::Receiver3::StreamState, rtp::Receiver3::k_max_num_redundant_sessions> streams_states_{};
     Throttle<void> stats_throttle_ {std::chrono::seconds(1)};
 
     void handle_announced_sdp(const sdp::SessionDescription& sdp);
