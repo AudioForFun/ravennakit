@@ -127,12 +127,12 @@ struct Receiver3 {
         uint16_t packet_time_frames {};
         ip_address_v4 interface;
         FifoBuffer<PacketBuffer, Fifo::Spsc> packets;
-        FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;  // TODO: Which thread reads this?
+        FifoBuffer<uint16_t, Fifo::Spsc> packets_too_old;
         PacketStats packet_stats;
         boost::lockfree::spsc_value<PacketStats::Counters, boost::lockfree::allow_multiple_reads<true>>
             packet_stats_counters;
         SlidingStats packet_interval_stats {1000};  // For calculating jitter
-        WrappingUint64 last_packet_time_ns;
+        WrappingUint64 prev_packet_time_ns;
         std::atomic<StreamState> state {StreamState::inactive};
 
         void reset();
@@ -155,7 +155,8 @@ struct Receiver3 {
         Ringbuffer receive_buffer;
         std::vector<uint8_t> read_audio_data_buffer;
         std::optional<WrappingUint32> first_packet_timestamp;
-        WrappingUint32 next_ts;
+        std::optional<WrappingUint32> most_recent_ts;  // ts of the latest received data
+        WrappingUint32 next_ts_to_read;
 
         /// Resets this struct to initial state, except for the rw_lock which is not touched.
         void reset();
@@ -170,7 +171,7 @@ struct Receiver3 {
     boost::container::static_vector<SocketWithContext, k_max_num_sessions> sockets;
     boost::container::static_vector<Reader, k_max_num_readers> readers;
 
-    uint64_t last_time_maintenance{};
+    uint64_t last_time_maintenance {};
 
     explicit Receiver3(boost::asio::io_context& io_context);
     ~Receiver3();
@@ -215,10 +216,16 @@ struct Receiver3 {
      * @param buffer_size The size of the buffer in bytes.
      * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
      * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @param require_delay If set, the call to read_data_realtime will only succeed if the requested timestamp is
+     * older than the most recent received timestamp - require_delay. This can be useful in a case where there is no PTP
+     * clock driving time, and instead, the time of the RTP stream has to be used. In normal PTP driven operation you
+     * would not set require_delay.
      * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    [[nodiscard]] std::optional<uint32_t>
-    read_data_realtime(Id id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
+    [[nodiscard]] std::optional<uint32_t> read_data_realtime(
+        Id id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp,
+        std::optional<uint32_t> require_delay
+    );
 
     /**
      * Reads the data from the receiver with the given id.
@@ -229,10 +236,16 @@ struct Receiver3 {
      * @param output_buffer The buffer to read the data into.
      * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
      * be used for the first read and after that the timestamp will be incremented by the packet time.
+     * @param require_delay If set, the call to read_audio_data_realtime will only succeed if the requested timestamp is
+     * older than the most recent received timestamp - require_delay. This can be useful in a case where there is no PTP
+     * clock driving time, and instead, the time of the RTP stream has to be used. In normal PTP driven operation you
+     * would not set require_delay.
      * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
-    [[nodiscard]] std::optional<uint32_t>
-    read_audio_data_realtime(Id id, AudioBufferView<float> output_buffer, std::optional<uint32_t> at_timestamp);
+    [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
+        Id id, AudioBufferView<float> output_buffer, std::optional<uint32_t> at_timestamp,
+        std::optional<uint32_t> require_delay
+    );
 
     /**
      * @param reader_id The id of the reader to get statistics from.

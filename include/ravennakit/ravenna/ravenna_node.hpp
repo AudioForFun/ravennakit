@@ -225,6 +225,7 @@ class RavennaNode {
 
     /**
      * Get the SDP for the receiver with the given id.
+     * TODO: Deprecate and signal sdp changes through RavennaReceiver::Subscriber
      * @param receiver_id The id of the receiver to get the SDP for.
      * @return The SDP for the receiver.
      */
@@ -233,33 +234,26 @@ class RavennaNode {
     /**
      * Get the SDP text for the receiver with the given id. This is the original SDP text as received from the server,
      * and might contain things which haven't been parsed into the session_description.
+     * TODO: Deprecate and signal sdp changes through RavennaReceiver::Subscriber
      * @param receiver_id The id of the receiver to get the SDP text for.
      * @return The SDP text for the receiver.
      */
     [[nodiscard]] std::future<std::optional<std::string>> get_sdp_text_for_receiver(Id receiver_id);
 
     /**
-     * Reads the data from the receiver with the given id.
-     * @param receiver_id The id of the receiver to read data from.
-     * @param buffer The buffer to read the data into.
-     * @param buffer_size The size of the buffer.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
+     * @copydoc rtp::Receiver3::read_data_realtime
      */
-    [[nodiscard]] std::optional<uint32_t>
-    read_data_realtime(Id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
+    [[nodiscard]] std::optional<uint32_t> read_data_realtime(
+        Id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp,
+        std::optional<uint32_t> require_delay
+    );
 
     /**
-     * Reads the data from the receiver with the given id.
-     * @param receiver_id The id of the receiver to read data from.
-     * @param output_buffer The buffer to read the data into.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
+     * @copydoc rtp::Receiver3::read_audio_data_realtime
      */
     [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
-        Id receiver_id, const AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp
+        Id receiver_id, const AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp,
+        std::optional<uint32_t> require_delay
     );
 
     /**

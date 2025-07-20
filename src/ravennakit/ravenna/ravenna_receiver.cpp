@@ -184,13 +184,13 @@ tl::expected<void, std::string> rav::RavennaReceiver::restore_from_json(const bo
 std::optional<uint32_t> rav::RavennaReceiver::read_data_realtime(
     uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
 ) {
-    return rtp_receiver_.read_data_realtime(id_, buffer, buffer_size, at_timestamp);
+    return rtp_receiver_.read_data_realtime(id_, buffer, buffer_size, at_timestamp, {});
 }
 
 std::optional<uint32_t> rav::RavennaReceiver::read_audio_data_realtime(
     const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
 ) {
-    return rtp_receiver_.read_audio_data_realtime(id_, output_buffer, at_timestamp);
+    return rtp_receiver_.read_audio_data_realtime(id_, output_buffer, at_timestamp, {});
 }
 
 const rav::nmos::ReceiverAudio& rav::RavennaReceiver::get_nmos_receiver() const {
@@ -268,8 +268,8 @@ rav::RavennaReceiver::~RavennaReceiver() {
 void rav::RavennaReceiver::on_announced(const RavennaRtspClient::AnnouncedEvent& event) {
     try {
         RAV_ASSERT(event.session_name == configuration_.session_name, "Expecting session_name to match");
-        handle_announced_sdp(event.sdp);
         RAV_TRACE("SDP updated for session '{}'", configuration_.session_name);
+        handle_announced_sdp(event.sdp);
     } catch (const std::exception& e) {
         RAV_ERROR("Failed to process SDP for session '{}': {}", configuration_.session_name, e.what());
     }
@@ -423,6 +423,9 @@ bool rav::RavennaReceiver::subscribe(Subscriber* subscriber) {
         subscriber->ravenna_receiver_configuration_updated(*this, configuration_);
         subscriber->ravenna_receiver_parameters_updated(reader_parameters_);
         for (size_t i = 0; i < reader_parameters_.streams.size(); i++) {
+            if (!reader_parameters_.streams[i].is_valid()) {
+                continue;
+            }
             const auto state = rtp_receiver_.get_stream_state(id_, 0);
             if (!state) {
                 RAV_ERROR("Failed to get state for stream {}", reader_parameters_.streams[i].session.to_string());

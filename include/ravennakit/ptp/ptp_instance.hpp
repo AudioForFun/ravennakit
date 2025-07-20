@@ -50,7 +50,7 @@ class Instance {
         }
 
         /**
-         * @returns A local copy of the local clock which received updates from the ptp::Instance.
+         * @returns A reference to the local clock which received updates from the ptp::Instance.
          * Thread safe and wait-free when called from a single consumer thread.
          */
         const LocalClock& get_local_clock();

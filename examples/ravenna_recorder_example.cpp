@@ -14,6 +14,7 @@
 #include "ravennakit/core/audio/formats/wav_audio_format.hpp"
 #include "ravennakit/core/streams/file_output_stream.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
+#include "ravennakit/ravenna/ravenna_node.hpp"
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 #include "ravennakit/ravenna/ravenna_receiver.hpp"
 
@@ -21,31 +22,29 @@
 #include <boost/asio/io_context.hpp>
 #include <utility>
 
-namespace examples {
+namespace {
 
 /**
- * A class that is a subscriber to a rtp_stream_receiver and writes the audio data to a wav file.
+ * A class that is a subscriber to a RavennaReceiver and writes the audio data to a wav file.
  */
 class StreamRecorder: public rav::RavennaReceiver::Subscriber {
   public:
-    explicit StreamRecorder(std::unique_ptr<rav::RavennaReceiver> receiver) : receiver_(std::move(receiver)) {
-        if (receiver_) {
-            if (!receiver_->subscribe(this)) {
-                RAV_WARNING("Failed to add subscriber");
-            }
-        }
+    static constexpr auto k_delay_ms = 10;
+    static constexpr auto k_block_size = 512;  // Num frames per read/write
+
+    explicit StreamRecorder(rav::RavennaNode& ravenna_node, const rav::Id receiver_id) :
+        ravenna_node_(ravenna_node), receiver_id_(receiver_id) {
+        RAV_ASSERT(receiver_id.is_valid(), "Invalid id");
+        ravenna_node.subscribe_to_receiver(receiver_id_, this).wait();
     }
 
     ~StreamRecorder() override {
-        if (receiver_) {
-            if (!receiver_->unsubscribe(this)) {
-                RAV_WARNING("Failed to remove subscriber");
-            }
-        }
+        ravenna_node_.unsubscribe_from_receiver(receiver_id_, this).wait();
         close();
     }
 
     void close() {
+        const bool is_recording = wav_writer_.get() != nullptr;
         if (wav_writer_) {
             if (!wav_writer_->finalize()) {
                 RAV_ERROR("Failed to finalize wav file");
@@ -55,110 +54,126 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
         if (file_output_stream_) {
             file_output_stream_.reset();
         }
+        if (is_recording) {
+            RAV_INFO("Closed audio recording");
+        }
     }
 
     void ravenna_receiver_parameters_updated(const rav::rtp::Receiver3::ReaderParameters& parameters) override {
+        RAV_ASSERT_NODE_MAINTENANCE_THREAD(ravenna_node_);
+
+        std::lock_guard guard(mutex_);
+
+        close();
+
+        if (!parameters.is_valid()) {
+            return;
+        }
+
         if (parameters.streams.empty()) {
             RAV_WARNING("No streams available");
             return;
         }
 
         if (!parameters.audio_format.is_valid()) {
+            RAV_WARNING("Invalid audio format");
             return;
         }
-
-        close();
-
-        if (receiver_ == nullptr) {
-            RAV_ERROR("No receiver available");
-            return;
-        }
-
-        auto file_path = rav::File(receiver_->get_configuration().session_name + ".wav").absolute();
-
-        RAV_INFO(
-            "Recording stream: {} to file: {}", receiver_->get_configuration().session_name, file_path.to_string()
-        );
 
         audio_format_ = parameters.audio_format;
+
+        if (!session_name_.empty()) {
+            start_recording();
+        }
+    }
+
+    void ravenna_receiver_configuration_updated(
+        const rav::RavennaReceiver& receiver, const rav::RavennaReceiver::Configuration& configuration
+    ) override {
+        std::ignore = receiver;
+
+        RAV_ASSERT_NODE_MAINTENANCE_THREAD(ravenna_node_);
+
+        std::lock_guard guard(mutex_);
+
+        if (configuration.session_name == session_name_) {
+            return;
+        }
+
+        session_name_ = configuration.session_name;
+
+        if (session_name_.empty()) {
+            close();
+            return;
+        }
+
+        if (audio_format_.is_valid()) {
+            start_recording();
+        }
+    }
+
+    void process_audio() {
+        std::lock_guard guard(mutex_);
+
+        if (audio_data_.empty()) {
+            return;
+        }
+
+        for (int i = 0; i < 10; ++i) {
+            const auto ts = ravenna_node_.read_data_realtime(
+                receiver_id_, audio_data_.data(), audio_data_.size(), std::nullopt, delay_
+            );
+            if (!ts) {
+                return;
+            }
+
+            if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::be) {
+                rav::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
+            }
+            if (!wav_writer_->write_audio_data(audio_data_.data(), audio_data_.size())) {
+                RAV_ERROR("Failed to write audio data");
+            }
+        }
+    }
+
+  private:
+    rav::RavennaNode& ravenna_node_;
+    const rav::Id receiver_id_;
+
+    std::mutex mutex_;
+    std::string session_name_;
+    std::unique_ptr<rav::FileOutputStream> file_output_stream_;
+    std::unique_ptr<rav::WavAudioFormat::Writer> wav_writer_;
+    std::vector<uint8_t> audio_data_;
+    rav::AudioFormat audio_format_;
+    uint32_t delay_ = 0;
+
+    void start_recording() {
+        if (!audio_format_.is_valid()) {
+            RAV_ERROR("Invalid audio format");
+            return;
+        }
+
+        if (session_name_.empty()) {
+            RAV_ERROR("No session name");
+            return;
+        }
+
+        auto file_path = rav::File(session_name_ + ".wav").absolute();
+
+        RAV_INFO("Start recording stream to: \"{}\" to file: {}", session_name_, file_path.to_string());
+
         file_output_stream_ = std::make_unique<rav::FileOutputStream>(file_path);
         wav_writer_ = std::make_unique<rav::WavAudioFormat::Writer>(
             *file_output_stream_, rav::WavAudioFormat::FormatCode::pcm, audio_format_.sample_rate,
             audio_format_.num_channels, audio_format_.bytes_per_sample() * 8
         );
-        audio_data_.resize(parameters.streams.front().packet_time_frames * audio_format_.bytes_per_frame());
+        audio_data_.resize(k_block_size * audio_format_.bytes_per_frame());
+        delay_ = audio_format_.sample_rate * k_delay_ms / 1000;
     }
-
-    void on_data_ready(const rav::WrappingUint32 timestamp) override {
-        TRACY_ZONE_SCOPED;
-
-        if (!receiver_->read_data_realtime(audio_data_.data(), audio_data_.size(), timestamp.value())) {
-            RAV_ERROR("Failed to read audio data");
-            return;
-        }
-        if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::be) {
-            rav::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
-        }
-        if (!wav_writer_->write_audio_data(audio_data_.data(), audio_data_.size())) {
-            RAV_ERROR("Failed to write audio data");
-        }
-    }
-
-  private:
-    std::unique_ptr<rav::RavennaReceiver> receiver_;
-    std::unique_ptr<rav::FileOutputStream> file_output_stream_;
-    std::unique_ptr<rav::WavAudioFormat::Writer> wav_writer_;
-    std::vector<uint8_t> audio_data_;
-    rav::AudioFormat audio_format_;
-    std::optional<rav::WrappingUint32> stream_ts_;
 };
 
-class RavennaRecorder {
-  public:
-    explicit RavennaRecorder() {
-        rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver3>(io_context_);
-    }
-
-    ~RavennaRecorder() = default;
-
-    void add_stream(const std::string& stream_name, const rav::NetworkInterfaceConfig& network_interface_config) {
-        rav::RavennaReceiver::Configuration config;
-        config.delay_frames = 480;  // 10ms at 48KHz
-        config.enabled = true;
-        config.session_name = stream_name;
-
-        auto receiver = std::make_unique<rav::RavennaReceiver>(
-            *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
-        );
-        receiver->set_network_interface_config(network_interface_config);
-        auto result = receiver->set_configuration(config);
-        if (!result) {
-            RAV_ERROR("Failed to update configuration: {}", result.error());
-            return;
-        }
-        recorders_.emplace_back(std::make_unique<StreamRecorder>(std::move(receiver)));
-    }
-
-    void run() {
-        while (!io_context_.stopped()) {
-            io_context_.poll();
-        }
-    }
-
-    void stop() {
-        io_context_.stop();
-    }
-
-  private:
-    boost::asio::io_context io_context_;
-    rav::RavennaBrowser browser_ {io_context_};
-    std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
-    std::unique_ptr<rav::rtp::Receiver3> rtp_receiver_;
-    std::vector<std::unique_ptr<StreamRecorder>> recorders_;
-};
-
-}  // namespace examples
+}  // namespace
 
 /**
  * This examples demonstrates how to receive audio streams from a RAVENNA device and write the audio data to wav files.
@@ -195,20 +210,42 @@ int main(int const argc, char* argv[]) {
     rav::NetworkInterfaceConfig interface_config;
     interface_config.set_interface(rav::Rank::primary(), iface->get_identifier());
 
-    examples::RavennaRecorder recorder_example;
+    rav::RavennaNode node;
+    node.set_network_interface_config(std::move(interface_config)).get();
+    std::vector<std::unique_ptr<StreamRecorder>> recorders;
 
-    for (auto& stream_name : stream_names) {
-        recorder_example.add_stream(stream_name, interface_config);
+    for (const auto& stream_name : stream_names) {
+        rav::RavennaReceiver::Configuration config;
+        config.delay_frames = 480;  // 10ms at 48KHz
+        config.enabled = true;
+        config.session_name = stream_name;
+        auto id = node.create_receiver(config).get();
+        if (!id) {
+            RAV_ERROR("Failed to create receiver: {}", id.error());
+            return -1;
+        }
+        recorders.emplace_back(std::make_unique<StreamRecorder>(node, *id));
     }
 
-    std::thread cin_thread([&recorder_example] {
-        fmt::println("Press return key to stop...");
-        std::cin.get();
-        recorder_example.stop();
+    std::atomic keep_going {true};
+
+    std::thread recorder_thread([&] {
+        while (keep_going.load(std::memory_order_relaxed)) {
+            for (const auto& recorder : recorders) {
+                recorder->process_audio();
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // Keep this small enough
+        }
     });
 
-    recorder_example.run();
-    cin_thread.join();
+    fmt::println("Press return key to stop...");
+
+    std::string line;
+    std::getline(std::cin, line);
+
+    keep_going.store(false, std::memory_order_relaxed);
+
+    recorder_thread.join();
 
     return 0;
 }

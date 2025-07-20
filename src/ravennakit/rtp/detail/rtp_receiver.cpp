@@ -9,8 +9,6 @@
  */
 
 #include "ravennakit/rtp/detail/rtp_receiver.hpp"
-#include "ravennakit/rtp/detail/rtp_receiver.hpp"
-#include "ravennakit/rtp/detail/rtp_receiver.hpp"
 
 #include "ravennakit/core/clock.hpp"
 #include "ravennakit/core/log.hpp"
@@ -20,7 +18,6 @@
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 #include "ravennakit/core/util/tracy.hpp"
 #include "ravennakit/core/util/defer.hpp"
-#include "ravennakit/core/util/tracy.hpp"
 
 #include <fmt/core.h>
 #include <utility>
@@ -297,27 +294,37 @@ void do_realtime_maintenance(rav::rtp::Receiver3::Reader& reader) {
 
             const auto seq = rtp_packet_view.sequence_number();
             const auto ts = rtp_packet_view.timestamp();
+            const auto payload = rtp_packet_view.payload_data();
 
             rav::WrappingUint32 packet_timestamp(ts);
             if (!reader.first_packet_timestamp) {
                 RAV_TRACE("First packet timestamp: {}", packet_timestamp.value());
                 reader.first_packet_timestamp = packet_timestamp;
                 reader.receive_buffer.set_next_ts(packet_timestamp.value());
-                reader.next_ts = packet_timestamp - 480;  // TODO: Fix the hardcoding
+                reader.next_ts_to_read = packet_timestamp;
+            }
+
+            // Update most recent ts
+            const auto num_frames = static_cast<uint32_t>(payload.size_bytes()) / reader.audio_format.bytes_per_frame();
+            auto packet_most_recent_ts = rav::WrappingUint32(ts + num_frames - 1);
+            if (reader.most_recent_ts && packet_most_recent_ts > *reader.most_recent_ts) {
+                reader.most_recent_ts = packet_most_recent_ts;
+            } else {
+                reader.most_recent_ts = packet_most_recent_ts;
             }
 
             // Determine whether whole packet is too old
-            if (packet_timestamp + stream.packet_time_frames <= reader.next_ts) {
+            if (packet_timestamp + stream.packet_time_frames <= reader.next_ts_to_read) {
                 // RAV_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
                 TRACY_MESSAGE("Packet too late - skipping");
-                if (!stream.packets_too_old.push(rtp_packet_view.sequence_number())) {
-                    // RAV_ERROR("Packet not enqueued to packets_too_old");
+                if (!stream.packets_too_old.push(seq)) {
+                    RAV_ERROR("Packet not enqueued to packets_too_old");
                 }
                 continue;
             }
 
-            // Determine whether packet contains outdated data
-            if (packet_timestamp < reader.next_ts) {
+            // Determine whether part of the packet is too old
+            if (packet_timestamp < reader.next_ts_to_read) {
                 RAV_WARNING("Packet partly too late: seq={}, ts={}", seq, ts);
                 TRACY_MESSAGE("Packet partly too late - not skipping");
                 if (!stream.packets_too_old.push(seq)) {
@@ -328,44 +335,59 @@ void do_realtime_maintenance(rav::rtp::Receiver3::Reader& reader) {
 
             reader.receive_buffer.clear_until(ts);
 
-            if (!reader.receive_buffer.write(ts, rtp_packet_view.payload_data())) {
+            if (!reader.receive_buffer.write(ts, payload)) {
                 RAV_ERROR("Packet not written to buffer");
             }
         }
     }
 
-    TRACY_PLOT("available_frames", static_cast<int64_t>(reader.next_ts.diff(reader.receive_buffer.get_next_ts())));
+    TRACY_PLOT(
+        "available_frames", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts()))
+    );
 }
 
-std::optional<uint32_t> read_data_realtime_from_reader(
+std::optional<uint32_t> read_data_from_reader_realtime(
     rav::rtp::Receiver3::Reader& reader, uint8_t* buffer, const size_t buffer_size,
-    const std::optional<uint32_t> at_timestamp
+    const std::optional<uint32_t> at_timestamp, const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;
 
-    do_realtime_maintenance(reader);
+    RAV_ASSERT(reader.rw_lock.is_locked_shared(), "Reader must be shared locked");
 
     if (at_timestamp.has_value()) {
-        reader.next_ts = *at_timestamp;
-    } else if (!reader.first_packet_timestamp.has_value()) {
-        return {};
+        // Updating before do_realtime_maintenance to have the most accurate next_to_to_read
+        reader.next_ts_to_read = *at_timestamp;
     }
+
+    do_realtime_maintenance(reader);
+
+    if (!reader.first_packet_timestamp.has_value()) {
+        return {};  // No data has been received yet
+    }
+
+    RAV_ASSERT(reader.most_recent_ts.has_value(), "Should have a value, since first_packet_timestamp is set");
 
     const auto num_frames = static_cast<uint32_t>(buffer_size) / reader.audio_format.bytes_per_frame();
 
-    const auto read_at = reader.next_ts.value();
+    if (require_delay.has_value()) {
+        if (reader.next_ts_to_read + num_frames - 1 + *require_delay > reader.most_recent_ts) {
+            return {};
+        }
+    }
+
+    const auto read_at = reader.next_ts_to_read.value();
     if (!reader.receive_buffer.read(read_at, buffer, buffer_size, true)) {
         TRACY_MESSAGE("Failed to read data from ringbuffer");
         return std::nullopt;
     }
 
-    reader.next_ts += num_frames;
+    reader.next_ts_to_read += num_frames;
 
     return read_at;
 }
 
 void update_stream_active_state(rav::rtp::Receiver3::StreamContext& stream, const uint64_t now) {
-    if ((stream.last_packet_time_ns + rav::rtp::Receiver3::k_receive_timeout_ms * 1'000'000).value() < now) {
+    if ((stream.prev_packet_time_ns + rav::rtp::Receiver3::k_receive_timeout_ms * 1'000'000).value() < now) {
         stream.state.store(rav::rtp::Receiver3::StreamState::inactive, std::memory_order_relaxed);
     }
 }
@@ -381,7 +403,7 @@ void rav::rtp::Receiver3::StreamContext::reset() {
     packet_stats.reset();
     packet_stats_counters.write({});
     packet_interval_stats.reset();
-    last_packet_time_ns = {};
+    prev_packet_time_ns = {};
 }
 
 void rav::rtp::Receiver3::Reader::reset() {
@@ -395,7 +417,7 @@ void rav::rtp::Receiver3::Reader::reset() {
     receive_buffer.clear();
     read_audio_data_buffer = {};
     first_packet_timestamp = {};
-    next_ts = {};
+    next_ts_to_read = {};
 }
 
 rav::rtp::Receiver3::Receiver3(boost::asio::io_context& io_context) {
@@ -631,7 +653,7 @@ void rav::rtp::Receiver3::read_incoming_packets() {
                 if (!reader.rtp_ts.has_value()) {
                     reader.seq = view.sequence_number();
                     reader.rtp_ts = view.timestamp();
-                    stream.last_packet_time_ns = recv_time;
+                    stream.prev_packet_time_ns = recv_time;
                 }
 
                 PacketBuffer packet;
@@ -649,7 +671,7 @@ void rav::rtp::Receiver3::read_incoming_packets() {
                     stream.packet_stats.mark_packet_too_late(*seq);
                 }
 
-                if (const auto interval = stream.last_packet_time_ns.update(recv_time)) {
+                if (const auto interval = stream.prev_packet_time_ns.update(recv_time)) {
                     TRACY_PLOT("packet interval (ms)", static_cast<double>(*interval) / 1'000'000.0);
                     stream.packet_interval_stats.add(static_cast<double>(*interval) / 1'000'000.0);
                 }
@@ -685,7 +707,8 @@ void rav::rtp::Receiver3::read_incoming_packets() {
 }
 
 std::optional<uint32_t> rav::rtp::Receiver3::read_data_realtime(
-    const Id id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+    const Id id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp,
+    const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;
 
@@ -698,14 +721,15 @@ std::optional<uint32_t> rav::rtp::Receiver3::read_data_realtime(
         if (reader.id != id) {
             continue;
         }
-        return read_data_realtime_from_reader(reader, buffer, buffer_size, at_timestamp);
+        return read_data_from_reader_realtime(reader, buffer, buffer_size, at_timestamp, require_delay);
     }
 
     return std::nullopt;
 }
 
 std::optional<uint32_t> rav::rtp::Receiver3::read_audio_data_realtime(
-    const Id id, AudioBufferView<float> output_buffer, const std::optional<uint32_t> at_timestamp
+    const Id id, AudioBufferView<float> output_buffer, const std::optional<uint32_t> at_timestamp,
+    const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;
 
@@ -739,8 +763,8 @@ std::optional<uint32_t> rav::rtp::Receiver3::read_audio_data_realtime(
         }
 
         auto& buffer = reader.read_audio_data_buffer;
-        const auto read_at = read_data_realtime_from_reader(
-            reader, buffer.data(), output_buffer.num_frames() * format.bytes_per_frame(), at_timestamp
+        const auto read_at = read_data_from_reader_realtime(
+            reader, buffer.data(), output_buffer.num_frames() * format.bytes_per_frame(), at_timestamp, require_delay
         );
 
         if (!read_at.has_value()) {

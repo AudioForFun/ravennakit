@@ -402,35 +402,19 @@ std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_recei
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
-    const Id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+    const Id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp,
+    const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;
-
-    const auto lock = realtime_shared_context_.lock_realtime();
-
-    for (auto* receiver : lock->receivers) {
-        if (receiver->get_id() == receiver_id) {
-            return receiver->read_data_realtime(buffer, buffer_size, at_timestamp);
-        }
-    }
-
-    return std::nullopt;
+    return rtp_receiver3_.read_data_realtime(receiver_id, buffer, buffer_size, at_timestamp, require_delay);
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_audio_data_realtime(
-    const Id receiver_id, const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
+    const Id receiver_id, const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp,
+    const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;
-
-    const auto context = realtime_shared_context_.lock_realtime();
-
-    for (auto* receiver : context->receivers) {
-        if (receiver->get_id() == receiver_id) {
-            return receiver->read_audio_data_realtime(output_buffer, at_timestamp);
-        }
-    }
-
-    return std::nullopt;
+    return rtp_receiver3_.read_audio_data_realtime(receiver_id, output_buffer, at_timestamp, require_delay);
 }
 
 bool rav::RavennaNode::send_data_realtime(
