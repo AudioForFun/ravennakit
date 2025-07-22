@@ -12,6 +12,7 @@
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
+#include "ravennakit/ravenna/ravenna_node.hpp"
 #include "ravennakit/ravenna/ravenna_receiver.hpp"
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
@@ -19,141 +20,22 @@
 
 #include <CLI/App.hpp>
 
-namespace examples {
-class loopback: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instance::Subscriber {
+namespace {
+
+constexpr uint32_t k_delay = 480;
+
+/// Helper class which forwards virtual calls to rav::SafeFunction.
+class RavennaReceiverSubscriber: public rav::RavennaReceiver::Subscriber {
   public:
-    explicit loopback(std::string stream_name, const std::string& interface_search_string) :
-        stream_name_(std::move(stream_name)) {
-        rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
-        advertiser_ = rav::dnssd::Advertiser::create(io_context_);
-        if (advertiser_ == nullptr) {
-            RAV_THROW_EXCEPTION("No dnssd advertiser available");
-        }
-
-        rtsp_server_ = std::make_unique<rav::rtsp::Server>(
-            io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 5005)
-        );
-
-        const auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface_search_string);
-        if (iface == nullptr) {
-            RAV_ERROR("No network interface found with search string: {}", interface_search_string);
-            return;
-        }
-
-        ptp_instance_ = std::make_unique<rav::ptp::Instance>(io_context_);
-        if (const auto result = ptp_instance_->add_port(iface->get_first_ipv4_address()); !result) {
-            RAV_THROW_EXCEPTION("Failed to add PTP port: {}", to_string(result.error()));
-        }
-
-        if (!ptp_instance_->subscribe(this)) {
-            RAV_WARNING("Failed to add subscriber");
-        }
-
-        sender_ = std::make_unique<rav::RavennaSender>(
-            io_context_, *advertiser_, *rtsp_server_, *ptp_instance_, rav::Id::get_next_process_wide_unique_id(), 1
-        );
-
-        rav::NetworkInterfaceConfig interface_config;
-        interface_config.set_interface(rav::Rank::primary(), iface->get_identifier());
-
-        sender_->set_network_interface_config(std::move(interface_config));
-
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver3>(io_context_);
-
-        rav::RavennaReceiver::Configuration config;
-        config.delay_frames = 480;  // 10ms at 48KHz
-        config.enabled = true;
-        config.session_name = stream_name_;
-
-        ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(
-            *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
-        );
-        ravenna_receiver_->set_network_interface_config(std::move(interface_config));
-        auto result = ravenna_receiver_->set_configuration(config);
-        if (!result) {
-            RAV_ERROR("Failed to update configuration: {}", result.error());
-            return;
-        }
-    }
-
-    ~loopback() override {
-        if (ptp_instance_ != nullptr) {
-            if (!ptp_instance_->unsubscribe(this)) {
-                RAV_WARNING("Failed to remove subscriber");
-            }
-        }
-
-        if (ravenna_receiver_ != nullptr) {
-            if (!ravenna_receiver_->unsubscribe(this)) {
-                RAV_WARNING("Failed to remove subscriber");
-            }
-        }
-    }
+    rav::SafeFunction<void(const rav::rtp::Receiver3::ReaderParameters& parameters)>
+        on_ravenna_receiver_parameters_updated;
 
     void ravenna_receiver_parameters_updated(const rav::rtp::Receiver3::ReaderParameters& parameters) override {
-        if (parameters.streams.empty()) {
-            RAV_WARNING("No streams available");
-            return;
-        }
-
-        RAV_ASSERT(parameters.audio_format.is_valid(), "Invalid audio format");
-
-        buffer_.resize(parameters.audio_format.bytes_per_frame() * parameters.streams.front().packet_time_frames);
-
-        rav::RavennaSender::Configuration config;
-        config.session_name = stream_name_ + "_loopback";
-        config.audio_format = parameters.audio_format;
-        config.enabled = true;
-
-        auto result = sender_->set_configuration(config);
-        if (!result) {
-            RAV_ERROR("Failed to update sender: {}", result.error());
-        }
+        on_ravenna_receiver_parameters_updated(parameters);
     }
-
-    void on_data_ready(rav::WrappingUint32 timestamp) override {
-        if (!ravenna_receiver_->read_data_realtime(buffer_.data(), buffer_.size(), timestamp.value())) {
-            RAV_ERROR("Failed to read data from receiver");
-            return;
-        }
-
-        timestamp += ravenna_receiver_->get_configuration().delay_frames;
-        std::ignore = sender_->send_data_realtime(rav::BufferView(buffer_).const_view(), timestamp.value());
-    }
-
-    void ptp_port_changed_state(const rav::ptp::Port& port) override {
-        if (port.state() == rav::ptp::State::slave) {
-            RAV_INFO("Port state changed to slave, start playing");
-            ptp_clock_stable_ = true;
-        }
-    }
-
-    void run() {
-        while (!io_context_.stopped()) {
-            io_context_.poll();
-        }
-    }
-
-  private:
-    std::string stream_name_;
-    boost::asio::io_context io_context_;
-    std::vector<uint8_t> buffer_;
-    bool ptp_clock_stable_ = false;
-
-    // Receiver components
-    rav::RavennaBrowser browser_ {io_context_};
-    std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
-    std::unique_ptr<rav::rtp::Receiver3> rtp_receiver_;
-    std::unique_ptr<rav::RavennaReceiver> ravenna_receiver_;
-
-    // Sender components
-    std::unique_ptr<rav::dnssd::Advertiser> advertiser_;
-    std::unique_ptr<rav::rtsp::Server> rtsp_server_;
-    std::unique_ptr<rav::ptp::Instance> ptp_instance_;
-    std::unique_ptr<rav::RavennaSender> sender_;
 };
 
-}  // namespace examples
+}  // namespace
 
 /**
  * This example subscribes to a RAVENNA stream, reads the audio data, and writes it back to the network as a different
@@ -171,14 +53,111 @@ int main(int const argc, char* argv[]) {
     std::string stream_name;
     app.add_option("stream_name", stream_name, "The name of the stream to loop back")->required();
 
-    std::string interface_address_string = "0.0.0.0";
-    app.add_option("--interface-addr", interface_address_string, "The interface address");
+    std::string interfaces;
+    app.add_option(
+        "--interfaces", interfaces,
+        R"(The interfaces to use. Example 1: "en1,en2", example 2: "192.168.1.1,192.168.2.1")"
+    );
 
     CLI11_PARSE(app, argc, argv);
 
-    // Receiving side
-    examples::loopback example(stream_name, interface_address_string);
-    example.run();
+    const auto network_config = rav::parse_network_interface_config_from_string(interfaces);
+    if (!network_config) {
+        RAV_ERROR("Failed to parse network interface config");
+        return 1;
+    }
+
+    rav::RavennaNode ravenna_node;
+    ravenna_node.set_network_interface_config(*network_config).wait();
+
+    rav::RavennaReceiver::Configuration config;
+    config.enabled = true;
+    config.session_name = stream_name;
+    // No need to set the delay, because RAVENNAKIT doesn't use this value
+
+    auto receiver_id = ravenna_node.create_receiver(config).get().value();
+    rav::Id sender_id;
+
+    std::vector<uint8_t> buffer;
+
+    RavennaReceiverSubscriber receiver_subscriber;
+    receiver_subscriber.on_ravenna_receiver_parameters_updated =
+        [&ravenna_node, &buffer, &stream_name, &sender_id](const rav::rtp::Receiver3::ReaderParameters& parameters) {
+            if (parameters.streams.empty()) {
+                RAV_WARNING("No streams available");
+                return;
+            }
+
+            if (!parameters.is_valid()) {
+                return;
+            }
+
+            buffer.resize(parameters.audio_format.bytes_per_frame() * parameters.streams.front().packet_time_frames);
+
+            rav::RavennaSender::Configuration sender_config;
+            sender_config.session_name = stream_name + "_loopback";
+            sender_config.audio_format = parameters.audio_format;
+            sender_config.enabled = true;
+            sender_config.payload_type = 98;
+            sender_config.ttl = 15;
+            sender_config.packet_time = rav::aes67::PacketTime::ms_1();  // TODO: Update dynamically
+
+            for (size_t i = 0; i < parameters.streams.size(); ++i) {
+                if (parameters.streams[i].is_valid()) {
+                    rav::RavennaSender::Destination destination {
+                        rav::Rank(static_cast<uint8_t>(i)), boost::asio::ip::udp::endpoint {{}, 5004}, true
+                    };
+                    sender_config.destinations.emplace_back(destination);
+                }
+            }
+
+            if (!sender_id.is_valid()) {
+                const auto result = ravenna_node.create_sender(sender_config).get();
+                if (!result) {
+                    RAV_ERROR("Failed to create sender");
+                    return;
+                }
+                sender_id = *result;
+            } else {
+                auto result = ravenna_node.update_sender_configuration(sender_id, sender_config).get();
+                if (!result) {
+                    RAV_ERROR("Failed to update sender: {}", result.error());
+                }
+            }
+        };
+
+    ravenna_node.subscribe_to_receiver(receiver_id, &receiver_subscriber).wait();
+
+    rav::ptp::Instance::Subscriber ptp_subscriber;
+    ravenna_node.subscribe_to_ptp_instance(&ptp_subscriber).wait();
+
+    std::atomic keep_going = true;
+    std::thread audio_thread([&]() mutable {
+        while (keep_going.load(std::memory_order_relaxed)) {
+            if (!ptp_subscriber.get_local_clock().is_calibrated()) {
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+
+            const auto ts = ravenna_node.read_data_realtime(receiver_id, buffer.data(), buffer.size(), {}, k_delay);
+            if (!ts) {
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
+                continue;
+            }
+
+            rav::BufferView buffer_view(buffer);
+            if (!ravenna_node.send_data_realtime(sender_id, buffer_view.const_view(), *ts + k_delay)) {
+                RAV_ERROR("Failed to send data");
+            }
+        }
+    });
+
+    fmt::println("Press return key to stop...");
+    std::string line;
+    std::getline(std::cin, line);
+
+    keep_going.store(false, std::memory_order_relaxed);
+    audio_thread.join();
 
     return 0;
 }

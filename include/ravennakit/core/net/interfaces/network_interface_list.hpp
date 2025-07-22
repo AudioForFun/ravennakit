@@ -42,7 +42,7 @@ class NetworkInterfaceList {
      * @param search_string The string to search for.
      * @return The network interface if found, otherwise nullptr.
      */
-    [[nodiscard]] const NetworkInterface* find_by_string(const std::string& search_string) const;
+    [[nodiscard]] const NetworkInterface* find_by_string(const std::string_view& search_string) const;
 
     /**
      * Finds a network interface by the given address.

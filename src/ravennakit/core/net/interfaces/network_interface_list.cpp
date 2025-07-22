@@ -25,7 +25,7 @@ rav::NetworkInterfaceList::get_interface(const NetworkInterface::Identifier& ide
     return nullptr;
 }
 
-const rav::NetworkInterface* rav::NetworkInterfaceList::find_by_string(const std::string& search_string) const {
+const rav::NetworkInterface* rav::NetworkInterfaceList::find_by_string(const std::string_view& search_string) const {
     if (search_string.empty()) {
         return nullptr;
     }

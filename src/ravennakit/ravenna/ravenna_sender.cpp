@@ -108,6 +108,8 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configurat
 
     // Validate the configuration
 
+    std::ignore = generate_auto_addresses_if_needed(config.destinations);
+
     if (config.session_name.empty()) {
         return tl::unexpected("Session name cannot be empty");
     }
@@ -712,10 +714,16 @@ void rav::RavennaSender::update_shared_context() {
 }
 
 void rav::RavennaSender::generate_auto_addresses_if_needed() {
-    // Generate a multicast addresses if not set
+    if (generate_auto_addresses_if_needed(configuration_.destinations)) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->ravenna_sender_configuration_updated(id_, configuration_);
+        }
+    }
+}
 
+bool rav::RavennaSender::generate_auto_addresses_if_needed(std::vector<Destination>& destinations) const {
     bool changed = false;
-    for (auto& dst : configuration_.destinations) {
+    for (auto& dst : destinations) {
         if (dst.endpoint.address().is_unspecified()) {
             const auto iface = network_interface_config_.get_interface_for_rank(dst.interface_by_rank);
             if (iface != nullptr) {
@@ -741,11 +749,7 @@ void rav::RavennaSender::generate_auto_addresses_if_needed() {
             }
         }
     }
-    if (changed) {
-        for (auto* subscriber : subscribers_) {
-            subscriber->ravenna_sender_configuration_updated(id_, configuration_);
-        }
-    }
+    return changed;
 }
 
 void rav::RavennaSender::update_rtp_senders() {
