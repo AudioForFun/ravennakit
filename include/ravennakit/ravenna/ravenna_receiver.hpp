@@ -182,35 +182,6 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     [[nodiscard]] tl::expected<void, std::string> restore_from_json(const boost::json::value& json);
 
     /**
-     * Reads data from the buffer at the given timestamp.
-     * TODO: Remove this function and call into rtp::Receiver3 directly
-     *
-     * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
-     *
-     * @param buffer The destination to write the data to.
-     * @param buffer_size The size of the buffer in bytes.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
-     */
-    [[nodiscard]] std::optional<uint32_t>
-    read_data_realtime(uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
-
-    /**
-     * Reads the data from the receiver with the given id.
-     * TODO: Remove this function and call into rtp::Receiver3 directly
-     *
-     * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
-     *
-     * @param output_buffer The buffer to read the data into.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
-     */
-    [[nodiscard]] std::optional<uint32_t>
-    read_audio_data_realtime(const AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp);
-
-    /**
      * @return The NMOS receiver of this receiver.
      */
     [[nodiscard]] const nmos::ReceiverAudio& get_nmos_receiver() const;

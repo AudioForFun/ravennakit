@@ -181,18 +181,6 @@ tl::expected<void, std::string> rav::RavennaReceiver::restore_from_json(const bo
     }
 }
 
-std::optional<uint32_t> rav::RavennaReceiver::read_data_realtime(
-    uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
-) {
-    return rtp_receiver_.read_data_realtime(id_, buffer, buffer_size, at_timestamp, {});
-}
-
-std::optional<uint32_t> rav::RavennaReceiver::read_audio_data_realtime(
-    const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
-) {
-    return rtp_receiver_.read_audio_data_realtime(id_, output_buffer, at_timestamp, {});
-}
-
 const rav::nmos::ReceiverAudio& rav::RavennaReceiver::get_nmos_receiver() const {
     return nmos_receiver_;
 }
