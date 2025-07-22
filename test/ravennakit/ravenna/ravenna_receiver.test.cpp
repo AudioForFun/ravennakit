@@ -137,7 +137,6 @@ TEST_CASE("rav::RavennaReceiver") {
         boost::asio::io_context io_context;
         rav::RavennaBrowser ravenna_browser(io_context);
         rav::RavennaRtspClient rtsp_client(io_context, ravenna_browser);
-        rav::UdpReceiver udp_receiver(io_context);
         rav::rtp::AudioReceiver rtp_receiver(io_context);
         rav::RavennaReceiver receiver(rtsp_client, rtp_receiver, rav::Id(1));
         REQUIRE(receiver.set_configuration(config));
@@ -164,7 +163,6 @@ TEST_CASE("rav::RavennaReceiver") {
         boost::asio::io_context io_context;
         rav::RavennaBrowser ravenna_browser(io_context);
         rav::RavennaRtspClient rtsp_client(io_context, ravenna_browser);
-        rav::UdpReceiver udp_receiver(io_context);
         rav::rtp::AudioReceiver rtp_receiver(io_context);
         rav::RavennaReceiver receiver(rtsp_client, rtp_receiver, rav::Id(1));
         REQUIRE(receiver.set_configuration(config));
