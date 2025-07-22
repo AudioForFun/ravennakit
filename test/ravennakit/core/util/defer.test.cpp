@@ -28,7 +28,7 @@ TEST_CASE("rav::Defer") {
             rav::Defer defer([&count] {
                 count++;
             });
-            defer.reset();
+            defer.release();
         }
         REQUIRE(count == 0);
     }

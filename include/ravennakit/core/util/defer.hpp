@@ -35,12 +35,10 @@ class Defer {
      * Destructor that executes all registered rollback functions if not committed.
      */
     ~Defer() {
-        if (call_upon_destruction_) {
-            try {
-                rollback_function_();
-            } catch (const std::exception& e) {
-                RAV_ERROR("Exception caught: {}", e.what());
-            }
+        try {
+            reset();
+        } catch (const std::exception& e) {
+            RAV_ERROR("Exception caught: {}", e.what());
         }
     }
 
@@ -51,9 +49,19 @@ class Defer {
     Defer& operator=(Defer&&) = delete;
 
     /**
-     * Prevent the function to be called upon desctruction.
+     * Calls the stored lambda right away, if one exists.
      */
     void reset() {
+        if (call_upon_destruction_) {
+            rollback_function_();
+            call_upon_destruction_ = false;
+        }
+    }
+
+    /**
+     * Release the lambda to not be called during destruction.
+     */
+    void release() {
         call_upon_destruction_ = false;
     }
 
