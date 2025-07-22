@@ -15,7 +15,6 @@
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/nmos/nmos_node.hpp"
 #include "ravennakit/nmos/models/nmos_receiver_audio.hpp"
-#include "ravennakit/rtp/rtp_audio_receiver.hpp"
 #include "ravennakit/rtp/detail/rtp_receiver.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
 
