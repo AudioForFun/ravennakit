@@ -18,5 +18,6 @@ using ip_address = boost::asio::ip::address;
 using ip_address_v4 = boost::asio::ip::address_v4;
 using ip_address_v6 = boost::asio::ip::address_v6;
 using udp_socket = boost::asio::ip::udp::socket;
+using udp_endpoint = boost::asio::ip::udp::endpoint;
 
 }

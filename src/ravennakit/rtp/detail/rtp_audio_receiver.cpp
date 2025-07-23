@@ -510,10 +510,10 @@ bool rav::rtp::AudioReceiver::add_reader(
 ) {
     RAV_ASSERT(parameters.streams.size() == interfaces.size(), "Should be equal");
 
-    for (auto& stream : readers) {
-        if (stream.id == id) {
-            RAV_WARNING("A stream for given id already exists");
-            return false;  // Stream already exists
+    for (auto& reader : readers) {
+        if (reader.id == id) {
+            RAV_WARNING("A reader for given id already exists");
+            return false;
         }
     }
 
@@ -534,7 +534,7 @@ bool rav::rtp::AudioReceiver::add_reader(
     return false;
 }
 
-bool rav::rtp::AudioReceiver::remove_reader(const Id id) {
+bool rav::rtp::AudioReceiver::  remove_reader(const Id id) {
     for (auto& reader : readers) {
         if (reader.id == id) {
             const auto guard = reader.rw_lock.lock_exclusive();
@@ -561,7 +561,7 @@ bool rav::rtp::AudioReceiver::remove_reader(const Id id) {
     return false;
 }
 
-void rav::rtp::AudioReceiver::read_incoming_packets() {
+void rav::rtp::AudioReceiver::  read_incoming_packets() {
     TRACY_ZONE_SCOPED;
 
     const auto now = clock::now_monotonic_high_resolution_ns();

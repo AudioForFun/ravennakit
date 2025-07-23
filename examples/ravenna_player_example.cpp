@@ -35,14 +35,14 @@ class WavFilePlayer: public rav::ptp::Instance::Subscriber {
         rav::ptp::Instance& ptp_instance, rav::Id::Generator& id_generator, const std::string& interface_search_string,
         const rav::File& file_to_play, const std::string& session_name
     ) :
-        ptp_instance_(ptp_instance), timer_(io_context) {
+        ptp_instance_(ptp_instance), rtp_audio_sender_(io_context), timer_(io_context) {
         if (!file_to_play.exists()) {
             throw std::runtime_error("File does not exist: " + file_to_play.path().string());
         }
 
         auto id = id_generator.next();
         auto sender = std::make_unique<rav::RavennaSender>(
-            io_context, advertiser, rtsp_server, ptp_instance, id, static_cast<uint32_t>(id.value())
+            io_context, rtp_audio_sender_, advertiser, rtsp_server, ptp_instance, id, static_cast<uint32_t>(id.value())
         );
 
         auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface_search_string);
@@ -107,6 +107,7 @@ class WavFilePlayer: public rav::ptp::Instance::Subscriber {
         playing,
     };
     rav::ptp::Instance& ptp_instance_;
+    rav::rtp::AudioSender rtp_audio_sender_;
     State state_ = State::stopped;
     rav::AudioFormat audio_format_;
     std::vector<uint8_t> audio_buffer_;

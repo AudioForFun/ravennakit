@@ -39,17 +39,6 @@ bool is_connection_info_valid(const rav::sdp::ConnectionInfoField& conn) {
     return true;
 }
 
-rav::rtp::AudioReceiver::ArrayOfAddresses
-get_array_of_addresses_from_network_config(const rav::NetworkInterfaceConfig& config) {
-    rav::rtp::AudioReceiver::ArrayOfAddresses interfaces;
-    for (const auto& [rank, addr] : config.get_interface_ipv4_addresses()) {
-        if (rank.value() < interfaces.size()) {
-            interfaces[rank.value()] = addr;
-        }
-    }
-    return interfaces;
-}
-
 tl::expected<rav::rtp::AudioReceiver::StreamInfo, std::string> create_stream_from_media_description(
     const rav::sdp::MediaDescription& media_description, const rav::sdp::SessionDescription& sdp,
     const rav::AudioFormat& audio_format
@@ -188,7 +177,7 @@ const rav::nmos::ReceiverAudio& rav::RavennaReceiver::get_nmos_receiver() const 
 void rav::RavennaReceiver::do_maintenance() {
     // Update stream states
     for (size_t i = 0; i < streams_states_.size(); ++i) {
-        if (auto state = rtp_receiver_.get_stream_state(id_, i)) {
+        if (auto state = rtp_audio_receiver_.get_stream_state(id_, i)) {
             if (streams_states_[i] != *state) {
                 streams_states_[i] = *state;
                 for (auto* subscriber : subscribers_) {
@@ -204,7 +193,7 @@ void rav::RavennaReceiver::do_maintenance() {
     if (stats_throttle_.update()) {
         for (size_t i = 0; i < streams_states_.size(); ++i) {
             if (streams_states_[i] != rtp::AudioReceiver::StreamState::inactive) {
-                if (auto stats = rtp_receiver_.get_packet_stats(id_, i)) {
+                if (auto stats = rtp_audio_receiver_.get_packet_stats(id_, i)) {
                     for (auto* subscriber : subscribers_) {
                         subscriber->ravenna_receiver_stream_stats_updated(id_, i, *stats);
                     }
@@ -214,8 +203,8 @@ void rav::RavennaReceiver::do_maintenance() {
     }
 }
 
-rav::RavennaReceiver::RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::AudioReceiver& receiver3, const Id id) :
-    rtsp_client_(rtsp_client), rtp_receiver_(receiver3), id_(id) {
+rav::RavennaReceiver::RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::AudioReceiver& rtp_audio_receiver, const Id id) :
+    rtsp_client_(rtsp_client), rtp_audio_receiver_(rtp_audio_receiver), id_(id) {
     nmos_receiver_.id = boost::uuids::random_generator()();
 
     for (auto& encoding : k_supported_encodings) {
@@ -224,7 +213,7 @@ rav::RavennaReceiver::RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::Audio
 }
 
 rav::RavennaReceiver::~RavennaReceiver() {
-    std::ignore = rtp_receiver_.remove_reader(id_);
+    std::ignore = rtp_audio_receiver_.remove_reader(id_);
     std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
     if (nmos_node_ != nullptr) {
         if (!nmos_node_->remove_receiver(nmos_receiver_.id)) {
@@ -343,11 +332,12 @@ tl::expected<void, std::string> rav::RavennaReceiver::set_configuration(Configur
     }
 
     if (do_stop_start) {
-        std::ignore = rtp_receiver_.remove_reader(id_);
+        std::ignore = rtp_audio_receiver_.remove_reader(id_);
 
         if (reader_parameters_.is_valid() && configuration_.enabled) {
-            const auto ok = rtp_receiver_.add_reader(
-                id_, reader_parameters_, get_array_of_addresses_from_network_config(network_interface_config_)
+            const auto ok = rtp_audio_receiver_.add_reader(
+                id_, reader_parameters_,
+                network_interface_config_.get_array_of_interface_addresses<rtp::AudioReceiver::k_max_num_redundant_sessions>()
             );
             if (!ok) {
                 RAV_ERROR("Failed to add RTP reader");
@@ -388,7 +378,7 @@ bool rav::RavennaReceiver::subscribe(Subscriber* subscriber) {
             if (!reader_parameters_.streams[i].is_valid()) {
                 continue;
             }
-            const auto state = rtp_receiver_.get_stream_state(id_, 0);
+            const auto state = rtp_audio_receiver_.get_stream_state(id_, 0);
             if (!state) {
                 RAV_ERROR("Failed to get state for stream {}", reader_parameters_.streams[i].session.to_string());
                 continue;
@@ -434,7 +424,6 @@ void rav::RavennaReceiver::set_network_interface_config(NetworkInterfaceConfig n
         return;  // No change in network interface configuration
     }
     network_interface_config_ = std::move(network_interface_config);
-    rtp_receiver_.set_interfaces(get_array_of_addresses_from_network_config(network_interface_config_));
     if (auto ok = update_nmos(); !ok) {
         RAV_ERROR("Failed to update NMOS after setting network interface config: {}", ok.error());
     }

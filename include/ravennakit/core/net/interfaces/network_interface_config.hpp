@@ -14,6 +14,9 @@
 #include "ravennakit/core/json.hpp"
 #include "ravennakit/core/util/rank.hpp"
 #include "ravennakit/core/string_parser.hpp"
+#include "ravennakit/core/net/asio/asio_helpers.hpp"
+#include "ravennakit/rtp/detail/rtp_audio_receiver.hpp"
+#include "ravennakit/rtp/detail/rtp_audio_sender.hpp"
 
 #include <map>
 
@@ -105,6 +108,21 @@ class NetworkInterfaceConfig {
             fmt::format_to(std::back_inserter(output), "{}({})", iface.second, iface.first.value());
         }
         return output;
+    }
+
+    /**
+     * @tparam N The size of the array.
+     * @return An array of addresses of the interfaces, ordered by rank.
+     */
+    template<size_t N>
+    std::array<ip_address_v4, N> get_array_of_interface_addresses() {
+        std::array<ip_address_v4, N> addresses{};
+        for (const auto& [rank, addr] : get_interface_ipv4_addresses()) {
+            if (rank.value() < interfaces.size()) {
+                addresses[rank.value()] = addr;
+            }
+        }
+        return addresses;
     }
 
 #if RAV_HAS_BOOST_JSON

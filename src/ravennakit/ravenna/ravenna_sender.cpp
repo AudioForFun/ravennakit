@@ -25,10 +25,11 @@
 #endif
 
 rav::RavennaSender::RavennaSender(
-    boost::asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
-    ptp::Instance& ptp_instance, const Id id, const uint32_t session_id
+    boost::asio::io_context& io_context, rtp::AudioSender& rtp_audio_sender, dnssd::Advertiser& advertiser,
+    rtsp::Server& rtsp_server, ptp::Instance& ptp_instance, const Id id, const uint32_t session_id
 ) :
     io_context_(io_context),
+    rtp_audio_sender_(rtp_audio_sender),
     advertiser_(advertiser),
     rtsp_server_(rtsp_server),
     ptp_instance_(ptp_instance),
@@ -62,6 +63,7 @@ rav::RavennaSender::RavennaSender(
 }
 
 rav::RavennaSender::~RavennaSender() {
+    std::ignore = rtp_audio_sender_.remove_writer(id_);
     stop_timer();
 
     if (!ptp_instance_.unsubscribe(this)) {
@@ -651,7 +653,6 @@ void rav::RavennaSender::start_timer() {
             RAV_ERROR("Timer error: {}", ec.message());
             return;
         }
-        send_outgoing_data();
         start_timer();
     });
 }
@@ -662,32 +663,6 @@ void rav::RavennaSender::stop_timer() {
     const auto num_canceled = timer_.cancel();
     if (num_canceled == 0) {
         RAV_WARNING("No timer handlers canceled");
-    }
-}
-
-void rav::RavennaSender::send_outgoing_data() {
-    if (auto lock = send_outgoing_data_reader_.lock_realtime()) {
-        TRACY_ZONE_SCOPED;
-
-        // Allow to send 100 extra packets which come in during the loop, but otherwise keep the loop bounded
-        for (size_t i = 0; i < lock->outgoing_data.size() + 100; ++i) {
-            const auto packet = lock->outgoing_data.pop();
-
-            if (!packet.has_value()) {
-                return;  // Nothing to do here
-            }
-
-            RAV_ASSERT(packet->payload_size_bytes <= aes67::constants::k_max_payload, "Payload size exceeds maximum");
-
-            for (auto& dst : configuration_.destinations) {
-                if (dst.enabled) {
-                    auto it = rtp_senders_.find(dst.interface_by_rank);
-                    if (it != rtp_senders_.end()) {
-                        it->second.send_to(packet->payload.data(), packet->payload_size_bytes, dst.endpoint);
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -856,12 +831,28 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
     }
 
     if (!configuration_.enabled) {
+        std::ignore = rtp_audio_sender_.remove_writer(id_);
         stop_timer();
         shared_context_.clear();
         return;  // Done here
     }
 
     start_timer();
+
+    rtp::AudioSender::WriterParameters params;
+    params.audio_format = configuration_.audio_format;
+    params.packet_time_frames = configuration_.packet_time.framecount(configuration_.audio_format.sample_rate);
+    params.payload_type = configuration_.payload_type;
+    for (auto& dst : configuration_.destinations) {
+        if (dst.enabled && dst.interface_by_rank.value() < params.destinations.size()) {
+            params.destinations[dst.interface_by_rank.value()] = dst.endpoint;
+        }
+    }
+    const auto interfaces =
+        network_interface_config_.get_array_of_interface_addresses<rtp::AudioSender::k_max_num_redundant_sessions>();
+    if (!rtp_audio_sender_.add_writer(id_, params, interfaces)) {
+        RAV_ERROR("Failed to add writer");
+    }
 
     if (rtsp_path_by_id_.empty()) {
         RAV_ASSERT(

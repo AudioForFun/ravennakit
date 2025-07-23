@@ -30,7 +30,7 @@ namespace rav::rtp {
 
 struct AudioReceiver {
     static constexpr auto k_max_num_readers = 16;
-    static constexpr auto k_max_num_redundant_sessions = 2;
+    static constexpr auto k_max_num_redundant_sessions = 2;  // How many redundant paths
     static constexpr auto k_max_num_sessions = k_max_num_readers * k_max_num_redundant_sessions;
 
     /// The number of milliseconds after which a stream is considered inactive.

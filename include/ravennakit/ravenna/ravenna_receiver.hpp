@@ -95,7 +95,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
         }
     };
 
-    explicit RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::AudioReceiver& receiver3, Id id);
+    explicit RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::AudioReceiver& rtp_audio_receiver, Id id);
     ~RavennaReceiver() override;
 
     RavennaReceiver(const RavennaReceiver&) = delete;
@@ -196,7 +196,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
 
   private:
     RavennaRtspClient& rtsp_client_;
-    rtp::AudioReceiver& rtp_receiver_;
+    rtp::AudioReceiver& rtp_audio_receiver_;
     nmos::Node* nmos_node_ {nullptr};
     const Id id_;
     Configuration configuration_;
