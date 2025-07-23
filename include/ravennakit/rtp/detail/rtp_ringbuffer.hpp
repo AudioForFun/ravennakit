@@ -23,9 +23,9 @@ namespace rav::rtp {
  * packets with older packets. The reason for this is to allow different readers with different delay settings to use
  * the same buffer.
  */
-class Buffer {
+class Ringbuffer {
   public:
-    explicit Buffer() = default;
+    explicit Ringbuffer() = default;
 
     /**
      * Resizes the buffer.
@@ -153,6 +153,13 @@ class Buffer {
 
         next_ts_ = at_timestamp;
         return true;
+    }
+
+    /**
+     * Clears all data by filling with the ground value.
+     */
+    void clear() {
+        std::fill_n(buffer_.data(), buffer_.size(), ground_value_);
     }
 
     /**

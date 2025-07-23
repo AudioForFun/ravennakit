@@ -11,6 +11,7 @@
 #pragma once
 
 #include "ravennakit/core/platform.hpp"
+#include "ravennakit/core/platform/apple/mach.hpp"
 
 #if RAV_APPLE
 

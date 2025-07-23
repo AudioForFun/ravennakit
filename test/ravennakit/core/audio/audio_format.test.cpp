@@ -28,7 +28,7 @@ TEST_CASE("rav::AudioFormat") {
 void rav::test_audio_format_json(const AudioFormat& audio_format, const boost::json::value& json) {
     REQUIRE(json.at("byte_order") == AudioFormat::to_string(audio_format.byte_order));
     REQUIRE(json.at("channel_ordering") == AudioFormat::to_string(audio_format.ordering));
-    REQUIRE(json.at("encoding") == audio_encoding_to_string(audio_format.encoding));
+    REQUIRE(json.at("encoding") == to_string(audio_format.encoding));
     REQUIRE(json.at("num_channels") == audio_format.num_channels);
     REQUIRE(json.at("sample_rate") == audio_format.sample_rate);
 }

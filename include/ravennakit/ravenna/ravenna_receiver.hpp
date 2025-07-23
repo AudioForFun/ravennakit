@@ -11,18 +11,12 @@
 #pragma once
 
 #include "ravenna_rtsp_client.hpp"
-#include "ravennakit/core/util/exclusive_access_guard.hpp"
 #include "ravennakit/core/containers/fifo_buffer.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/nmos/nmos_node.hpp"
 #include "ravennakit/nmos/models/nmos_receiver_audio.hpp"
-#include "ravennakit/rtp/rtp_audio_receiver.hpp"
-#include "ravennakit/rtp/detail/rtp_filter.hpp"
-#include "ravennakit/rtp/detail/rtp_packet_stats.hpp"
-#include "ravennakit/rtp/detail/rtp_receiver.hpp"
+#include "ravennakit/rtp/detail/rtp_audio_receiver.hpp"
 #include "ravennakit/sdp/sdp_session_description.hpp"
-
-#include <boost/uuid/random_generator.hpp>
 
 namespace rav {
 
@@ -58,7 +52,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
          * Called when the stream has changed.
          * @param parameters The stream parameters.
          */
-        virtual void ravenna_receiver_parameters_updated(const rtp::AudioReceiver::Parameters& parameters) {
+        virtual void ravenna_receiver_parameters_updated(const rtp::AudioReceiver::ReaderParameters& parameters) {
             std::ignore = parameters;
         }
 
@@ -75,41 +69,33 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
 
         /**
          * Called when the state of a stream has changed.
-         * @param stream The stream which changed.
+         * @param stream_info The stream which changed.
          * @param state The new state of the receiver.
          */
         virtual void ravenna_receiver_stream_state_updated(
-            const rtp::AudioReceiver::Stream& stream, const rtp::AudioReceiver::State state
+            const rtp::AudioReceiver::StreamInfo& stream_info, const rtp::AudioReceiver::StreamState state
         ) {
-            std::ignore = stream;
+            std::ignore = stream_info;
             std::ignore = state;
         }
 
         /**
-         * Called when new data has been received.
-         * The timestamp will monotonically increase, but might have gaps because out-of-order and dropped packets.
-         * @param timestamp The timestamp of newly received the data.
+         * Called when the stats of a stream have been updated.
+         * @param receiver_id The receiver for which the stats were updated.
+         * @param stream_index The index of the stream which was updated.
+         * @param stats The updated stats of the receiver.
          */
-        virtual void on_data_received(const WrappingUint32 timestamp) {
-            std::ignore = timestamp;
-        }
-
-        /**
-         * Called when data is ready to be consumed.
-         * The timestamp will be the timestamp of the packet which triggered this event, minus the delay. This makes it
-         * convenient for consumers to read data from the buffer when the delay has passed. There will be no gaps in
-         * timestamp as newer packets will trigger this event for lost packets, and out of order packet (which are
-         * basically lost, not lost but late packets) will be ignored.
-         * @param timestamp The timestamp of the packet which triggered this event, ** minus the delay **.
-         */
-        virtual void on_data_ready(const WrappingUint32 timestamp) {
-            std::ignore = timestamp;
+        virtual void
+        ravenna_receiver_stream_stats_updated(
+            Id receiver_id, size_t stream_index, const rtp::PacketStats::Counters& stats
+        ) {
+            std::ignore = receiver_id;
+            std::ignore = stream_index;
+            std::ignore = stats;
         }
     };
 
-    explicit RavennaReceiver(
-        boost::asio::io_context& io_context, RavennaRtspClient& rtsp_client, rtp::Receiver& rtp_receiver, Id id
-    );
+    explicit RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::AudioReceiver& rtp_audio_receiver, Id id);
     ~RavennaReceiver() override;
 
     RavennaReceiver(const RavennaReceiver&) = delete;
@@ -169,7 +155,7 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     /**
      * @return The SDP for the session.
      */
-    std::optional<sdp::SessionDescription> get_sdp() const;
+    [[nodiscard]] std::optional<sdp::SessionDescription> get_sdp() const;
 
     /**
      * @return The SDP text for the session. This is the original SDP text as receiver from the server potentially
@@ -196,66 +182,43 @@ class RavennaReceiver: public RavennaRtspClient::Subscriber {
     [[nodiscard]] tl::expected<void, std::string> restore_from_json(const boost::json::value& json);
 
     /**
-     * Reads data from the buffer at the given timestamp.
-     *
-     * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
-     *
-     * @param buffer The destination to write the data to.
-     * @param buffer_size The size of the buffer in bytes.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
-     */
-    [[nodiscard]] std::optional<uint32_t>
-    read_data_realtime(uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
-
-    /**
-     * Reads the data from the receiver with the given id.
-     *
-     * Calling this function is realtime safe and thread safe when called from a single arbitrary thread.
-     *
-     * @param output_buffer The buffer to read the data into.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
-     */
-    [[nodiscard]] std::optional<uint32_t>
-    read_audio_data_realtime(const AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp);
-
-    /**
-     * @return The packet statistics for the first stream, if it exists, otherwise an empty structure.
-     */
-    [[nodiscard]] rtp::AudioReceiver::SessionStats get_stream_stats(Rank rank) const;
-
-    /**
      * @return The NMOS receiver of this receiver.
      */
     [[nodiscard]] const nmos::ReceiverAudio& get_nmos_receiver() const;
 
+    /**
+     * Call regularly from the maintenance thread.
+     */
+    void do_maintenance();
+
     // ravenna_rtsp_client::subscriber overrides
     void on_announced(const RavennaRtspClient::AnnouncedEvent& event) override;
 
-    /**
-     * Creates audio receiver parameters from the given SDP.
-     * @param sdp The SDP to create the parameters from.
-     * @return The audio receiver parameters, or an error message if the SDP is invalid.
-     */
-    static tl::expected<rtp::AudioReceiver::Parameters, std::string>
-    create_audio_receiver_parameters(const sdp::SessionDescription& sdp);
-
   private:
     RavennaRtspClient& rtsp_client_;
+    rtp::AudioReceiver& rtp_audio_receiver_;
     nmos::Node* nmos_node_ {nullptr};
-    rtp::AudioReceiver rtp_audio_receiver_;
-    Id id_;
+    const Id id_;
     Configuration configuration_;
     NetworkInterfaceConfig network_interface_config_;
     nmos::ReceiverAudio nmos_receiver_;
     SubscriberList<Subscriber> subscribers_;
+    rtp::AudioReceiver::ReaderParameters reader_parameters_;
+    std::array<rtp::AudioReceiver::StreamState, rtp::AudioReceiver::k_max_num_redundant_sessions> streams_states_{};
+    Throttle<void> stats_throttle_ {std::chrono::seconds(1)};
 
     void handle_announced_sdp(const sdp::SessionDescription& sdp);
-    tl::expected<void, std::string> update_state(bool update_rtsp, bool update_nmos);
+    tl::expected<void, std::string> update_nmos();
+    tl::expected<void, std::string> update_rtsp();
 };
+
+/**
+ * Creates rtp receiver parameters from the given SDP.
+ * @param sdp The SDP to create the parameters from.
+ * @return The rtp receiver parameters, or an error message if the SDP is invalid.
+ */
+tl::expected<rtp::AudioReceiver::ReaderParameters, std::string>
+create_rtp_receiver_parameters(const sdp::SessionDescription& sdp);
 
 void tag_invoke(
     const boost::json::value_from_tag&, boost::json::value& jv, const RavennaReceiver::Configuration& config

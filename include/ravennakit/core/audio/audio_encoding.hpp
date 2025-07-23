@@ -69,7 +69,7 @@ inline uint8_t audio_encoding_ground_value(const AudioEncoding encoding) {
     }
 }
 
-inline const char* audio_encoding_to_string(const AudioEncoding encoding) {
+inline const char* to_string(const AudioEncoding encoding) {
     switch (encoding) {
         case AudioEncoding::undefined:
             return "undefined";

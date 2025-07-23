@@ -12,6 +12,7 @@
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/core/util/tracy.hpp"
 #include "ravennakit/dnssd/bonjour/bonjour_browser.hpp"
+#include "ravennakit/ravenna/ravenna_node.hpp"
 #include "ravennakit/ravenna/ravenna_rtsp_client.hpp"
 #include "ravennakit/ravenna/ravenna_receiver.hpp"
 
@@ -20,8 +21,67 @@
 #include <boost/asio/io_context.hpp>
 #include <utility>
 
-namespace examples {
-constexpr int k_block_size = 256;
+namespace {
+constexpr int k_block_size = 32;   // Frames
+constexpr uint32_t k_delay = 240;  // Frames
+static_assert(k_delay > k_block_size * 2, "Delay should at least be 2 block sizes");
+
+void portaudio_iterate_devices(const std::function<bool(PaDeviceIndex index, const PaDeviceInfo&)>& callback) {
+    const auto num_devices = Pa_GetDeviceCount();
+    if (num_devices < 0) {
+        RAV_THROW_EXCEPTION("PortAudio failed to get device count! Error: {}", Pa_GetErrorText(num_devices));
+    }
+    for (int i = 0; i < num_devices; ++i) {
+        const auto info = Pa_GetDeviceInfo(i);
+        if (info == nullptr) {
+            RAV_THROW_EXCEPTION("PortAudio failed to get device info for device index: {}", i);
+        }
+        if (callback(i, *info) == false) {
+            return;
+        }
+    }
+}
+
+std::optional<PaDeviceIndex> portaudio_find_device_index_for_name(const std::string& device_name) {
+    PaDeviceIndex device_index = -1;
+
+    portaudio_iterate_devices([&device_name, &device_index](const PaDeviceIndex index, const PaDeviceInfo& device) {
+        if (device_name == device.name) {
+            device_index = index;
+            return false;
+        }
+        return true;
+    });
+
+    if (device_index < 0) {
+        return std::nullopt;
+    }
+
+    return device_index;
+}
+
+void portaudio_print_devices() {
+    portaudio_iterate_devices([](PaDeviceIndex index, const PaDeviceInfo& info) {
+        RAV_INFO("[{}]: {}", index, info.name);
+        return true;
+    });
+}
+
+std::optional<uint32_t> portaudio_get_sample_format_for_audio_format(const rav::AudioFormat& audio_format) {
+    std::array<std::pair<rav::AudioEncoding, uint32_t>, 5> pairs {
+        {{rav::AudioEncoding::pcm_u8, paUInt8},
+         {rav::AudioEncoding::pcm_s8, paInt8},
+         {rav::AudioEncoding::pcm_s16, paInt16},
+         {rav::AudioEncoding::pcm_s24, paInt24},
+         {rav::AudioEncoding::pcm_s32, paInt32}},
+    };
+    for (auto& pair : pairs) {
+        if (pair.first == audio_format.encoding) {
+            return pair.second;
+        }
+    }
+    return std::nullopt;
+}
 
 class Portaudio {
   public:
@@ -60,7 +120,7 @@ class PortaudioStream {
     ) {
         close();
 
-        const auto device_index = find_device_index_for_name(audio_device_name);
+        const auto device_index = portaudio_find_device_index_for_name(audio_device_name);
         if (device_index == std::nullopt) {
             RAV_THROW_EXCEPTION("Audio device not found: {}", audio_device_name);
         }
@@ -72,17 +132,14 @@ class PortaudioStream {
         output_params.suggestedLatency = Pa_GetDeviceInfo(*device_index)->defaultLowOutputLatency;
         output_params.hostApiSpecificStreamInfo = nullptr;
 
-        auto error =
+        const auto error =
             Pa_OpenStream(&stream_, nullptr, &output_params, sample_rate, k_block_size, paNoFlag, callback, user_data);
 
         if (error != paNoError) {
             RAV_THROW_EXCEPTION("PortAudio failed to open stream! Error: {}", Pa_GetErrorText(error));
         }
 
-        error = Pa_StartStream(stream_);
-        if (error != paNoError) {
-            RAV_THROW_EXCEPTION("PortAudio failed to start stream! Error: {}", Pa_GetErrorText(error));
-        }
+        start();
 
         RAV_TRACE("Opened PortAudio stream for device: {}", audio_device_name);
     }
@@ -113,101 +170,40 @@ class PortaudioStream {
         stream_ = nullptr;
     }
 
-    static void print_devices() {
-        Portaudio::init();
-        iterate_devices([](PaDeviceIndex index, const PaDeviceInfo& info) {
-            RAV_INFO("[{}]: {}", index, info.name);
-            return true;
-        });
-    }
-
   private:
     PaStream* stream_ = nullptr;
-
-    static std::optional<PaDeviceIndex> find_device_index_for_name(const std::string& device_name) {
-        PaDeviceIndex device_index = -1;
-
-        iterate_devices([&device_name, &device_index](const PaDeviceIndex index, const PaDeviceInfo& device) {
-            if (device_name == device.name) {
-                device_index = index;
-                return false;
-            }
-            return true;
-        });
-
-        if (device_index < 0) {
-            return std::nullopt;
-        }
-
-        return device_index;
-    }
-
-    static void iterate_devices(const std::function<bool(PaDeviceIndex index, const PaDeviceInfo&)>& callback) {
-        const auto num_devices = Pa_GetDeviceCount();
-        if (num_devices < 0) {
-            RAV_THROW_EXCEPTION("PortAudio failed to get device count! Error: {}", Pa_GetErrorText(num_devices));
-        }
-        for (int i = 0; i < num_devices; ++i) {
-            const auto info = Pa_GetDeviceInfo(i);
-            if (info == nullptr) {
-                RAV_THROW_EXCEPTION("PortAudio failed to get device info for device index: {}", i);
-            }
-            if (callback(i, *info) == false) {
-                return;
-            }
-        }
-    }
 };
 
-class RavennaReceiver: public rav::RavennaReceiver::Subscriber {
+class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instance::Subscriber {
   public:
-    explicit RavennaReceiver(
-        const std::string& stream_name, std::string audio_device_name,
-        rav::NetworkInterfaceConfig network_interface_config
+    explicit RavennaReceiverExample(
+        rav::RavennaNode& ravenna_node, const std::string& stream_name, std::string audio_device_name
     ) :
-        audio_device_name_(std::move(audio_device_name)) {
-        rtsp_client_ = std::make_unique<rav::RavennaRtspClient>(io_context_, browser_);
-
-        rtp_receiver_ = std::make_unique<rav::rtp::Receiver>(udp_receiver_);
-
+        ravenna_node_(ravenna_node), audio_device_name_(std::move(audio_device_name)) {
         rav::RavennaReceiver::Configuration config;
-        config.delay_frames = 480;  // 10ms at 48KHz
         config.enabled = true;
         config.session_name = stream_name;
+        // No need to set the delay, because RAVENNAKIT doesn't use this value
 
-        ravenna_receiver_ = std::make_unique<rav::RavennaReceiver>(
-            io_context_, *rtsp_client_, *rtp_receiver_, rav::Id::get_next_process_wide_unique_id()
-        );
+        auto id = ravenna_node_.create_receiver(config).get();
+        if (!id) {
+            RAV_THROW_EXCEPTION("Failed to create receiver: {}", id.error());
+        }
+        receiver_id_ = *id;
 
-        ravenna_receiver_->set_network_interface_config(std::move(network_interface_config));
-        auto result = ravenna_receiver_->set_configuration(config);
-        if (!result) {
-            RAV_ERROR("Failed to update configuration: {}", result.error());
-            return;
-        }
-        if (!ravenna_receiver_->subscribe(this)) {
-            RAV_WARNING("Failed to add subscriber");
-        }
+        ravenna_node_.subscribe_to_receiver(receiver_id_, this).wait();
+        ravenna_node_.subscribe_to_ptp_instance(this).wait();
     }
 
-    ~RavennaReceiver() override {
-        if (ravenna_receiver_) {
-            if (!ravenna_receiver_->unsubscribe(this)) {
-                RAV_WARNING("Failed to remove subscriber");
-            }
+    ~RavennaReceiverExample() override {
+        ravenna_node_.unsubscribe_from_ptp_instance(this).wait();
+        if (receiver_id_.is_valid()) {
+            ravenna_node_.unsubscribe_from_receiver(receiver_id_, this).wait();
+            ravenna_node_.remove_receiver(receiver_id_).wait();
         }
     }
 
-    void run() {
-        io_context_.run();
-    }
-
-    void stop() {
-        io_context_.stop();
-        portaudio_stream_.stop();
-    }
-
-    void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::Parameters& parameters) override {
+    void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::ReaderParameters& parameters) override {
         if (parameters.streams.empty()) {
             RAV_WARNING("No streams available");
             return;
@@ -218,27 +214,23 @@ class RavennaReceiver: public rav::RavennaReceiver::Subscriber {
         }
 
         audio_format_ = parameters.audio_format;
-        const auto sample_format = get_sample_format_for_audio_format(audio_format_);
+        const auto sample_format = portaudio_get_sample_format_for_audio_format(audio_format_);
         if (!sample_format.has_value()) {
             RAV_TRACE("Skipping stream update because audio format is invalid: {}", audio_format_.to_string());
             return;
         }
         portaudio_stream_.open_output_stream(
             audio_device_name_, audio_format_.sample_rate, static_cast<int>(audio_format_.num_channels), *sample_format,
-            &RavennaReceiver::stream_callback, this
+            &RavennaReceiverExample::stream_callback, this
         );
     }
 
   private:
-    boost::asio::io_context io_context_;
-    rav::UdpReceiver udp_receiver_ {io_context_};
-    rav::RavennaBrowser browser_ {io_context_};
-    std::unique_ptr<rav::RavennaRtspClient> rtsp_client_;
-    std::unique_ptr<rav::rtp::Receiver> rtp_receiver_;
-    std::unique_ptr<rav::RavennaReceiver> ravenna_receiver_;
+    rav::RavennaNode& ravenna_node_;
     std::string audio_device_name_;
     PortaudioStream portaudio_stream_;
     rav::AudioFormat audio_format_;
+    rav::Id receiver_id_;
 
     int stream_callback(
         const void* input, void* output, const unsigned long frame_count, const PaStreamCallbackTimeInfo* time_info,
@@ -252,11 +244,39 @@ class RavennaReceiver: public rav::RavennaReceiver::Subscriber {
 
         const auto buffer_size = frame_count * audio_format_.bytes_per_frame();
 
-        if (!ravenna_receiver_->read_data_realtime(static_cast<uint8_t*>(output), buffer_size, {})) {
+        auto& local_clock = get_local_clock();
+        if (!local_clock.is_calibrated()) {
+            // As long as the PTP clock is not stable, we will output silence
             std::memset(output, audio_format_.ground_value(), buffer_size);
-            RAV_WARNING("Failed to read data");
             return paContinue;
         }
+
+        const auto ptp_ts =
+            static_cast<uint32_t>(get_local_clock().now().to_samples(audio_format_.sample_rate)) - k_delay;
+
+        // First we try to read data
+        auto rtp_ts =
+            ravenna_node_.read_data_realtime(receiver_id_, static_cast<uint8_t*>(output), buffer_size, {}, {});
+
+        // If reading data fails (which is expected when no audio callbacks have been made for a while) we output
+        // silence.
+        if (!rtp_ts) {
+            std::memset(output, audio_format_.ground_value(), buffer_size);
+            return paContinue;
+        }
+
+        auto drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(*rtp_ts));
+
+        // If the drift becomes too big, we reset the timestamp to the current time to realign incoming data with the
+        // audio callbacks
+        if (static_cast<uint32_t>(std::abs(drift)) > frame_count * 2) {
+            rtp_ts =
+                ravenna_node_.read_data_realtime(receiver_id_, static_cast<uint8_t*>(output), buffer_size, ptp_ts, {});
+            RAV_WARNING("Re-aligned stream by {} samples", -drift);
+            drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(*rtp_ts));
+        }
+
+        TRACY_PLOT("drift", static_cast<double>(drift));
 
         if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::be) {
             rav::swap_bytes(static_cast<uint8_t*>(output), buffer_size, audio_format_.bytes_per_sample());
@@ -269,29 +289,14 @@ class RavennaReceiver: public rav::RavennaReceiver::Subscriber {
         const void* input, void* output, const unsigned long frameCount, const PaStreamCallbackTimeInfo* timeInfo,
         const PaStreamCallbackFlags statusFlags, void* userData
     ) {
-        return static_cast<RavennaReceiver*>(userData)->stream_callback(
+        RAV_ASSERT(userData, "userData is null");
+        return static_cast<RavennaReceiverExample*>(userData)->stream_callback(
             input, output, frameCount, timeInfo, statusFlags
         );
     }
-
-    static std::optional<uint32_t> get_sample_format_for_audio_format(const rav::AudioFormat& audio_format) {
-        std::array<std::pair<rav::AudioEncoding, uint32_t>, 5> pairs {
-            {{rav::AudioEncoding::pcm_u8, paUInt8},
-             {rav::AudioEncoding::pcm_s8, paInt8},
-             {rav::AudioEncoding::pcm_s16, paInt16},
-             {rav::AudioEncoding::pcm_s24, paInt24},
-             {rav::AudioEncoding::pcm_s32, paInt32}},
-        };
-        for (auto& pair : pairs) {
-            if (pair.first == audio_format.encoding) {
-                return pair.second;
-            }
-        }
-        return std::nullopt;
-    }
 };
 
-}  // namespace examples
+}  // namespace
 
 /**
  * This examples demonstrates how to receive audio streams from a RAVENNA device. It sets up a RAVENNA sink that listens
@@ -305,6 +310,8 @@ class RavennaReceiver: public rav::RavennaReceiver::Subscriber {
 int main(int const argc, char* argv[]) {
     rav::set_log_level_from_env();
     rav::do_system_checks();
+
+    Portaudio::init();
 
     CLI::App app {"RAVENNA Receiver example"};
     argv = app.ensure_utf8(argv);
@@ -329,21 +336,19 @@ int main(int const argc, char* argv[]) {
         return -1;
     }
 
-    examples::PortaudioStream::print_devices();
+    portaudio_print_devices();
 
     rav::NetworkInterfaceConfig network_interface_config;
     network_interface_config.set_interface(rav::Rank::primary(), iface->get_identifier());
 
-    examples::RavennaReceiver receiver_example(stream_name, audio_output_device, std::move(network_interface_config));
+    rav::RavennaNode node;
+    node.set_network_interface_config(network_interface_config).wait();
 
-    std::thread cin_thread([&receiver_example] {
-        fmt::println("Press return key to stop...");
-        std::cin.get();
-        receiver_example.stop();
-    });
+    RavennaReceiverExample example(node, stream_name, audio_output_device);
 
-    receiver_example.run();
-    cin_thread.join();
+    fmt::println("Press return key to stop...");
+    std::string line;
+    std::getline(std::cin, line);
 
     return 0;
 }

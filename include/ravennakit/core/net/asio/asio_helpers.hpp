@@ -10,13 +10,14 @@
 
 #pragma once
 
+#include <boost/asio.hpp>
+
 namespace rav {
 
-template<typename Map, typename Key>
-auto get_or_default(const Map& map, const Key& key) -> typename Map::mapped_type {
-    if (auto it = map.find(key); it != map.end())
-        return it->second;
-    return typename Map::mapped_type{};
-}
+using ip_address = boost::asio::ip::address;
+using ip_address_v4 = boost::asio::ip::address_v4;
+using ip_address_v6 = boost::asio::ip::address_v6;
+using udp_socket = boost::asio::ip::udp::socket;
+using udp_endpoint = boost::asio::ip::udp::endpoint;
 
 }

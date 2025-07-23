@@ -8,7 +8,6 @@ This project requires the following dependencies:
 - [tl-expected](https://github.com/TartanLlama/expected) (CC0 1.0 Universal) (until std::expected can be used)
 - [nanobench](https://github.com/martinus/nanobench) (MIT License)
 - [Bonjour SDK for Windows](https://developer.apple.com/bonjour/) (Apache 2.0 License)
-- [nlohmann-json](https://github.com/nlohmann/json) (MIT License) (will be replaced with boost::json)
 
 Optional:
 

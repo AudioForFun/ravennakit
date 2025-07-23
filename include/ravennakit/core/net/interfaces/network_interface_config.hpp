@@ -13,6 +13,10 @@
 #include "network_interface_list.hpp"
 #include "ravennakit/core/json.hpp"
 #include "ravennakit/core/util/rank.hpp"
+#include "ravennakit/core/string_parser.hpp"
+#include "ravennakit/core/net/asio/asio_helpers.hpp"
+#include "ravennakit/rtp/detail/rtp_audio_receiver.hpp"
+#include "ravennakit/rtp/detail/rtp_audio_sender.hpp"
 
 #include <map>
 
@@ -106,6 +110,21 @@ class NetworkInterfaceConfig {
         return output;
     }
 
+    /**
+     * @tparam N The size of the array.
+     * @return An array of addresses of the interfaces, ordered by rank.
+     */
+    template<size_t N>
+    std::array<ip_address_v4, N> get_array_of_interface_addresses() {
+        std::array<ip_address_v4, N> addresses{};
+        for (const auto& [rank, addr] : get_interface_ipv4_addresses()) {
+            if (rank.value() < interfaces.size()) {
+                addresses[rank.value()] = addr;
+            }
+        }
+        return addresses;
+    }
+
 #if RAV_HAS_BOOST_JSON
     /**
      * @returns A JSON representation of the network interface configuration.
@@ -125,7 +144,8 @@ class NetworkInterfaceConfig {
      * @param json The json to restore from.
      * @return A newly constructed NetworkInterfaceConfig object.
      */
-    [[nodiscard]] static tl::expected<NetworkInterfaceConfig, std::string> from_boost_json(const boost::json::value& json) {
+    [[nodiscard]] static tl::expected<NetworkInterfaceConfig, std::string>
+    from_boost_json(const boost::json::value& json) {
         const auto json_array = json.try_as_array();
         if (json_array.has_error()) {
             return tl::unexpected("Value is not an array");
@@ -144,5 +164,25 @@ class NetworkInterfaceConfig {
     }
 #endif
 };
+
+inline std::optional<NetworkInterfaceConfig>
+parse_network_interface_config_from_string(const std::string& input, const char delimiter = ',') {
+    StringParser parser(input);
+    NetworkInterfaceConfig config;
+    uint8_t rank {};
+    for (auto i = 0; i < 10; ++i) {
+        auto section = parser.split(delimiter);
+        if (!section) {
+            return config;  // Exhausted
+        }
+        auto* iface = NetworkInterfaceList::get_system_interfaces().find_by_string(*section);
+        if (!iface) {
+            return std::nullopt;
+        }
+        config.set_interface(Rank(rank++), iface->get_identifier());
+    }
+    RAV_ASSERT_FALSE("Loop upper bound reached");
+    return config;
+}
 
 }  // namespace rav

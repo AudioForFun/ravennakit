@@ -8,27 +8,27 @@
  * Copyright (c) 2024 Owllab. All rights reserved.
  */
 
-#include "ravennakit/core/scoped_rollback.hpp"
+#include "ravennakit/core/util/defer.hpp"
 
 #include "catch2/catch_all.hpp"
 
-TEST_CASE("rav::ScopedRollback") {
+TEST_CASE("rav::Defer") {
     int count = 0;
-    SECTION("Rollback with initial function") {
+    SECTION("Defer with initial function") {
         {
-            rav::ScopedRollback rollback([&count] {
+            rav::Defer defer([&count] {
                 count++;
             });
         }
         REQUIRE(count == 1);
     }
 
-    SECTION("Rollback won't happen when cancelled") {
+    SECTION("Defer won't happen when reset") {
         {
-            rav::ScopedRollback rollback([&count] {
+            rav::Defer defer([&count] {
                 count++;
             });
-            rollback.reset();
+            defer.release();
         }
         REQUIRE(count == 0);
     }

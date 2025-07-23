@@ -26,11 +26,13 @@ END_IGNORE_WARNINGS
     #define TRACY_PLOT(name, value) TracyPlot(name, value)
     #define TRACY_MESSAGE(message) TracyMessageL(message)
     #define TRACY_MESSAGE_COLOR(message, color) TracyMessageLC(message, color)
-
+    #define TRACY_SET_THREAD_NAME(name) tracy::SetThreadName(name)
 #else
     #define TRACY_ZONE_SCOPED
     #define TRACY_PLOT(...)
     #define TRACY_MESSAGE(...)
+    #define TRACY_MESSAGE_COLOR(...)
+    #define TRACY_SET_THREAD_NAME(...)
 #endif
 
 namespace rav {

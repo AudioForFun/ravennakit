@@ -42,7 +42,7 @@ class NetworkInterfaceList {
      * @param search_string The string to search for.
      * @return The network interface if found, otherwise nullptr.
      */
-    [[nodiscard]] const NetworkInterface* find_by_string(const std::string& search_string) const;
+    [[nodiscard]] const NetworkInterface* find_by_string(const std::string_view& search_string) const;
 
     /**
      * Finds a network interface by the given address.
@@ -50,6 +50,13 @@ class NetworkInterfaceList {
      * @return The network interface if found, otherwise nullptr.
      */
     [[nodiscard]] const NetworkInterface* find_by_address(const boost::asio::ip::address& address) const;
+
+    /**
+     * Finds a network interface by the given type.
+     * @param type The type of the interface to search for.
+     * @return A pointer to a network interface if found, otherwise nullptr.
+     */
+    [[nodiscard]] const NetworkInterface* find_by_type(NetworkInterface::Type type) const;
 
     /**
      * @returns The list of network interfaces.

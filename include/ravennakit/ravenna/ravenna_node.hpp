@@ -20,17 +20,11 @@
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/nmos/nmos_node.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
+#include "ravennakit/rtp/detail/rtp_audio_sender.hpp"
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"
 
 #include <string>
-
-/**
- * Little helper macro to assert that the current thread is the maintenance thread of given node.
- * Done as macro to keep the location information.
- * @param node The node to check the maintenance thread for.
- */
-#define RAV_ASSERT_NODE_MAINTENANCE_THREAD(node) RAV_ASSERT(node.is_maintenance_thread(), "Not on maintenance thread")
 
 namespace rav {
 
@@ -95,8 +89,7 @@ class RavennaNode {
          * @param status The updated NMOS node state.
          * @param registry_info The updated NMOS registry information.
          */
-        virtual void
-        nmos_node_status_changed(nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
+        virtual void nmos_node_status_changed(nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
             std::ignore = status;
             std::ignore = registry_info;
         }
@@ -232,15 +225,8 @@ class RavennaNode {
     [[nodiscard]] std::future<void> unsubscribe_from_ptp_instance(ptp::Instance::Subscriber* subscriber);
 
     /**
-     * Get the packet statistics for the given stream, if the stream for the given ID exists.
-     * @param receiver_id The ID of the stream to get the packet statistics for.
-     * @param rank The rank of the stream to get the statistics for.
-     * @return The packet statistics for the stream, or an empty structure if the stream doesn't exist.
-     */
-    [[nodiscard]] std::future<rtp::AudioReceiver::SessionStats> get_stats_for_receiver(Id receiver_id, Rank rank);
-
-    /**
      * Get the SDP for the receiver with the given id.
+     * TODO: Deprecate and signal sdp changes through RavennaReceiver::Subscriber
      * @param receiver_id The id of the receiver to get the SDP for.
      * @return The SDP for the receiver.
      */
@@ -249,49 +235,35 @@ class RavennaNode {
     /**
      * Get the SDP text for the receiver with the given id. This is the original SDP text as received from the server,
      * and might contain things which haven't been parsed into the session_description.
+     * TODO: Deprecate and signal sdp changes through RavennaReceiver::Subscriber
      * @param receiver_id The id of the receiver to get the SDP text for.
      * @return The SDP text for the receiver.
      */
     [[nodiscard]] std::future<std::optional<std::string>> get_sdp_text_for_receiver(Id receiver_id);
 
     /**
-     * Reads the data from the receiver with the given id.
-     * @param receiver_id The id of the receiver to read data from.
-     * @param buffer The buffer to read the data into.
-     * @param buffer_size The size of the buffer.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
+     * @copydoc rtp::AudioReceiver::read_data_realtime
      */
-    [[nodiscard]] std::optional<uint32_t>
-    read_data_realtime(Id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp);
-
-    /**
-     * Reads the data from the receiver with the given id.
-     * @param receiver_id The id of the receiver to read data from.
-     * @param output_buffer The buffer to read the data into.
-     * @param at_timestamp The optional timestamp to read at. If nullopt, the most recent timestamp minus the delay will
-     * be used for the first read and after that the timestamp will be incremented by the packet time.
-     * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
-     */
-    [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
-        Id receiver_id, const AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp
+    [[nodiscard]] std::optional<uint32_t> read_data_realtime(
+        Id receiver_id, uint8_t* buffer, size_t buffer_size, std::optional<uint32_t> at_timestamp,
+        std::optional<uint32_t> require_delay
     );
 
     /**
-     * Schedules data to be sent onto the network.
-     * @param sender_id The id of the sender.
-     * @param buffer The buffer to send.
-     * @param timestamp The timestamp of the data.
+     * @copydoc rtp::AudioReceiver::read_audio_data_realtime
+     */
+    [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
+        Id receiver_id, const AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp,
+        std::optional<uint32_t> require_delay
+    );
+
+    /**
+     * @copydoc rtp::AudioSender::send_data_realtime
      */
     [[nodiscard]] bool send_data_realtime(Id sender_id, BufferView<const uint8_t> buffer, uint32_t timestamp);
 
     /**
-     * Schedules audio data to be sent onto the network.
-     * @param sender_id The id of the sender.
-     * @param buffer The buffer to send.
-     * @param timestamp The timestamp of the data.
-     * @return True if the data was sent, false if something went wrong.
+     * @copydoc rtp::AudioSender::send_audio_data_realtime
      */
     [[nodiscard]] bool
     send_audio_data_realtime(Id sender_id, const AudioBufferView<const float>& buffer, uint32_t timestamp);
@@ -358,21 +330,18 @@ class RavennaNode {
         return boost::asio::post(io_context_, token);
     }
 
-private:
-    struct RealtimeSharedContext {
-        std::vector<RavennaReceiver*> receivers;
-        std::vector<RavennaSender*> senders;
-    };
-
+  private:
     boost::asio::io_context io_context_;
-    UdpReceiver udp_receiver_ {io_context_};
+    rtp::AudioReceiver rtp_receiver_ {io_context_};
+    rtp::AudioSender rtp_sender_ {io_context_};
+    std::atomic<bool> keep_going_ {true};
+    std::thread network_thread_;
     std::thread maintenance_thread_;
     std::thread::id maintenance_thread_id_;
     Id::Generator id_generator_;
 
     RavennaBrowser browser_ {io_context_};
     RavennaRtspClient rtsp_client_ {io_context_, browser_};
-    std::unique_ptr<rtp::Receiver> rtp_receiver_;
     std::vector<std::unique_ptr<RavennaReceiver>> receivers_;
 
     std::unique_ptr<dnssd::Advertiser> advertiser_;
@@ -385,11 +354,17 @@ private:
     nmos::Device nmos_device_;
 
     SubscriberList<Subscriber> subscribers_;
-    RealtimeSharedObject<RealtimeSharedContext> realtime_shared_context_;
     NetworkInterfaceConfig network_interface_config_;
 
-    [[nodiscard]] bool update_realtime_shared_context();
     uint32_t generate_unique_session_id() const;
+    void do_maintenance() const;
 };
 
 }  // namespace rav
+
+/**
+ * Little helper macro to assert that the current thread is the maintenance thread of given node.
+ * Done as macro to keep the location information.
+ * @param node The node to check the maintenance thread for.
+ */
+#define RAV_ASSERT_NODE_MAINTENANCE_THREAD(node) RAV_ASSERT((node).is_maintenance_thread(), "Not on maintenance thread")

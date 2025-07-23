@@ -26,7 +26,7 @@ namespace rav {
  * @tparam loop_upper_bound The maximum number of iterations to perform in the CAS loop. If the loop doesn't succeed in
  * the specified number of iterations, the operation is considered failed. Default is 100'000.
  */
-template<class T, size_t loop_upper_bound = 100'000>
+template<class T, size_t loop_upper_bound = 1'000'000>
 class RealtimeSharedObject {
   public:
     /**

@@ -51,7 +51,7 @@ struct AudioFormat {
 
     [[nodiscard]] std::string to_string() const {
         return fmt::format(
-            "{}/{}/{}/{}/{}", audio_encoding_to_string(encoding), sample_rate, num_channels, to_string(ordering),
+            "{}/{}/{}/{}/{}", rav::to_string(encoding), sample_rate, num_channels, to_string(ordering),
             to_string(byte_order)
         );
     }
@@ -119,7 +119,7 @@ inline void tag_invoke(const boost::json::value_from_tag&, boost::json::value& j
     jv = {
         {"byte_order", AudioFormat::to_string(audio_format.byte_order)},
         {"channel_ordering", AudioFormat::to_string(audio_format.ordering)},
-        {"encoding", audio_encoding_to_string(audio_format.encoding)},
+        {"encoding", to_string(audio_format.encoding)},
         {"num_channels", audio_format.num_channels},
         {"sample_rate", audio_format.sample_rate},
     };

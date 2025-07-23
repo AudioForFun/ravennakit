@@ -24,7 +24,6 @@
 #include "messages/ptp_pdelay_resp_message.hpp"
 #include "messages/ptp_sync_message.hpp"
 #include "ravennakit/core/net/sockets/extended_udp_socket.hpp"
-#include "ravennakit/core/net/sockets/udp_receiver.hpp"
 #include "types/ptp_port_identity.hpp"
 
 #include <map>

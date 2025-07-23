@@ -10,7 +10,7 @@
 
 #include "ravennakit/core/net/interfaces/network_interface.hpp"
 #include "ravennakit/core/platform.hpp"
-#include "ravennakit/core/scoped_rollback.hpp"
+#include "ravennakit/core/util/defer.hpp"
 #include "ravennakit/core/net/interfaces/mac_address.hpp"
 #include "ravennakit/core/platform/windows/wide_string.hpp"
 
@@ -52,7 +52,7 @@ rav::NetworkInterface::Type functional_type_for_interface(const char* name) {
         return rav::NetworkInterface::Type::undefined;
     }
 
-    rav::ScopedRollback close_socket([&] {
+    rav::Defer close_socket([&] {
         close(fd);
     });
 
@@ -90,7 +90,7 @@ rav::NetworkInterface::Capabilities capabilities_for_interface(const char* name)
         return {};
     }
 
-    rav::ScopedRollback close_socket([&] {
+    rav::Defer close_socket([&] {
         close(fd);
     });
 
@@ -211,7 +211,7 @@ tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get
         return tl::unexpected(errno);
     }
 
-    ScopedRollback cleanup([&ifap] {
+    Defer cleanup([&ifap] {
         freeifaddrs(ifap);
     });
 

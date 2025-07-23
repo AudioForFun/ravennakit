@@ -25,16 +25,15 @@
 #endif
 
 rav::RavennaSender::RavennaSender(
-    boost::asio::io_context& io_context, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
+    rtp::AudioSender& rtp_audio_sender, dnssd::Advertiser& advertiser, rtsp::Server& rtsp_server,
     ptp::Instance& ptp_instance, const Id id, const uint32_t session_id
 ) :
-    io_context_(io_context),
+    rtp_audio_sender_(rtp_audio_sender),
     advertiser_(advertiser),
     rtsp_server_(rtsp_server),
     ptp_instance_(ptp_instance),
     id_(id),
-    session_id_(session_id),
-    timer_(io_context) {
+    session_id_(session_id) {
     RAV_ASSERT(id_.is_valid(), "Sender ID must be valid");
     RAV_ASSERT(session_id != 0, "Session ID must be valid");
 
@@ -55,22 +54,14 @@ rav::RavennaSender::RavennaSender(
     if (!ptp_instance_.subscribe(this)) {
         RAV_ERROR("Failed to subscribe to PTP instance");
     }
-
-#if RAV_WINDOWS
-    timeBeginPeriod(1);
-#endif
 }
 
 rav::RavennaSender::~RavennaSender() {
-    stop_timer();
+    std::ignore = rtp_audio_sender_.remove_writer(id_);
 
     if (!ptp_instance_.unsubscribe(this)) {
         RAV_ERROR("Failed to unsubscribe from PTP instance");
     }
-
-#if RAV_WINDOWS
-    timeEndPeriod(1);
-#endif
 
     if (advertisement_id_.is_valid()) {
         advertiser_.unregister_service(advertisement_id_);
@@ -104,9 +95,9 @@ uint32_t rav::RavennaSender::get_session_id() const {
 }
 
 tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configuration config) {
-    std::ignore = shared_context_.reclaim();  // TODO: Do somewhere else, maybe on a timer or something.
-
     // Validate the configuration
+
+    std::ignore = generate_auto_addresses_if_needed(config.destinations);
 
     if (config.session_name.empty()) {
         return tl::unexpected("Session name cannot be empty");
@@ -264,128 +255,6 @@ void rav::RavennaSender::set_nmos_device_id(const boost::uuids::uuid& device_id)
 
 uint32_t rav::RavennaSender::get_framecount() const {
     return configuration_.packet_time.framecount(configuration_.audio_format.sample_rate);
-}
-
-bool rav::RavennaSender::send_data_realtime(const BufferView<const uint8_t> buffer, const uint32_t timestamp) {
-    if (!get_local_clock().is_locked()) {
-        return false;
-    }
-
-    if (auto lock = send_data_realtime_reader_.lock_realtime()) {
-        auto& rtp_buffer = lock->rtp_buffer;
-        auto& rtp_packet = lock->rtp_packet;
-        const auto packet_time_frames = lock->packet_time_frames;
-        const auto size_per_packet = packet_time_frames * lock->audio_format.bytes_per_frame();
-
-        if (rtp_buffer.get_next_ts() != WrappingUint32(timestamp)) {
-            // This buffer is not at the expected timestamp, reset the timestamp
-            rtp_packet.set_timestamp(timestamp);
-            rtp_buffer.set_next_ts(timestamp);
-            // TODO: Should the sequence number be reset as well?
-        }
-
-        rtp_buffer.clear_until(timestamp);
-        rtp_buffer.write(timestamp, buffer);
-
-        const auto next_ts = rtp_buffer.get_next_ts();
-
-        while (rtp_packet.get_timestamp() + packet_time_frames < next_ts) {
-            TRACY_ZONE_SCOPED;
-
-            rtp_buffer.read(rtp_packet.get_timestamp().value(), lock->intermediate_send_buffer.data(), size_per_packet);
-
-            lock->rtp_packet_buffer.clear();
-            rtp_packet.encode(lock->intermediate_send_buffer.data(), size_per_packet, lock->rtp_packet_buffer);
-
-            if (lock->rtp_packet_buffer.size() > aes67::constants::k_max_payload) {
-                RAV_ERROR("Exceeding max payload: {}", lock->rtp_packet_buffer.size());
-                return false;
-            }
-
-            Packet packet;
-            packet.rtp_timestamp = rtp_packet.get_timestamp().value();
-            packet.payload_size_bytes = static_cast<uint32_t>(lock->rtp_packet_buffer.size());
-            std::memcpy(packet.payload.data(), lock->rtp_packet_buffer.data(), lock->rtp_packet_buffer.size());
-
-            if (lock->outgoing_data.push(packet)) {
-                // RAV_TRACE(
-                // "Scheduled RTP packet: {} bytes, timestamp: {}, seq: {}", lock->rtp_packet_buffer.size(),
-                // packet.rtp_timestamp, rtp_packet.get_sequence_number().value()
-                // );
-            } else {
-                RAV_ERROR(
-                    "Failed to schedule RTP packet: {} bytes, timestamp: {}, seq: {}", lock->rtp_packet_buffer.size(),
-                    packet.rtp_timestamp, rtp_packet.get_sequence_number().value()
-                );
-            }
-
-            rtp_packet.sequence_number_inc(1);
-            rtp_packet.inc_timestamp(packet_time_frames);
-        }
-
-        return true;
-    }
-
-    return false;
-}
-
-bool rav::RavennaSender::send_audio_data_realtime(
-    const AudioBufferView<const float>& input_buffer, const uint32_t timestamp
-) {
-    TRACY_ZONE_SCOPED;
-
-    if (input_buffer.find_max_abs() > 1.0f) {
-        RAV_WARNING("Audio overload");
-    }
-
-    if (input_buffer.num_frames() > k_max_num_frames) {
-        RAV_WARNING("Input buffer size exceeds maximum size");
-        return false;
-    }
-
-    if (auto lock = send_data_realtime_reader_.lock_realtime()) {
-        auto audio_format = lock->audio_format;
-        if (audio_format.num_channels != input_buffer.num_channels()) {
-            RAV_ERROR("Channel mismatch: expected {}, got {}", audio_format.num_channels, input_buffer.num_channels());
-            return false;
-        }
-
-        auto& intermediate_buffer = lock->intermediate_audio_buffer;
-
-        if (audio_format.encoding == AudioEncoding::pcm_s16) {
-            const auto ok = AudioData::convert<
-                float, AudioData::ByteOrder::Ne, int16_t, AudioData::ByteOrder::Be,
-                AudioData::Interleaving::Interleaved>(
-                input_buffer.data(), input_buffer.num_frames(), input_buffer.num_channels(),
-                reinterpret_cast<int16_t*>(intermediate_buffer.data()), 0, 0
-            );
-            if (!ok) {
-                RAV_WARNING("Failed to convert audio data");
-            }
-        } else if (audio_format.encoding == AudioEncoding::pcm_s24) {
-            const auto ok = AudioData::convert<
-                float, AudioData::ByteOrder::Ne, int24_t, AudioData::ByteOrder::Be,
-                AudioData::Interleaving::Interleaved>(
-                input_buffer.data(), input_buffer.num_frames(), input_buffer.num_channels(),
-                reinterpret_cast<int24_t*>(intermediate_buffer.data()), 0, 0
-            );
-            if (!ok) {
-                RAV_WARNING("Failed to convert audio data");
-            }
-        } else {
-            RAV_ERROR("Unsupported encoding");
-            return false;
-        }
-
-        return send_data_realtime(
-            BufferView(intermediate_buffer)
-                .subview(0, input_buffer.num_frames() * audio_format.bytes_per_frame())
-                .const_view(),
-            timestamp
-        );
-    }
-
-    return false;
 }
 
 void rav::RavennaSender::set_network_interface_config(NetworkInterfaceConfig network_interface_config) {
@@ -615,7 +484,7 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
 
         if (num_active_destinations > 1) {
             media.mid = dst.interface_by_rank.to_ordinal_latin();
-            group.tags.push_back(dst.interface_by_rank.to_ordinal_latin());
+            group.tags.emplace_back(dst.interface_by_rank.to_ordinal_latin());
         }
 
         sdp.media_descriptions.push_back(std::move(media));
@@ -628,94 +497,17 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
     return sdp;
 }
 
-void rav::RavennaSender::start_timer() {
-    TRACY_ZONE_SCOPED;
-
-#if RAV_WINDOWS
-    // A dirty hack to get the precision somewhat right. This is only temporary since we have to come up with a much
-    // tighter solution anyway.
-    auto expires_after = std::chrono::microseconds(1);
-#else
-    // A tenth of the packet time
-    auto expires_after = std::chrono::microseconds(static_cast<int64_t>(get_signaled_ptime() * 1'000 / 10));
-#endif
-
-    timer_.expires_after(expires_after);
-    timer_.async_wait([this](const boost::system::error_code& ec) {
-        if (ec == boost::asio::error::operation_aborted) {
-            return;
-        }
-        if (ec) {
-            RAV_ERROR("Timer error: {}", ec.message());
-            return;
-        }
-        send_outgoing_data();
-        start_timer();
-    });
-}
-
-void rav::RavennaSender::stop_timer() {
-    timer_.expires_after(std::chrono::hours(24));
-    timer_.async_wait([](boost::system::error_code) {});
-    const auto num_canceled = timer_.cancel();
-    if (num_canceled == 0) {
-        RAV_WARNING("No timer handlers canceled");
-    }
-}
-
-void rav::RavennaSender::send_outgoing_data() {
-    if (auto lock = send_outgoing_data_reader_.lock_realtime()) {
-        TRACY_ZONE_SCOPED;
-
-        // Allow to send 100 extra packets which come in during the loop, but otherwise keep the loop bounded
-        for (size_t i = 0; i < lock->outgoing_data.size() + 100; ++i) {
-            const auto packet = lock->outgoing_data.pop();
-
-            if (!packet.has_value()) {
-                return;  // Nothing to do here
-            }
-
-            RAV_ASSERT(packet->payload_size_bytes <= aes67::constants::k_max_payload, "Payload size exceeds maximum");
-
-            for (auto& dst : configuration_.destinations) {
-                if (dst.enabled) {
-                    auto it = rtp_senders_.find(dst.interface_by_rank);
-                    if (it != rtp_senders_.end()) {
-                        it->second.send_to(packet->payload.data(), packet->payload_size_bytes, dst.endpoint);
-                    }
-                }
-            }
-        }
-    }
-}
-
-void rav::RavennaSender::update_shared_context() {
-    // TODO: Implement proper SSRC generation
-    const auto ssrc = static_cast<uint32_t>(Random().get_random_int(0, std::numeric_limits<int>::max()));
-
-    auto new_context = std::make_unique<SharedContext>();
-    const auto audio_format = configuration_.audio_format;
-    const auto packet_size_frames = get_framecount();
-    const auto packet_size_bytes = packet_size_frames * audio_format.bytes_per_frame();
-    new_context->audio_format = audio_format;
-    new_context->packet_time_frames = get_framecount();
-    new_context->rtp_packet.payload_type(configuration_.payload_type);
-    new_context->rtp_packet.ssrc(ssrc);
-    new_context->outgoing_data.resize(k_buffer_num_packets);
-    new_context->intermediate_audio_buffer.resize(k_max_num_frames * audio_format.bytes_per_frame());
-    new_context->rtp_packet_buffer = ByteBuffer(packet_size_bytes);
-    new_context->intermediate_send_buffer.resize(packet_size_bytes);
-    new_context->rtp_buffer.resize(k_max_num_frames, audio_format.bytes_per_frame());
-    new_context->rtp_buffer.set_ground_value(audio_format.ground_value());
-
-    shared_context_.update(std::move(new_context));
-}
-
 void rav::RavennaSender::generate_auto_addresses_if_needed() {
-    // Generate a multicast addresses if not set
+    if (generate_auto_addresses_if_needed(configuration_.destinations)) {
+        for (auto* subscriber : subscribers_) {
+            subscriber->ravenna_sender_configuration_updated(id_, configuration_);
+        }
+    }
+}
 
+bool rav::RavennaSender::generate_auto_addresses_if_needed(std::vector<Destination>& destinations) const {
     bool changed = false;
-    for (auto& dst : configuration_.destinations) {
+    for (auto& dst : destinations) {
         if (dst.endpoint.address().is_unspecified()) {
             const auto iface = network_interface_config_.get_interface_for_rank(dst.interface_by_rank);
             if (iface != nullptr) {
@@ -741,49 +533,11 @@ void rav::RavennaSender::generate_auto_addresses_if_needed() {
             }
         }
     }
-    if (changed) {
-        for (auto* subscriber : subscribers_) {
-            subscriber->ravenna_sender_configuration_updated(id_, configuration_);
-        }
-    }
-}
-
-void rav::RavennaSender::update_rtp_senders() {
-    // Ensure RTP senders exist for enabled ports and for which an interface address exists
-
-    // Create RTP senders for enabled destinations
-    for (auto& dst : configuration_.destinations) {
-        if (dst.enabled && rtp_senders_.find(dst.interface_by_rank) == rtp_senders_.end()) {
-            auto addr = network_interface_config_.get_interface_ipv4_address(dst.interface_by_rank);
-            if (addr.is_unspecified()) {
-                RAV_TRACE("{} interface not set", rav::string_to_upper(dst.interface_by_rank.to_ordinal_latin(), 1));
-                continue;
-            }
-            rtp_senders_.insert({dst.interface_by_rank, rtp::Sender {io_context_, addr}});
-        }
-    }
-
-    // Remove RTP senders for disabled or non-existent destinations
-    for (auto it = rtp_senders_.begin(); it != rtp_senders_.end();) {
-        bool has_at_least_one_enabled_destination = false;
-        for (auto& dst : configuration_.destinations) {
-            if (dst.interface_by_rank == it->first && dst.enabled) {
-                has_at_least_one_enabled_destination = true;
-                break;
-            }
-        }
-        if (!has_at_least_one_enabled_destination) {
-            RAV_TRACE("Removing RTP sender for rank {}", it->first.value());
-            it = rtp_senders_.erase(it++);
-        } else {
-            ++it;
-        }
-    }
+    return changed;
 }
 
 void rav::RavennaSender::update_state(const bool update_advertisement, const bool announce, const bool update_nmos) {
     generate_auto_addresses_if_needed();
-    update_rtp_senders();
 
     if (update_advertisement || !configuration_.enabled) {
         RAV_ASSERT(
@@ -852,12 +606,24 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
     }
 
     if (!configuration_.enabled) {
-        stop_timer();
-        shared_context_.clear();
+        std::ignore = rtp_audio_sender_.remove_writer(id_);
         return;  // Done here
     }
 
-    start_timer();
+    rtp::AudioSender::WriterParameters params;
+    params.audio_format = configuration_.audio_format;
+    params.packet_time_frames = configuration_.packet_time.framecount(configuration_.audio_format.sample_rate);
+    params.payload_type = configuration_.payload_type;
+    for (auto& dst : configuration_.destinations) {
+        if (dst.enabled && dst.interface_by_rank.value() < params.destinations.size()) {
+            params.destinations[dst.interface_by_rank.value()] = dst.endpoint;
+        }
+    }
+    const auto interfaces =
+        network_interface_config_.get_array_of_interface_addresses<rtp::AudioSender::k_max_num_redundant_sessions>();
+    if (!rtp_audio_sender_.add_writer(id_, params, interfaces)) {
+        RAV_ERROR("Failed to add writer");
+    }
 
     if (rtsp_path_by_id_.empty()) {
         RAV_ASSERT(
@@ -885,8 +651,6 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
     if (announce) {
         send_announce();
     }
-
-    update_shared_context();
 }
 
 void rav::tag_invoke(

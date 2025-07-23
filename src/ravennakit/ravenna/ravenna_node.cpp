@@ -19,7 +19,6 @@
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)),
     ptp_instance_(io_context_) {
-    rtp_receiver_ = std::make_unique<rtp::Receiver>(udp_receiver_);
     advertiser_ = dnssd::Advertiser::create(io_context_);
 
     nmos_device_.id = boost::uuids::random_generator()();
@@ -44,8 +43,30 @@ rav::RavennaNode::RavennaNode() :
     auto f = promise.get_future();
     maintenance_thread_ = std::thread([this, p = std::move(promise)]() mutable {
         p.set_value(std::this_thread::get_id());
+        TRACY_SET_THREAD_NAME("ravenna_node_maintenance");
 #if RAV_APPLE
         pthread_setname_np("ravenna_node_maintenance");
+#endif
+
+        while (true) {
+            try {
+                while (!io_context_.stopped()) {
+                    io_context_.run_for(std::chrono::seconds(1));
+                    do_maintenance();
+                }
+                break;
+            } catch (const std::exception& e) {
+                RAV_ERROR("Unhandled exception on maintenance thread: {}", e.what());
+                RAV_ASSERT_FALSE("Unhandled exception on maintenance thread");
+            }
+        }
+    });
+    maintenance_thread_id_ = f.get();
+
+    network_thread_ = std::thread([this] {
+        TRACY_SET_THREAD_NAME("ravenna_node_network");
+#if RAV_APPLE
+        pthread_setname_np("ravenna_node_network");
         constexpr auto min_packet_time = 125 * 1000;       // 125us
         constexpr auto max_packet_time = 4 * 1000 * 1000;  // 4ms
         if (!set_thread_realtime(min_packet_time, max_packet_time, max_packet_time * 2)) {
@@ -57,39 +78,45 @@ rav::RavennaNode::RavennaNode() :
         WindowsThreadCharacteristics set_thread_characteristics(TEXT("Pro Audio"));
 #endif
 
-        while (true) {
+        while (keep_going_.load(std::memory_order_acquire)) {
             try {
-                while (!io_context_.stopped()) {
-                    io_context_.poll();
+                while (keep_going_.load(std::memory_order_acquire)) {
+                    rtp_receiver_.read_incoming_packets();
+                    rtp_sender_.send_outgoing_packets();
+#if !RAV_WINDOWS
+                    std::this_thread::sleep_for(std::chrono::microseconds(100));
+#endif
                 }
                 break;
             } catch (const std::exception& e) {
-                RAV_ERROR("Unhandled exception on maintenance thread: {}", e.what());
-                RAV_ASSERT_FALSE("Unhandled exception on maintenance thread");
+                RAV_ERROR("Unhandled exception on network thread: {}", e.what());
+                RAV_ASSERT_FALSE("Unhandled exception on network thread");
             }
         }
     });
-    maintenance_thread_id_ = f.get();
 }
 
 rav::RavennaNode::~RavennaNode() {
+    io_context_.stop();
+    if (maintenance_thread_.joinable()) {
+        maintenance_thread_.join();
+    }
+    keep_going_.store(false, std::memory_order_release);
+    if (network_thread_.joinable()) {
+        network_thread_.join();
+    }
     for (const auto& receiver : receivers_) {
         receiver->set_nmos_node(nullptr);  // Prevent receiver from sending NMOS updates upon destruction
     }
     for (const auto& sender : senders_) {
         sender->set_nmos_node(nullptr);  // Prevent receiver from sending NMOS updates upon destruction
     }
-    io_context_.stop();
-    if (maintenance_thread_.joinable()) {
-        maintenance_thread_.join();
-    }
 }
 
 std::future<tl::expected<rav::Id, std::string>>
 rav::RavennaNode::create_receiver(RavennaReceiver::Configuration initial_config) {
     auto work = [this, config = std::move(initial_config)]() mutable -> tl::expected<Id, std::string> {
-        auto new_receiver =
-            std::make_unique<RavennaReceiver>(io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next());
+        auto new_receiver = std::make_unique<RavennaReceiver>(rtsp_client_, rtp_receiver_, id_generator_.next());
         new_receiver->set_network_interface_config(network_interface_config_);
         auto result = new_receiver->set_configuration(std::move(config));
         if (!result) {
@@ -102,9 +129,6 @@ rav::RavennaNode::create_receiver(RavennaReceiver::Configuration initial_config)
         it->set_nmos_node(&nmos_node_);
         for (const auto& s : subscribers_) {
             s->ravenna_receiver_added(*it);
-        }
-        if (!update_realtime_shared_context()) {
-            RAV_ERROR("Failed to update realtime shared context");
         }
         return it->get_id();
     };
@@ -121,10 +145,6 @@ std::future<void> rav::RavennaNode::remove_receiver(Id receiver_id) {
                 receivers_.erase(it);
                 for (const auto& s : subscribers_) {
                     s->ravenna_receiver_removed(receiver_id);
-                }
-                if (!update_realtime_shared_context()) {
-                    // If this happens we're out of luck, because the object will be deleted after this.
-                    RAV_ERROR("Failed to update realtime shared context");
                 }
                 return;
             }
@@ -150,7 +170,7 @@ std::future<tl::expected<rav::Id, std::string>>
 rav::RavennaNode::create_sender(RavennaSender::Configuration initial_config) {
     auto work = [this, initial_config]() mutable -> tl::expected<Id, std::string> {
         auto new_sender = std::make_unique<RavennaSender>(
-            io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), generate_unique_session_id()
+            rtp_sender_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), generate_unique_session_id()
         );
         if (initial_config.session_name.empty()) {
             initial_config.session_name = fmt::format("Sender {}", new_sender->get_session_id());
@@ -167,9 +187,6 @@ rav::RavennaNode::create_sender(RavennaSender::Configuration initial_config) {
         for (const auto& s : subscribers_) {
             s->ravenna_sender_added(*it);
         }
-        if (!update_realtime_shared_context()) {
-            RAV_ERROR("Failed to update realtime shared context");
-        }
         return it->get_id();
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
@@ -185,10 +202,6 @@ std::future<void> rav::RavennaNode::remove_sender(Id sender_id) {
                 senders_.erase(it);  // It is empty by now
                 for (const auto& s : subscribers_) {
                     s->ravenna_sender_removed(sender_id);
-                }
-                if (!update_realtime_shared_context()) {
-                    // If this happens we're out of luck, because the object will be deleted after this.
-                    RAV_ERROR("Failed to update realtime shared context");
                 }
                 return;
             }
@@ -352,18 +365,6 @@ std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance:
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
-std::future<rav::rtp::AudioReceiver::SessionStats> rav::RavennaNode::get_stats_for_receiver(Id receiver_id, Rank rank) {
-    auto work = [this, receiver_id, rank] {
-        for (const auto& receiver : receivers_) {
-            if (receiver->get_id() == receiver_id) {
-                return receiver->get_stream_stats(rank);
-            }
-        }
-        return rtp::AudioReceiver::SessionStats {};
-    };
-    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
-}
-
 std::future<std::optional<rav::sdp::SessionDescription>> rav::RavennaNode::get_sdp_for_receiver(Id receiver_id) {
     auto work = [this, receiver_id]() -> std::optional<sdp::SessionDescription> {
         for (const auto& receiver : receivers_) {
@@ -390,63 +391,31 @@ std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_recei
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
-    const Id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp
+    const Id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp,
+    const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;
-
-    const auto lock = realtime_shared_context_.lock_realtime();
-
-    for (auto* receiver : lock->receivers) {
-        if (receiver->get_id() == receiver_id) {
-            return receiver->read_data_realtime(buffer, buffer_size, at_timestamp);
-        }
-    }
-
-    return std::nullopt;
+    return rtp_receiver_.read_data_realtime(receiver_id, buffer, buffer_size, at_timestamp, require_delay);
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_audio_data_realtime(
-    const Id receiver_id, const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp
+    const Id receiver_id, const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp,
+    const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;
-
-    const auto context = realtime_shared_context_.lock_realtime();
-
-    for (auto* receiver : context->receivers) {
-        if (receiver->get_id() == receiver_id) {
-            return receiver->read_audio_data_realtime(output_buffer, at_timestamp);
-        }
-    }
-
-    return std::nullopt;
+    return rtp_receiver_.read_audio_data_realtime(receiver_id, output_buffer, at_timestamp, require_delay);
 }
 
 bool rav::RavennaNode::send_data_realtime(
     const Id sender_id, const BufferView<const uint8_t> buffer, const uint32_t timestamp
 ) {
-    const auto lock = realtime_shared_context_.lock_realtime();
-
-    for (auto* sender : lock->senders) {
-        if (sender->get_id() == sender_id) {
-            return sender->send_data_realtime(buffer, timestamp);
-        }
-    }
-
-    return false;
+    return rtp_sender_.send_data_realtime(sender_id, buffer, timestamp);
 }
 
 bool rav::RavennaNode::send_audio_data_realtime(
     const Id sender_id, const AudioBufferView<const float>& buffer, const uint32_t timestamp
 ) {
-    const auto lock = realtime_shared_context_.lock_realtime();
-
-    for (auto* sender : lock->senders) {
-        if (sender->get_id() == sender_id) {
-            return sender->send_audio_data_realtime(buffer, timestamp);
-        }
-    }
-
-    return false;
+    return rtp_sender_.send_audio_data_realtime(sender_id, buffer, timestamp);
 }
 
 std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfaceConfig interface_config) {
@@ -456,9 +425,20 @@ std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfac
         }
 
         network_interface_config_ = config;
+        const auto array_of_addresses =
+            network_interface_config_.get_array_of_interface_addresses<rtp::AudioSender::k_max_num_redundant_sessions>(
+            );
+
+        if (!rtp_receiver_.set_interfaces(array_of_addresses)) {
+            RAV_ERROR("Failed to set network interfaces on rtp receiver");
+        }
 
         for (const auto& receiver : receivers_) {
             receiver->set_network_interface_config(network_interface_config_);
+        }
+
+        if (!rtp_sender_.set_interfaces(array_of_addresses)) {
+            RAV_ERROR("Failed to set network interface on rtp sender");
         }
 
         for (const auto& sender : senders_) {
@@ -558,7 +538,7 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_boos
 
             for (auto& sender : senders) {
                 auto new_sender = std::make_unique<RavennaSender>(
-                    io_context_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), 1
+                    rtp_sender_, *advertiser_, rtsp_server_, ptp_instance_, id_generator_.next(), 1
                 );
                 new_sender->set_network_interface_config(*network_interface_config);
                 if (auto result = new_sender->restore_from_json(sender); !result) {
@@ -575,7 +555,7 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_boos
 
             for (auto& receiver : receivers) {
                 auto new_receiver =
-                    std::make_unique<RavennaReceiver>(io_context_, rtsp_client_, *rtp_receiver_, id_generator_.next());
+                    std::make_unique<RavennaReceiver>(rtsp_client_, rtp_receiver_, id_generator_.next());
                 new_receiver->set_network_interface_config(*network_interface_config);
                 if (auto result = new_receiver->restore_from_json(receiver); !result) {
                     return tl::unexpected(result.error());
@@ -659,24 +639,9 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_boos
             return tl::unexpected(fmt::format("Failed to parse RavennaNode JSON: {}", e.what()));
         }
 
-        if (!update_realtime_shared_context()) {
-            RAV_ERROR("Failed to update realtime shared context");
-        }
-
         return {};
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
-}
-
-bool rav::RavennaNode::update_realtime_shared_context() {
-    auto new_context = std::make_unique<RealtimeSharedContext>();
-    for (auto& receiver : receivers_) {
-        new_context->receivers.emplace_back(receiver.get());
-    }
-    for (auto& sender : senders_) {
-        new_context->senders.emplace_back(sender.get());
-    }
-    return realtime_shared_context_.update(std::move(new_context));
 }
 
 uint32_t rav::RavennaNode::generate_unique_session_id() const {
@@ -685,4 +650,10 @@ uint32_t rav::RavennaNode::generate_unique_session_id() const {
         highest_session_id = std::max(highest_session_id, sender->get_session_id());
     }
     return highest_session_id + 1;
+}
+
+void rav::RavennaNode::do_maintenance() const {
+    for (const auto& receiver : receivers_) {
+        receiver->do_maintenance();
+    }
 }
