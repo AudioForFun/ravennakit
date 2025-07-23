@@ -12,9 +12,12 @@
 #include "ravennakit/core/log.hpp"
 #include "ravennakit/core/system.hpp"
 #include "ravennakit/core/audio/formats/wav_audio_format.hpp"
+#include "ravennakit/core/platform/apple/priority.hpp"
 #include "ravennakit/core/streams/file_input_stream.hpp"
 #include "ravennakit/dnssd/dnssd_advertiser.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
+#include "ravennakit/ravenna/ravenna_node.hpp"
+#include "ravennakit/ravenna/ravenna_sender.hpp"
 #include "ravennakit/ravenna/ravenna_sender.hpp"
 
 #include <CLI/App.hpp>
@@ -28,31 +31,15 @@ static constexpr uint32_t k_frames_per_read = 1024;
 /**
  * Holds the logic for transmitting a wav file over the network.
  */
-class WavFilePlayer: public rav::ptp::Instance::Subscriber {
+class WavFilePlayer {
   public:
     explicit WavFilePlayer(
-        boost::asio::io_context& io_context, rav::dnssd::Advertiser& advertiser, rav::rtsp::Server& rtsp_server,
-        rav::ptp::Instance& ptp_instance, rav::Id::Generator& id_generator, const std::string& interface_search_string,
-        const rav::File& file_to_play, const std::string& session_name
+        rav::RavennaNode& ravenna_node, const rav::File& file_to_play, const std::string& session_name
     ) :
-        ptp_instance_(ptp_instance), rtp_audio_sender_(io_context), timer_(io_context) {
+        ravenna_node_(ravenna_node) {
         if (!file_to_play.exists()) {
             throw std::runtime_error("File does not exist: " + file_to_play.path().string());
         }
-
-        auto id = id_generator.next();
-        auto sender = std::make_unique<rav::RavennaSender>(
-            rtp_audio_sender_, advertiser, rtsp_server, ptp_instance, id, static_cast<uint32_t>(id.value())
-        );
-
-        auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface_search_string);
-        if (iface == nullptr) {
-            RAV_ERROR("No network interface found with search string: {}", interface_search_string);
-            return;
-        }
-        rav::NetworkInterfaceConfig interface_config;
-        interface_config.set_interface(rav::Rank::primary(), iface->get_identifier());
-        sender->set_network_interface_config(std::move(interface_config));
 
         auto file_input_stream = std::make_unique<rav::FileInputStream>(file_to_play);
         auto reader = std::make_unique<rav::WavAudioFormat::Reader>(std::move(file_input_stream));
@@ -68,89 +55,47 @@ class WavFilePlayer: public rav::ptp::Instance::Subscriber {
         config.session_name = session_name;
         config.audio_format = audio_format_.with_byte_order(rav::AudioFormat::ByteOrder::be);
         config.enabled = true;
-        const auto result = sender->set_configuration(config);
+        config.packet_time = rav::aes67::PacketTime::ms_1();
+        config.payload_type = 98;
+        config.ttl = 15;
+        config.destinations.emplace_back(rav::RavennaSender::Destination {rav::Rank(0), {{}, 5004}, true});
+
+        auto result = ravenna_node_.create_sender(config).get();
         if (!result) {
-            throw std::runtime_error("Failed to update configuration for transmitter: " + result.error());
+            throw std::runtime_error("Failed to create sender: " + result.error());
         }
+        id_ = *result;
 
         reader_ = std::move(reader);
-        sender_ = std::move(sender);
-
         audio_buffer_.resize(k_frames_per_read * audio_format_.bytes_per_frame());
 
-        if (!ptp_instance_.subscribe(this)) {
-            RAV_ERROR("Failed to subscribe to PTP instance");
-        }
+        ravenna_node_.subscribe_to_ptp_instance(&ptp_subscriber_).wait();
     }
 
-    ~WavFilePlayer() override {
-        if (!ptp_instance_.unsubscribe(this)) {
-            RAV_ERROR("Failed to unsubscribe from PTP instance");
-        }
-    }
-
-    void ptp_port_changed_state(const rav::ptp::Port& port) override {
-        if (port.state() == rav::ptp::State::slave && state_ == State::stopped) {
-            RAV_INFO("Port state changed to slave, start player");
-
-            auto start_at = get_local_clock().now();
-            start_at.add_seconds(0.5);
-            rtp_ts_ = static_cast<uint32_t>(start_at.to_samples(audio_format_.sample_rate));
-            start_timer();
-            state_ = State::playing;
-        }
-    }
-
-  private:
-    enum class State {
-        stopped,
-        playing,
-    };
-    rav::ptp::Instance& ptp_instance_;
-    rav::rtp::AudioSender rtp_audio_sender_;
-    State state_ = State::stopped;
-    rav::AudioFormat audio_format_;
-    std::vector<uint8_t> audio_buffer_;
-    uint32_t rtp_ts_ {};
-    std::unique_ptr<rav::WavAudioFormat::Reader> reader_;
-    std::unique_ptr<rav::RavennaSender> sender_;
-    boost::asio::high_resolution_timer timer_;
-
-    void start_timer() {
-#if RAV_WINDOWS
-        // A dirty hack to get the precision somewhat right. This is only temporary since we have to come up with a much
-        // tighter solution anyway.
-        auto expires_after = std::chrono::microseconds(1);
-#else
-        // A tenth of the frames per read time
-        auto expires_after = std::chrono::milliseconds(k_frames_per_read / audio_format_.sample_rate * 1000 / 10);
-#endif
-
-        timer_.expires_after(expires_after);
-        timer_.async_wait([this](const boost::system::error_code ec) {
-            if (ec == boost::asio::error::operation_aborted) {
-                return;
-            }
-            if (ec) {
-                RAV_ERROR("Timer error: {}", ec.message());
-                return;
-            }
-            send_audio();
-            start_timer();
-        });
+    ~WavFilePlayer() {
+        ravenna_node_.unsubscribe_from_ptp_instance(&ptp_subscriber_).wait();
     }
 
     void send_audio() {
         TRACY_ZONE_SCOPED;
 
-        const auto clock = get_local_clock();
-        const auto ptp_ts = static_cast<uint32_t>(clock.now().to_samples(audio_format_.sample_rate));
-        if (ptp_ts < rtp_ts_) {
-            return;  // Not yet time to send
+        const auto& clock = ptp_subscriber_.get_local_clock();
+        if (!clock.is_calibrated()) {
+            return;
         }
 
-        if (!clock.is_calibrated()) {
-            return;  // Clock is not calibrated
+        const auto ptp_ts = static_cast<uint32_t>(clock.now().to_samples(audio_format_.sample_rate));
+        // Positive means audio device is ahead of the PTP clock, negative means behind
+        const auto drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(rtp_ts_));
+
+        if (static_cast<uint32_t>(std::abs(drift)) > k_frames_per_read) {
+            rtp_ts_ = ptp_ts;
+        }
+
+        TRACY_PLOT("drift", static_cast<int64_t>(drift));
+
+        if (ptp_ts < rtp_ts_) {
+            return;  // Not yet time to send
         }
 
         if (reader_->remaining_audio_data() == 0) {
@@ -167,23 +112,28 @@ class WavFilePlayer: public rav::ptp::Instance::Subscriber {
             RAV_ERROR("No bytes read");
         }
 
-        const auto drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(rtp_ts_));
-        std::ignore = drift;  // For when Tracy is disabled
-        // Positive means audio device is ahead of the PTP clock, negative means behind
-
-        TRACY_PLOT("drift", static_cast<int64_t>(drift));
-
         if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::le) {
             // Convert to big endian
             rav::swap_bytes(audio_buffer_.data(), num_read, audio_format_.bytes_per_sample());
         }
 
-        // if (!sender_->send_data_realtime(rav::BufferView(audio_buffer_.data(), num_read).const_view(), rtp_ts_)) {
-        //     RAV_ERROR("Failed to send audio data");
-        // }
+        if (!ravenna_node_.send_data_realtime(
+                id_, rav::BufferView(audio_buffer_.data(), num_read).const_view(), rtp_ts_
+            )) {
+            RAV_ERROR("Failed to send audio data");
+        }
 
         rtp_ts_ += static_cast<uint32_t>(num_read) / audio_format_.bytes_per_frame();
     }
+
+  private:
+    rav::RavennaNode& ravenna_node_;
+    rav::ptp::Instance::Subscriber ptp_subscriber_;
+    rav::Id id_;
+    rav::AudioFormat audio_format_;
+    std::vector<uint8_t> audio_buffer_;
+    uint32_t rtp_ts_ {};
+    std::unique_ptr<rav::WavAudioFormat::Reader> reader_;
 };
 
 }  // namespace examples
@@ -204,29 +154,23 @@ int main(int const argc, char* argv[]) {
     std::vector<std::string> file_paths;
     app.add_option("files", file_paths, "The files to stream")->required();
 
-    std::string interface_address_string = "0.0.0.0";
-    app.add_option("--interface-addr", interface_address_string, "The interface address");
+    std::string interfaces;
+    app.add_option(
+        "--interfaces", interfaces, R"(The interfaces to use. Examples: "en1,en2" "192.168.1.1,192.168.2.1")"
+    );
 
     CLI11_PARSE(app, argc, argv);
 
-    const auto interface_address = boost::asio::ip::make_address_v4(interface_address_string);
-
-    boost::asio::io_context io_context;
-
-    std::vector<std::unique_ptr<examples::WavFilePlayer>> wav_file_players;
-
-    auto advertiser = rav::dnssd::Advertiser::create(io_context);
-    rav::rtsp::Server rtsp_server(io_context, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 5005));
-
-    // PTP
-    rav::ptp::Instance ptp_instance(io_context);
-
-    if (const auto result = ptp_instance.add_port(interface_address); !result) {
-        RAV_THROW_EXCEPTION("Failed to add PTP port: {}", to_string(result.error()));
+    const auto network_config = rav::parse_network_interface_config_from_string(interfaces);
+    if (!network_config) {
+        RAV_ERROR("Failed to parse network interface config");
+        return 1;
     }
 
-    // ID generator
-    rav::Id::Generator id_generator;
+    rav::RavennaNode ravenna_node;
+    ravenna_node.set_network_interface_config(*network_config).wait();
+
+    std::vector<std::unique_ptr<examples::WavFilePlayer>> wav_file_players;
 
     for (auto& file_path : file_paths) {
         auto file = rav::File(file_path);
@@ -234,15 +178,29 @@ int main(int const argc, char* argv[]) {
 
         wav_file_players.emplace_back(
             std::make_unique<examples::WavFilePlayer>(
-                io_context, *advertiser, rtsp_server, ptp_instance, id_generator, interface_address_string, file,
-                file_session_name + " " + std::to_string(wav_file_players.size() + 1)
+                ravenna_node, file, file_session_name + " " + std::to_string(wav_file_players.size() + 1)
             )
         );
     }
 
-    while (!io_context.stopped()) {
-        io_context.poll();
-    }
+    std::atomic keep_going = true;
+    std::thread audio_thread([&]() mutable {
+        TRACY_SET_THREAD_NAME("ravenna_node_network");
+
+        while (keep_going.load(std::memory_order_relaxed)) {
+            for (const auto& wav_file_player : wav_file_players) {
+                wav_file_player->send_audio();
+            }
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
+    });
+
+    fmt::println("Press return key to stop...");
+    std::string line;
+    std::getline(std::cin, line);
+
+    keep_going.store(false, std::memory_order_relaxed);
+    audio_thread.join();
 
     return 0;
 }

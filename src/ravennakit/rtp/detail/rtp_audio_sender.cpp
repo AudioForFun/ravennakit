@@ -122,7 +122,6 @@ bool schedule_data_for_sending_realtime(
         // This buffer is not at the expected timestamp, reset the timestamp
         rtp_packet.set_timestamp(timestamp);
         rtp_buffer.set_next_ts(timestamp);
-        // TODO: Should the sequence number be reset as well?
     }
 
     rtp_buffer.clear_until(timestamp);
