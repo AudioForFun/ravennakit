@@ -11,6 +11,6 @@
 #pragma once
 
 #include "warnings.hpp"
-BEGIN_IGNORE_WARNINGS;
+RAV_BEGIN_IGNORE_WARNINGS;
 #include <fmt/format.h>
-END_IGNORE_WARNINGS
+RAV_END_IGNORE_WARNINGS

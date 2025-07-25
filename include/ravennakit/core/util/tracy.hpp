@@ -18,9 +18,9 @@
         #define TracyFunction __PRETTY_FUNCTION__
     #endif
 
-BEGIN_IGNORE_WARNINGS
+RAV_BEGIN_IGNORE_WARNINGS
     #include <tracy/Tracy.hpp>
-END_IGNORE_WARNINGS
+RAV_END_IGNORE_WARNINGS
 
     #define TRACY_ZONE_SCOPED ZoneScoped  // NOLINT(bugprone-reserved-identifier)
     #define TRACY_PLOT(name, value) TracyPlot(name, value)
