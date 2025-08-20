@@ -51,8 +51,12 @@ bool rav::ptp::Instance::unsubscribe(const Subscriber* subscriber) {
     return subscribers_.remove(subscriber);
 }
 
-tl::expected<uint16_t, rav::ptp::Error>
-rav::ptp::Instance::add_port(const boost::asio::ip::address_v4& interface_address) {
+tl::expected<void, rav::ptp::Error>
+rav::ptp::Instance::add_port(const uint16_t port_number, const boost::asio::ip::address_v4& interface_address) {
+    if (has_port(port_number)) {
+        return tl::unexpected(Error::port_already_exists);
+    }
+
     const auto interfaces = NetworkInterfaceList::get_system_interfaces(false);
     auto* iface = interfaces.find_by_address(interface_address);
     if (!iface) {
@@ -76,7 +80,7 @@ rav::ptp::Instance::add_port(const boost::asio::ip::address_v4& interface_addres
 
     PortIdentity port_identity;
     port_identity.clock_identity = default_ds_.clock_identity;
-    port_identity.port_number = get_next_available_port_number();
+    port_identity.port_number = port_number;
 
     auto new_port = std::make_unique<Port>(*this, io_context_, interface_address, port_identity);
     new_port->on_state_changed([this](const Port& port) {
@@ -94,7 +98,56 @@ rav::ptp::Instance::add_port(const boost::asio::ip::address_v4& interface_addres
         schedule_state_decision_timer();
     }
 
-    return port_identity.port_number;
+    return {};
+}
+
+tl::expected<void, rav::ptp::Error> rav::ptp::Instance::add_or_update_port(
+    const uint16_t port_number, const boost::asio::ip::address_v4& interface_address
+) {
+    for (const auto& port : ports_) {
+        if (port->get_port_identity().port_number == port_number) {
+            port->set_interface(interface_address);
+            return {};
+        }
+    }
+
+    return add_port(port_number, interface_address);
+}
+
+tl::expected<void, rav::ptp::Error>
+rav::ptp::Instance::update_ports(const std::vector<std::pair<uint16_t, boost::asio::ip::address_v4>>& ports) {
+    // Add or update ports
+    for (const auto& [port_number, interface_address] : ports) {
+        if (auto result = add_or_update_port(port_number, interface_address); !result) {
+            return tl::unexpected(result.error());
+        }
+    }
+
+    // Remove ports which are not in the ports array
+    ports_.erase(
+        std::remove_if(
+            ports_.begin(), ports_.end(),
+            [&ports](const auto& port) {
+                return std::none_of(ports.begin(), ports.end(), [&port](const auto& pair) {
+                    return pair.first == port->get_port_identity().port_number;
+                });
+            }
+        ),
+        ports_.end()
+    );
+
+    default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
+
+    return {};
+}
+
+bool rav::ptp::Instance::has_port(const uint16_t port_number) const {
+    for (const auto& port : ports_) {
+        if (port->get_port_identity().port_number == port_number) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool rav::ptp::Instance::remove_port(uint16_t port_number) {

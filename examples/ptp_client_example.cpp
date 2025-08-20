@@ -33,8 +33,7 @@ int main(int const argc, char* argv[]) {
     boost::asio::io_context io_context;
 
     rav::ptp::Instance ptp_instance(io_context);
-    auto result = ptp_instance.add_port(boost::asio::ip::make_address_v4(interface_address));
-    if (!result) {
+    if (auto result = ptp_instance.add_port(1, boost::asio::ip::make_address_v4(interface_address)); !result) {
         RAV_TRACE("PTP Error: {}", static_cast<std::underlying_type_t<rav::ptp::Error>>(result.error()));
         return 1;
     }

@@ -19,6 +19,7 @@
 #include "datasets/ptp_time_properties_ds.hpp"
 #include "ravennakit/core/util/subscriber_list.hpp"
 #include "ravennakit/core/expected.hpp"
+#include "ravennakit/core/net/interfaces/network_interface_config.hpp"
 
 #include <boost/lockfree/spsc_value.hpp>
 
@@ -87,11 +88,38 @@ class Instance {
 
     /**
      * Adds a port to the PTP instance. The port will be used to send and receive PTP messages. The clock identity of
-     * the PTP instance will be determined by the first port added, based on its MAC address.
+     * the PTP instance will be determined by the first added port, based on its MAC address.
+     * @param port_number The port number to assign to the new port.
      * @param interface_address The address of the interface to bind the port to. The network interface must have a MAC
      * address and support multicast.
      */
-    tl::expected<uint16_t, Error> add_port(const boost::asio::ip::address_v4& interface_address);
+    [[nodiscard]] tl::expected<void, Error>
+    add_port(uint16_t port_number, const boost::asio::ip::address_v4& interface_address);
+
+    /**
+     * Adds or updates a port. If the port does not already exist a new port will be added, otherwise the existing port
+     * will be updated.
+     * @param port_number The number of the port to add or update.
+     * @param interface_address The address of the interface to use.
+     * @return An expected indicating success or a failure.
+     */
+    [[nodiscard]] tl::expected<void, Error>
+    add_or_update_port(uint16_t port_number, const boost::asio::ip::address_v4& interface_address);
+
+    /**
+     * Updates the ports to match the entries in given array. This method will add ports when a port with given port
+     * number does not exist, and remove ports which exist but are not in the array.
+     * @param ports The port number and their interface address.
+     * @return An expected indicating success or a failure.
+     */
+    [[nodiscard]] tl::expected<void, Error>
+    update_ports(const std::vector<std::pair<uint16_t, boost::asio::ip::address_v4>>& ports);
+
+    /**
+     * @param port_number The port number to lookup.
+     * @return True if there is a port with given port number, or false if not.
+     */
+    [[nodiscard]] bool has_port(uint16_t port_number) const;
 
     /**
      * Removes a port from the PTP instance.
@@ -99,7 +127,7 @@ class Instance {
      * considered invalid.
      * @return True if the port was removed successfully, false if the port was not found.
      */
-    bool remove_port(uint16_t port_number);
+    [[nodiscard]] bool remove_port(uint16_t port_number);
 
     /**
      * @return The amount of ports in the PTP instance.
@@ -112,7 +140,8 @@ class Instance {
      * and 0 is considered invalid.
      * @param interface_address The address of the interface to bind the port to.
      */
-    [[nodiscard]] bool set_port_interface(uint16_t port_number, const boost::asio::ip::address_v4& interface_address) const;
+    [[nodiscard]] bool
+    set_port_interface(uint16_t port_number, const boost::asio::ip::address_v4& interface_address) const;
 
     /**
      * @return The default data set of the PTP instance.

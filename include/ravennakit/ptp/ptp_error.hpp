@@ -22,7 +22,8 @@ enum class Error {
     network_interface_not_found,
     no_mac_address_available,
     invalid_clock_identity,
-    port_invalid
+    port_invalid,
+    port_already_exists,
 };
 
 inline const char* to_string(const Error error) {
@@ -47,9 +48,11 @@ inline const char* to_string(const Error error) {
             return "invalid clock identity";
         case Error::port_invalid:
             return "port invalid";
+        case Error::port_already_exists:
+            return "port already exists";
         default:
             return "unknown error";
     }
 }
 
-}  // namespace rav
+}  // namespace rav::ptp

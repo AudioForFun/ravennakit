@@ -448,33 +448,13 @@ std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfac
         nmos_node_.set_network_interface_config(config);
 
         // Add or update PTP ports based on the new configuration
-        const auto addresses = network_interface_config_.get_interface_ipv4_addresses();
-        for (auto& [rank, address] : addresses) {
-            auto it = ptp_ports_.find(rank);
-            if (it == ptp_ports_.end()) {
-                auto port_number = ptp_instance_.add_port(address);
-                if (!port_number) {
-                    RAV_ERROR("Failed to add PTP port: {}", ptp::to_string(port_number.error()));
-                    continue;
-                }
-                ptp_ports_[rank] = port_number.value();
-            } else {
-                if (!ptp_instance_.set_port_interface(it->second, address)) {
-                    RAV_ERROR("Failed to set PTP port interface: {}", it->second);
-                }
-            }
+        std::vector<std::pair<uint16_t, ip_address_v4>> ptp_ports;
+        for (const auto& [rank, address] : network_interface_config_.get_interface_ipv4_addresses()) {
+            ptp_ports.emplace_back(rank.value() + 1, address);
         }
 
-        // Remove PTP ports that are no longer in the configuration (by rank)
-        for (auto it = ptp_ports_.begin(); it != ptp_ports_.end();) {
-            if (addresses.find(it->first) == addresses.end()) {
-                if (!ptp_instance_.remove_port(it->second)) {
-                    RAV_ERROR("Failed to remove PTP port: {}", it->second);
-                }
-                it = ptp_ports_.erase(it);
-            } else {
-                ++it;
-            }
+        if (const auto result = ptp_instance_.update_ports(ptp_ports); !result) {
+            RAV_ERROR("Failed to update port ports: {}", rav::ptp::to_string(result.error()));
         }
 
         for (const auto& subscriber : subscribers_) {

@@ -116,7 +116,7 @@ class NetworkInterfaceConfig {
      */
     template<size_t N>
     std::array<ip_address_v4, N> get_array_of_interface_addresses() {
-        std::array<ip_address_v4, N> addresses{};
+        std::array<ip_address_v4, N> addresses {};
         for (const auto& [rank, addr] : get_interface_ipv4_addresses()) {
             if (rank.value() < interfaces.size()) {
                 addresses[rank.value()] = addr;

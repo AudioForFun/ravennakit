@@ -347,7 +347,6 @@ class RavennaNode {
     std::unique_ptr<dnssd::Advertiser> advertiser_;
     rtsp::Server rtsp_server_;
     ptp::Instance ptp_instance_;
-    std::map<Rank, uint16_t> ptp_ports_;  // Mapping between interface by rank and ptp port number
     std::vector<std::unique_ptr<RavennaSender>> senders_;
 
     nmos::Node nmos_node_ {io_context_, ptp_instance_};

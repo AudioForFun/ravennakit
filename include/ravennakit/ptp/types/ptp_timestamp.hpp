@@ -273,9 +273,28 @@ struct Timestamp {
         return seconds_ != 0 || nanoseconds_ != 0;
     }
 
+    /**
+     * @return The current timestamp as an RFC 3339 string.
+     */
+    std::string to_rfc3339_tai() {
+        if (seconds_ > std::numeric_limits<std::time_t>::max()) {
+            return {};
+        }
+        const auto time = static_cast<std::time_t>(seconds_);
+        std::tm tm {};
+        if (gmtime_r(&time, &tm) == nullptr) {
+            return {};
+        }
+
+        return fmt::format(
+            "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:09}Z", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour,
+            tm.tm_min, tm.tm_sec, nanoseconds_
+        );
+    }
+
   private:
     uint64_t seconds_ {};      // 6 bytes (48 bits) on the wire
     uint32_t nanoseconds_ {};  // 4 bytes (32 bits) on the wire [0, 1'000'000'000).
 };
 
-}  // namespace rav
+}  // namespace rav::ptp
