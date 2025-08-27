@@ -447,4 +447,71 @@ TEST_CASE("rav string utils") {
             REQUIRE(rav::string_to_lower(str, 3) == "abc");
         }
     }
+
+    SECTION("string | string_trim") {
+        std::string_view test1 = "  hello world  ";
+        std::string_view test2 = "\t\n  trim me  \r\n";
+        std::string_view test3 = "   ";
+        std::string_view test4 = "no_trim_needed";
+        std::string_view test5;
+
+        REQUIRE(rav::string_trim(test1) == "hello world");
+        REQUIRE(rav::string_trim(test2) == "trim me");
+        REQUIRE(rav::string_trim(test3).empty());
+        REQUIRE(rav::string_trim(test4) == "no_trim_needed");
+        REQUIRE(rav::string_trim(test5).empty());
+    }
+
+    SECTION("string | string_unquoted") {
+        SECTION("Double quotes") {
+            REQUIRE(rav::string_unquoted("\"hello world\"") == "hello world");
+            REQUIRE(rav::string_unquoted(" \"hello world\" ") == "hello world");
+            REQUIRE(rav::string_unquoted("\"\"").empty());
+            REQUIRE(rav::string_unquoted(" \"\" ").empty());
+            REQUIRE(rav::string_unquoted("\"a\"") == "a");
+            REQUIRE(rav::string_unquoted("  \"a\"  ") == "a");
+        }
+
+        SECTION("Single quotes") {
+            REQUIRE(rav::string_unquoted("'single quoted'") == "single quoted");
+            REQUIRE(rav::string_unquoted("''").empty());
+            REQUIRE(rav::string_unquoted("'x'") == "x");
+        }
+
+        SECTION("No quotes - should return unchanged") {
+            REQUIRE(rav::string_unquoted("not quoted") == "not quoted");
+            REQUIRE(rav::string_unquoted("hello world") == "hello world");
+            REQUIRE(rav::string_unquoted("a") == "a");
+        }
+
+        SECTION("Mismatched quotes - should return unchanged") {
+            REQUIRE(rav::string_unquoted("'mismatched\"") == "'mismatched\"");
+            REQUIRE(rav::string_unquoted("\"mismatched'") == "\"mismatched'");
+        }
+
+        SECTION("Quotes only at beginning or end - should return unchanged") {
+            REQUIRE(rav::string_unquoted("\"unclosed quote") == "\"unclosed quote");
+            REQUIRE(rav::string_unquoted("unclosed quote\"") == "unclosed quote\"");
+            REQUIRE(rav::string_unquoted("'unclosed quote") == "'unclosed quote");
+            REQUIRE(rav::string_unquoted("unclosed quote'") == "unclosed quote'");
+        }
+
+        SECTION("Edge cases") {
+            REQUIRE(rav::string_unquoted("").empty());
+            REQUIRE(rav::string_unquoted("\"") == "\"");
+            REQUIRE(rav::string_unquoted("'") == "'");
+            REQUIRE(rav::string_unquoted("x") == "x");
+        }
+
+        SECTION("Nested quotes - only removes outer quotes") {
+            REQUIRE(rav::string_unquoted("\"hello 'world'\"") == "hello 'world'");
+            REQUIRE(rav::string_unquoted("'hello \"world\"'") == "hello \"world\"");
+        }
+
+        SECTION("Quotes in the middle - should not affect result") {
+            REQUIRE(rav::string_unquoted("hello\"world") == "hello\"world");
+            REQUIRE(rav::string_unquoted("hello'world") == "hello'world");
+            REQUIRE(rav::string_unquoted("he\"llo\"world") == "he\"llo\"world");
+        }
+    }
 }

@@ -164,7 +164,7 @@ inline std::string_view string_from_last_occurrence_of(
 }
 
 /**
- * Returns a copy of string with given prefix removed, if prefix is found at the end of string.
+ * Returns a copy of string with given prefix removed, if prefix is found at the beginning of the string.
  * @param string String to remove prefix from.
  * @param prefix_to_remove Prefix to find and remove.
  * @param found If not null, will be set to true if the prefix was found and removed, false otherwise.
@@ -189,7 +189,7 @@ string_remove_prefix(const std::string_view& string, const std::string_view pref
 }
 
 /**
- * Returns a copy of string with given suffix removed, if suffix is found at the end of string.
+ * Returns a copy of string with given suffix removed, if suffix is found at the end of the string.
  * @param string String to remove suffix from.
  * @param suffix_to_remove Suffix to find and remove.
  * @return The string with the suffix removed, or the original string if the suffix was not found.
@@ -210,6 +210,36 @@ string_remove_suffix(const std::string_view& string, const std::string_view suff
     }
 
     return string.substr(0, pos);
+}
+
+/**
+ * Trims given string by removing whitespace at the start and the end or the string.
+ * @param input The input to trim.
+ * @return The trimmed string, or the original is no trimming was needed.
+ */
+inline std::string_view string_trim(const std::string_view input) {
+    if (input.empty()) {
+        return {};
+    }
+
+    // Find first non-whitespace character
+    size_t start = 0;
+    while (start < input.size() && std::isspace(input[start])) {
+        ++start;
+    }
+
+    // If all characters are whitespace
+    if (start == input.size()) {
+        return std::string_view {};
+    }
+
+    // Find last non-whitespace character
+    size_t end = input.size() - 1;
+    while (end > start && std::isspace(input[end])) {
+        --end;
+    }
+
+    return input.substr(start, end - start + 1);
 }
 
 /**
@@ -266,7 +296,6 @@ inline std::optional<double> string_to_double(const std::string& str) {
 inline bool string_starts_with(const std::string_view text, const std::string_view starts_with) {
     return text.rfind(starts_with, 0) == 0;
 }
-
 
 /**
  * Tests whether given text ends with a certain string.
@@ -348,8 +377,8 @@ inline std::vector<std::string> string_split(const std::string& string, const ch
  * @return Modified string, or original string if sequence was not found.
  */
 inline std::string
-string_replace(const std::string& original, const std::string& to_replace, const std::string& replacement) {
-    std::string modified = original;
+string_replace(const std::string_view original, const std::string_view to_replace, const std::string_view replacement) {
+    auto modified = std::string(original);
     size_t pos = 0;
 
     while ((pos = modified.find(to_replace, pos)) != std::string::npos) {
@@ -358,6 +387,31 @@ string_replace(const std::string& original, const std::string& to_replace, const
     }
 
     return modified;
+}
+
+/**
+ * If given string is quoted, it will remove the quotes. It will also trim the strim before doing that.
+ * If there are unmatched quoted ('some"), nothing will happen.
+ * @param input The input to unquote.
+ * @return The unquoted string.
+ */
+inline std::string_view string_unquoted(std::string_view input) {
+    input = string_trim(input);
+
+    if (input.size() < 2) {
+        return input; // NOLINT
+    }
+
+    const char first = input.front();
+    const char last = input.back();
+
+    // Only unquote if there are matching quotes at both beginning AND end
+    if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+        return input.substr(1, input.size() - 2);
+    }
+
+    // If quotes don't match or aren't at both ends, return unchanged
+    return input; // NOLINT
 }
 
 /**

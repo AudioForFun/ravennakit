@@ -7,6 +7,8 @@
 #include "ravennakit/core/util/paths.hpp"
 
 #include "ravennakit/core/assert.hpp"
+#include "ravennakit/core/file.hpp"
+#include "ravennakit/core/string_parser.hpp"
 #include "ravennakit/core/util/defer.hpp"
 
 #include <filesystem>
@@ -103,6 +105,35 @@ std::filesystem::path windows_get_local_app_data() {
 
 #endif
 
+#if RAV_LINUX
+
+inline std::filesystem::path resolve_xdg_folder(const char* type, std::filesystem::path fallback_path) {
+    const auto home = get_home();
+    const auto result = rav::file::read_file_as_string(home / ".config" / "user-dirs.dirs");
+    if (!result) {
+        return fallback_path;
+    }
+
+    rav::StringParser line_parser(*result);
+    while (auto line = line_parser.read_line()) {
+        const auto trimmed = rav::string_trim(*line);
+        if (rav::string_starts_with(trimmed, type)) {
+            const auto path = rav::string_from_first_occurrence_of(trimmed, "=", false);
+
+            // eg. resolve XDG_MUSIC_DIR="$HOME/Music" to /home/user/Music
+            auto replaced = rav::string_replace(path, "$HOME", home.c_str());
+
+            if (std::filesystem::is_directory(rav::string_unquoted(replaced))) {
+                return replaced;
+            }
+        }
+    }
+
+    return fallback_path;
+}
+
+#endif
+
 std::filesystem::path rav::paths::home() {
 #if RAV_POSIX
     return get_home();
@@ -123,6 +154,8 @@ std::filesystem::path rav::paths::desktop() {
     return home / "Desktop";
 #elif RAV_WINDOWS
     return get_known_windows_folder(FOLDERID_Desktop);
+#elif RAV_LINUX
+    return resolve_xdg_folder("XDG_DESKTOP_DIR", get_home() / "Desktop");
 #else
     RAV_ASSERT_FALSE("Platform not supported");
     return {};
@@ -138,6 +171,8 @@ std::filesystem::path rav::paths::documents() {
     return home / "Documents";
 #elif RAV_WINDOWS
     return get_known_windows_folder(FOLDERID_Documents);
+#elif RAV_LINUX
+    return resolve_xdg_folder("XDG_DOCUMENTS_DIR", get_home() / "Documents");
 #else
     RAV_ASSERT_FALSE("Platform not supported");
     return {};
@@ -153,6 +188,8 @@ std::filesystem::path rav::paths::pictures() {
     return home / "Pictures";
 #elif RAV_WINDOWS
     return get_known_windows_folder(FOLDERID_Pictures);
+#elif RAV_LINUX
+    return resolve_xdg_folder("XDG_PICTURES_DIR", get_home() / "Pictures");
 #else
     RAV_ASSERT_FALSE("Platform not supported");
     return {};
@@ -168,6 +205,8 @@ std::filesystem::path rav::paths::downloads() {
     return home / "Downloads";
 #elif RAV_WINDOWS
     return get_known_windows_folder(FOLDERID_Downloads);
+#elif RAV_LINUX
+    return resolve_xdg_folder("XDG_DOWNLOAD_DIR", get_home() / "Downloads");
 #else
     RAV_ASSERT_FALSE("Platform not supported");
     return {};
@@ -183,6 +222,8 @@ std::filesystem::path rav::paths::application_data() {
     return home / "Library" / "Application Support";
 #elif RAV_WINDOWS
     return windows_get_roaming_app_data();
+#elif RAV_LINUX
+    return resolve_xdg_folder("XDG_CONFIG_HOME", get_home() / ".config");
 #else
     RAV_ASSERT_FALSE("Platform not supported");
     return {};
@@ -198,6 +239,8 @@ std::filesystem::path rav::paths::cache() {
     return home / "Library" / "Caches";
 #elif RAV_WINDOWS
     return windows_get_local_app_data();
+#elif RAV_LINUX
+    return resolve_xdg_folder("XDG_CACHE_HOME", get_home() / ".cache");
 #else
     RAV_ASSERT_FALSE("Platform not supported");
     return {};

@@ -3,6 +3,7 @@
 // Copyright (c) 2025 Sound on Digital. All rights reserved.
 //
 
+#include "ravennakit/core/file.hpp"
 #include "ravennakit/core/util/paths.hpp"
 
 #include <fmt/format.h>
