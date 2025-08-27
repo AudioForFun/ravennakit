@@ -10,17 +10,45 @@
 namespace rav::paths {
 
 /**
- *
- * @return A path to the users home folder, or an empty path if the home folder could not be determined.
- * On macOS this returns: /Users/<username>
+ * macOS: /Users/<username>
+ * @return The path to the users home folder, or an empty path if the home folder could not be determined.
  */
 std::filesystem::path home();
 
 /**
- *
+ * macOS: /Users/<username>/Desktop
+ * @return The path to the desktop folder, or an empty path if the folder could not be determined.
+ */
+std::filesystem::path desktop();
+
+/**
+ * macOS: /Users/<username>/Documents
+ * @return The path to the documents folder, or an empty path if the folder could not be determined.
+ */
+std::filesystem::path documents();
+
+/**
+ * macOS: /Users/<username>/Pictures
+ * @return The path to the pictures folder, or an empty path if the folder could not be determined.
+ */
+std::filesystem::path pictures();
+
+/**
+ * macOS: /Users/<username>/Downloads
+ * @return The path to the downloads folder, or an empty path if the folder could not be determined.
+ */
+std::filesystem::path downloads();
+
+/**
+ * macOS: /Users/<username>/Library/Application Support
  * @return A path to the application data folder, or an empty path if the folder could not be retrieved.
- * On macOS this returns: /Users/<username>/Library/Application Support
  */
 std::filesystem::path application_data();
+
+/**
+ * macOS: /Users/<username>/Library/Caches
+ * @return A path to the cache folder, or an empty path if the folder could not be retrieved.
+ */
+std::filesystem::path cache();
 
 }  // namespace rav::paths

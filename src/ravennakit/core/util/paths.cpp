@@ -6,6 +6,8 @@
 #include "ravennakit/core/env.hpp"
 #include "ravennakit/core/util/paths.hpp"
 
+#include "ravennakit/core/assert.hpp"
+
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -70,6 +72,54 @@ std::filesystem::path rav::paths::home() {
 #endif
 }
 
+std::filesystem::path rav::paths::desktop() {
+#if RAV_MACOS
+    const auto home = get_home();
+    if (home.empty()) {
+        return {};
+    }
+    return home / "Desktop";
+#else
+    RAV_ASSERT_FALSE("Platform not supported");
+#endif
+}
+
+std::filesystem::path rav::paths::documents() {
+#if RAV_MACOS
+    const auto home = get_home();
+    if (home.empty()) {
+        return {};
+    }
+    return home / "Documents";
+#else
+    RAV_ASSERT_FALSE("Platform not supported");
+#endif
+}
+
+std::filesystem::path rav::paths::pictures() {
+#if RAV_MACOS
+    const auto home = get_home();
+    if (home.empty()) {
+        return {};
+    }
+    return home / "Pictures";
+#else
+    RAV_ASSERT_FALSE("Platform not supported");
+#endif
+}
+
+std::filesystem::path rav::paths::downloads() {
+#if RAV_MACOS
+    const auto home = get_home();
+    if (home.empty()) {
+        return {};
+    }
+    return home / "Downloads";
+#else
+    RAV_ASSERT_FALSE("Platform not supported");
+#endif
+}
+
 std::filesystem::path rav::paths::application_data() {
 #if RAV_MACOS
     const auto home = get_home();
@@ -77,7 +127,19 @@ std::filesystem::path rav::paths::application_data() {
         return {};
     }
     return home / "Library" / "Application Support";
-#elif RAV_WINDOWS
-
+#else
+    RAV_ASSERT_FALSE("Platform not supported");
 #endif
+}
+
+std::filesystem::path rav::paths::cache() {
+    #if RAV_MACOS
+    const auto home = get_home();
+    if (home.empty()) {
+        return {};
+    }
+    return home / "Library" / "Caches";
+    #else
+    RAV_ASSERT_FALSE("Platform not supported");
+    #endif
 }
