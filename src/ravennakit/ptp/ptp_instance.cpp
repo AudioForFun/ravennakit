@@ -89,13 +89,18 @@ rav::ptp::Instance::add_port(const uint16_t port_number, const boost::asio::ip::
         }
     });
 
-    ports_.emplace_back(std::move(new_port))->assert_valid_state(DefaultProfile1);
+    const auto& added_port = ports_.emplace_back(std::move(new_port));
+    added_port->assert_valid_state(DefaultProfile1);
 
     default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
 
     if (ports_.size() == 1) {
         // Start the state decision timer
         schedule_state_decision_timer();
+    }
+
+    for (auto* s : subscribers_) {
+        s->ptp_port_changed_state(*added_port);
     }
 
     return {};
@@ -133,18 +138,20 @@ tl::expected<void, rav::ptp::Error> rav::ptp::Instance::update_ports(const std::
         }
     }
 
-    // Remove ports which are not in the ports array
-    ports_.erase(
-        std::remove_if(
-            ports_.begin(), ports_.end(),
-            [&ports](const auto& port) {
-                return port->get_port_identity().port_number > ports.size();
-            }
-        ),
-        ports_.end()
-    );
+    std::vector<uint16_t> ports_no_longer_in_use;
 
-    default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
+    for (const auto& port : ports_) {
+        auto port_number = port->port_ds().port_identity.port_number;
+        if (port_number > ports.size()) {
+            ports_no_longer_in_use.push_back(port_number);
+        }
+    }
+
+    for (auto num : ports_no_longer_in_use) {
+        if (!remove_port(num)) {
+            RAV_ERROR("Failed to remove port {}", num);
+        }
+    }
 
     return {};
 }
@@ -167,6 +174,11 @@ bool rav::ptp::Instance::remove_port(uint16_t port_number) {
         ports_.erase(it, ports_.end());
         default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
         RAV_TRACE("Removed port {}, new total amount of ports: {}", port_number, default_ds_.number_ports);
+
+        for (auto* s : subscribers_) {
+            s->ptp_port_removed(port_number);
+        }
+
         return true;
     }
 

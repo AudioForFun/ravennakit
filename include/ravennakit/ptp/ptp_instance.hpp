@@ -51,6 +51,14 @@ class Instance {
         }
 
         /**
+         * Called when a port was removed.
+         * @param port_number The port number of the removed port.
+         */
+        virtual void ptp_port_removed(const uint16_t port_number) {
+            std::ignore = port_number;
+        }
+
+        /**
          * @returns A reference to the local clock which received updates from the ptp::Instance.
          * Thread safe and wait-free when called from a single consumer thread.
          */
