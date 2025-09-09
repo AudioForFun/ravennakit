@@ -206,8 +206,8 @@ rav::ptp::Measurement<double> rav::ptp::Port::calculate_offset_from_master(const
     RAV_ASSERT(!sync_message.header.flags.two_step_flag, "Use the other method for two-step sync messages");
     const auto corrected_sync_correction_field = TimeInterval::from_wire_format(sync_message.header.correction_field)
                                                      .total_seconds_double();  // TODO: Ignoring delay asymmetry for now
-    const auto t1 = sync_message.origin_timestamp.total_seconds_double();
-    const auto t2 = sync_message.receive_timestamp.total_seconds_double();
+    const auto t1 = sync_message.origin_timestamp.to_seconds_double();
+    const auto t2 = sync_message.receive_timestamp.to_seconds_double();
     // Note: using mean_delay_stats_.median() with a window of 32 instead of mean_delay_ worked also quite well
     const auto offset = t2 - t1 - mean_delay_ - corrected_sync_correction_field;
     return {t2, offset, mean_delay_, {}};
@@ -221,8 +221,8 @@ rav::ptp::Measurement<double> rav::ptp::Port::calculate_offset_from_master(
                                                      .total_seconds_double();  // TODO: Ignoring delay asymmetry for now
     const auto follow_up_correction_field =
         TimeInterval::from_wire_format(follow_up_message.header.correction_field).total_seconds_double();
-    const auto t1 = follow_up_message.precise_origin_timestamp.total_seconds_double();
-    const auto t2 = sync_message.receive_timestamp.total_seconds_double();
+    const auto t1 = follow_up_message.precise_origin_timestamp.to_seconds_double();
+    const auto t2 = sync_message.receive_timestamp.to_seconds_double();
     // Note: using mean_delay_stats_.median() with a window of 32 instead of mean_delay_ worked also quite well
     const auto offset = t2 - t1 - mean_delay_ - corrected_sync_correction_field - follow_up_correction_field;
     return {t2, offset, mean_delay_, {}};

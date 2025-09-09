@@ -35,7 +35,7 @@ class LocalClock {
      */
     [[nodiscard]] Timestamp get_adjusted_time(const Timestamp system_time) const {
         TRACY_ZONE_SCOPED;
-        const auto elapsed = system_time.total_seconds_double() - last_sync_.total_seconds_double();
+        const auto elapsed = system_time.to_seconds_double() - last_sync_.to_seconds_double();
         auto result = last_sync_;
         result.add_seconds(elapsed * frequency_ratio_);
         result.add_seconds(shift_);

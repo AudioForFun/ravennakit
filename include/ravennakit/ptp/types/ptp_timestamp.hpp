@@ -219,9 +219,9 @@ struct Timestamp {
     }
 
     /**
-     * @return The total number of seconds represented by this timestamp as double.
+     * @return The total number of seconds (including fraction) represented by this timestamp as double.
      */
-    [[nodiscard]] double total_seconds_double() const {
+    [[nodiscard]] double to_seconds_double() const {
         return static_cast<double>(seconds_) + static_cast<double>(nanoseconds_) / 1'000'000'000.0;
     }
 

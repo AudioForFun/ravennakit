@@ -165,10 +165,10 @@ class RequestResponseDelaySequence {
     [[nodiscard]] double calculate_mean_path_delay() const {
         TRACY_ZONE_SCOPED;
         RAV_ASSERT(state_ == state::delay_resp_received, "State should be delay_resp_received");
-        const auto t1 = t1_.total_seconds_double();
-        const auto t2 = t2_.total_seconds_double();
-        const auto t3 = t3_.total_seconds_double();
-        const auto t4 = t4_.total_seconds_double();
+        const auto t1 = t1_.to_seconds_double();
+        const auto t2 = t2_.to_seconds_double();
+        const auto t3 = t3_.to_seconds_double();
+        const auto t4 = t4_.to_seconds_double();
 
         auto result = t2 - t3 + (t4 - t1) - corrected_sync_correction_field_;
         if (sync_message_.header.flags.two_step_flag) {
