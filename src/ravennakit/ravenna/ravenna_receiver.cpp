@@ -203,7 +203,9 @@ void rav::RavennaReceiver::do_maintenance() {
     }
 }
 
-rav::RavennaReceiver::RavennaReceiver(RavennaRtspClient& rtsp_client, rtp::AudioReceiver& rtp_audio_receiver, const Id id) :
+rav::RavennaReceiver::RavennaReceiver(
+    RavennaRtspClient& rtsp_client, rtp::AudioReceiver& rtp_audio_receiver, const Id id
+) :
     rtsp_client_(rtsp_client), rtp_audio_receiver_(rtp_audio_receiver), id_(id) {
     nmos_receiver_.id = boost::uuids::random_generator()();
 
@@ -337,7 +339,8 @@ tl::expected<void, std::string> rav::RavennaReceiver::set_configuration(Configur
         if (reader_parameters_.is_valid() && configuration_.enabled) {
             const auto ok = rtp_audio_receiver_.add_reader(
                 id_, reader_parameters_,
-                network_interface_config_.get_array_of_interface_addresses<rtp::AudioReceiver::k_max_num_redundant_sessions>()
+                network_interface_config_
+                    .get_array_of_interface_addresses<rtp::AudioReceiver::k_max_num_redundant_sessions>()
             );
             if (!ok) {
                 RAV_ERROR("Failed to add RTP reader");
@@ -528,7 +531,7 @@ void rav::tag_invoke(
         {"delay_frames", config.delay_frames},
         {"enabled", config.enabled},
         {"auto_update_sdp", config.auto_update_sdp},
-        {"sdp", sdp::to_string(config.sdp)}
+        {"sdp", boost::json::value_from(sdp::to_string(config.sdp))}
     };
 }
 
@@ -539,6 +542,11 @@ rav::tag_invoke(const boost::json::value_to_tag<RavennaReceiver::Configuration>&
     config.delay_frames = jv.at("delay_frames").to_number<uint32_t>();
     config.enabled = jv.at("enabled").as_bool();
     config.auto_update_sdp = jv.at("auto_update_sdp").as_bool();
-    config.sdp = sdp::parse_session_description(jv.at("sdp").as_string().c_str()).value();
+
+    const auto sdp = jv.at("sdp"); // It is expected that the "sdp" field exists at all time.
+    if (auto* str = sdp.if_string()) {
+        config.sdp = sdp::parse_session_description(str->c_str()).value();
+    }
+
     return config;
 }

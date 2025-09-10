@@ -336,9 +336,9 @@ void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) 
         return;
     }
 
-    RAV_TRACE("SDP:\n{}", rav::sdp::to_string(*sdp, "\n"));
+    RAV_TRACE("SDP:\n{}", rav::sdp::to_string(*sdp, "\n").value_or("n/a"));
 
-    auto response = rtsp::Response(200, "OK", rav::sdp::to_string(*sdp));
+    auto response = rtsp::Response(200, "OK", rav::sdp::to_string(*sdp).value_or("n/a"));
     if (const auto* cseq = event.rtsp_request.rtsp_headers.get("cseq")) {
         response.rtsp_headers.set(*cseq);
     }
@@ -374,7 +374,7 @@ void rav::RavennaSender::send_announce() const {
     rtsp::Request request;
     request.method = "ANNOUNCE";
     request.rtsp_headers.set("content-type", "application/sdp");
-    request.data = sdp::to_string(*sdp);
+    request.data = sdp::to_string(*sdp).value_or("n/a");
     request.uri =
         Uri::encode("rtsp", interface_address_string + ":" + std::to_string(rtsp_server_.port()), rtsp_path_by_name_);
     std::ignore = rtsp_server_.send_request(rtsp_path_by_name_, request);
