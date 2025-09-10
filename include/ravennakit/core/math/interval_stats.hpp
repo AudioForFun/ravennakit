@@ -20,7 +20,7 @@ namespace rav {
  * Keeps track of an ema with outliers filtered out and a max deviation.
  */
 struct IntervalStats {
-    double ema = 0.0;
+    double average = 0.0;
     double max_deviation = 0.0;
     bool initialized = false;
     double alpha = 0.001;
@@ -28,32 +28,32 @@ struct IntervalStats {
 
     void update(const double interval_ms) {
         if (!initialized) {
-            ema = interval_ms;
+            average = interval_ms;
             initialized = true;
             return;
         }
 
-        // Check if this is an extreme outlier
-        const double ratio = interval_ms / ema;
-        if (ratio > rejection_factor || ratio < (1.0 / rejection_factor)) {
-            const double deviation = std::fabs(interval_ms - ema);
-            if (deviation > max_deviation) {
-                max_deviation = deviation;
-            }
-            return;
+        const auto ema = alpha * interval_ms + (1.0 - alpha) * average;
+        const auto step = ema - average;
+
+        if (step > current_step_size) {
+            average += current_step_size;  // Limit positive change
+            current_step_size = std::min(current_step_size * 2.0, k_max_step_size);
+        } else if (step < -current_step_size) {
+            average -= current_step_size;  // Limit negative change
+            current_step_size = std::min(current_step_size * 2.0, k_max_step_size);
+        } else {
+            average = ema;  // Change is within limit
+            current_step_size = std::max(current_step_size / 2.0, k_min_step_size);
         }
 
-        ema = alpha * interval_ms + (1.0 - alpha) * ema;
-        max_deviation = std::max(std::fabs(interval_ms - ema), max_deviation);
+        max_deviation = std::max(std::fabs(interval_ms - average), max_deviation);
     }
 
-    [[nodiscard]] bool is_outlier(const double interval_ms) const {
-        if (!initialized) {
-            return false;
-        }
-        const double ratio = interval_ms / ema;
-        return (ratio > rejection_factor || ratio < (1.0 / rejection_factor));
-    }
+private:
+    static constexpr auto k_min_step_size = 0.00001;
+    static constexpr auto k_max_step_size = 100'000.0;
+    double current_step_size = k_min_step_size;
 };
 
 }  // namespace rav
