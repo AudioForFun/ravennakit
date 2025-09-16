@@ -30,6 +30,8 @@
 #include <boost/system/result.hpp>
 #include <fmt/ostream.h>
 
+#include <unordered_map>
+
 namespace rav::nmos {
 
 /**
