@@ -212,13 +212,18 @@ rav::RavennaReceiver::RavennaReceiver(
     for (auto& encoding : k_supported_encodings) {
         nmos_receiver_.caps.media_types.emplace_back(nmos::audio_encoding_to_nmos_media_type(encoding));
     }
+
+    nmos_receiver_.set_sender_id = [this](const std::optional<boost::uuids::uuid>& new_sender_id) {
+        nmos_receiver_.subscription.sender_id = new_sender_id;
+        return true;
+    };
 }
 
 rav::RavennaReceiver::~RavennaReceiver() {
     std::ignore = rtp_audio_receiver_.remove_reader(id_);
     std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
     if (nmos_node_ != nullptr) {
-        if (!nmos_node_->remove_receiver(nmos_receiver_.id)) {
+        if (!nmos_node_->remove_receiver(&nmos_receiver_)) {
             RAV_ERROR("Failed to remove NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
         }
     }
@@ -258,7 +263,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_nmos() {
 
     if (nmos_node_ != nullptr) {
         RAV_ASSERT(nmos_receiver_.is_valid(), "NMOS receiver must be valid at this point");
-        if (!nmos_node_->add_or_update_receiver(nmos_receiver_)) {
+        if (!nmos_node_->add_or_update_receiver(&nmos_receiver_)) {
             RAV_ERROR("Failed to update NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
             return tl::unexpected("Failed to update NMOS receiver");
         }

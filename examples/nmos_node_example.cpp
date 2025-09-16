@@ -123,7 +123,7 @@ int main(const int argc, const char* argv[]) {
             receiver.device_id = device.id;
             receiver.transport = "urn:x-nmos:transport:rtp";
             receiver.caps.media_types = {"audio/L24", "audio/L20", "audio/L16", "audio/L8", "audio/PCM"};
-            std::ignore = node.add_or_update_receiver(receiver);
+            std::ignore = node.add_or_update_receiver(&receiver);
 
             receiver_count++;
         }

@@ -21,6 +21,7 @@
 #include "ravennakit/nmos/models/nmos_self.hpp"
 #include "ravennakit/nmos/models/nmos_sender_transport_params_rtp.hpp"
 #include "ravennakit/nmos/models/nmos_transport_file.hpp"
+#include "ravennakit/nmos/detail/nmos_uuid.hpp"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/range.hpp>
@@ -461,7 +462,13 @@ rav::nmos::Node::Node(
                 return invalid_api_version_response(res);
             }
 
-            ok_response(res, boost::json::serialize(boost::json::value_from(receivers_)));
+            boost::json::array receivers;
+
+            for (auto* receiver : receivers_) {
+                receivers.push_back(boost::json::value_from(*receiver));
+            }
+
+            ok_response(res, boost::json::serialize(receivers));
         }
     );
 
@@ -688,7 +695,7 @@ rav::nmos::Node::Node(
             auto array = boost::json::array();
 
             for (auto& receiver : receivers_) {
-                array.push_back(boost::json::value_from(fmt::format("{}/", boost::uuids::to_string(receiver.id))));
+                array.push_back(boost::json::value_from(fmt::format("{}/", boost::uuids::to_string(receiver->id))));
             }
 
             ok_response(res, boost::json::serialize(array));
@@ -752,7 +759,7 @@ rav::nmos::Node::Node(
             ActivationResponse activation_response;
 
             const boost::json::value value {
-                {"sender_id", boost::json::value_from(receiver->subscription.sender_id)},
+                {"sender_id", json_value_from_uuid(receiver->subscription.sender_id)},
                 {"master_enable", receiver->subscription.active},
                 {"activation", boost::json::value_from(activation_response)},
                 {"transport_params", transport_params},
@@ -810,6 +817,11 @@ rav::nmos::Node::Node(
 
             auto json = boost::json::parse(body);
 
+            if (!json.is_object()) {
+                set_error_response(res, http::status::bad_request, "Bad Request", "Expected a JSON object");
+                return;
+            }
+
             // Validate object
             for (auto& member : json.as_object()) {
                 if (member.key() == "activation") {
@@ -828,11 +840,19 @@ rav::nmos::Node::Node(
                     continue;
                 }
                 set_error_response(
-                    res, http::status::bad_request, "Bad Request", "Invalid JSON: unexpected key: " + std::string(member.key())
+                    res, http::status::bad_request, "Bad Request",
+                    "Invalid JSON: unexpected key: " + std::string(member.key())
                 );
                 return;
             }
 
+            if (auto result = json.try_at("sender_id")) {
+                auto new_sender_id = uuid_from_json(*result);
+                if (!receiver->set_sender_id(new_sender_id)) {
+                    set_error_response(res, http::status::bad_request, "Bad Request", "Failed to change sender id");
+                    return;
+                }
+            }
 
             boost::json::array transport_params;
             TransportFile transport_file;
@@ -847,7 +867,7 @@ rav::nmos::Node::Node(
             ActivationResponse activation_response;
 
             const boost::json::value value {
-                {"sender_id", boost::json::value_from(receiver->subscription.sender_id)},
+                {"sender_id", json_value_from_uuid(receiver->subscription.sender_id)},
                 {"master_enable", receiver->subscription.active},
                 {"activation", boost::json::value_from(activation_response)},
                 {"transport_params", transport_params},
@@ -890,7 +910,7 @@ rav::nmos::Node::Node(
             ActivationResponse activation_response;
 
             const boost::json::value value {
-                {"sender_id", boost::json::value_from(receiver->subscription.sender_id)},
+                {"sender_id", json_value_from_uuid(receiver->subscription.sender_id)},
                 {"master_enable", receiver->subscription.active},
                 {"activation", boost::json::value_from(activation_response)},
                 {"transport_params", transport_params},
@@ -1123,7 +1143,8 @@ rav::nmos::Node::Node(
                     continue;
                 }
                 set_error_response(
-                    res, http::status::bad_request, "Bad Request", "Invalid JSON: unexpected key: " + std::string(member.key())
+                    res, http::status::bad_request, "Bad Request",
+                    "Invalid JSON: unexpected key: " + std::string(member.key())
                 );
                 return;
             }
@@ -1148,7 +1169,7 @@ rav::nmos::Node::Node(
             auto transport_params = get_sender_transport_params_from_sdp(transport_file->second);
 
             const boost::json::value value {
-                {"receiver_id", boost::json::value_from(sender->subscription.receiver_id)},
+                {"receiver_id", json_value_from_uuid(sender->subscription.receiver_id)},
                 {"master_enable", sender->subscription.active},
                 {"activation", boost::json::value_from(activation_response)},
                 {"transport_params", transport_params},
@@ -1187,7 +1208,7 @@ rav::nmos::Node::Node(
             auto transport_params = get_sender_transport_params_from_sdp(transport_file->second);
 
             const boost::json::value value {
-                {"receiver_id", boost::json::value_from(sender->subscription.receiver_id)},
+                {"receiver_id", json_value_from_uuid(sender->subscription.receiver_id)},
                 {"master_enable", sender->subscription.active},
                 {"activation", boost::json::value_from(activation_response)},
                 {"transport_params", transport_params},
@@ -1724,8 +1745,8 @@ void rav::nmos::Node::update_all_resources_to_now() {
         sender.version = version;
     }
 
-    for (auto& receiver : receivers_) {
-        receiver.version = version;
+    for (auto* receiver : receivers_) {
+        receiver->version = version;
     }
 }
 
@@ -1760,9 +1781,9 @@ void rav::nmos::Node::send_updated_resources_async() {
         }
     }
 
-    for (auto& receiver : receivers_) {
-        if (receiver.version > current_version_) {
-            post_resource_async("receiver", boost::json::value_from(receiver));
+    for (auto* receiver : receivers_) {
+        if (receiver->version > current_version_) {
+            post_resource_async("receiver", boost::json::value_from(*receiver));
         }
     }
 
@@ -1883,8 +1904,8 @@ bool rav::nmos::Node::remove_device(boost::uuids::uuid uuid) {
         return s.get_device_id() == uuid;
     });
 
-    stl_remove_if(receivers_, [&uuid](const ReceiverAudio& r) {
-        return r.device_id == uuid;
+    stl_remove_if(receivers_, [&uuid](const ReceiverAudio* r) {
+        return r->device_id == uuid;
     });
 
     const auto count = stl_remove_if(devices_, [&uuid](const Device& d) {
@@ -1920,27 +1941,27 @@ bool rav::nmos::Node::remove_flow(const boost::uuids::uuid& uuid) {
     return count > 0;
 }
 
-bool rav::nmos::Node::add_or_update_receiver(ReceiverAudio receiver) {
-    if (receiver.id.is_nil()) {
+bool rav::nmos::Node::add_or_update_receiver(ReceiverAudio* receiver) {
+    RAV_ASSERT(receiver != nullptr, "Expecting receiver to be a valid pointer");
+
+    if (receiver->id.is_nil()) {
         RAV_ERROR("Receiver ID should not be nil");
         return false;
     }
 
-    receiver.version = Version(get_local_clock().now());
+    receiver->version = Version(get_local_clock().now());
 
     const auto it =
-        std::find_if(receivers_.begin(), receivers_.end(), [&receiver](const ReceiverAudio& existing_receiver) {
-            return existing_receiver.id == receiver.id;
+        std::find_if(receivers_.begin(), receivers_.end(), [receiver](const ReceiverAudio* existing_receiver) {
+            return receiver == existing_receiver;
         });
 
-    if (it != receivers_.end()) {
-        *it = std::move(receiver);
-    } else {
-        if (!add_receiver_to_device(receiver)) {
+    if (it == receivers_.end()) {
+        if (!add_receiver_to_device(*receiver)) {
             RAV_ERROR("Device not found");
             return false;
         }
-        receivers_.push_back(std::move(receiver));
+        receivers_.push_back(receiver);
     }
 
     if (status_ == Status::registered) {
@@ -1951,22 +1972,24 @@ bool rav::nmos::Node::add_or_update_receiver(ReceiverAudio receiver) {
 }
 
 const rav::nmos::ReceiverAudio* rav::nmos::Node::find_receiver(const boost::uuids::uuid& uuid) const {
-    const auto it = std::find_if(receivers_.begin(), receivers_.end(), [uuid](const ReceiverAudio& receiver) {
-        return receiver.id == uuid;
+    const auto it = std::find_if(receivers_.begin(), receivers_.end(), [uuid](const ReceiverAudio* receiver) {
+        return receiver->id == uuid;
     });
     if (it != receivers_.end()) {
-        return &*it;
+        return *it;
     }
     return nullptr;
 }
 
-bool rav::nmos::Node::remove_receiver(boost::uuids::uuid uuid) {
-    const auto count = stl_remove_if(receivers_, [&uuid](const ReceiverAudio& d) {
-        return d.id == uuid;
+bool rav::nmos::Node::remove_receiver(ReceiverAudio* receiver) {
+    RAV_ASSERT(receiver != nullptr, "Expecting receiver to be a valid pointer");
+
+    const auto count = stl_remove_if(receivers_, [&receiver](const ReceiverAudio* d) {
+        return d == receiver;
     });
 
     if (status_ == Status::registered && count > 0) {
-        delete_resource_async("receivers", uuid);
+        delete_resource_async("receivers", receiver->id);
     }
 
     return count > 0;
@@ -2104,7 +2127,7 @@ const std::vector<rav::nmos::Flow>& rav::nmos::Node::get_flows() const {
     return flows_;
 }
 
-const std::vector<rav::nmos::ReceiverAudio>& rav::nmos::Node::get_receivers() const {
+const std::vector<rav::nmos::ReceiverAudio*>& rav::nmos::Node::get_receivers() const {
     return receivers_;
 }
 

@@ -45,6 +45,8 @@ struct ReceiverCore: ResourceCore {
 
     /// Object indicating how this Receiver is currently configured to receive data.
     Subscription subscription;
+
+    SafeFunction<bool(const std::optional<boost::uuids::uuid>& new_sender_id)> set_sender_id;
 };
 
 inline void tag_invoke(

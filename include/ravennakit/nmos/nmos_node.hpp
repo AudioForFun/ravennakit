@@ -185,7 +185,7 @@ class Node: public ptp::Instance::Subscriber {
      * @param receiver The receiver to set.
      * @return True if the receiver was set successfully, false otherwise.
      */
-    [[nodiscard]] bool add_or_update_receiver(ReceiverAudio receiver);
+    [[nodiscard]] bool add_or_update_receiver(ReceiverAudio* receiver);
 
     /**
      * Finds a receiver by its uuid.
@@ -196,10 +196,10 @@ class Node: public ptp::Instance::Subscriber {
 
     /**
      * Removes a receiver from the node by its uuid.
-     * @param uuid The uuid of the receiver to remove.
+     * @param receiver The uuid of the receiver to remove.
      * @return True if the device was removed successfully, false otherwise.
      */
-    [[nodiscard]] bool remove_receiver(boost::uuids::uuid uuid);
+    [[nodiscard]] bool remove_receiver(ReceiverAudio* receiver);
 
     /**
      * Adds the given sender to the node or updates an existing sender if it already exists (based on the uuid).
@@ -280,7 +280,7 @@ class Node: public ptp::Instance::Subscriber {
     /**
      * @return The list of receivers in the node.
      */
-    [[nodiscard]] const std::vector<ReceiverAudio>& get_receivers() const;
+    [[nodiscard]] const std::vector<rav::nmos::ReceiverAudio*>& get_receivers() const;
 
     /**
      * @return The list of senders in the node.
@@ -326,7 +326,7 @@ class Node: public ptp::Instance::Subscriber {
     Self self_;
     std::vector<Device> devices_;
     std::vector<Flow> flows_;
-    std::vector<ReceiverAudio> receivers_;
+    std::vector<ReceiverAudio*> receivers_;
     std::vector<Sender> senders_;
     std::vector<Source> sources_;
     std::unordered_map<boost::uuids::uuid, sdp::SessionDescription> sender_transport_files_;
