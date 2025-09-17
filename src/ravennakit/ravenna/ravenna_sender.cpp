@@ -58,6 +58,14 @@ rav::RavennaSender::RavennaSender(
         return handle_patch_request(patch_request);
     };
 
+    nmos_sender_.get_transport_file = [this]() -> tl::expected<sdp::SessionDescription, nmos::ApiError> {
+        auto sdp = build_sdp();
+        if (!sdp) {
+            return tl::unexpected(nmos::ApiError(http::status::internal_server_error, sdp.error()));
+        }
+        return *sdp;
+    };
+
     if (!ptp_instance_.subscribe(this)) {
         RAV_ERROR("Failed to subscribe to PTP instance");
     }
@@ -602,11 +610,6 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
             }
             if (!nmos_node_->add_or_update_sender(&nmos_sender_)) {
                 RAV_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
-            }
-            if (auto sdp = build_sdp()) {
-                nmos_node_->set_sender_transport_file(&nmos_sender_, std::move(*sdp));
-            } else {
-                nmos_node_->set_sender_transport_file(&nmos_sender_, {});
             }
         }
     }

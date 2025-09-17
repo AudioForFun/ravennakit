@@ -14,6 +14,7 @@
 #include "nmos_resource_core.hpp"
 
 #include "ravennakit/core/util/safe_function.hpp"
+#include "ravennakit/sdp/sdp.hpp"
 
 namespace rav::nmos {
 
@@ -50,6 +51,7 @@ struct ReceiverCore: ResourceCore {
     Subscription subscription;
 
     SafeFunction<tl::expected<void, ApiError>(const boost::json::value& patch_request)> on_patch_request;
+    SafeFunction<tl::expected<sdp::SessionDescription, ApiError>()> get_transport_file;
 };
 
 inline void

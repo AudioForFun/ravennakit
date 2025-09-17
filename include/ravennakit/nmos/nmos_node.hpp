@@ -213,7 +213,7 @@ class Node: public ptp::Instance::Subscriber {
      * @param uuid The uuid of the sender to find.
      * @return A pointer to the sender if found, or nullptr if not found.
      */
-    [[nodiscard]] rav::nmos::Sender* find_sender(const boost::uuids::uuid& uuid) const;
+    [[nodiscard]] Sender* find_sender(const boost::uuids::uuid& uuid) const;
 
     /**
      * Removes a sender from the node by its uuid.
@@ -244,25 +244,6 @@ class Node: public ptp::Instance::Subscriber {
     [[nodiscard]] bool remove_source(SourceAudio* source);
 
     /**
-     * Adds or updates the transport file for sender with given uuid.
-     * @param sender The uuid of the sender.
-     * @param transport_file The transportfile to set. If empty, the transportfile will be removed.
-     * @return True if successful, or false if not.
-     */
-    void
-    set_sender_transport_file(Sender* sender, std::optional<sdp::SessionDescription> transport_file);
-
-    /**
-     * Adds or updates the transport file for receiver with given uuid.
-     * @param receiver_uuid The uuid of the receiver.
-     * @param transport_file The transportfile to set. If empty, the transportfile will be removed.
-     * @return True if successful, or false if not.
-     */
-    void set_receiver_transport_file(
-        boost::uuids::uuid receiver_uuid, std::optional<sdp::SessionDescription> transport_file
-    );
-
-    /**
      * @return The uuid of the node.
      */
     [[nodiscard]] const boost::uuids::uuid& get_uuid() const;
@@ -270,27 +251,27 @@ class Node: public ptp::Instance::Subscriber {
     /**
      * @return The list of devices in the node.
      */
-    [[nodiscard]] const std::vector<rav::nmos::Device*>& get_devices() const;
+    [[nodiscard]] const std::vector<Device*>& get_devices() const;
 
     /**
      * @return The list of flows in the node.
      */
-    [[nodiscard]] const std::vector<rav::nmos::FlowAudioRaw*>& get_flows() const;
+    [[nodiscard]] const std::vector<FlowAudioRaw*>& get_flows() const;
 
     /**
      * @return The list of receivers in the node.
      */
-    [[nodiscard]] const std::vector<rav::nmos::ReceiverAudio*>& get_receivers() const;
+    [[nodiscard]] const std::vector<ReceiverAudio*>& get_receivers() const;
 
     /**
      * @return The list of senders in the node.
      */
-    [[nodiscard]] const std::vector<rav::nmos::Sender*>& get_senders() const;
+    [[nodiscard]] const std::vector<Sender*>& get_senders() const;
 
     /**
      * @return  The list of sources in the node.
      */
-    [[nodiscard]] const std::vector<rav::nmos::SourceAudio*>& get_sources() const;
+    [[nodiscard]] const std::vector<SourceAudio*>& get_sources() const;
 
     /**
      * @return The current state.
@@ -329,8 +310,6 @@ class Node: public ptp::Instance::Subscriber {
     std::vector<ReceiverAudio*> receivers_;
     std::vector<Sender*> senders_;
     std::vector<SourceAudio*> sources_;
-    std::unordered_map<Sender*, sdp::SessionDescription> sender_transport_files_;
-    std::unordered_map<boost::uuids::uuid, sdp::SessionDescription> receiver_transport_files_;
 
     Configuration configuration_;
     Status status_ {Status::disabled};

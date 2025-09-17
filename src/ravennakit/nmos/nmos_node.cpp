@@ -782,17 +782,19 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            boost::json::array transport_params;
+            auto sdp = receiver->get_transport_file();
+            if (!sdp) {
+                set_error_response(res, sdp.error());
+                return;
+            }
+
+            auto transport_params = get_receiver_transport_params_from_sdp(*sdp);
+
             TransportFile transport_file;
             transport_file.type = "application/sdp";
-            const auto it = receiver_transport_files_.find(boost::uuids::string_generator()(*receiver_id));
-            if (it != receiver_transport_files_.end()) {
-                transport_params = get_receiver_transport_params_from_sdp(it->second);
-                if (auto transport_file_data = to_string(it->second)) {
-                    transport_file.data = *transport_file_data;
-                } else {
-                    RAV_ERROR("Failed to encode SDP");
-                }
+
+            if (auto sdp_text = to_string(*sdp)) {
+                transport_file.data = *sdp_text;
             }
 
             ActivationResponse activation_response;
@@ -902,18 +904,19 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            boost::json::array transport_params;
+            auto sdp = receiver->get_transport_file();
+            if (!sdp) {
+                set_error_response(res, sdp.error());
+                return;
+            }
+
+            auto transport_params = get_receiver_transport_params_from_sdp(*sdp);
+
             TransportFile transport_file;
             transport_file.type = "application/sdp";
 
-            const auto it = receiver_transport_files_.find(boost::uuids::string_generator()(*receiver_id));
-            if (it != receiver_transport_files_.end()) {
-                transport_params = get_receiver_transport_params_from_sdp(it->second);
-                if (auto transport_file_data = to_string(it->second)) {
-                    transport_file.data = *transport_file_data;
-                } else {
-                    RAV_ERROR("Failed to encode SDP");
-                }
+            if (auto sdp_text = to_string(*sdp)) {
+                transport_file.data = *sdp_text;
             }
 
             ActivationResponse activation_response;
@@ -949,18 +952,19 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            boost::json::array transport_params;
+            auto sdp = receiver->get_transport_file();
+            if (!sdp) {
+                set_error_response(res, sdp.error());
+                return;
+            }
+
+            auto transport_params = get_receiver_transport_params_from_sdp(*sdp);
+
             TransportFile transport_file;
             transport_file.type = "application/sdp";
 
-            const auto it = receiver_transport_files_.find(boost::uuids::string_generator()(*receiver_id));
-            if (it != receiver_transport_files_.end()) {
-                transport_params = get_receiver_transport_params_from_sdp(it->second);
-                if (auto transport_file_data = to_string(it->second)) {
-                    transport_file.data = *transport_file_data;
-                } else {
-                    RAV_ERROR("Failed to encode SDP");
-                }
+            if (auto sdp_text = to_string(*sdp)) {
+                transport_file.data = *sdp_text;
             }
 
             ActivationResponse activation_response;
@@ -996,13 +1000,13 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            boost::json::array constraints;
-            const auto transport_file = receiver_transport_files_.find(boost::uuids::string_generator()(*receiver_id));
-            if (transport_file != receiver_transport_files_.end()) {
-                constraints = get_receiver_constraints_from_sdp(transport_file->second);
+            auto sdp = receiver->get_transport_file();
+            if (!sdp) {
+                set_error_response(res, sdp.error());
+                return;
             }
 
-            ok_response(res, boost::json::serialize(constraints));
+            ok_response(res, boost::json::serialize(get_receiver_constraints_from_sdp(*sdp)));
         }
     );
 
@@ -1140,14 +1144,14 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            const auto transport_file = sender_transport_files_.find(sender);
-            if (transport_file == sender_transport_files_.end()) {
-                set_error_response(res, http::status::not_found, "Not found", "Sender transport file not found");
+            auto transport_file = sender->get_transport_file();
+            if (!transport_file) {
+                set_error_response(res, transport_file.error());
                 return;
             }
 
             ActivationResponse activation_response;
-            auto transport_params = get_sender_transport_params_from_sdp(transport_file->second);
+            auto transport_params = get_sender_transport_params_from_sdp(*transport_file);
 
             const boost::json::value value {
                 {"receiver_id", boost::json::value_from(sender->subscription.receiver_id)},
@@ -1224,14 +1228,14 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            const auto transport_file = sender_transport_files_.find(sender);
-            if (transport_file == sender_transport_files_.end()) {
-                set_error_response(res, http::status::not_found, "Not Found", "Sender transport file not found");
+            auto transport_file = sender->get_transport_file();
+            if (!transport_file) {
+                set_error_response(res, transport_file.error());
                 return;
             }
 
             ActivationResponse activation_response;
-            auto transport_params = get_sender_transport_params_from_sdp(transport_file->second);
+            auto transport_params = get_sender_transport_params_from_sdp(*transport_file);
 
             const boost::json::value value {
                 {"receiver_id", json_value_from_uuid(sender->subscription.receiver_id)},
@@ -1263,14 +1267,14 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            const auto transport_file = sender_transport_files_.find(sender);
-            if (transport_file == sender_transport_files_.end()) {
-                set_error_response(res, http::status::not_found, "Not found", "Sender transport file not found");
+            auto transport_file = sender->get_transport_file();
+            if (!transport_file) {
+                set_error_response(res, transport_file.error());
                 return;
             }
 
             ActivationResponse activation_response;
-            auto transport_params = get_sender_transport_params_from_sdp(transport_file->second);
+            auto transport_params = get_sender_transport_params_from_sdp(*transport_file);
 
             const boost::json::value value {
                 {"receiver_id", json_value_from_uuid(sender->subscription.receiver_id)},
@@ -1302,11 +1306,13 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            boost::json::array constraints;
-            const auto transport_file = sender_transport_files_.find(sender);
-            if (transport_file != sender_transport_files_.end()) {
-                constraints = get_sender_constraints_from_sdp(transport_file->second);
+            auto transport_file = sender->get_transport_file();
+            if (!transport_file) {
+                set_error_response(res, transport_file.error());
+                return;
             }
+
+            auto constraints = get_sender_constraints_from_sdp(*transport_file);
 
             ok_response(res, boost::json::serialize(constraints));
         }
@@ -1331,14 +1337,15 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            const auto it = sender_transport_files_.find(sender);
-            if (it == sender_transport_files_.end()) {
-                set_error_response(res, http::status::not_found, "Not found", "Sender transport file not found");
+            auto transport_file = sender->get_transport_file();
+            if (!transport_file) {
+                set_error_response(res, transport_file.error());
                 return;
             }
-            const auto sdp_text = sdp::to_string(it->second);
+            const auto sdp_text = sdp::to_string(*transport_file);
             if (!sdp_text) {
                 set_error_response(res, http::status::no_content, "No content", "Failed to generate SDP text");
+                return;
             }
             ok_response(res, *sdp_text, "application/sdp");
         }
@@ -2099,27 +2106,6 @@ bool rav::nmos::Node::add_or_update_sender(Sender* sender) {
     }
 
     return true;
-}
-
-void rav::nmos::Node::set_sender_transport_file(Sender* sender, std::optional<sdp::SessionDescription> transport_file) {
-    RAV_ASSERT(sender != nullptr, "Expected sender to be a valid pointer");
-    RAV_ASSERT(!sender->id.is_nil(), "Sender uuid should be valid");
-    if (!transport_file.has_value()) {
-        sender_transport_files_.erase(sender);
-        return;
-    }
-    sender_transport_files_[sender] = std::move(*transport_file);
-}
-
-void rav::nmos::Node::set_receiver_transport_file(
-    const boost::uuids::uuid receiver_uuid, std::optional<sdp::SessionDescription> transport_file
-) {
-    RAV_ASSERT(!receiver_uuid.is_nil(), "Sender uuid should be valid");
-    if (!transport_file.has_value()) {
-        receiver_transport_files_.erase(receiver_uuid);
-        return;
-    }
-    receiver_transport_files_[receiver_uuid] = std::move(*transport_file);
 }
 
 rav::nmos::Sender* rav::nmos::Node::find_sender(const boost::uuids::uuid& uuid) const {

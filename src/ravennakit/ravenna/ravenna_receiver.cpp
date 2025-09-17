@@ -223,6 +223,10 @@ rav::RavennaReceiver::RavennaReceiver(
         [this](const boost::json::value& patch_request) -> tl::expected<void, nmos::ApiError> {
         return handle_patch_request(patch_request);
     };
+
+    nmos_receiver_.get_transport_file = [this]() -> tl::expected<sdp::SessionDescription, nmos::ApiError> {
+        return configuration_.sdp;
+    };
 }
 
 rav::RavennaReceiver::~RavennaReceiver() {
@@ -272,12 +276,6 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_nmos() {
         if (!nmos_node_->add_or_update_receiver(&nmos_receiver_)) {
             RAV_ERROR("Failed to update NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
             return tl::unexpected("Failed to update NMOS receiver");
-        }
-
-        if (validate(configuration_.sdp.origin)) {
-            nmos_node_->set_receiver_transport_file(nmos_receiver_.id, configuration_.sdp);
-        } else {
-            nmos_node_->set_receiver_transport_file(nmos_receiver_.id, std::nullopt);
         }
     }
     return {};

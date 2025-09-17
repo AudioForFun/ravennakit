@@ -12,6 +12,7 @@
 
 #include "nmos_resource_core.hpp"
 #include "nmos_sender_transport_params_rtp.hpp"
+#include "ravennakit/sdp/sdp.hpp"
 
 namespace rav::nmos {
 
@@ -71,6 +72,7 @@ struct Sender: ResourceCore {
     }
 
     SafeFunction<tl::expected<void, ApiError>(const boost::json::value& patch_request)> on_patch_request;
+    SafeFunction<tl::expected<sdp::SessionDescription, ApiError>()> get_transport_file;
 };
 
 inline void
