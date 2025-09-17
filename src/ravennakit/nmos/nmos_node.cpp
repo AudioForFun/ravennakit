@@ -1213,8 +1213,6 @@ rav::nmos::Node::Node(
             }
 
             auto body = req.body();
-            RAV_TRACE("{} {}: {}", req.method_string(), std::string(req.target()), body);
-
             auto json = boost::json::parse(body);
 
             // Validate object

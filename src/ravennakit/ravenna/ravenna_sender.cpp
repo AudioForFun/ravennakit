@@ -672,6 +672,11 @@ rav::RavennaSender::handle_patch_request(const boost::json::value& patch_request
         nmos_sender_.subscription.receiver_id = uuid_from_json(*result);
     }
 
+    auto configuration = configuration_;
+    if (const auto result = patch_request.try_at("master_enable")) {
+        configuration.enabled = boost::json::value_to<bool>(*result);
+    }
+
     if (const auto result = patch_request.try_at("transport_params")) {
         if (!result->is_array()) {
             return tl::unexpected(nmos::ApiError {http::status::bad_request, "Transport params should be an array"});
@@ -713,6 +718,10 @@ rav::RavennaSender::handle_patch_request(const boost::json::value& patch_request
                 );
             }
         }
+    }
+
+    if (auto t = set_configuration(configuration); !t) {
+        return tl::unexpected(nmos::ApiError {http::status::internal_server_error, t.error()});
     }
 
     return {};
