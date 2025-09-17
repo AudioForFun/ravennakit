@@ -231,10 +231,12 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
      * Sends an announce request to all connected clients.
      */
     void send_announce() const;
+    void update_nmos();
+    void update_advertisement();
     [[nodiscard]] tl::expected<sdp::SessionDescription, std::string> build_sdp() const;
-    void generate_auto_addresses_if_needed();
+    void generate_auto_addresses_if_needed(bool notify_subscribers);
     bool generate_auto_addresses_if_needed(std::vector<Destination>& destinations) const;
-    void update_state(bool update_advertisement, bool announce, bool update_nmos);
+    void restart_streaming() const;
     tl::expected<void, rav::nmos::ApiError> handle_patch_request(const boost::json::value& patch_request);
 };
 

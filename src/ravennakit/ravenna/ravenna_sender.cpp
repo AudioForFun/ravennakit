@@ -112,8 +112,6 @@ uint32_t rav::RavennaSender::get_session_id() const {
 tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configuration config) {
     // Validate the configuration
 
-    std::ignore = generate_auto_addresses_if_needed(config.destinations);
-
     if (config.session_name.empty()) {
         return tl::unexpected("Session name cannot be empty");
     }
@@ -171,53 +169,78 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configurat
 
     // Determine changes
 
-    bool update_advertisement = false;
-    bool announce = false;
-    bool update_nmos = false;
+    bool do_update_advertisement = false;
+    bool do_announce = false;
+    bool do_update_nmos = false;
+    bool do_restart_streaming = false;
 
     if (config.enabled != configuration_.enabled) {
-        update_advertisement = true;
-        announce = true;
-        update_nmos = true;
+        do_update_advertisement = true;
+        do_announce = true;
+        do_update_nmos = true;
+        do_restart_streaming = true;
     }
 
     if (config.session_name != configuration_.session_name) {
-        update_advertisement = true;
-        announce = true;
-        update_nmos = true;
+        do_update_advertisement = true;
+        do_announce = true;
+        do_update_nmos = true;
     }
 
     if (config.destinations != configuration_.destinations) {
-        announce = true;
-        update_nmos = true;
+        do_announce = true;
+        do_update_nmos = true;
+        do_restart_streaming = true;
     }
 
     if (config.ttl != configuration_.ttl) {
-        announce = true;
+        do_announce = true;
         // TODO: Update socket option for TTL. Probably both multicast and unicast in one go (which are separate opts).
     }
 
     if (config.payload_type != configuration_.payload_type) {
-        announce = true;
+        do_announce = true;
+        do_restart_streaming = true;
     }
 
     if (config.audio_format != configuration_.audio_format) {
-        announce = true;
-        update_nmos = true;
+        do_announce = true;
+        do_update_nmos = true;
+        do_restart_streaming = true;
     }
 
     if (config.packet_time != configuration_.packet_time) {
-        announce = true;
+        do_announce = true;
+        do_restart_streaming = true;
     }
 
     if (network_interface_config_.interfaces.empty()) {
-        announce = false; // If there are no interfaces present it doesn't make sense to announce.
+        do_announce = false;  // If there are no interfaces present it doesn't make sense to announce.
     }
 
     // Implement the changes
 
     configuration_ = std::move(config);
-    update_state(update_advertisement, announce, update_nmos);
+
+    generate_auto_addresses_if_needed(config.destinations);
+
+    if (do_restart_streaming) {
+        restart_streaming();
+    }
+    if (do_update_advertisement) {
+        update_advertisement();
+    }
+    if (do_update_nmos) {
+        update_nmos();
+    }
+    if (do_announce) {
+        send_announce();
+    }
+
+    for (const auto& subscriber : subscribers_) {
+        subscriber->ravenna_sender_configuration_updated(id_, configuration_);
+    }
+
     return {};
 }
 
@@ -277,7 +300,9 @@ void rav::RavennaSender::set_network_interface_config(NetworkInterfaceConfig net
         return;  // No change in network interface configuration
     }
     network_interface_config_ = std::move(network_interface_config);
-    update_state(false, false, true);
+    generate_auto_addresses_if_needed(true);
+    restart_streaming();
+    update_nmos();
 }
 
 const rav::nmos::SourceAudio& rav::RavennaSender::get_nmos_source() const {
@@ -366,7 +391,11 @@ void rav::RavennaSender::ptp_parent_changed(const ptp::ParentDs& parent) {
         return;
     }
     grandmaster_identity_ = parent.grandmaster_identity;
-    update_state(false, !rtsp_path_by_name_.empty(), true);
+
+    update_nmos();
+    if (!rtsp_path_by_name_.empty()) {
+        send_announce();
+    }
 }
 
 void rav::RavennaSender::send_announce() const {
@@ -395,6 +424,93 @@ void rav::RavennaSender::send_announce() const {
     request.uri =
         Uri::encode("rtsp", interface_address_string + ":" + std::to_string(rtsp_server_.port()), rtsp_path_by_id_);
     std::ignore = rtsp_server_.send_request(rtsp_path_by_id_, request);
+}
+
+void rav::RavennaSender::update_nmos() {
+    const auto& audio_format = configuration_.audio_format;
+
+    nmos_flow_.label = configuration_.session_name;
+    nmos_source_.label = configuration_.session_name;
+    nmos_sender_.label = configuration_.session_name;
+    nmos_sender_.transport = "urn:x-nmos:transport:rtp.mcast";
+    nmos_sender_.subscription.active = configuration_.enabled;
+    nmos_sender_.interface_bindings.clear();
+    for (const auto& dst : configuration_.destinations) {
+        if (dst.enabled) {
+            const auto iface = network_interface_config_.get_interface_for_rank(dst.interface_by_rank.value());
+            if (iface != nullptr) {
+                nmos_sender_.interface_bindings.push_back(*iface);
+            } else {
+                RAV_WARNING("No interface for rank {}", dst.interface_by_rank.to_ordinal_latin());
+            }
+        }
+    }
+
+    nmos_source_.channels.resize(audio_format.num_channels);
+    for (uint32_t i = 0; i < audio_format.num_channels; ++i) {
+        nmos_source_.channels[i].label = fmt::format("Channel {}", i + 1);
+    }
+
+    nmos_flow_.media_type = nmos::audio_encoding_to_nmos_media_type(audio_format.encoding);
+    nmos_flow_.sample_rate = {static_cast<int>(audio_format.sample_rate), 1};
+    nmos_flow_.bit_depth = audio_format.bytes_per_sample() * 8;
+
+    if (nmos_node_ != nullptr) {
+        if (!nmos_node_->add_or_update_source(&nmos_source_)) {
+            RAV_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
+        }
+        if (!nmos_node_->add_or_update_flow(&nmos_flow_)) {
+            RAV_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
+        }
+        if (!nmos_node_->add_or_update_sender(&nmos_sender_)) {
+            RAV_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
+        }
+    }
+}
+
+void rav::RavennaSender::update_advertisement() {
+    RAV_ASSERT(rtsp_path_by_id_.empty() == rtsp_path_by_name_.empty(), "Paths should be either both empty or both set");
+
+    if (!rtsp_path_by_id_.empty()) {
+        RAV_TRACE("Unregistering RTSP path handler");
+        rtsp_server_.unregister_handler(this);
+        rtsp_path_by_name_.clear();
+        rtsp_path_by_id_.clear();
+    }
+
+    // Stop DNS-SD advertisement
+    if (advertisement_id_.is_valid()) {
+        RAV_TRACE("Unregistering sender advertisement");
+        advertiser_.unregister_service(advertisement_id_);
+        advertisement_id_ = {};
+    }
+
+    if (!configuration_.enabled) {
+        return;
+    }
+
+    if (rtsp_path_by_id_.empty()) {
+        RAV_ASSERT(
+            rtsp_path_by_id_.empty() == rtsp_path_by_name_.empty(), "Paths should be either both empty or both set"
+        );
+
+        // Register handlers for the paths
+        rtsp_path_by_name_ = fmt::format("/by-name/{}", configuration_.session_name);
+        rtsp_path_by_id_ = fmt::format("/by-id/{}", id_.to_string());
+
+        RAV_TRACE("Registering RTSP path handler for paths {} and {}", rtsp_path_by_name_, rtsp_path_by_id_);
+
+        rtsp_server_.register_handler(rtsp_path_by_name_, this);
+        rtsp_server_.register_handler(rtsp_path_by_id_, this);
+    }
+
+    if (!advertisement_id_.is_valid()) {
+        RAV_TRACE("Registering sender advertisement");
+        advertisement_id_ = advertiser_.register_service(
+            "_rtsp._tcp,_ravenna_session", configuration_.session_name.c_str(), nullptr, rtsp_server_.port(), {}, false,
+            false
+        );
+    }
 }
 
 tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::build_sdp() const {
@@ -502,10 +618,12 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
     return sdp;
 }
 
-void rav::RavennaSender::generate_auto_addresses_if_needed() {
+void rav::RavennaSender::generate_auto_addresses_if_needed(const bool notify_subscribers) {
     if (generate_auto_addresses_if_needed(configuration_.destinations)) {
-        for (auto* subscriber : subscribers_) {
-            subscriber->ravenna_sender_configuration_updated(id_, configuration_);
+        if (notify_subscribers) {
+            for (auto* subscriber : subscribers_) {
+                subscriber->ravenna_sender_configuration_updated(id_, configuration_);
+            }
         }
     }
 }
@@ -541,78 +659,11 @@ bool rav::RavennaSender::generate_auto_addresses_if_needed(std::vector<Destinati
     return changed;
 }
 
-void rav::RavennaSender::update_state(const bool update_advertisement, const bool announce, const bool update_nmos) {
-    generate_auto_addresses_if_needed();
-
-    if (update_advertisement || !configuration_.enabled) {
-        RAV_ASSERT(
-            rtsp_path_by_id_.empty() == rtsp_path_by_name_.empty(), "Paths should be either both empty or both set"
-        );
-
-        if (!rtsp_path_by_id_.empty()) {
-            RAV_TRACE("Unregistering RTSP path handler");
-            rtsp_server_.unregister_handler(this);
-            rtsp_path_by_name_.clear();
-            rtsp_path_by_id_.clear();
-        }
-
-        // Stop DNS-SD advertisement
-        if (advertisement_id_.is_valid()) {
-            RAV_TRACE("Unregistering sender advertisement");
-            advertiser_.unregister_service(advertisement_id_);
-            advertisement_id_ = {};
-        }
-    }
-
-    if (update_nmos) {
-        const auto& audio_format = configuration_.audio_format;
-
-        nmos_flow_.label = configuration_.session_name;
-        nmos_source_.label = configuration_.session_name;
-        nmos_sender_.label = configuration_.session_name;
-        nmos_sender_.transport = "urn:x-nmos:transport:rtp.mcast";
-        nmos_sender_.subscription.active = configuration_.enabled;
-        nmos_sender_.interface_bindings.clear();
-        for (const auto& dst : configuration_.destinations) {
-            if (dst.enabled) {
-                const auto iface = network_interface_config_.get_interface_for_rank(dst.interface_by_rank.value());
-                if (iface != nullptr) {
-                    nmos_sender_.interface_bindings.push_back(*iface);
-                } else {
-                    RAV_WARNING("No interface for rank {}", dst.interface_by_rank.to_ordinal_latin());
-                }
-            }
-        }
-
-        nmos_source_.channels.resize(audio_format.num_channels);
-        for (uint32_t i = 0; i < audio_format.num_channels; ++i) {
-            nmos_source_.channels[i].label = fmt::format("Channel {}", i + 1);
-        }
-
-        nmos_flow_.media_type = nmos::audio_encoding_to_nmos_media_type(audio_format.encoding);
-        nmos_flow_.sample_rate = {static_cast<int>(audio_format.sample_rate), 1};
-        nmos_flow_.bit_depth = audio_format.bytes_per_sample() * 8;
-
-        if (nmos_node_ != nullptr) {
-            if (!nmos_node_->add_or_update_source(&nmos_source_)) {
-                RAV_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
-            }
-            if (!nmos_node_->add_or_update_flow(&nmos_flow_)) {
-                RAV_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
-            }
-            if (!nmos_node_->add_or_update_sender(&nmos_sender_)) {
-                RAV_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
-            }
-        }
-    }
-
-    for (const auto& subscriber : subscribers_) {
-        subscriber->ravenna_sender_configuration_updated(id_, configuration_);
-    }
+void rav::RavennaSender::restart_streaming() const {
+    std::ignore = rtp_audio_sender_.remove_writer(id_);
 
     if (!configuration_.enabled) {
-        std::ignore = rtp_audio_sender_.remove_writer(id_);
-        return;  // Done here
+        return; // Done here
     }
 
     rtp::AudioSender::WriterParameters params;
@@ -628,33 +679,6 @@ void rav::RavennaSender::update_state(const bool update_advertisement, const boo
         network_interface_config_.get_array_of_interface_addresses<rtp::AudioSender::k_max_num_redundant_sessions>();
     if (!rtp_audio_sender_.add_writer(id_, params, interfaces)) {
         RAV_ERROR("Failed to add writer");
-    }
-
-    if (rtsp_path_by_id_.empty()) {
-        RAV_ASSERT(
-            rtsp_path_by_id_.empty() == rtsp_path_by_name_.empty(), "Paths should be either both empty or both set"
-        );
-
-        // Register handlers for the paths
-        rtsp_path_by_name_ = fmt::format("/by-name/{}", configuration_.session_name);
-        rtsp_path_by_id_ = fmt::format("/by-id/{}", id_.to_string());
-
-        RAV_TRACE("Registering RTSP path handler for paths {} and {}", rtsp_path_by_name_, rtsp_path_by_id_);
-
-        rtsp_server_.register_handler(rtsp_path_by_name_, this);
-        rtsp_server_.register_handler(rtsp_path_by_id_, this);
-    }
-
-    if (!advertisement_id_.is_valid()) {
-        RAV_TRACE("Registering sender advertisement");
-        advertisement_id_ = advertiser_.register_service(
-            "_rtsp._tcp,_ravenna_session", configuration_.session_name.c_str(), nullptr, rtsp_server_.port(), {}, false,
-            false
-        );
-    }
-
-    if (announce) {
-        send_announce();
     }
 }
 
