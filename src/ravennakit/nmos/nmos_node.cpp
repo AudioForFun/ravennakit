@@ -1905,6 +1905,9 @@ void rav::nmos::Node::update_device(Device& device) {
     const auto endpoint = http_server_.get_local_endpoint();
     device.controls.clear();
     for (auto& ip : network_interface_config_.get_interface_ipv4_addresses()) {
+        if (ip.is_unspecified()) {
+            continue;
+        }
         Device::Control control;
         control.type = "urn:x-nmos:control:sr-ctrl/v1.1";
         control.href = fmt::format("http://{}:{}/x-nmos/connection/v1.1", ip.to_string(), endpoint.port());
@@ -2249,10 +2252,12 @@ void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config
         return;  // No change in configuration, nothing to do.
     }
 
+    network_interface_config_ = std::move(config);
+
     self_.interfaces.clear();
     const auto& system_interfaces = NetworkInterfaceList::get_system_interfaces();
 
-    for (const auto& id : config.interfaces) {
+    for (const auto& id : network_interface_config_.interfaces) {
         auto* iface = system_interfaces.get_interface(id);
         if (iface == nullptr) {
             RAV_ERROR("Network interface with ID {} not found", id);
@@ -2268,7 +2273,7 @@ void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config
         self_.interfaces.emplace_back(Self::Interface {std::nullopt, iface->get_mac_address()->to_string("-"), id});
     }
 
-    const auto addrs = config.get_interface_ipv4_addresses();
+    const auto addrs = network_interface_config_.get_interface_ipv4_addresses();
     if (addrs.empty()) {
         RAV_ERROR("No IPv4 addresses found for the interface");
         return;
@@ -2287,7 +2292,7 @@ void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config
     }
 
     for (auto* sender : senders_) {
-        update_nmos_sender_manifest_href(*sender, config, http_endpoint.port());
+        update_nmos_sender_manifest_href(*sender, network_interface_config_, http_endpoint.port());
     }
 
     self_.version.update(get_local_clock().now());
@@ -2295,8 +2300,6 @@ void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config
     if (status_ == Status::registered) {
         send_updated_resources_async();
     }
-
-    network_interface_config_ = std::move(config);
 }
 
 std::optional<size_t> rav::nmos::Node::index_of_supported_api_version(const ApiVersion& version) {
