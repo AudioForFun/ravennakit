@@ -173,10 +173,9 @@ boost::json::array get_receiver_transport_params_from_sdp(const rav::sdp::Sessio
     return transport_params;
 }
 
-boost::json::array get_sender_constraints_from_sdp(const rav::sdp::SessionDescription& sdp) {
+boost::json::array get_sender_constraints(const size_t num_constraints) {
     boost::json::array constraints_array;
-    for (auto& media : sdp.media_descriptions) {
-        std::ignore = media;
+    for (size_t i = 0; i < num_constraints; i++) {
         rav::nmos::ConstraintsRtp constraints {};
         constraints.destination_ip = rav::nmos::Constraint();
         constraints.source_port = rav::nmos::Constraint();
@@ -185,10 +184,9 @@ boost::json::array get_sender_constraints_from_sdp(const rav::sdp::SessionDescri
     return constraints_array;
 }
 
-boost::json::array get_receiver_constraints_from_sdp(const rav::sdp::SessionDescription& sdp) {
+boost::json::array get_receiver_constraints(const size_t num_constraints) {
     boost::json::array constraints_array;
-    for (auto& media : sdp.media_descriptions) {
-        std::ignore = media;
+    for (size_t i = 0; i < num_constraints; i++) {
         rav::nmos::ConstraintsRtp constraints {};
         constraints.multicast_ip = rav::nmos::Constraint();
         constraints.interface_ip = rav::nmos::Constraint();
@@ -1004,14 +1002,7 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            RAV_ASSERT(receiver->get_transport_file, "Expecting valid function");
-            auto sdp = receiver->get_transport_file();
-            if (!sdp) {
-                set_error_response(res, sdp.error());
-                return;
-            }
-
-            ok_response(res, boost::json::serialize(get_receiver_constraints_from_sdp(*sdp)));
+            ok_response(res, boost::json::serialize(get_receiver_constraints(receiver->interface_bindings.size())));
         }
     );
 
@@ -1309,22 +1300,13 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            auto* sender = find_sender(boost::uuids::string_generator()(*sender_id));
+            const auto* sender = find_sender(boost::uuids::string_generator()(*sender_id));
             if (sender == nullptr) {
                 set_error_response(res, http::status::not_found, "Not found", "Sender not found");
                 return;
             }
 
-            RAV_ASSERT(sender->get_transport_file, "Expecting valid function");
-            auto transport_file = sender->get_transport_file();
-            if (!transport_file) {
-                set_error_response(res, transport_file.error());
-                return;
-            }
-
-            auto constraints = get_sender_constraints_from_sdp(*transport_file);
-
-            ok_response(res, boost::json::serialize(constraints));
+            ok_response(res, boost::json::serialize(get_sender_constraints(sender->interface_bindings.size())));
         }
     );
 
