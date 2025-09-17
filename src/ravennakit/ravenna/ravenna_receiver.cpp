@@ -144,7 +144,8 @@ find_media_description_by_mid(const rav::sdp::SessionDescription& sdp, const std
 boost::json::object rav::RavennaReceiver::to_boost_json() const {
     return {
         {"configuration", boost::json::value_from(configuration_)},
-        {"nmos_receiver_uuid", boost::uuids::to_string(nmos_receiver_.id)}
+        {"nmos_receiver_uuid", boost::uuids::to_string(nmos_receiver_.id)},
+        {"nmos_receiver_subscription", boost::json::value_from(nmos_receiver_.subscription)}
     };
 }
 
@@ -159,12 +160,16 @@ tl::expected<void, std::string> rav::RavennaReceiver::restore_from_json(const bo
         const auto nmos_receiver_uuid =
             boost::uuids::string_generator()(json.at("nmos_receiver_uuid").as_string().c_str());
 
+        const auto nmos_receiver_subscription =
+            boost::json::value_to<nmos::ReceiverCore::Subscription>(json.at("nmos_receiver_subscription"));
+
         auto result = set_configuration(*config);
         if (!result) {
             return tl::unexpected(result.error());
         }
 
         nmos_receiver_.id = nmos_receiver_uuid;
+        nmos_receiver_.subscription = nmos_receiver_subscription;
 
         return {};
     } catch (const std::exception& e) {

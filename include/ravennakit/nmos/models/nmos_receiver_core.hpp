@@ -14,6 +14,7 @@
 #include "nmos_resource_core.hpp"
 
 #include "ravennakit/core/util/safe_function.hpp"
+#include "ravennakit/nmos/detail/nmos_uuid.hpp"
 #include "ravennakit/sdp/sdp.hpp"
 
 namespace rav::nmos {
@@ -65,6 +66,14 @@ tag_invoke(const boost::json::value_from_tag&, boost::json::value& jv, const Rec
         object["sender_id"] = nullptr;
     }
     jv = object;
+}
+
+inline ReceiverCore::Subscription
+tag_invoke(const boost::json::value_to_tag<ReceiverCore::Subscription>&, const boost::json::value& jv) {
+    ReceiverCore::Subscription sub;
+    sub.sender_id = uuid_from_json(jv.at("sender_id"));
+    sub.active = jv.at("active").as_bool();
+    return sub;
 }
 
 inline void tag_invoke(const boost::json::value_from_tag& tag, boost::json::value& jv, const ReceiverCore& receiver) {
