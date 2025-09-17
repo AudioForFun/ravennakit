@@ -320,7 +320,8 @@ rav::HttpServer::on_request(const boost::beast::http::request<boost::beast::http
             auto result_int = response.result_int();
             if (result_int >= 200 && result_int < 300) {
                 RAV_INFO(
-                    "{} {} {}", result_int, response.reason(), !response.body().empty() ? response.body().c_str() : ""
+                    "{} {} {}", result_int, response.reason(),
+                    !response.body().empty() ? rav::string_replace(response.body(), "\r\n", "<crlf>") : ""
                 );
             } else {
                 RAV_WARNING(

@@ -2260,7 +2260,7 @@ void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config
     for (const auto& id : network_interface_config_.interfaces) {
         auto* iface = system_interfaces.get_interface(id);
         if (iface == nullptr) {
-            RAV_ERROR("Network interface with ID {} not found", id);
+            // The interface might not exist at this point
             continue;
         }
 

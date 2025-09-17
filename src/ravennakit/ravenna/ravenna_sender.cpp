@@ -134,10 +134,6 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configurat
                 );
             }
             num_enabled_destinations++;
-            auto* iface = network_interface_config_.get_interface_for_rank(dst.interface_by_rank.value());
-            if (iface == nullptr) {
-                return tl::unexpected(fmt::format("{} interface not set", dst.interface_by_rank.to_ordinal_latin()));
-            }
             if (dst.endpoint.address().is_unspecified()) {
                 return tl::unexpected(
                     fmt::format("{} destination address is unspecified", dst.interface_by_rank.to_ordinal_latin())
@@ -212,6 +208,10 @@ tl::expected<void, std::string> rav::RavennaSender::set_configuration(Configurat
 
     if (config.packet_time != configuration_.packet_time) {
         announce = true;
+    }
+
+    if (network_interface_config_.interfaces.empty()) {
+        announce = false; // If there are no interfaces present it doesn't make sense to announce.
     }
 
     // Implement the changes
@@ -351,7 +351,7 @@ void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) 
         return;
     }
 
-    RAV_TRACE("SDP:\n{}", rav::sdp::to_string(*sdp, "\n").value_or("n/a"));
+    // RAV_TRACE("SDP:\n{}", rav::sdp::to_string(*sdp, "\n").value_or("n/a"));
 
     auto response = rtsp::Response(200, "OK", rav::sdp::to_string(*sdp).value_or("n/a"));
     if (const auto* cseq = event.rtsp_request.rtsp_headers.get("cseq")) {
@@ -411,10 +411,6 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
         return tl::unexpected("Invalid audio format");
     }
 
-    if (network_interface_config_.empty()) {
-        return tl::unexpected("No interface addresses set");
-    }
-
     // Reference clock
     const sdp::ReferenceClock ref_clock {
         sdp::ReferenceClock::ClockSource::ptp, sdp::ReferenceClock::PtpVersion::IEEE_1588_2008,
@@ -470,10 +466,6 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
         };
 
         auto addr = network_interface_config_.get_interface_ipv4_address(dst.interface_by_rank.value());
-        if (addr.is_unspecified()) {
-            return tl::unexpected(fmt::format("No interface address for rank {}", dst.interface_by_rank.value()));
-        }
-
         RAV_ASSERT(!addr.is_multicast(), "Interface address must not be multicast");
 
         // Source filter
