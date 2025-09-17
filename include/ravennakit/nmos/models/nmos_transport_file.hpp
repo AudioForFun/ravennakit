@@ -23,10 +23,10 @@ namespace rav::nmos {
  */
 struct TransportFile {
     /// Content of the transport file
-    std::string data;
+    std::optional<std::string> data{};
 
     /// IANA assigned media type for file (e.g. application/sdp)
-    std::string type;
+    std::optional<std::string> type{};
 };
 
 inline void

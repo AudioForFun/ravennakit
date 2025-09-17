@@ -28,7 +28,7 @@ struct ReceiverTransportParamsRtp {
      * the receiver should determine which interface to use for itself, for example by using the routing tables. The
      * behaviour of auto is undefined in unicast mode, and controllers should supply a specific interface address.
      */
-    std::optional<std::string> interface_ip {"auto"};
+    std::optional<std::string> interface_ip {};
 
     /**
      * RTP reception active/inactive.
@@ -38,7 +38,7 @@ struct ReceiverTransportParamsRtp {
     /**
      * Destination port for RTP packets (auto = 5004 by default)
      */
-    std::variant<std::monostate, int, std::string> destination_port {"auto"};
+    std::variant<std::monostate, int, std::string> destination_port {};
 
     /**
      * IP multicast group address used in multicast operation only. Should be set to null during unicast operation. A
@@ -61,7 +61,7 @@ inline void tag_invoke(
 
 inline ReceiverTransportParamsRtp
 tag_invoke(const boost::json::value_to_tag<ReceiverTransportParamsRtp>&, const boost::json::value& jv) {
-    ReceiverTransportParamsRtp transport_params_rtp{};
+    ReceiverTransportParamsRtp transport_params_rtp {};
 
     if (const auto result = jv.try_at("source_ip")) {
         transport_params_rtp.source_ip = boost::json::value_to<std::optional<std::string>>(*result);

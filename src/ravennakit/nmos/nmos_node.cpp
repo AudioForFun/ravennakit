@@ -151,7 +151,9 @@ boost::json::array get_sender_transport_params_from_sdp(const rav::sdp::SessionD
     return transport_params;
 }
 
-boost::json::array get_receiver_transport_params_from_sdp(const rav::sdp::SessionDescription& sdp) {
+boost::json::array get_receiver_transport_params_from_sdp(
+    const rav::nmos::ReceiverAudio& receiver, const rav::sdp::SessionDescription& sdp
+) {
     boost::json::array transport_params;
     for (auto& media : sdp.media_descriptions) {
         rav::nmos::ReceiverTransportParamsRtp params {};
@@ -170,6 +172,18 @@ boost::json::array get_receiver_transport_params_from_sdp(const rav::sdp::Sessio
         }
         transport_params.push_back(boost::json::value_from(params));
     }
+
+    // Fill params to at least the amount of interfaces
+    for (size_t i = transport_params.size(); i < receiver.interface_bindings.size(); i++) {
+        rav::nmos::ReceiverTransportParamsRtp params {};
+
+        params.interface_ip = "0.0.0.0";
+        params.destination_port = 5004;
+        params.rtp_enabled = false;
+
+        transport_params.push_back(boost::json::value_from(params));
+    }
+
     return transport_params;
 }
 
@@ -805,12 +819,12 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            auto transport_params = get_receiver_transport_params_from_sdp(*sdp);
+            auto transport_params = get_receiver_transport_params_from_sdp(*receiver, *sdp);
 
             TransportFile transport_file;
-            transport_file.type = "application/sdp";
 
             if (auto sdp_text = to_string(*sdp)) {
+                transport_file.type = "application/sdp";
                 transport_file.data = *sdp_text;
             }
 
@@ -929,12 +943,12 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            auto transport_params = get_receiver_transport_params_from_sdp(*sdp);
+            auto transport_params = get_receiver_transport_params_from_sdp(*receiver, *sdp);
 
             TransportFile transport_file;
-            transport_file.type = "application/sdp";
 
             if (auto sdp_text = to_string(*sdp)) {
+                transport_file.type = "application/sdp";
                 transport_file.data = *sdp_text;
             }
 
@@ -978,12 +992,12 @@ rav::nmos::Node::Node(
                 return;
             }
 
-            auto transport_params = get_receiver_transport_params_from_sdp(*sdp);
+            auto transport_params = get_receiver_transport_params_from_sdp(*receiver, *sdp);
 
             TransportFile transport_file;
-            transport_file.type = "application/sdp";
 
             if (auto sdp_text = to_string(*sdp)) {
+                transport_file.type = "application/sdp";
                 transport_file.data = *sdp_text;
             }
 

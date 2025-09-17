@@ -307,13 +307,13 @@ rav::RavennaReceiver::handle_patch_request(const boost::json::value& patch_reque
 
     if (const auto result = patch_request.try_at("transport_file")) {
         const auto transport_file = boost::json::value_to<nmos::TransportFile>(*result);
-        if (transport_file.type != "application/sdp") {
+        if (!transport_file.type.has_value() || transport_file.type != "application/sdp") {
             return tl::unexpected(nmos::ApiError {http::status::bad_request, "Expected application/sdp"});
         }
-        if (transport_file.data.empty()) {
+        if (!transport_file.data.has_value() || transport_file.data->empty()) {
             return tl::unexpected(nmos::ApiError {http::status::bad_request, "Expected non empty transport file"});
         }
-        auto sdp = sdp::parse_session_description(transport_file.data);
+        auto sdp = sdp::parse_session_description(*transport_file.data);
         if (!sdp) {
             return tl::unexpected(
                 nmos::ApiError {http::status::bad_request, fmt::format("Failed to parse SDP: {}", sdp.error())}
