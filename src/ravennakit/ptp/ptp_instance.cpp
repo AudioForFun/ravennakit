@@ -31,9 +31,6 @@ rav::ptp::Instance::~Instance() {
 
 bool rav::ptp::Instance::subscribe(Subscriber* subscriber) {
     if (subscribers_.add(subscriber)) {
-        if (!parent_ds_.parent_port_identity.is_valid()) {
-            return true;  // No parent yet
-        }
         subscriber->ptp_parent_changed(parent_ds_);
         for (auto& port : ports_) {
             subscriber->ptp_port_changed_state(*port);
