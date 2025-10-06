@@ -131,4 +131,7 @@ class LocalClock {
     }
 };
 
+// LocalClock should be trivially copyable to pass it through lock-free containers.
+static_assert(std::is_trivially_copyable_v<LocalClock>);
+
 }  // namespace rav::ptp
