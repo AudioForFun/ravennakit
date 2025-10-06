@@ -15,4 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Methods of rav::ptp::Instance::Subscriber will now always be called when subscribing, regardless of the PTP state.
 
+### Fixed
+
+- Fixed an issue where RTP receiver state could be bouncing between receiving and ok_no_consumer.
+
 ## v0.13.1 - September 19, 2025

@@ -638,10 +638,10 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                 std::memcpy(packet.payload.data(), payload.data(), payload.size_bytes());
 
                 auto state = stream.state.load(std::memory_order_relaxed);
-                if (state != StreamState::no_consumer && !stream.packets.push(packet)) {
-                    stream.state.store(StreamState::no_consumer, std::memory_order_relaxed);
-                } else {
+                if (stream.packets.push(packet)) {
                     stream.state.store(StreamState::receiving, std::memory_order_relaxed);
+                } else if (state != StreamState::no_consumer) {
+                    stream.state.store(StreamState::no_consumer, std::memory_order_relaxed);
                 }
 
                 while (auto seq = stream.packets_too_old.pop()) {

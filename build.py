@@ -250,6 +250,7 @@ def build_dist(args):
     shutil.copy2('CMakeLists.txt', path_to_dist)
     shutil.copy2('LICENSE.md', path_to_dist)
     shutil.copy2('README.md', path_to_dist)
+    shutil.copy2('CHANGELOG.md', path_to_dist)
     shutil.copy2('vcpkg.json', path_to_dist)
 
     version_data = {
@@ -340,11 +341,11 @@ def build(args):
 
         elif platform.system() == 'Windows':
             path_to_build = build_windows(args, 'x64', build_config, 'windows_x64')
-            run_test(path_to_build / build_config.value / f'{ravennakit_tests_target}.exe', 'windows_x64')
-            subprocess.run([path_to_build / build_config.value / ravennakit_benchmarks_target], check=True)
+            run_test(path_to_build / str(build_config.value) / f'{ravennakit_tests_target}.exe', 'windows_x64')
+            subprocess.run([path_to_build / str(build_config.value) / ravennakit_benchmarks_target], check=True)
 
             path_to_build = build_windows(args, 'x64', build_config, 'windows_x64_spdlog', spdlog=True)
-            run_test(path_to_build / build_config.value / f'{ravennakit_tests_target}.exe', 'windows_x64_spdlog')
+            run_test(path_to_build / str(build_config.value) / f'{ravennakit_tests_target}.exe', 'windows_x64_spdlog')
 
         elif platform.system() == 'Linux':
             path_to_build = build_linux(args, 'x64', build_config, 'linux_x64')

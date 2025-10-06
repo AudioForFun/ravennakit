@@ -35,10 +35,8 @@ bool rav::ptp::Instance::subscribe(Subscriber* subscriber) {
         for (auto& port : ports_) {
             subscriber->ptp_port_changed_state(*port);
         }
-        if (local_ptp_clock_.is_calibrated()) {
-            static_assert(std::is_trivially_copyable_v<LocalClock>);
-            subscriber->local_clock_buffer_.write(local_clock_);
-        }
+        static_assert(std::is_trivially_copyable_v<LocalClock>);
+        subscriber->local_clock_buffer_.write(local_clock_);
         subscriber->ptp_configuration_updated(config_);
         return true;
     }
@@ -49,8 +47,8 @@ bool rav::ptp::Instance::unsubscribe(const Subscriber* subscriber) {
     return subscribers_.remove(subscriber);
 }
 
-tl::expected<void, std::string> rav::ptp::Instance::set_configuration(Configuration config) {
-    config_ = std::move(config);
+tl::expected<void, std::string> rav::ptp::Instance::set_configuration(const Configuration config) {
+    config_ = config;
     default_ds_.domain_number = config_.domain_number;
 
     subscribers_.foreach ([this](Subscriber* s) {
@@ -364,10 +362,8 @@ void rav::ptp::Instance::update_local_ptp_clock(const Measurement<double>& measu
     current_ds_.mean_delay = TimeInterval::to_fractional_interval(measurement.mean_delay);
     current_ds_.offset_from_master = TimeInterval::to_fractional_interval(measurement.offset_from_master);
     local_ptp_clock_.update(measurement);
-    if (local_ptp_clock_.is_calibrated()) {
-        for (auto* s : subscribers_) {
-            s->local_clock_buffer_.write(local_clock_);
-        }
+    for (auto* s : subscribers_) {
+        s->local_clock_buffer_.write(local_clock_);
     }
 }
 
