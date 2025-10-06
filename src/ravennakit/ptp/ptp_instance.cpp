@@ -342,7 +342,7 @@ rav::ptp::State rav::ptp::Instance::get_state_for_decision_code(const StateDecis
             }
             return State::master;
         case StateDecisionCode::s1:
-            return local_ptp_clock_.is_calibrated() ? State::slave : State::uncalibrated;
+            return local_clock_.is_calibrated() ? State::slave : State::uncalibrated;
         case StateDecisionCode::p1:
         case StateDecisionCode::p2:
             if (default_ds_.slave_only) {
@@ -361,7 +361,51 @@ rav::ptp::Timestamp rav::ptp::Instance::get_local_ptp_time() const {
 void rav::ptp::Instance::update_local_ptp_clock(const Measurement<double>& measurement) {
     current_ds_.mean_delay = TimeInterval::to_fractional_interval(measurement.mean_delay);
     current_ds_.offset_from_master = TimeInterval::to_fractional_interval(measurement.offset_from_master);
-    local_ptp_clock_.update(measurement);
+
+    TRACY_PLOT("Offset from master (ms)", measurement.offset_from_master * 1000.0);
+
+    if (std::fabs(measurement.offset_from_master) >= Stats::k_clock_step_threshold_seconds) {
+        local_clock_.step(measurement.offset_from_master);
+        ptp_stats_.offset.reset();
+        RAV_TRACE("Stepping clock: offset_from_master={}", measurement.offset_from_master);
+    } else {
+        // Adjust
+
+        // Add the measurement to the offset statistics in any case to allow the outlier filtering to dynamically adjust.
+        ptp_stats_.offset.add(measurement.offset_from_master);
+
+        // Filter out outliers, allowing a maximum per non-filtered outliers to avoid getting in a loop where all measurements are filtered
+        // out and no adjustment is made anymore.
+        if (local_clock_.is_calibrated() && ptp_stats_.offset.is_outlier_zscore(measurement.offset_from_master, 1.75)) {
+            ptp_stats_.ignored_outliers++;
+            TRACY_PLOT("Offset from master outliers", measurement.offset_from_master * 1000.0);
+            TRACY_MESSAGE("Ignoring outlier in offset from master");
+        } else {
+            ptp_stats_.filtered_offset.add(measurement.offset_from_master);
+            local_clock_.adjust(measurement.offset_from_master);
+
+            // Note (Ruurd): I wonder whether we should move this to the local clock, based on the actual (non-median) offset.
+            local_clock_.set_calibrated(
+                is_between(ptp_stats_.offset.median(), -Stats::k_calibrated_threshold, Stats::k_calibrated_threshold)
+            );
+
+            TRACY_PLOT("Offset from master median (ms)", ptp_stats_.offset.median() * 1000.0);
+            TRACY_PLOT("Offset from master outliers", 0.0);
+            TRACY_PLOT("Filtered offset from master (ms)", measurement.offset_from_master * 1000.0);
+            TRACY_PLOT("Filtered offset from master median (ms)", ptp_stats_.filtered_offset.median() * 1000.0);
+            TRACY_PLOT("Frequency ratio", local_clock_.get_frequency_ratio());
+
+            if (ptp_stats_.trace_adjustments_throttle.update()) {
+                RAV_TRACE(
+                    "Clock stats: offset_from_master=[min={}, max={}], ratio={}, ignored_outliers={}",
+                    ptp_stats_.filtered_offset.min() * 1000.0, ptp_stats_.filtered_offset.max() * 1000.0,
+                    local_clock_.get_frequency_ratio(), ptp_stats_.ignored_outliers
+                );
+                ptp_stats_.ignored_outliers = 0;
+            }
+        }
+    }
+
     for (auto* s : subscribers_) {
         s->local_clock_buffer_.write(local_clock_);
     }

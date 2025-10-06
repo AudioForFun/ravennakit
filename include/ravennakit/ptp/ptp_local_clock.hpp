@@ -68,6 +68,7 @@ class LocalClock {
         shift_ += -offset_from_master;
         frequency_ratio_ = 1.0;
         adjustments_since_last_step_ = 0;
+        calibrated_ = false;
     }
 
     /**

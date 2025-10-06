@@ -11,8 +11,9 @@
 #pragma once
 
 #include "ptp_error.hpp"
-#include "ptp_local_ptp_clock.hpp"
+#include "ptp_local_clock.hpp"
 #include "ptp_port.hpp"
+#include "detail/ptp_stats.hpp"
 #include "datasets/ptp_current_ds.hpp"
 #include "datasets/ptp_default_ds.hpp"
 #include "datasets/ptp_parent_ds.hpp"
@@ -236,7 +237,7 @@ class Instance {
     TimePropertiesDs time_properties_ds_;
     std::vector<std::unique_ptr<Port>> ports_;
     LocalClock local_clock_;
-    LocalPtpClock local_ptp_clock_ {local_clock_};
+    Stats ptp_stats_;
     SubscriberList<Subscriber> subscribers_;
 
     [[nodiscard]] uint16_t get_next_available_port_number() const;
