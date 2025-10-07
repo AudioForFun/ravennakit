@@ -25,22 +25,22 @@ int main(const int argc, char* argv[]) {
     }
 
     browser->on_service_discovered = [](const auto& desc) {
-        RAV_INFO("Service discovered: {}", desc.to_string());
+        RAV_LOG_INFO("Service discovered: {}", desc.to_string());
     };
     browser->on_service_removed = [](const auto& desc) {
-        RAV_INFO("Service removed: {}", desc.to_string());
+        RAV_LOG_INFO("Service removed: {}", desc.to_string());
     };
     browser->on_service_resolved = [](const auto& desc) {
-        RAV_INFO("Service resolved: {}", desc.to_string());
+        RAV_LOG_INFO("Service resolved: {}", desc.to_string());
     };
     browser->on_address_added = [](const auto& desc, const auto& address, const auto& interface_index) {
-        RAV_INFO("Address added ({}): {} on interface {}", address, desc.to_string(), interface_index);
+        RAV_LOG_INFO("Address added ({}): {} on interface {}", address, desc.to_string(), interface_index);
     };
     browser->on_address_removed = [](const auto& desc, const auto& address, const auto& interface_index) {
-        RAV_INFO("Address removed ({}): {} on interface {}", address, desc.to_string(), interface_index);
+        RAV_LOG_INFO("Address removed ({}): {} on interface {}", address, desc.to_string(), interface_index);
     };
     browser->on_error = [](const auto& error_message){
-        RAV_ERROR("Error: {}", error_message);
+        RAV_LOG_ERROR("Error: {}", error_message);
     };
 
     browser->browse_for(argv[1]);

@@ -98,7 +98,7 @@ struct Timestamp {
                 nanoseconds_ -= 1'000'000'000;
             }
             if (s_abs > seconds_) {
-                RAV_WARNING("ptp_timestamp underflow");
+                RAV_LOG_WARNING("ptp_timestamp underflow");
                 // TODO: This case should be reported to the caller
                 *this = {};  // Prevent underflow
                 return;
@@ -133,7 +133,7 @@ struct Timestamp {
 
             if (n_abs > nanoseconds_) {
                 if (seconds_ < 1) {
-                    RAV_WARNING("ptp_timestamp underflow");
+                    RAV_LOG_WARNING("ptp_timestamp underflow");
                     // TODO: This case should be reported to the caller
                     *this = {};  // Prevent underflow
                     return;
@@ -248,7 +248,7 @@ struct Timestamp {
         RAV_ASSERT(nanoseconds_ < 1'000'000'000, "Nano seconds must be within [0, 1'000'000'000)");
 
         if (static_cast<int64_t>(seconds_) > std::numeric_limits<int64_t>::max()) {
-            RAV_WARNING("Time interval overflow");
+            RAV_LOG_WARNING("Time interval overflow");
             return {};
         }
 

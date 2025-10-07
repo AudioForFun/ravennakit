@@ -117,17 +117,17 @@ void rav::rtsp::Client::async_resolve_connect(
         host, service, flags,
         [host, connection](const boost::system::error_code ec, const boost::asio::ip::tcp::resolver::results_type& results) {
             if (ec) {
-                RAV_ERROR("Resolve error: {}", ec.message());
+                RAV_LOG_ERROR("Resolve error: {}", ec.message());
                 return;
             }
 
             if (results.empty()) {
-                RAV_ERROR("No results found for host: {}", host);
+                RAV_LOG_ERROR("No results found for host: {}", host);
                 return;
             }
 
             for (auto& result : results) {
-                RAV_TRACE("Resolved: {} for host \"{}\"", result.endpoint().address().to_string(), host);
+                RAV_LOG_TRACE("Resolved: {} for host \"{}\"", result.endpoint().address().to_string(), host);
             }
 
             connection->async_connect(results);

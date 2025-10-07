@@ -24,7 +24,7 @@ bool rav::dnssd::is_bonjour_service_running() {
     if (error == kDNSServiceErr_ServiceNotRunning) {
         return false;
     }
-    RAV_ERROR("DNSServiceGetProperty failed: {}", dns_service_error_to_string(error));
+    RAV_LOG_ERROR("DNSServiceGetProperty failed: {}", dns_service_error_to_string(error));
     return false;
 }
 

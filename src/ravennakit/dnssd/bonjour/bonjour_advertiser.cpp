@@ -70,7 +70,7 @@ void rav::dnssd::BonjourAdvertiser::async_process_results() {
     service_socket_.async_wait(boost::asio::ip::tcp::socket::wait_read, [this](const boost::system::error_code& ec) {
         if (ec) {
             if (ec != boost::asio::error::operation_aborted) {
-                RAV_ERROR("Error in async_wait_for_results: {}", ec.message());
+                RAV_LOG_ERROR("Error in async_wait_for_results: {}", ec.message());
             }
             return;
         }
@@ -78,10 +78,10 @@ void rav::dnssd::BonjourAdvertiser::async_process_results() {
         const auto result = DNSServiceProcessResult(shared_connection_.service_ref());
 
         if (result != kDNSServiceErr_NoError) {
-            RAV_ERROR("DNSServiceError: {}", dns_service_error_to_string(result));
+            RAV_LOG_ERROR("DNSServiceError: {}", dns_service_error_to_string(result));
             on_error(fmt::format("Process result error: {}", dns_service_error_to_string(result)));
             if (++process_results_failed_attempts_ > 10) {
-                RAV_ERROR("Too many failed attempts to process results, stopping");
+                RAV_LOG_ERROR("Too many failed attempts to process results, stopping");
                 on_error("Too many failed attempts to process results, stopping");
                 return;
             }

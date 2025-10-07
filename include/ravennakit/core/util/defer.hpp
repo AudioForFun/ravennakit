@@ -38,7 +38,7 @@ class Defer {
         try {
             reset();
         } catch (const std::exception& e) {
-            RAV_ERROR("Exception caught: {}", e.what());
+            RAV_LOG_ERROR("Exception caught: {}", e.what());
         }
     }
 

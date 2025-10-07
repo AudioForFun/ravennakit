@@ -41,7 +41,7 @@ class event {
     ~event() {
         if (event_ != nullptr) {
             if (CloseHandle(event_) == false) {
-                RAV_ERROR("Failed to close event");
+                RAV_LOG_ERROR("Failed to close event");
             }
         }
     }

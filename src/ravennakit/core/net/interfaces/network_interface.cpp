@@ -86,7 +86,7 @@ rav::NetworkInterface::Capabilities capabilities_for_interface(const char* name)
 
     const auto fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0) {
-        RAV_ERROR("Failed to open socket");
+        RAV_LOG_ERROR("Failed to open socket");
         return {};
     }
 
@@ -98,7 +98,7 @@ rav::NetworkInterface::Capabilities capabilities_for_interface(const char* name)
 
     // Query the interface capabilities
     if (ioctl(fd, SIOCGIFCAP, &ifr) < 0) {
-        RAV_ERROR("Failed to query interface capabilities");
+        RAV_LOG_ERROR("Failed to query interface capabilities");
         return {};
     }
 
@@ -108,7 +108,7 @@ rav::NetworkInterface::Capabilities capabilities_for_interface(const char* name)
 
     // Query the interface flags
     if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0) {
-        RAV_ERROR("Failed to query interface flags");
+        RAV_LOG_ERROR("Failed to query interface flags");
         return {};
     }
 
@@ -133,7 +133,7 @@ std::optional<uint32_t> rav::NetworkInterface::get_interface_index() const {
     NET_IFINDEX index {};
     auto result = ConvertInterfaceLuidToIndex(&if_luid_, &index);
     if (result != NO_ERROR) {
-        RAV_ERROR("Failed to get interface index");
+        RAV_LOG_ERROR("Failed to get interface index");
         return std::nullopt;
     }
     return index;
@@ -217,7 +217,7 @@ tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get
 
     for (const ifaddrs* ifa = ifap; ifa != nullptr; ifa = ifa->ifa_next) {
         if (ifa->ifa_name == nullptr) {
-            RAV_WARNING("Network interface name is null");
+            RAV_LOG_WARNING("Network interface name is null");
             continue;
         }
 
@@ -267,7 +267,7 @@ tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get
     const auto interfaces = ScPreferences::get_network_interfaces();
 
     if (!interfaces) {
-        RAV_ERROR("Failed to get network interfaces");
+        RAV_LOG_ERROR("Failed to get network interfaces");
         return tl::unexpected(-1);
     }
 
@@ -310,11 +310,11 @@ tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get
             addresses = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data());
             result = GetAdaptersAddresses(AF_UNSPEC, 0, nullptr, addresses, &bufferSize);
             if (result != NO_ERROR) {
-                RAV_ERROR("Failed to get network interface information ({})", result);
+                RAV_LOG_ERROR("Failed to get network interface information ({})", result);
                 return {};
             }
         } else {
-            RAV_ERROR("Failed to get network interface information ({})", result);
+            RAV_LOG_ERROR("Failed to get network interface information ({})", result);
             return {};
         }
     }
@@ -342,7 +342,7 @@ tl::expected<std::vector<rav::NetworkInterface>, int> rav::NetworkInterface::get
         if (adapter->PhysicalAddressLength == 6) {
             it->mac_address_ = MacAddress(adapter->PhysicalAddress);
         } else if (adapter->PhysicalAddressLength > 0) {
-            RAV_WARNING("Unknown physical address length ({})", adapter->PhysicalAddressLength);
+            RAV_LOG_WARNING("Unknown physical address length ({})", adapter->PhysicalAddressLength);
         }
 
         for (IP_ADAPTER_UNICAST_ADDRESS* unicast = adapter->FirstUnicastAddress; unicast != nullptr; unicast = unicast->Next) {

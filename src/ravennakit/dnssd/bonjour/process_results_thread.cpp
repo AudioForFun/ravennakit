@@ -24,7 +24,7 @@ rav::dnssd::ProcessResultsThread::~ProcessResultsThread() {
 
 void rav::dnssd::ProcessResultsThread::start(DNSServiceRef service_ref) {
     if (is_running()) {
-        RAV_ERROR("Thread is already running");
+        RAV_LOG_ERROR("Thread is already running");
         return;
     }
 
@@ -48,7 +48,7 @@ void rav::dnssd::ProcessResultsThread::stop() {
     #if RAV_POSIX
         constexpr char x = 'x';
         if (pipe_.write(&x, 1) != 1) {
-            RAV_ERROR("Failed to signal thread to stop");
+            RAV_LOG_ERROR("Failed to signal thread to stop");
         }
     #else
         event_.signal();
@@ -57,9 +57,9 @@ void rav::dnssd::ProcessResultsThread::stop() {
         const auto status = future_.wait_for(1000ms);
         if (status == std::future_status::ready) {
         } else if (status == std::future_status::timeout) {
-            RAV_ERROR("Failed to stop thread, proceeding anyway.");
+            RAV_LOG_ERROR("Failed to stop thread, proceeding anyway.");
         } else {
-            RAV_ERROR("Failed to stop thread, proceeding anyway.");
+            RAV_LOG_ERROR("Failed to stop thread, proceeding anyway.");
         }
 
         future_ = {};
@@ -80,7 +80,7 @@ std::lock_guard<std::mutex> rav::dnssd::ProcessResultsThread::lock() {
 }
 
 void rav::dnssd::ProcessResultsThread::run(DNSServiceRef service_ref, const int service_fd) {
-    RAV_TRACE("Start DNS-SD processing thread");
+    RAV_LOG_TRACE("Start DNS-SD processing thread");
 
     #if RAV_POSIX
 
@@ -101,16 +101,16 @@ void rav::dnssd::ProcessResultsThread::run(DNSServiceRef service_ref, const int 
 
             if (result < 0) {
                 if (++failed_attempts >= max_attempts) {
-                    RAV_ERROR("Select error: {}. Max failed attempts reached, exiting thread.", strerror(errno));
+                    RAV_LOG_ERROR("Select error: {}. Max failed attempts reached, exiting thread.", strerror(errno));
                     break;
                 }
-                RAV_ERROR("Select error: {}", strerror(errno));
+                RAV_LOG_ERROR("Select error: {}", strerror(errno));
             } else {
                 failed_attempts = 0;
             }
 
             if (result == 0) {
-                RAV_ERROR("Unexpected timeout. Continue processing.");
+                RAV_LOG_ERROR("Unexpected timeout. Continue processing.");
                 continue;
             }
 
@@ -118,10 +118,10 @@ void rav::dnssd::ProcessResultsThread::run(DNSServiceRef service_ref, const int 
                 char x;
                 pipe_.read(&x, 1);
                 if (x == 'x') {
-                    RAV_TRACE("Received signal to stop, exiting thread.");
+                    RAV_LOG_TRACE("Received signal to stop, exiting thread.");
                     break;  // Stop the thread.
                 }
-                RAV_TRACE("Received signal to stop, but with unexpected data.");
+                RAV_LOG_TRACE("Received signal to stop, but with unexpected data.");
                 break;  // Stop the thread.
             }
 
@@ -133,7 +133,7 @@ void rav::dnssd::ProcessResultsThread::run(DNSServiceRef service_ref, const int 
                 DNSSD_THROW_IF_ERROR(DNSServiceProcessResult(service_ref), "Failed to process dns service results");
             }
         } catch (const std::exception& e) {
-            RAV_CRITICAL("Uncaught exception on process_results_thread: {}", e.what());
+            RAV_LOG_CRITICAL("Uncaught exception on process_results_thread: {}", e.what());
         }
     }
 
@@ -159,23 +159,23 @@ void rav::dnssd::ProcessResultsThread::run(DNSServiceRef service_ref, const int 
 
                 DNSSD_THROW_IF_ERROR(DNSServiceProcessResult(service_ref), "Failed to process dns service results");
             } else if (result == WSA_WAIT_EVENT_0 + 1) {
-                RAV_TRACE("Received signal to stop, exiting thread.");
+                RAV_LOG_TRACE("Received signal to stop, exiting thread.");
                 break;  // Stop the thread.
             } else if (result == WSA_WAIT_FAILED) {
-                RAV_ERROR("WSAWaitForMultipleEvents failed: {}", WSAGetLastError());
+                RAV_LOG_ERROR("WSAWaitForMultipleEvents failed: {}", WSAGetLastError());
                 break;
             } else {
-                RAV_ERROR("WSAWaitForMultipleEvents returned unexpected result: {}", result);
+                RAV_LOG_ERROR("WSAWaitForMultipleEvents returned unexpected result: {}", result);
                 break;
             }
         } catch (const std::exception& e) {
-            RAV_CRITICAL("Uncaught exception on process_results_thread: {}", e.what());
+            RAV_LOG_CRITICAL("Uncaught exception on process_results_thread: {}", e.what());
         }
     }
 
     #endif
 
-    RAV_TRACE("Stop DNS-SD processing thread");
+    RAV_LOG_TRACE("Stop DNS-SD processing thread");
 }
 
 #endif

@@ -44,7 +44,7 @@ void rav::AsioTimer::wait() {
         }
 
         if (ec) {
-            RAV_ERROR("Timer error: {}", ec.message());
+            RAV_LOG_ERROR("Timer error: {}", ec.message());
             return;
         }
 

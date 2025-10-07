@@ -47,7 +47,7 @@ inline std::string wide_string_to_string(PWCHAR wchar_str) {
     );
 
     if (size_needed == 0) {
-        RAV_ERROR("Failed to convert wide string to UTF-8: {}", GetLastError());
+        RAV_LOG_ERROR("Failed to convert wide string to UTF-8: {}", GetLastError());
         return {};
     }
 
@@ -67,7 +67,7 @@ inline std::string wide_string_to_string(PWCHAR wchar_str) {
     );
 
     if (result == 0) {
-        RAV_ERROR("Failed to convert wide string to UTF-8: {}", GetLastError());
+        RAV_LOG_ERROR("Failed to convert wide string to UTF-8: {}", GetLastError());
         return {};
     }
 

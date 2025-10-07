@@ -38,7 +38,7 @@ class RegistryBrowserBase {
             return std::nullopt;
         }
         if (api_proto->second != "http") {
-            RAV_WARNING("Only http is supported");
+            RAV_LOG_WARNING("Only http is supported");
             return std::nullopt;
         }
 
@@ -57,7 +57,7 @@ class RegistryBrowserBase {
             return std::nullopt;
         }
         if (api_auth->second != "false") {
-            RAV_WARNING("Auth is not supported");
+            RAV_LOG_WARNING("Auth is not supported");
             return std::nullopt;
         }
 
@@ -95,7 +95,7 @@ class RegistryBrowser final: public RegistryBrowserBase {
                     if (filter_and_get_pri(desc, api_version_).has_value()) {
                         on_registry_discovered(desc);
                     } else {
-                        RAV_TRACE("Service {} does not match NMOS registry criteria, ignoring", desc.name);
+                        RAV_LOG_TRACE("Service {} does not match NMOS registry criteria, ignoring", desc.name);
                     }
                 };
                 multicast_browser_->browse_for("_nmos-register._tcp");

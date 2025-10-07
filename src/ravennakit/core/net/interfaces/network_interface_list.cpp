@@ -83,7 +83,7 @@ const rav::NetworkInterface* rav::NetworkInterfaceList::find_by_address(const bo
 void rav::NetworkInterfaceList::repopulate_with_system_interfaces() {
     auto result = NetworkInterface::get_all();
     if (!result) {
-        RAV_ERROR("Failed to get network interfaces: {}", result.error());
+        RAV_LOG_ERROR("Failed to get network interfaces: {}", result.error());
         return;
     }
     interfaces_ = std::move(result.value());

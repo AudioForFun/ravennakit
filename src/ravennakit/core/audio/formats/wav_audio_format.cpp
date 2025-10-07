@@ -322,7 +322,7 @@ rav::WavAudioFormat::Writer::Writer(
 
 rav::WavAudioFormat::Writer::~Writer() {
     if (!finalize()) {
-        RAV_ERROR("Failed to finalize wav file");
+        RAV_LOG_ERROR("Failed to finalize wav file");
     }
 }
 

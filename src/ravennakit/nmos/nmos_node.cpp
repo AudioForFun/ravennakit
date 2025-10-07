@@ -134,12 +134,12 @@ boost::json::array get_sender_transport_params_from_sdp(const rav::sdp::SessionD
         if (!media.connection_infos.empty()) {
             params.destination_ip = media.connection_infos.front().address;
         } else {
-            RAV_WARNING("No connection info available");
+            RAV_LOG_WARNING("No connection info available");
         }
         if (!media.source_filters.empty() && !media.source_filters.front().src_list.empty()) {
             params.source_ip = media.source_filters.front().src_list.front();
         } else {
-            RAV_WARNING("No source filter available");
+            RAV_LOG_WARNING("No source filter available");
         }
         transport_params.push_back(boost::json::value_from(params));
     }
@@ -157,12 +157,12 @@ get_receiver_transport_params_from_sdp(const rav::nmos::ReceiverAudio& receiver,
         if (!media.connection_infos.empty()) {
             params.multicast_ip = media.connection_infos.front().address;
         } else {
-            RAV_WARNING("No connection info available");
+            RAV_LOG_WARNING("No connection info available");
         }
         if (!media.source_filters.empty() && !media.source_filters.front().src_list.empty()) {
             params.source_ip = media.source_filters.front().src_list.front();
         } else {
-            RAV_WARNING("No source filter available");
+            RAV_LOG_WARNING("No source filter available");
         }
         transport_params.push_back(boost::json::value_from(params));
     }
@@ -1358,7 +1358,7 @@ rav::nmos::Node::Node(
     });
 
     if (!ptp_instance_.subscribe(this)) {
-        RAV_ERROR("Failed to subscribe to PTP instance");
+        RAV_LOG_ERROR("Failed to subscribe to PTP instance");
     }
 }
 
@@ -1367,7 +1367,7 @@ rav::nmos::Node::~Node() {
         unregister_async();
     }
     if (!ptp_instance_.unsubscribe(this)) {
-        RAV_ERROR("Failed to unsubscribe from PTP instance");
+        RAV_LOG_ERROR("Failed to unsubscribe from PTP instance");
     }
 }
 
@@ -1465,7 +1465,7 @@ const rav::nmos::Node::Configuration& rav::nmos::Node::get_configuration() const
 boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() {
     const auto result = http_server_.start("0.0.0.0", configuration_.api_port);
     if (result.has_error()) {
-        RAV_ERROR("Failed to start HTTP server: {}", result.error().message());
+        RAV_LOG_ERROR("Failed to start HTTP server: {}", result.error().message());
         return Error::failed_to_start_http_server;
     }
 
@@ -1494,13 +1494,13 @@ boost::system::result<void, rav::nmos::Error> rav::nmos::Node::start_internal() 
     // Start the HTTP client to connect to the registry.
     if (configuration_.operation_mode == OperationMode::manual) {
         if (configuration_.registry_address.empty()) {
-            RAV_ERROR("Registry address is empty");
+            RAV_LOG_ERROR("Registry address is empty");
             return Error::invalid_registry_address;
         }
 
         auto url = boost::urls::parse_uri_reference(configuration_.registry_address);
         if (url.has_error()) {
-            RAV_ERROR("Invalid registry address: {} (should be in the form of: scheme://host:port)", configuration_.registry_address);
+            RAV_LOG_ERROR("Invalid registry address: {} (should be in the form of: scheme://host:port)", configuration_.registry_address);
             return Error::invalid_registry_address;
         }
         status_info_.name = "(custom registry)";
@@ -1566,24 +1566,24 @@ void rav::nmos::Node::register_async() {
 
     http_client_->get_async("/", [this](const boost::system::result<http::response<http::string_body>>& result) {
         if (result.has_error()) {
-            RAV_ERROR("Failed to connect to NMOS registry: {}", result.error().message());
+            RAV_LOG_ERROR("Failed to connect to NMOS registry: {}", result.error().message());
             set_status(Status::error);
             return;
         }
 
         if (result.value().result() != http::status::ok) {
-            RAV_ERROR("Unexpected response from NMOS registry: {}", result.value().result_int());
+            RAV_LOG_ERROR("Unexpected response from NMOS registry: {}", result.value().result_int());
             set_status(Status::error);
             return;
         }
 
         if (post_resource_error_count_ > 0) {
-            RAV_ERROR("Failed to post one or more resources to the NMOS registry");
+            RAV_LOG_ERROR("Failed to post one or more resources to the NMOS registry");
             set_status(Status::error);
             return;
         }
 
-        RAV_INFO("Registered with NMOS registry");
+        RAV_LOG_INFO("Registered with NMOS registry");
         set_status(Status::registered);
 
         heartbeat_timer_.start(k_heartbeat_interval, [this] {
@@ -1607,7 +1607,7 @@ void rav::nmos::Node::post_resource_async(std::string type, boost::json::value r
         target, body,
         [this, target, body](const boost::system::result<http::response<http::string_body>>& result) mutable {
             if (result.has_error()) {
-                RAV_ERROR("Failed to register with registry: {}", result.error().message());
+                RAV_LOG_ERROR("Failed to register with registry: {}", result.error().message());
                 post_resource_error_count_++;
                 return;
             }
@@ -1615,17 +1615,17 @@ void rav::nmos::Node::post_resource_async(std::string type, boost::json::value r
             const auto& res = result.value();
 
             if (res.result() == http::status::ok) {
-                RAV_INFO("Updated {} {}", target, body);
+                RAV_LOG_INFO("Updated {} {}", target, body);
             } else if (res.result() == http::status::created) {
-                RAV_INFO("Created {} {}", target, body);
+                RAV_LOG_INFO("Created {} {}", target, body);
             } else if (http::to_status_class(res.result()) == http::status_class::successful) {
-                RAV_WARNING("Unexpected response from registry: {}", res.result_int());
+                RAV_LOG_WARNING("Unexpected response from registry: {}", res.result_int());
             } else {
                 post_resource_error_count_++;
                 if (const auto error = parse_json<ApiError>(res.body())) {
-                    RAV_ERROR("Failed to post resource: {} ({}) {}", error->code, error->error, body);
+                    RAV_LOG_ERROR("Failed to post resource: {} ({}) {}", error->code, error->error, body);
                 } else {
-                    RAV_ERROR("Failed to post resource: {} ({}) {}", res.result_int(), res.body(), body);
+                    RAV_LOG_ERROR("Failed to post resource: {} ({}) {}", res.result_int(), res.body(), body);
                 }
                 set_status(Status::error);
             }
@@ -1642,21 +1642,21 @@ void rav::nmos::Node::delete_resource_async(std::string resource_type, const boo
 
     http_client_->delete_async(target, [this, target](const boost::system::result<http::response<http::string_body>>& result) mutable {
         if (result.has_error()) {
-            RAV_ERROR("Failed to delete resource from registry: {}", result.error().message());
+            RAV_LOG_ERROR("Failed to delete resource from registry: {}", result.error().message());
             return;
         }
 
         const auto& res = result.value();
 
         if (res.result() == http::status::no_content) {
-            RAV_INFO("Deleted {}", target);
+            RAV_LOG_INFO("Deleted {}", target);
         } else if (http::to_status_class(res.result()) == http::status_class::successful) {
-            RAV_WARNING("Unexpected response from registry: {}", res.result_int());
+            RAV_LOG_WARNING("Unexpected response from registry: {}", res.result_int());
         } else {
             if (const auto error = parse_json<ApiError>(res.body())) {
-                RAV_ERROR("Failed to delete resource at: {} {} ({})", target, error->code, error->error);
+                RAV_LOG_ERROR("Failed to delete resource at: {} {} ({})", target, error->code, error->error);
             } else {
-                RAV_ERROR("Failed to delete resource at: {} {} ({})", target, res.result_int(), res.body());
+                RAV_LOG_ERROR("Failed to delete resource at: {} {} ({})", target, res.result_int(), res.body());
             }
             set_status(Status::error);
         }
@@ -1683,17 +1683,17 @@ void rav::nmos::Node::send_heartbeat_async() {
             }
             failed_heartbeat_count_++;
             if (result.has_error()) {
-                RAV_ERROR("Failed to send heartbeat: {}", result.error().message());
+                RAV_LOG_ERROR("Failed to send heartbeat: {}", result.error().message());
                 set_status(Status::error);
                 // When this case happens, it's pretty reasonable to assume that the connection is lost.
             } else {
-                RAV_ERROR("Sending heartbeat failed: {}", result->result_int());
+                RAV_LOG_ERROR("Sending heartbeat failed: {}", result->result_int());
                 if (failed_heartbeat_count_ < k_max_failed_heartbeats) {
                     return;  // Don't try to reconnect yet, just try the next heartbeat.
                 }
             }
             http_client_->cancel_outstanding_requests();
-            RAV_ERROR("Failed to send heartbeat {} times, stopping heartbeat", failed_heartbeat_count_);
+            RAV_LOG_ERROR("Failed to send heartbeat {} times, stopping heartbeat", failed_heartbeat_count_);
             set_status(Status::error);
             heartbeat_timer_.stop();
             connect_to_registry_async();
@@ -1705,13 +1705,13 @@ void rav::nmos::Node::send_heartbeat_async() {
 void rav::nmos::Node::connect_to_registry_async() {
     http_client_->get_async("/", [this](const boost::system::result<http::response<http::string_body>>& result) {
         if (result.has_error()) {
-            RAV_TRACE("Error connecting to NMOS registry: {}", result.error().message());
+            RAV_LOG_TRACE("Error connecting to NMOS registry: {}", result.error().message());
             set_status(Status::error);
             timer_.once(k_default_timeout, [this] {
                 connect_to_registry_async();  // Retry connection
             });
         } else if (result.value().result() != http::status::ok) {
-            RAV_ERROR("Unexpected response from NMOS registry: {}", result.value().result_int());
+            RAV_LOG_ERROR("Unexpected response from NMOS registry: {}", result.value().result_int());
             set_status(Status::error);
         } else {
             register_async();
@@ -1759,9 +1759,9 @@ bool rav::nmos::Node::select_registry(const dnssd::ServiceDescription& desc) {
 }
 
 void rav::nmos::Node::handle_registry_discovered(const dnssd::ServiceDescription& desc) {
-    RAV_INFO("Discovered NMOS registry: {}", desc.to_string());
+    RAV_LOG_INFO("Discovered NMOS registry: {}", desc.to_string());
     if (selected_registry_.has_value()) {
-        RAV_TRACE("Ignoring discovery: already connected to a registry: {}", selected_registry_->to_string());
+        RAV_LOG_TRACE("Ignoring discovery: already connected to a registry: {}", selected_registry_->to_string());
         return;
     }
     if (configuration_.operation_mode == OperationMode::mdns_p2p) {
@@ -1897,7 +1897,7 @@ bool rav::nmos::Node::add_or_update_device(Device* device) {
     // Test is a device with the same uuid exists
     for (const auto* existing_device : devices_) {
         if (existing_device != device && existing_device->id == device->id) {
-            RAV_ERROR("Device with same uuid already exists");
+            RAV_LOG_ERROR("Device with same uuid already exists");
             return false;
         }
     }
@@ -1934,7 +1934,7 @@ bool rav::nmos::Node::add_or_update_flow(FlowAudioRaw* flow) {
     RAV_ASSERT(flow != nullptr, "Flow should not be nullptr");
 
     if (flow->id.is_nil()) {
-        RAV_ERROR("Flow ID should not be nil");
+        RAV_LOG_ERROR("Flow ID should not be nil");
         return false;
     }
 
@@ -2011,7 +2011,7 @@ bool rav::nmos::Node::add_or_update_receiver(ReceiverAudio* receiver) {
     RAV_ASSERT(receiver != nullptr, "Expecting receiver to be a valid pointer");
 
     if (receiver->id.is_nil()) {
-        RAV_ERROR("Receiver ID should not be nil");
+        RAV_LOG_ERROR("Receiver ID should not be nil");
         return false;
     }
 
@@ -2023,7 +2023,7 @@ bool rav::nmos::Node::add_or_update_receiver(ReceiverAudio* receiver) {
 
     if (it == receivers_.end()) {
         if (!add_receiver_to_device(*receiver)) {
-            RAV_ERROR("Device not found");
+            RAV_LOG_ERROR("Device not found");
             return false;
         }
         receivers_.push_back(receiver);
@@ -2062,7 +2062,7 @@ bool rav::nmos::Node::remove_receiver(ReceiverAudio* receiver) {
 
 bool rav::nmos::Node::add_or_update_sender(Sender* sender) {
     if (sender->id.is_nil()) {
-        RAV_ERROR("Sender ID should not be nil");
+        RAV_LOG_ERROR("Sender ID should not be nil");
         return false;
     }
 
@@ -2074,7 +2074,7 @@ bool rav::nmos::Node::add_or_update_sender(Sender* sender) {
 
     if (it == senders_.end()) {
         if (!add_sender_to_device(*sender)) {
-            RAV_ERROR("Device not found");
+            RAV_LOG_ERROR("Device not found");
             return false;
         }
         senders_.push_back(sender);
@@ -2116,7 +2116,7 @@ bool rav::nmos::Node::add_or_update_source(SourceAudio* source) {
     RAV_ASSERT(source != nullptr, "Source must not be null");
 
     if (source->id.is_nil()) {
-        RAV_ERROR("Source ID should not be nil");
+        RAV_LOG_ERROR("Source ID should not be nil");
         return false;
     }
 
@@ -2210,7 +2210,7 @@ void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config
 
         const auto mac_address = iface->get_mac_address();
         if (!mac_address.has_value()) {
-            RAV_ERROR("Network interface with ID {} does not have a MAC address", id);
+            RAV_LOG_ERROR("Network interface with ID {} does not have a MAC address", id);
             continue;
         }
 
@@ -2219,7 +2219,7 @@ void rav::nmos::Node::set_network_interface_config(NetworkInterfaceConfig config
 
     const auto addrs = network_interface_config_.get_interface_ipv4_addresses();
     if (addrs.empty()) {
-        RAV_ERROR("No IPv4 addresses found for the interface");
+        RAV_LOG_ERROR("No IPv4 addresses found for the interface");
         return;
     }
 
@@ -2256,13 +2256,13 @@ std::optional<size_t> rav::nmos::Node::index_of_supported_api_version(const ApiV
 
 void rav::nmos::Node::ptp_parent_changed(const ptp::ParentDs& parent) {
     if (self_.clocks.size() <= k_clock_ptp_index) {
-        RAV_ERROR("PTP clock index out of bounds: {}", k_clock_ptp_index);
+        RAV_LOG_ERROR("PTP clock index out of bounds: {}", k_clock_ptp_index);
         return;
     }
 
     auto* clock_ptp = std::get_if<ClockPtp>(&self_.clocks[k_clock_ptp_index]);
     if (clock_ptp == nullptr) {
-        RAV_ERROR("PTP clock is not of type ClockPtp");
+        RAV_LOG_ERROR("PTP clock is not of type ClockPtp");
         return;
     }
     clock_ptp->gmid = parent.grandmaster_identity.to_string();
@@ -2276,7 +2276,7 @@ void rav::nmos::Node::ptp_parent_changed(const ptp::ParentDs& parent) {
 
 void rav::nmos::Node::ptp_port_changed_state(const ptp::Port&) {
     if (self_.clocks.size() <= k_clock_ptp_index) {
-        RAV_ERROR("PTP clock index out of bounds: {}", k_clock_ptp_index);
+        RAV_LOG_ERROR("PTP clock index out of bounds: {}", k_clock_ptp_index);
         return;
     }
 
@@ -2285,7 +2285,7 @@ void rav::nmos::Node::ptp_port_changed_state(const ptp::Port&) {
     auto* clock_ptp = std::get_if<ClockPtp>(&self_.clocks[k_clock_ptp_index]);
 
     if (clock_ptp == nullptr) {
-        RAV_ERROR("PTP clock is not of type ClockPtp");
+        RAV_LOG_ERROR("PTP clock is not of type ClockPtp");
         return;
     }
 

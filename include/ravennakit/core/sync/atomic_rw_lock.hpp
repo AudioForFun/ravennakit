@@ -106,7 +106,7 @@ class AtomicRwLock {
 
         readers.fetch_and(~k_exclusive_lock_waiting_bit, std::memory_order_release);
 
-        RAV_ERROR("Loop upper bound reached");
+        RAV_LOG_ERROR("Loop upper bound reached");
         return AccessGuard<Exclusive>(nullptr);
     }
 
@@ -143,7 +143,7 @@ class AtomicRwLock {
                 std::this_thread::yield();
             }
         }
-        RAV_ERROR("Loop upper bound reached");
+        RAV_LOG_ERROR("Loop upper bound reached");
         return AccessGuard<Shared>(nullptr);
     }
 

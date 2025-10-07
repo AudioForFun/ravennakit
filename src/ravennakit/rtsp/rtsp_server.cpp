@@ -66,7 +66,7 @@ void rav::rtsp::Server::unregister_handler(const PathHandler* handler_to_remove)
 size_t rav::rtsp::Server::send_request(const std::string& path, const Request& request) const {
     const auto found = paths_.find(path);
     if (found == paths_.end()) {
-        RAV_WARNING("No path context for path: {} (request={})", path, request.to_debug_string(false));
+        RAV_LOG_WARNING("No path context for path: {} (request={})", path, request.to_debug_string(false));
         return 0;
     }
     size_t count = 0;
@@ -103,17 +103,17 @@ void rav::rtsp::Server::reset() noexcept {
 }
 
 void rav::rtsp::Server::on_connect(Connection& connection) {
-    RAV_TRACE("New connection from: {}", connection.remote_endpoint().address().to_string());
+    RAV_LOG_TRACE("New connection from: {}", connection.remote_endpoint().address().to_string());
 }
 
 void rav::rtsp::Server::on_request(Connection& connection, const Request& request) {
-    RAV_TRACE("Received request: {}", request.to_debug_string(false));
+    RAV_LOG_TRACE("Received request: {}", request.to_debug_string(false));
     const auto uri = Uri::parse(request.uri);
 
     auto& pc = paths_[uri.path];
 
     if (pc.add_connection_if_not_exists(connection)) {
-        RAV_TRACE(
+        RAV_LOG_TRACE(
             "Added connection from {}:{} to {}", connection.remote_endpoint().address().to_string(), connection.remote_endpoint().port(),
             uri.path
         );
@@ -122,18 +122,18 @@ void rav::rtsp::Server::on_request(Connection& connection, const Request& reques
     if (pc.handler) {
         pc.handler->on_request({connection, request});
     } else {
-        RAV_WARNING("No handler registered for uri: {}", uri.to_string());
+        RAV_LOG_WARNING("No handler registered for uri: {}", uri.to_string());
         connection.async_send_response(Response(404, "Not Found", "No handler registered for URI"));
         // Leave the connection open so that we can push an update when a handler is registered
     }
 }
 
 void rav::rtsp::Server::on_response([[maybe_unused]] Connection& connection, const Response& response) {
-    RAV_TRACE("Received response: {}", response.to_debug_string(false));
+    RAV_LOG_TRACE("Received response: {}", response.to_debug_string(false));
 }
 
 void rav::rtsp::Server::on_disconnect(Connection& connection) {
-    RAV_TRACE("Connection closed: {}", connection.remote_endpoint().address().to_string());
+    RAV_LOG_TRACE("Connection closed: {}", connection.remote_endpoint().address().to_string());
 
     for (auto& [path, ctx] : paths_) {
         ctx.connections.erase(
@@ -151,7 +151,7 @@ void rav::rtsp::Server::on_disconnect(Connection& connection) {
 bool rav::rtsp::Server::PathContext::add_connection_if_not_exists(Connection& connection) {
     auto shared = connection.shared_from_this();
     if (!shared) {
-        RAV_ERROR("Failed to create shared connection");
+        RAV_LOG_ERROR("Failed to create shared connection");
         return false;
     }
     if (std::find(connections.begin(), connections.end(), shared) == connections.end()) {
@@ -166,23 +166,23 @@ void rav::rtsp::Server::async_accept() {
         TRACY_ZONE_SCOPED;
         if (ec) {
             if (ec == boost::asio::error::operation_aborted) {
-                RAV_TRACE("Operation aborted");
+                RAV_LOG_TRACE("Operation aborted");
                 return;
             }
             if (ec == boost::asio::error::eof) {
-                RAV_TRACE("EOF");
+                RAV_LOG_TRACE("EOF");
                 return;
             }
-            RAV_ERROR("Read error: {}", ec.message());
+            RAV_LOG_ERROR("Read error: {}", ec.message());
             return;
         }
 
         if (!acceptor_.is_open()) {
-            RAV_ERROR("Acceptor is not open, cannot accept connections");
+            RAV_LOG_ERROR("Acceptor is not open, cannot accept connections");
             return;
         }
 
-        RAV_TRACE("Accepted new connection from: {}:{}", socket.remote_endpoint().address().to_string(), socket.remote_endpoint().port());
+        RAV_LOG_TRACE("Accepted new connection from: {}:{}", socket.remote_endpoint().address().to_string(), socket.remote_endpoint().port());
 
         auto& ctx = paths_[k_special_path_all];  // All connections get added to the special path /all
         const auto& it = ctx.connections.emplace_back(Connection::create(std::move(socket)));

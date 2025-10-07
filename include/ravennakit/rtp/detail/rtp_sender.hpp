@@ -40,7 +40,7 @@ class Sender {
         boost::system::error_code ec;
         socket_.send_to(boost::asio::buffer(packet.data(), packet.size()), endpoint, 0, ec);
         if (set_error(ec)) {
-            RAV_ERROR("Failed to send RTP packet: {}", ec.message());
+            RAV_LOG_ERROR("Failed to send RTP packet: {}", ec.message());
         }
     }
 
@@ -55,7 +55,7 @@ class Sender {
         boost::system::error_code ec;
         socket_.send_to(boost::asio::buffer(packet.data(), packet.size()), endpoint, 0, ec);
         if (set_error(ec)) {
-            RAV_ERROR("Failed to send RTP packet: {}", ec.message());
+            RAV_LOG_ERROR("Failed to send RTP packet: {}", ec.message());
         }
     }
 
@@ -71,7 +71,7 @@ class Sender {
         boost::system::error_code ec;
         socket_.send_to(boost::asio::buffer(data, data_size), endpoint, 0, ec);
         if (set_error(ec)) {
-            RAV_ERROR("Failed to send RTP packet: {}", ec.message());
+            RAV_LOG_ERROR("Failed to send RTP packet: {}", ec.message());
         }
     }
 
@@ -83,7 +83,7 @@ class Sender {
         boost::system::error_code ec;
         socket_.set_option(boost::asio::ip::multicast::outbound_interface(interface_address), ec);
         if (ec) {
-            RAV_ERROR("Failed to set interface: {}", ec.message());
+            RAV_LOG_ERROR("Failed to set interface: {}", ec.message());
         }
         interface_address_ = interface_address;
     }

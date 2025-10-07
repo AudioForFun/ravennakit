@@ -28,13 +28,13 @@ rav::rtsp::Connection::Connection(boost::asio::ip::tcp::socket socket) : socket_
 
 void rav::rtsp::Connection::async_send_response(const Response& response) {
     const auto encoded = response.encode();
-    RAV_TRACE("Sending response: {}", response.to_debug_string(false));
+    RAV_LOG_TRACE("Sending response: {}", response.to_debug_string(false));
     async_send_data(encoded);
 }
 
 void rav::rtsp::Connection::async_send_request(const Request& request) {
     const auto encoded = request.encode();
-    RAV_TRACE("Sending {}", request.to_debug_string(false));
+    RAV_LOG_TRACE("Sending {}", request.to_debug_string(false));
     async_send_data(encoded);
 }
 
@@ -60,10 +60,10 @@ void rav::rtsp::Connection::async_connect(const boost::asio::ip::tcp::resolver::
         socket_, results,
         [self](const boost::system::error_code ec, const boost::asio::ip::tcp::endpoint& endpoint) {
             if (ec) {
-                RAV_ERROR("Failed to connect: {}", ec.message());
+                RAV_LOG_ERROR("Failed to connect: {}", ec.message());
                 return;
             }
-            RAV_INFO("Connected to {}:{}", endpoint.address().to_string(), endpoint.port());
+            RAV_LOG_INFO("Connected to {}:{}", endpoint.address().to_string(), endpoint.port());
             self->async_write();      // Schedule a write operation, in case there is data to send
             self->async_read_some();  // Start reading chain
             if (self->subscriber_) {
@@ -90,7 +90,7 @@ void rav::rtsp::Connection::async_write() {
         socket_, boost::asio::buffer(output_buffer_.data()),
         [self](const boost::system::error_code ec, const std::size_t length) {
             if (ec) {
-                RAV_ERROR("Write error: {}", ec.message());
+                RAV_LOG_ERROR("Write error: {}", ec.message());
                 return;
             }
             self->output_buffer_.consume(length);
@@ -110,14 +110,14 @@ void rav::rtsp::Connection::async_read_some() {
             if (ec) {
                 self->subscriber_->on_disconnect(*self);
                 if (ec == boost::asio::error::operation_aborted) {
-                    RAV_TRACE("Operation aborted");
+                    RAV_LOG_TRACE("Operation aborted");
                     return;
                 }
                 if (ec == boost::asio::error::eof) {
-                    RAV_TRACE("EOF");
+                    RAV_LOG_TRACE("EOF");
                     return;
                 }
-                RAV_ERROR("Read error: {}. Closing connection.", ec.message());
+                RAV_LOG_ERROR("Read error: {}. Closing connection.", ec.message());
                 return;
             }
 
@@ -125,7 +125,7 @@ void rav::rtsp::Connection::async_read_some() {
 
             auto result = self->parser_.parse(self->input_buffer_);
             if (!(result == Parser::result::good || result == Parser::result::indeterminate)) {
-                RAV_ERROR("Parsing error: {}", static_cast<int>(result));
+                RAV_LOG_ERROR("Parsing error: {}", static_cast<int>(result));
                 return;
             }
 

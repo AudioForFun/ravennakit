@@ -63,7 +63,7 @@ int main(int const argc, char* argv[]) {
 
     const auto network_config = rav::parse_network_interface_config_from_string(interfaces);
     if (!network_config) {
-        RAV_ERROR("Failed to parse network interface config");
+        RAV_LOG_ERROR("Failed to parse network interface config");
         return 1;
     }
 
@@ -84,7 +84,7 @@ int main(int const argc, char* argv[]) {
     receiver_subscriber.on_ravenna_receiver_parameters_updated =
         [&ravenna_node, &buffer, &stream_name, &sender_id](const rav::rtp::AudioReceiver::ReaderParameters& parameters) {
             if (parameters.streams.empty()) {
-                RAV_WARNING("No streams available");
+                RAV_LOG_WARNING("No streams available");
                 return;
             }
 
@@ -114,14 +114,14 @@ int main(int const argc, char* argv[]) {
             if (!sender_id.is_valid()) {
                 const auto result = ravenna_node.create_sender(sender_config).get();
                 if (!result) {
-                    RAV_ERROR("Failed to create sender");
+                    RAV_LOG_ERROR("Failed to create sender");
                     return;
                 }
                 sender_id = *result;
             } else {
                 auto result = ravenna_node.update_sender_configuration(sender_id, sender_config).get();
                 if (!result) {
-                    RAV_ERROR("Failed to update sender: {}", result.error());
+                    RAV_LOG_ERROR("Failed to update sender: {}", result.error());
                 }
             }
         };
@@ -147,7 +147,7 @@ int main(int const argc, char* argv[]) {
 
             rav::BufferView buffer_view(buffer);
             if (!ravenna_node.send_data_realtime(sender_id, buffer_view.const_view(), *ts + k_delay)) {
-                RAV_ERROR("Failed to send data");
+                RAV_LOG_ERROR("Failed to send data");
             }
         }
     });

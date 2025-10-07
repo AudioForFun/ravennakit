@@ -22,7 +22,7 @@ rav::dnssd::BonjourBrowser::Service::Service(
 
 void rav::dnssd::BonjourBrowser::Service::resolve_on_interface(uint32_t index) {
     if (resolvers_.find(index) != resolvers_.end()) {
-        RAV_WARNING("Already resolving on interface {}", index);
+        RAV_LOG_WARNING("Already resolving on interface {}", index);
         return;
     }
 
@@ -121,7 +121,7 @@ void rav::dnssd::BonjourBrowser::Service::get_addr_info_callback(
 size_t rav::dnssd::BonjourBrowser::Service::remove_interface(uint32_t index) {
     const auto found_interface = description_.interfaces.find(index);
     if (found_interface == description_.interfaces.end()) {
-        RAV_ERROR("Interface with id \"{}\" not found", index);
+        RAV_LOG_ERROR("Interface with id \"{}\" not found", index);
         return description_.interfaces.size();
     }
 
@@ -157,7 +157,7 @@ void rav::dnssd::BonjourBrowser::async_process_results() {
     service_socket_.async_wait(boost::asio::ip::tcp::socket::wait_read, [this](const boost::system::error_code& ec) {
         if (ec) {
             if (ec != boost::asio::error::operation_aborted) {
-                RAV_ERROR("Error in async_wait_for_results: {}", ec.message());
+                RAV_LOG_ERROR("Error in async_wait_for_results: {}", ec.message());
             }
             return;
         }
@@ -165,10 +165,10 @@ void rav::dnssd::BonjourBrowser::async_process_results() {
         const auto result = DNSServiceProcessResult(shared_connection_.service_ref());
 
         if (result != kDNSServiceErr_NoError) {
-            RAV_ERROR("DNSServiceError: {}", dns_service_error_to_string(result));
+            RAV_LOG_ERROR("DNSServiceError: {}", dns_service_error_to_string(result));
             on_error(fmt::format("Process result error: {}", dns_service_error_to_string(result)));
             if (++process_results_failed_attempts_ > 10) {
-                RAV_ERROR("Too many failed attempts to process results, stopping");
+                RAV_LOG_ERROR("Too many failed attempts to process results, stopping");
                 on_error("Too many failed attempts to process results, stopping");
                 return;
             }
@@ -191,7 +191,7 @@ void rav::dnssd::BonjourBrowser::browse_reply(
         return;
     }
 
-    RAV_TRACE(
+    RAV_LOG_TRACE(
         "browse_reply name={} type={} domain={} browse_service_ref={} interfaceIndex={}", name, type, domain,
         static_cast<void*>(browse_service_ref), interface_index
     );

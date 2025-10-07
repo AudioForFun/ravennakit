@@ -50,7 +50,7 @@ rav::dnssd::BonjourTxtRecord::get_txt_record_from_raw_bytes(const unsigned char*
         char key[key_buf_len];
         auto result = TXTRecordGetItemAtIndex(txt_record_length, txt_record, i, key_buf_len, key, &value_len, &value);
         if (result != kDNSServiceErr_NoError) {
-            RAV_ERROR("Failed to get txt record item at index: {}", result);
+            RAV_LOG_ERROR("Failed to get txt record item at index: {}", result);
             continue;
         }
         if (value_len == 0) {

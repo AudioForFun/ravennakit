@@ -45,7 +45,7 @@
  */
 #define LOG_IF_ENABLED(msg)  \
     if (RAV_LOG_ON_ASSERT) { \
-        RAV_CRITICAL(msg);   \
+        RAV_LOG_CRITICAL(msg);   \
     }
 
 /**

@@ -48,10 +48,10 @@ rav::ptp::Port::Port(
     set_interface(interface_address);
 
     if (const auto ec = event_send_socket_.set_multicast_loopback(false)) {
-        RAV_WARNING("Failed to set multicast loopback for event socket: {}", ec.message());
+        RAV_LOG_WARNING("Failed to set multicast loopback for event socket: {}", ec.message());
     }
     if (const auto ec = general_send_socket_.set_multicast_loopback(false)) {
-        RAV_WARNING("Failed to set multicast loopback for general socket: {}", ec.message());
+        RAV_LOG_WARNING("Failed to set multicast loopback for general socket: {}", ec.message());
     }
 
     event_send_socket_.set_dscp_value(46);    // Default AES67 value
@@ -86,7 +86,7 @@ void rav::ptp::Port::apply_state_decision_algorithm(const DefaultDs& default_ds,
 
     auto recommended_state = calculate_recommended_state(default_ds, ebest->get_comparison_data_set());
     if (!recommended_state) {
-        RAV_TRACE("Port is listening, and no ebest is available. No state change is recommended.");
+        RAV_LOG_TRACE("Port is listening, and no ebest is available. No state change is recommended.");
         return;
     }
 
@@ -153,7 +153,7 @@ void rav::ptp::Port::schedule_announce_receipt_timeout() {
             return;
         }
         if (error) {
-            RAV_ERROR("Announce receipt timeout timer error: {}", error.message());
+            RAV_LOG_ERROR("Announce receipt timeout timer error: {}", error.message());
         }
         trigger_announce_receipt_timeout_expires_event();
         schedule_announce_receipt_timeout();
@@ -188,7 +188,7 @@ void rav::ptp::Port::set_state(const State new_state) {
 
     port_ds_.port_state = new_state;
 
-    RAV_INFO("Switching port {} to {}", port_ds_.port_identity.port_number, to_string(new_state));
+    RAV_LOG_INFO("Switching port {} to {}", port_ds_.port_identity.port_number, to_string(new_state));
 
     if (on_state_changed_callback_) {
         on_state_changed_callback_(*this);
@@ -235,10 +235,10 @@ void rav::ptp::Port::process_request_response_delay_sequence() {
     TRACY_ZONE_SCOPED;
 
     if (!(port_ds_.port_state == State::slave || port_ds_.port_state == State::uncalibrated)) {
-        RAV_WARNING("Request-response delay sequence should only be processed in slave or uncalibrated state");
+        RAV_LOG_WARNING("Request-response delay sequence should only be processed in slave or uncalibrated state");
     }
     if (port_ds_.delay_mechanism != DelayMechanism::e2e) {
-        RAV_WARNING("Request-response delay sequence should only be processed in E2E delay mechanism");
+        RAV_LOG_WARNING("Request-response delay sequence should only be processed in E2E delay mechanism");
     }
 
     const auto now = parent_.get_local_ptp_time();
@@ -301,7 +301,7 @@ std::optional<rav::ptp::BestAnnounceMessage> rav::ptp::Port::determine_ebest(con
         const auto r = port_set.compare(best_port_set);
 
         if (r >= ComparisonDataSet::result::error1 && r <= ComparisonDataSet::result::error2) {
-            RAV_ERROR("PTP data set comparison failed");
+            RAV_LOG_ERROR("PTP data set comparison failed");
             return std::nullopt;
         }
 
@@ -340,10 +340,10 @@ void rav::ptp::Port::set_interface(const boost::asio::ip::address_v4& interface_
 
     if (!interface_address_.is_unspecified()) {
         if (const auto ec = event_send_socket_.leave_multicast_group(k_ptp_multicast_address, interface_address_)) {
-            RAV_ERROR("Failed to leave multicast group for event socket: {}", ec.message());
+            RAV_LOG_ERROR("Failed to leave multicast group for event socket: {}", ec.message());
         }
         if (const auto ec = general_send_socket_.leave_multicast_group(k_ptp_multicast_address, interface_address_)) {
-            RAV_ERROR("Failed to leave multicast group for general socket: {}", ec.message());
+            RAV_LOG_ERROR("Failed to leave multicast group for general socket: {}", ec.message());
         }
     }
 
@@ -354,16 +354,16 @@ void rav::ptp::Port::set_interface(const boost::asio::ip::address_v4& interface_
     }
 
     if (const auto ec = event_send_socket_.join_multicast_group(k_ptp_multicast_address, interface_address_)) {
-        RAV_ERROR("Failed to join multicast group for event socket: {}", ec.message());
+        RAV_LOG_ERROR("Failed to join multicast group for event socket: {}", ec.message());
     }
     if (const auto ec = general_send_socket_.join_multicast_group(k_ptp_multicast_address, interface_address_)) {
-        RAV_ERROR("Failed to join multicast group for general socket: {}", ec.message());
+        RAV_LOG_ERROR("Failed to join multicast group for general socket: {}", ec.message());
     }
     if (const auto ec = event_send_socket_.set_multicast_outbound_interface(interface_address_)) {
-        RAV_ERROR("Failed to set multicast outbound interface for event socket: {}", ec.message());
+        RAV_LOG_ERROR("Failed to set multicast outbound interface for event socket: {}", ec.message());
     }
     if (const auto ec = general_send_socket_.set_multicast_outbound_interface(interface_address_)) {
-        RAV_ERROR("Failed to set multicast outbound interface for general socket: {}", ec.message());
+        RAV_LOG_ERROR("Failed to set multicast outbound interface for general socket: {}", ec.message());
     }
 }
 
@@ -373,7 +373,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
     const BufferView data(event.data, event.size);
     auto header = MessageHeader::from_data(data);
     if (!header) {
-        RAV_TRACE("PTP Header error: {}", to_string(header.error()));
+        RAV_LOG_TRACE("PTP Header error: {}", to_string(header.error()));
         return;
     }
 
@@ -381,23 +381,23 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         return;
     }
 
-    // RAV_TRACE(
+    // RAV_LOG_TRACE(
     //     "{} from {}", to_string(header.value().message_type),
     //     header.value().source_port_identity.clock_identity.to_string()
     // );
 
     if (port_ds_.port_state == State::initializing) {
-        RAV_TRACE("Discarding announce message while initializing");
+        RAV_LOG_TRACE("Discarding announce message while initializing");
         return;
     }
 
     if (port_ds_.port_state == State::disabled) {
-        RAV_TRACE("Discarding announce message while disabled");
+        RAV_LOG_TRACE("Discarding announce message while disabled");
         return;
     }
 
     if (port_ds_.port_state == State::faulty) {
-        RAV_TRACE("Discarding announce message while faulty");
+        RAV_LOG_TRACE("Discarding announce message while faulty");
         return;
     }
 
@@ -405,7 +405,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         case MessageType::announce: {
             auto announce_message = AnnounceMessage::from_data(header.value(), data.subview(MessageHeader::k_header_size));
             if (!announce_message) {
-                RAV_ERROR("{} error: {}", header->to_string(), to_string(announce_message.error()));
+                RAV_LOG_ERROR("{} error: {}", header->to_string(), to_string(announce_message.error()));
             }
             handle_announce_message(announce_message.value(), {});
             break;
@@ -413,7 +413,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         case MessageType::sync: {
             auto sync_message = SyncMessage::from_data(header.value(), data.subview(MessageHeader::k_header_size));
             if (!sync_message) {
-                RAV_ERROR("{} error: {}", header->to_string(), to_string(sync_message.error()));
+                RAV_LOG_ERROR("{} error: {}", header->to_string(), to_string(sync_message.error()));
             }
             handle_sync_message(sync_message.value(), {});
             break;
@@ -426,7 +426,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         case MessageType::p_delay_resp: {
             auto pdelay_resp = PdelayRespMessage::from_data(data.subview(MessageHeader::k_header_size));
             if (!pdelay_resp) {
-                RAV_ERROR("{} error: {}", header->to_string(), to_string(pdelay_resp.error()));
+                RAV_LOG_ERROR("{} error: {}", header->to_string(), to_string(pdelay_resp.error()));
             }
             handle_pdelay_resp_message(pdelay_resp.value(), {});
             break;
@@ -434,7 +434,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         case MessageType::follow_up: {
             auto follow_up = FollowUpMessage::from_data(header.value(), data.subview(MessageHeader::k_header_size));
             if (!follow_up) {
-                RAV_ERROR("{} error: {}", header->to_string(), to_string(follow_up.error()));
+                RAV_LOG_ERROR("{} error: {}", header->to_string(), to_string(follow_up.error()));
             }
             handle_follow_up_message(follow_up.value(), {});
             break;
@@ -442,7 +442,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         case MessageType::delay_resp: {
             auto delay_resp = DelayRespMessage::from_data(header.value(), data.subview(MessageHeader::k_header_size));
             if (!delay_resp) {
-                RAV_ERROR("{} error: {}", header->to_string(), to_string(delay_resp.error()));
+                RAV_LOG_ERROR("{} error: {}", header->to_string(), to_string(delay_resp.error()));
             }
             handle_delay_resp_message(delay_resp.value(), {});
             break;
@@ -450,7 +450,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         case MessageType::p_delay_resp_follow_up: {
             auto pdelay_resp_follow_up = PdelayRespFollowUpMessage::from_data(data.subview(MessageHeader::k_header_size));
             if (!pdelay_resp_follow_up) {
-                RAV_ERROR("{} error: {}", header->to_string(), to_string(pdelay_resp_follow_up.error()));
+                RAV_LOG_ERROR("{} error: {}", header->to_string(), to_string(pdelay_resp_follow_up.error()));
             }
             handle_pdelay_resp_follow_up_message(pdelay_resp_follow_up.value(), {});
             break;
@@ -470,7 +470,7 @@ void rav::ptp::Port::handle_recv_event(const ExtendedUdpSocket::RecvEvent& event
         case MessageType::reserved5:
         case MessageType::reserved6:
         default: {
-            RAV_WARNING("Unknown PTP message received: {}", to_string(header->message_type));
+            RAV_LOG_WARNING("Unknown PTP message received: {}", to_string(header->message_type));
         }
     }
 }
@@ -483,13 +483,13 @@ void rav::ptp::Port::handle_announce_message(const AnnounceMessage& announce_mes
 
     // IEEE 1588-2019: 9.3.2.5.a If a message comes from the same PTP instance, the message is not qualified.
     if (announce_message.header.source_port_identity.clock_identity == port_ds_.port_identity.clock_identity) {
-        RAV_WARNING("Message is not qualified because it comes from the same PTP instance");
+        RAV_LOG_WARNING("Message is not qualified because it comes from the same PTP instance");
         return;
     }
 
     // IEEE 1588-2019: 9.3.2.5.d If steps removed of 255 or greater, message is not qualified.
     if (announce_message.steps_removed >= 255) {
-        RAV_WARNING("Message is not qualified because steps removed is 255 or greater");
+        RAV_LOG_WARNING("Message is not qualified because steps removed is 255 or greater");
         return;
     }
 
@@ -514,7 +514,7 @@ void rav::ptp::Port::handle_announce_message(const AnnounceMessage& announce_mes
             if (announce_message.header.sequence_id > erbest_->header.sequence_id) {
                 erbest_ = announce_message;
             } else {
-                RAV_WARNING("Received an older announce message from the same port");
+                RAV_LOG_WARNING("Received an older announce message from the same port");
             }
         }
     }
@@ -597,7 +597,7 @@ void rav::ptp::Port::handle_follow_up_message(const FollowUpMessage& follow_up_m
     }
 
     process_request_response_delay_sequence();
-    RAV_WARNING("Received follow-up message without matching sync message");
+    RAV_LOG_WARNING("Received follow-up message without matching sync message");
 }
 
 void rav::ptp::Port::handle_delay_resp_message(const DelayRespMessage& delay_resp_message, BufferView<const uint8_t> tlvs) {
@@ -639,7 +639,7 @@ void rav::ptp::Port::handle_delay_resp_message(const DelayRespMessage& delay_res
             if (mean_delay_stats_.count() > 10 && mean_delay_stats_.is_outlier_median(mean_delay, 0.001)) {
                 TRACY_PLOT("Mean delay outliers", mean_delay * 1000.0);
                 TRACY_MESSAGE("Ignoring outlier mean delay");
-                RAV_WARNING("Ignoring outlier mean delay: {}", mean_delay * 1000.0);
+                RAV_LOG_WARNING("Ignoring outlier mean delay: {}", mean_delay * 1000.0);
                 return;
             }
             TRACY_PLOT("Mean delay outliers", 0.0);
@@ -650,7 +650,7 @@ void rav::ptp::Port::handle_delay_resp_message(const DelayRespMessage& delay_res
         }
     }
 
-    RAV_WARNING("Received a delay response message without matching delay request message");
+    RAV_LOG_WARNING("Received a delay response message without matching delay request message");
 }
 
 void rav::ptp::Port::handle_pdelay_resp_message(const PdelayRespMessage& delay_req_message, BufferView<const uint8_t> tlvs) {
