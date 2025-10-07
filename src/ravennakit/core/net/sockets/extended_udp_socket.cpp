@@ -95,7 +95,7 @@ size_t rav::receive_from_socket(
     msg.msg_flags = 0;
 
     const ssize_t received_bytes = recvmsg(socket.native_handle(), &msg, 0);
-    recv_time = rav::clock::now_monotonic_high_resolution_ns();
+    recv_time = clock::now_monotonic_high_resolution_ns();
     if (received_bytes < 0) {
         ec = boost::system::error_code(errno, boost::system::system_category());
         return 0;

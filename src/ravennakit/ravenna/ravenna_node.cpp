@@ -37,6 +37,10 @@ rav::RavennaNode::RavennaNode() :
         }
     };
 
+    if (!ptp_instance_.subscribe(&rtp_receiver_.ptp_instance_subscriber)) {
+        RAV_LOG_ERROR("Failed to subscribe to PTP instance");
+    }
+
     std::promise<std::thread::id> promise;
     auto f = promise.get_future();
     maintenance_thread_ = std::thread([this, p = std::move(promise)]() mutable {
@@ -105,6 +109,9 @@ rav::RavennaNode::RavennaNode() :
 }
 
 rav::RavennaNode::~RavennaNode() {
+    if (!ptp_instance_.unsubscribe(&rtp_receiver_.ptp_instance_subscriber)) {
+        RAV_LOG_ERROR("Failed to unsubscribe from PTP instance");
+    }
     io_context_.stop();
     if (maintenance_thread_.joinable()) {
         maintenance_thread_.join();

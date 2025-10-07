@@ -22,6 +22,7 @@
 #include "ravennakit/nmos/nmos_node.hpp"
 #include "ravennakit/ptp/ptp_instance.hpp"
 #include "ravennakit/rtp/rtp_packet.hpp"
+#include "ravennakit/rtp/detail/rtp_audio_sender.hpp"
 #include "ravennakit/rtp/detail/rtp_ringbuffer.hpp"
 #include "ravennakit/rtp/detail/rtp_sender.hpp"
 #include "ravennakit/rtsp/rtsp_server.hpp"

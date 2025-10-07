@@ -311,7 +311,7 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
                 reader.most_recent_ts = packet_most_recent_ts;
             }
 
-            TRACY_PLOT("Packet margin: {}", static_cast<double>(reader.next_ts_to_read.diff(packet_timestamp)));
+            TRACY_PLOT("Packet margin", static_cast<double>(reader.next_ts_to_read.diff(packet_timestamp)));
 
             // Determine whether whole packet is too old
             if (packet_timestamp + stream.packet_time_frames <= reader.next_ts_to_read) {
@@ -627,8 +627,6 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                     continue;
                 }
 
-                update_stream_active_state(stream, now);
-
                 if (!stream.rtp_ts.has_value()) {
                     stream.rtp_ts = view.timestamp();
                     stream.prev_packet_time_ns = recv_time;
@@ -638,6 +636,7 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                 packet.timestamp = view.timestamp();
                 packet.seq = view.sequence_number();
                 packet.data_len = static_cast<uint16_t>(payload.size_bytes());
+                packet.recv_time = recv_time;
                 std::memcpy(packet.payload.data(), payload.data(), payload.size_bytes());
 
                 auto state = stream.state.load(std::memory_order_relaxed);
@@ -645,6 +644,17 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                     stream.state.store(StreamState::receiving, std::memory_order_relaxed);
                 } else if (state != StreamState::no_consumer) {
                     stream.state.store(StreamState::no_consumer, std::memory_order_relaxed);
+                }
+
+                {
+                    // This block compares the rtp timestamp against the recv_time converted to PTP scale.
+                    auto ptp_now = ptp_instance_subscriber.get_local_clock().get_adjusted_time(recv_time);
+                    auto ptp_now_samples = ptp_now.to_samples(reader.audio_format.sample_rate);
+                    uint64_t rtp_ts_samples = (ptp_now_samples & 0xffffffff00000000ull) | packet.timestamp;
+                    double receive_latency_ms =
+                        static_cast<double>(ptp_now_samples - rtp_ts_samples) / static_cast<double>(reader.audio_format.sample_rate) * 1000.0;
+
+                    TRACY_PLOT("receive latency (ms)", receive_latency_ms);
                 }
 
                 while (auto seq = stream.packets_too_old.pop()) {
