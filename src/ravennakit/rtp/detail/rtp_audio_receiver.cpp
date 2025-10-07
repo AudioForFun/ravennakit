@@ -311,8 +311,6 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
                 reader.most_recent_ts = packet_most_recent_ts;
             }
 
-            TRACY_PLOT("Packet margin", static_cast<double>(reader.next_ts_to_read.diff(packet_timestamp)));
-
             // Determine whether whole packet is too old
             if (packet_timestamp + stream.packet_time_frames <= reader.next_ts_to_read) {
                 // RAV_LOG_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
@@ -340,8 +338,6 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
             }
         }
     }
-
-    TRACY_PLOT("available_frames", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())));
 }
 
 std::optional<uint32_t> read_data_from_reader_realtime(
@@ -372,6 +368,8 @@ std::optional<uint32_t> read_data_from_reader_realtime(
             return {};
         }
     }
+
+    TRACY_PLOT("Current buffer", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())) - num_frames);
 
     const auto read_at = reader.next_ts_to_read.value();
     if (!reader.receive_buffer.read(read_at, buffer, buffer_size, true)) {
@@ -615,8 +613,6 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
             }
 
             for (auto& stream : reader.streams) {
-                update_stream_active_state(stream, now);
-
                 if (stream.session.connection_address != dst_endpoint.address()) {
                     continue;
                 }
@@ -626,6 +622,8 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                 if (!stream.filter.is_valid_source(dst_endpoint.address(), src_endpoint.address())) {
                     continue;
                 }
+
+                update_stream_active_state(stream, now);
 
                 if (!stream.rtp_ts.has_value()) {
                     stream.rtp_ts = view.timestamp();
