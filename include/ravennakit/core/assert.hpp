@@ -40,12 +40,23 @@
 #endif
 
 /**
+ * The RAV_DEBUG macro enables certain debugging facilities. Can also be enabled for release builds.
+ */
+#ifndef RAV_DEBUG
+    #if defined(NDEBUG)
+        #define RAV_DEBUG 0
+    #else
+        #define RAV_DEBUG 1
+    #endif
+#endif
+
+/**
  * Logs a message if RAV_LOG_ON_ASSERT is set to true.
  * @param msg The message to log.
  */
-#define LOG_IF_ENABLED(msg)  \
-    if (RAV_LOG_ON_ASSERT) { \
-        RAV_LOG_CRITICAL(msg);   \
+#define LOG_IF_ENABLED(msg)    \
+    if (RAV_LOG_ON_ASSERT) {   \
+        RAV_LOG_CRITICAL(msg); \
     }
 
 /**
@@ -68,7 +79,7 @@
     }
 
 /**
- * Assert condition to be true, otherwise:
+ * Asserts condition to be true, otherwise:
  *  - Logs if enabled
  *  - Throws if enabled
  *  - Aborts if enabled
@@ -83,6 +94,29 @@
             ABORT_IF_ENABLED(message)                                 \
         }                                                             \
     } while (false)
+
+#if RAV_DEBUG
+    /**
+     * If RAV_DEBUG is enabled, asserts condition to be true, otherwise:
+     *  - Logs if enabled
+     *  - Throws if enabled
+     *  - Aborts if enabled
+     * @param condition The condition to test.
+     * @param message The message for logging, throwing and/or aborting.
+     */
+    #define RAV_ASSERT_DEBUG(condition, message)                          \
+        do {                                                              \
+            if (!(condition)) {                                           \
+                LOG_IF_ENABLED("Assertion failure: " message)             \
+                THROW_EXCEPTION_IF_ENABLED("Assertion failure: " message) \
+                ABORT_IF_ENABLED(message)                                 \
+            }                                                             \
+        } while (false)
+#else
+    #define RAV_ASSERT_DEBUG(condition, message) \
+        do {                                     \
+        } while (false)
+#endif
 
 /**
  * Assert condition to be true, otherwise:
@@ -104,7 +138,7 @@
     } while (false)
 
 /**
- * Assert condition to be true, otherwise:
+ * Asserts condition to be true, otherwise:
  *  - Logs if enabled
  *  - Throws if enabled
  *  - Aborts if enabled

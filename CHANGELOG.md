@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [unreleased]
+
+### Added
+
+- Added a RAV_DEBUG macro which enables certain debugging facilities. Can also be enabled for release builds.
+
+### Changed
+
+- Renamed logging macros from RAV_LEVEL to RAV_LOG_LEVEL format.
+
 ## [v0.14.0] - September 7, 2025
 
 ### Added

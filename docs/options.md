@@ -23,6 +23,7 @@ These are options which are to influence the CMake configuration and are also de
 |-------------------|----------------------------|-------------------------------------------------------------------------------------------------------|
 | RAV_ENABLE_SPDLOG | -DRAV_ENABLE_SPDLOG=ON/OFF | When enabled (recommended), spdlog will be used for logging otherwise logs will be written to stdout. |
 | TRACY_ENABLE      | -DRAV_TRACY_ENABLE=ON/OFF  | When enabled, Tracy will be compiled into the library.                                                |
+| RAV_DEBUG         | -DRAV_DEBUG=ON/OFF         | When enabled, debugging facilities will be enabled. Can be used in release builds.                    |
 
 ### Compile constants
 

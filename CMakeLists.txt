@@ -12,6 +12,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/helper_targets.cmake)
 
 option(RAV_ENABLE_SPDLOG "Enable spdlog for logging" OFF)
 option(RAV_ABORT_ON_ASSERT "Abort the program when an assertion is hit" OFF)
+option(RAV_DEBUG "Enable debugging facilities. Can also be enabled for release builds." OFF)
 option(RAV_TRACY_ENABLE "Enable Tracy as profiler" OFF)
 option(RAV_WITH_ADDRESS_SANITIZER "Enable Address Sanitizer" OFF)
 option(RAV_WITH_THREAD_SANITIZER "Enable Thread Sanitizer" OFF)
@@ -120,6 +121,7 @@ target_compile_definitions(ravennakit
         WIN32_LEAN_AND_MEAN
         RAV_ENABLE_SPDLOG=$<BOOL:${RAV_ENABLE_SPDLOG}>
         RAV_ABORT_ON_ASSERT=$<BOOL:${RAV_ABORT_ON_ASSERT}>
+        RAV_DEBUG=$<BOOL:${RAV_DEBUG}>
 )
 
 if (RAV_TRACY_ENABLE)
