@@ -64,7 +64,7 @@ class HttpRouter {
             if (route.method == method) {
                 auto match_result = PathMatcher::match(path, route.pattern, parameters);
                 if (match_result.has_error()) {
-                    RAV_ERROR("Error matching path: {}", match_result.error());
+                    RAV_LOG_ERROR("Error matching path: {}", match_result.error());
                     continue;
                 }
                 if (match_result.value()) {

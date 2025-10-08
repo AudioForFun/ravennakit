@@ -22,7 +22,7 @@ rav::RavennaNode::RavennaNode() :
 
     nmos_device_.id = boost::uuids::random_generator()();
     if (!nmos_node_.add_or_update_device(&nmos_device_)) {
-        RAV_ERROR("Failed to add NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
+        RAV_LOG_ERROR("Failed to add NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
     }
 
     nmos_node_.on_configuration_changed = [this](const nmos::Node::Configuration& config) {
@@ -36,6 +36,10 @@ rav::RavennaNode::RavennaNode() :
             s->nmos_node_status_changed(status, registry_info);
         }
     };
+
+    if (!ptp_instance_.subscribe(&rtp_receiver_.ptp_instance_subscriber)) {
+        RAV_LOG_ERROR("Failed to subscribe to PTP instance");
+    }
 
     std::promise<std::thread::id> promise;
     auto f = promise.get_future();
@@ -54,7 +58,7 @@ rav::RavennaNode::RavennaNode() :
                 }
                 break;
             } catch (const std::exception& e) {
-                RAV_ERROR("Unhandled exception on maintenance thread: {}", e.what());
+                RAV_LOG_ERROR("Unhandled exception on maintenance thread: {}", e.what());
                 RAV_ASSERT_FALSE("Unhandled exception on maintenance thread");
             }
         }
@@ -68,7 +72,7 @@ rav::RavennaNode::RavennaNode() :
         constexpr auto min_packet_time = 125 * 1000;       // 125us
         constexpr auto max_packet_time = 4 * 1000 * 1000;  // 4ms
         if (!set_thread_realtime(min_packet_time, max_packet_time, max_packet_time * 2)) {
-            RAV_ERROR("Failed to set thread realtime");
+            RAV_LOG_ERROR("Failed to set thread realtime");
         }
 #endif
 
@@ -82,18 +86,22 @@ rav::RavennaNode::RavennaNode() :
                 while (keep_going_.load(std::memory_order_acquire)) {
                     rtp_receiver_.read_incoming_packets();
                     rtp_sender_.send_outgoing_packets();
+                    next += 100'000;  // 100us
 #if RAV_APPLE
-                    next += 10'000;  // 10us
                     if (!mach_wait_until_ns(next)) {
-                        RAV_ERROR("mach_wait_until_ns failed");
+                        RAV_LOG_ERROR("mach_wait_until_ns failed");
                     }
-#elif !RAV_WINDOWS
-                    std::this_thread::sleep_for(std::chrono::microseconds(100));
+#elif RAV_WINDOWS
+                    while (clock::now_monotonic_high_resolution_ns() < next) {
+                        std::this_thread::yield();
+                    }
+#else
+                    std::this_thread::sleep_for(std::chrono::microseconds(10));
 #endif
                 }
                 break;
             } catch (const std::exception& e) {
-                RAV_ERROR("Unhandled exception on network thread: {}", e.what());
+                RAV_LOG_ERROR("Unhandled exception on network thread: {}", e.what());
                 RAV_ASSERT_FALSE("Unhandled exception on network thread");
             }
         }
@@ -101,6 +109,9 @@ rav::RavennaNode::RavennaNode() :
 }
 
 rav::RavennaNode::~RavennaNode() {
+    if (!ptp_instance_.unsubscribe(&rtp_receiver_.ptp_instance_subscriber)) {
+        RAV_LOG_ERROR("Failed to unsubscribe from PTP instance");
+    }
     io_context_.stop();
     if (maintenance_thread_.joinable()) {
         maintenance_thread_.join();
@@ -122,7 +133,7 @@ std::future<tl::expected<rav::Id, std::string>> rav::RavennaNode::create_receive
         auto new_receiver = std::make_unique<RavennaReceiver>(rtsp_client_, rtp_receiver_, id_generator_.next(), network_interface_config_);
         auto result = new_receiver->set_configuration(std::move(config));
         if (!result) {
-            RAV_ERROR("Failed to set receiver configuration: {}", result.error());
+            RAV_LOG_ERROR("Failed to set receiver configuration: {}", result.error());
             return tl::unexpected(result.error());
         }
         const auto& it = receivers_.emplace_back(std::move(new_receiver));
@@ -179,7 +190,7 @@ std::future<tl::expected<rav::Id, std::string>> rav::RavennaNode::create_sender(
         }
         auto result = new_sender->set_configuration(initial_config);
         if (!result) {
-            RAV_ERROR("Failed to set sender configuration: {}", result.error());
+            RAV_LOG_ERROR("Failed to set sender configuration: {}", result.error());
             return tl::unexpected(result.error());
         }
         const auto& it = senders_.emplace_back(std::move(new_sender));
@@ -251,13 +262,13 @@ std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
     RAV_ASSERT(subscriber != nullptr, "Subscriber must be valid");
     auto work = [this, subscriber] {
         if (!subscribers_.add(subscriber)) {
-            RAV_ERROR("Failed to add subscriber to node");
+            RAV_LOG_ERROR("Failed to add subscriber to node");
             return;
         }
         if (!browser_.subscribe(subscriber)) {
-            RAV_ERROR("Failed to add subscriber to browser");
+            RAV_LOG_ERROR("Failed to add subscriber to browser");
             if (!subscribers_.remove(subscriber)) {
-                RAV_ERROR("Failed to remove subscriber from node");
+                RAV_LOG_ERROR("Failed to remove subscriber from node");
             }
             return;
         }
@@ -278,10 +289,10 @@ std::future<void> rav::RavennaNode::unsubscribe(Subscriber* subscriber) {
     RAV_ASSERT(subscriber != nullptr, "Subscriber must be valid");
     auto work = [this, subscriber] {
         if (!browser_.unsubscribe(subscriber)) {
-            RAV_WARNING("Failed to remove subscriber from browser");
+            RAV_LOG_WARNING("Failed to remove subscriber from browser");
         }
         if (!subscribers_.remove(subscriber)) {
-            RAV_WARNING("Failed to remove subscriber from node");
+            RAV_LOG_WARNING("Failed to remove subscriber from node");
         }
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
@@ -292,12 +303,12 @@ std::future<void> rav::RavennaNode::subscribe_to_receiver(Id receiver_id, Ravenn
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
                 if (!receiver->subscribe(subscriber)) {
-                    RAV_WARNING("Already subscribed");
+                    RAV_LOG_WARNING("Already subscribed");
                 }
                 return;
             }
         }
-        RAV_WARNING("Receiver not found");
+        RAV_LOG_WARNING("Receiver not found");
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
@@ -307,7 +318,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_receiver(Id receiver_id, Ra
         for (const auto& receiver : receivers_) {
             if (receiver->get_id() == receiver_id) {
                 if (!receiver->unsubscribe(subscriber)) {
-                    RAV_WARNING("Not subscribed");
+                    RAV_LOG_WARNING("Not subscribed");
                 }
                 return;
             }
@@ -322,12 +333,12 @@ std::future<void> rav::RavennaNode::subscribe_to_sender(Id sender_id, RavennaSen
         for (const auto& sender : senders_) {
             if (sender->get_id() == sender_id) {
                 if (!sender->subscribe(subscriber)) {
-                    RAV_WARNING("Already subscribed");
+                    RAV_LOG_WARNING("Already subscribed");
                 }
                 return;
             }
         }
-        RAV_WARNING("Sender not found");
+        RAV_LOG_WARNING("Sender not found");
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
@@ -337,7 +348,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, Ravenn
         for (const auto& sender : senders_) {
             if (sender->get_id() == sender_id) {
                 if (!sender->unsubscribe(subscriber)) {
-                    RAV_WARNING("Not subscribed");
+                    RAV_LOG_WARNING("Not subscribed");
                 }
                 return;
             }
@@ -350,7 +361,7 @@ std::future<void> rav::RavennaNode::unsubscribe_from_sender(Id sender_id, Ravenn
 std::future<void> rav::RavennaNode::subscribe_to_ptp_instance(ptp::Instance::Subscriber* subscriber) {
     auto work = [this, subscriber] {
         if (!ptp_instance_.subscribe(subscriber)) {
-            RAV_ERROR("Failed to add subscriber to PTP instance");
+            RAV_LOG_ERROR("Failed to add subscriber to PTP instance");
         }
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
@@ -359,7 +370,7 @@ std::future<void> rav::RavennaNode::subscribe_to_ptp_instance(ptp::Instance::Sub
 std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance::Subscriber* subscriber) {
     auto work = [this, subscriber] {
         if (!ptp_instance_.unsubscribe(subscriber)) {
-            RAV_ERROR("Failed to remove subscriber from PTP instance");
+            RAV_LOG_ERROR("Failed to remove subscriber from PTP instance");
         }
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
@@ -436,7 +447,7 @@ std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfac
             network_interface_config_.get_array_of_interface_addresses<rtp::AudioSender::k_max_num_redundant_sessions>();
 
         if (!rtp_receiver_.set_interfaces(array_of_addresses)) {
-            RAV_ERROR("Failed to set network interfaces on rtp receiver");
+            RAV_LOG_ERROR("Failed to set network interfaces on rtp receiver");
         }
 
         for (const auto& receiver : receivers_) {
@@ -444,7 +455,7 @@ std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfac
         }
 
         if (!rtp_sender_.set_interfaces(array_of_addresses)) {
-            RAV_ERROR("Failed to set network interface on rtp sender");
+            RAV_LOG_ERROR("Failed to set network interface on rtp sender");
         }
 
         for (const auto& sender : senders_) {
@@ -455,14 +466,14 @@ std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfac
 
         // Add or update PTP ports based on the new configuration
         if (const auto result = ptp_instance_.update_ports(network_interface_config_.get_interface_ipv4_addresses()); !result) {
-            RAV_ERROR("Failed to update port ports: {}", rav::ptp::to_string(result.error()));
+            RAV_LOG_ERROR("Failed to update port ports: {}", rav::ptp::to_string(result.error()));
         }
 
         for (const auto& subscriber : subscribers_) {
             subscriber->network_interface_config_updated(config);
         }
 
-        RAV_INFO("{}", config.to_string());
+        RAV_LOG_INFO("{}", config.to_string());
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
@@ -565,7 +576,7 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_boos
 
                 nmos_node_.stop();
                 if (!nmos_node_.remove_device(&nmos_device_)) {
-                    RAV_ERROR("Failed to remove NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
+                    RAV_LOG_ERROR("Failed to remove NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
                 }
                 auto result = nmos_node_.set_configuration(*config);
                 if (!result) {
@@ -575,7 +586,7 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_boos
                 nmos_device_.label = config->label;
                 nmos_device_.description = config->description;
                 if (!nmos_node_.add_or_update_device(&nmos_device_)) {
-                    RAV_ERROR("Failed to add NMOS device to node");
+                    RAV_LOG_ERROR("Failed to add NMOS device to node");
                 }
             } else {
                 return tl::unexpected("No NMOS node state found in JSON");
@@ -622,7 +633,7 @@ std::future<tl::expected<void, std::string>> rav::RavennaNode::restore_from_boos
             }
 
             if (auto result = ptp_instance_.set_configuration(ptp_config); !result) {
-                RAV_ERROR("Failed to set PTP configuration: {}", result.error());
+                RAV_LOG_ERROR("Failed to set PTP configuration: {}", result.error());
             }
         } catch (const std::exception& e) {
             return tl::unexpected(fmt::format("Failed to parse RavennaNode JSON: {}", e.what()));

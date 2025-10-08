@@ -31,28 +31,28 @@
 
     #include <spdlog/spdlog.h>
 
-    #ifndef RAV_TRACE
-        #define RAV_TRACE(...) SPDLOG_TRACE(__VA_ARGS__)
+    #ifndef RAV_LOG_TRACE
+        #define RAV_LOG_TRACE(...) SPDLOG_TRACE(__VA_ARGS__)
     #endif
 
-    #ifndef RAV_DEBUG
-        #define RAV_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__)
+    #ifndef RAV_LOG_DEBUG
+        #define RAV_LOG_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__)
     #endif
 
-    #ifndef RAV_CRITICAL
-        #define RAV_CRITICAL(...) SPDLOG_CRITICAL(__VA_ARGS__)
+    #ifndef RAV_LOG_CRITICAL
+        #define RAV_LOG_CRITICAL(...) SPDLOG_CRITICAL(__VA_ARGS__)
     #endif
 
-    #ifndef RAV_ERROR
-        #define RAV_ERROR(...) SPDLOG_ERROR(__VA_ARGS__)
+    #ifndef RAV_LOG_ERROR
+        #define RAV_LOG_ERROR(...) SPDLOG_ERROR(__VA_ARGS__)
     #endif
 
-    #ifndef RAV_WARNING
-        #define RAV_WARNING(...) SPDLOG_WARN(__VA_ARGS__)
+    #ifndef RAV_LOG_WARNING
+        #define RAV_LOG_WARNING(...) SPDLOG_WARN(__VA_ARGS__)
     #endif
 
-    #ifndef RAV_INFO
-        #define RAV_INFO(...) SPDLOG_INFO(__VA_ARGS__)
+    #ifndef RAV_LOG_INFO
+        #define RAV_LOG_INFO(...) SPDLOG_INFO(__VA_ARGS__)
     #endif
 
     #ifndef RAV_LOG
@@ -67,43 +67,43 @@ enum class LogLevel { off, critical, error, warning, info, debug, trace };
 
 inline std::atomic log_level = LogLevel::info;
 
-    #ifndef RAV_TRACE
-        #define RAV_TRACE(...)                         \
+    #ifndef RAV_LOG_TRACE
+        #define RAV_LOG_TRACE(...)                     \
             if (log_level.load() >= LogLevel::trace) { \
                 fmt::println("[T] " __VA_ARGS__);      \
             }
     #endif
 
-    #ifndef RAV_DEBUG
-        #define RAV_DEBUG(...)                         \
+    #ifndef RAV_LOG_DEBUG
+        #define RAV_LOG_DEBUG(...)                         \
             if (log_level.load() >= LogLevel::debug) { \
                 fmt::println("[D] " __VA_ARGS__);      \
             }
     #endif
 
-    #ifndef RAV_CRITICAL
-        #define RAV_CRITICAL(...)                         \
+    #ifndef RAV_LOG_CRITICAL
+        #define RAV_LOG_CRITICAL(...)                         \
             if (log_level.load() >= LogLevel::critical) { \
                 fmt::println("[C] " __VA_ARGS__);         \
             }
     #endif
 
-    #ifndef RAV_ERROR
-        #define RAV_ERROR(...)                         \
+    #ifndef RAV_LOG_ERROR
+        #define RAV_LOG_ERROR(...)                         \
             if (log_level.load() >= LogLevel::error) { \
                 fmt::println("[E] " __VA_ARGS__);      \
             }
     #endif
 
-    #ifndef RAV_WARNING
-        #define RAV_WARNING(...)                         \
+    #ifndef RAV_LOG_WARNING
+        #define RAV_LOG_WARNING(...)                         \
             if (log_level.load() >= LogLevel::warning) { \
                 fmt::println("[W] " __VA_ARGS__);        \
             }
     #endif
 
-    #ifndef RAV_INFO
-        #define RAV_INFO(...)                         \
+    #ifndef RAV_LOG_INFO
+        #define RAV_LOG_INFO(...)                         \
             if (log_level.load() >= LogLevel::info) { \
                 fmt::println("[I] " __VA_ARGS__);     \
             }
@@ -120,13 +120,13 @@ inline std::atomic log_level = LogLevel::info;
 
 #define CATCH_LOG_UNCAUGHT_EXCEPTIONS                                                                                     \
     catch (const rav::Exception& e) {                                                                                     \
-        RAV_CRITICAL("rav::Exception caught: {} - please handle your exceptions before reaching this point.", e.what());  \
+        RAV_LOG_CRITICAL("rav::Exception caught: {} - please handle your exceptions before reaching this point.", e.what());  \
     }                                                                                                                     \
     catch (const std::exception& e) {                                                                                     \
-        RAV_CRITICAL("std::exception caucght: {} - please handle your exceptions before reaching this point.", e.what()); \
+        RAV_LOG_CRITICAL("std::exception caucght: {} - please handle your exceptions before reaching this point.", e.what()); \
     }                                                                                                                     \
     catch (...) {                                                                                                         \
-        RAV_CRITICAL("unknown exception caucght - please handle your exceptions before reaching this point.");            \
+        RAV_LOG_CRITICAL("unknown exception caucght - please handle your exceptions before reaching this point.");            \
     }
 
 namespace rav {

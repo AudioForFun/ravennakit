@@ -34,9 +34,9 @@ namespace {
         socket.bind(endpoint);
         socket.non_blocking(true);
         socket.set_option(boost::asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
-        RAV_TRACE("Opened socket for port {}", port);
+        RAV_LOG_TRACE("Opened socket for port {}", port);
     } catch (const std::exception& e) {
-        RAV_ERROR("Failed to setup receive socket: {}", e.what());
+        RAV_LOG_ERROR("Failed to setup receive socket: {}", e.what());
         socket.close();
         return false;
     }
@@ -188,7 +188,7 @@ void reset_reader(rav::rtp::AudioReceiver::Reader& reader) {
 
         auto* socket = find_or_create_socket(receiver, endpoint.port());
         if (socket == nullptr) {
-            RAV_ERROR("Failed to create receive socket");
+            RAV_LOG_ERROR("Failed to create receive socket");
             continue;
         }
 
@@ -198,7 +198,7 @@ void reset_reader(rav::rtp::AudioReceiver::Reader& reader) {
                     count_multicast_groups(receiver, stream.session.connection_address.to_v4(), stream.interface, stream.session.rtp_port);
                 if (count == 1) {  // 1 because the current reader being set up is also counted
                     if (!receiver.join_multicast_group(*socket, stream.session.connection_address.to_v4(), stream.interface)) {
-                        RAV_ERROR("Failed to join multicast group");
+                        RAV_LOG_ERROR("Failed to join multicast group");
                     }
                 }
             }
@@ -229,7 +229,7 @@ void reset_reader(rav::rtp::AudioReceiver::Reader& reader) {
             // Note: not locking the rw_lock here as joining and leaving a multicast group should be thread safe, and we
             // don't want to interrupt the call to read_incoming_packets().
             if (!receiver.leave_multicast_group(socket.socket, multicast_address, interface_address)) {
-                RAV_ERROR(
+                RAV_LOG_ERROR(
                     "Failed to leave multicast group {}:{} on {}", multicast_address.to_string(), port, interface_address.to_string()
                 );
             }
@@ -263,15 +263,15 @@ void close_unused_sockets(rav::rtp::AudioReceiver& receiver) {
             // a data race.
             const auto guard = socket.rw_lock.lock_exclusive();
             if (!guard) {
-                RAV_ERROR("Failed to lock socket, cannot close");
+                RAV_LOG_ERROR("Failed to lock socket, cannot close");
                 continue;
             }
             boost::system::error_code ec;
             socket.socket.close(ec);
             if (ec) {
-                RAV_ERROR("Failed to close socket for port {}", socket.port);
+                RAV_LOG_ERROR("Failed to close socket for port {}", socket.port);
             } else {
-                RAV_TRACE("Closed socket for port {}", socket.port);
+                RAV_LOG_TRACE("Closed socket for port {}", socket.port);
             }
             socket.port = {};
         }
@@ -301,7 +301,7 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
             auto packet_most_recent_ts = rav::WrappingUint32(rtp_packet->timestamp + num_frames - 1);
 
             if (!reader.most_recent_ts.has_value()) {
-                RAV_TRACE("First packet at: {}", packet_timestamp.value());
+                RAV_LOG_TRACE("First packet at: {}", packet_timestamp.value());
                 reader.most_recent_ts = packet_most_recent_ts;
                 reader.receive_buffer.set_next_ts(packet_timestamp.value());
                 reader.next_ts_to_read = packet_timestamp;
@@ -311,24 +311,21 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
                 reader.most_recent_ts = packet_most_recent_ts;
             }
 
-            TRACY_PLOT("Packet margin: {}", static_cast<double>(reader.next_ts_to_read.diff(packet_timestamp)));
-
             // Determine whether whole packet is too old
             if (packet_timestamp + stream.packet_time_frames <= reader.next_ts_to_read) {
-                // RAV_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
+                // RAV_LOG_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
                 TRACY_MESSAGE("Packet too late - skipping");
                 if (!stream.packets_too_old.push(rtp_packet->seq)) {
-                    RAV_ERROR("Packet not enqueued to packets_too_old");
+                    RAV_LOG_ERROR("Packet not enqueued to packets_too_old");
                 }
                 continue;
             }
 
             // Determine whether part of the packet is too old
             if (packet_timestamp < reader.next_ts_to_read) {
-                RAV_WARNING("Packet partly too late: seq={}, ts={}", rtp_packet->seq, rtp_packet->timestamp);
                 TRACY_MESSAGE("Packet partly too late - not skipping");
                 if (!stream.packets_too_old.push(rtp_packet->seq)) {
-                    RAV_ERROR("Packet not enqueued to packets_too_old");
+                    RAV_LOG_ERROR("Packet not enqueued to packets_too_old");
                 }
                 // Still process the packet since it contains data that is not outdated
             }
@@ -336,12 +333,10 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
             reader.receive_buffer.clear_until(rtp_packet->timestamp);
 
             if (!reader.receive_buffer.write(rtp_packet->timestamp, {rtp_packet->payload.data(), rtp_packet->data_len})) {
-                RAV_ERROR("Packet not written to buffer");
+                RAV_LOG_ERROR("Packet not written to buffer");
             }
         }
     }
-
-    TRACY_PLOT("available_frames", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())));
 }
 
 std::optional<uint32_t> read_data_from_reader_realtime(
@@ -372,6 +367,8 @@ std::optional<uint32_t> read_data_from_reader_realtime(
             return {};
         }
     }
+
+    TRACY_PLOT("Buffer", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())) - num_frames);
 
     const auto read_at = reader.next_ts_to_read.value();
     if (!reader.receive_buffer.read(read_at, buffer, buffer_size, true)) {
@@ -404,10 +401,10 @@ rav::rtp::AudioReceiver::AudioReceiver(boost::asio::io_context& io_context) {
         boost::system::error_code ec;
         socket.set_option(boost::asio::ip::multicast::join_group(multicast_group, interface_address), ec);
         if (ec) {
-            RAV_ERROR("Failed to join multicast group: {}", ec.message());
+            RAV_LOG_ERROR("Failed to join multicast group: {}", ec.message());
             return false;
         }
-        RAV_TRACE(
+        RAV_LOG_TRACE(
             "Joined multicast group {}:{} on {}", multicast_group.to_string(), socket.local_endpoint().port(), interface_address.to_string()
         );
         return true;
@@ -423,10 +420,10 @@ rav::rtp::AudioReceiver::AudioReceiver(boost::asio::io_context& io_context) {
         boost::system::error_code ec;
         socket.set_option(boost::asio::ip::multicast::leave_group(multicast_group, interface_address), ec);
         if (ec) {
-            RAV_ERROR("Failed to leave multicast group: {}", ec.message());
+            RAV_LOG_ERROR("Failed to leave multicast group: {}", ec.message());
             return false;
         }
-        RAV_TRACE(
+        RAV_LOG_TRACE(
             "Left multicast group {}:{} on {}", multicast_group.to_string(), socket.local_endpoint().port(), interface_address.to_string()
         );
         return true;
@@ -456,7 +453,7 @@ bool rav::rtp::AudioReceiver::set_interfaces(const ArrayOfAddresses& interfaces)
 
         const auto guard = reader.rw_lock.lock_exclusive();
         if (!guard) {
-            RAV_ERROR("Failed to exclusively lock writer");
+            RAV_LOG_ERROR("Failed to exclusively lock writer");
             return false;
         }
 
@@ -482,7 +479,7 @@ bool rav::rtp::AudioReceiver::set_interfaces(const ArrayOfAddresses& interfaces)
                         auto* socket = find_socket(*this, reader.streams[i].session.rtp_port);
                         RAV_ASSERT(socket != nullptr, "Socket not found");
                         if (!join_multicast_group(*socket, reader.streams[i].session.connection_address.to_v4(), interfaces[i])) {
-                            RAV_ERROR("Failed to join multicast group");
+                            RAV_LOG_ERROR("Failed to join multicast group");
                         }
                     }
                 }
@@ -500,7 +497,7 @@ bool rav::rtp::AudioReceiver::add_reader(const Id id, const ReaderParameters& pa
 
     for (auto& reader : readers) {
         if (reader.id == id) {
-            RAV_WARNING("A reader for given id already exists");
+            RAV_LOG_WARNING("A reader for given id already exists");
             return false;
         }
     }
@@ -508,7 +505,7 @@ bool rav::rtp::AudioReceiver::add_reader(const Id id, const ReaderParameters& pa
     for (auto& reader : readers) {
         const auto guard = reader.rw_lock.lock_exclusive();
         if (!guard) {
-            RAV_ERROR("Failed to exclusively lock reader");
+            RAV_LOG_ERROR("Failed to exclusively lock reader");
             return false;
         }
 
@@ -527,7 +524,7 @@ bool rav::rtp::AudioReceiver::remove_reader(const Id id) {
         if (reader.id == id) {
             const auto guard = reader.rw_lock.lock_exclusive();
             if (!guard) {
-                RAV_ERROR("Failed to exclusively lock reader");
+                RAV_LOG_ERROR("Failed to exclusively lock reader");
                 return false;
             }
 
@@ -577,7 +574,8 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
         }
 
         if (ec) {
-            RAV_ERROR("Failed to receive from socket: {}", ec.message());
+            // RAV_LOG_ERROR("Failed to receive from socket: {}", ec.message());
+            // TODO: Report error
             continue;
         }
 
@@ -592,12 +590,14 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
 
         const auto payload = view.payload_data();
         if (payload.size_bytes() == 0) {
-            RAV_WARNING("Received packet with empty payload");
+            // RAV_LOG_WARNING("Received packet with empty payload");
+            // TODO: Report error
             return;
         }
 
         if (payload.size_bytes() > std::numeric_limits<uint16_t>::max()) {
-            RAV_WARNING("Payload size exceeds maximum size");
+            // RAV_LOG_WARNING("Payload size exceeds maximum size");
+            // TODO: Report error
             return;
         }
 
@@ -612,8 +612,6 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
             }
 
             for (auto& stream : reader.streams) {
-                update_stream_active_state(stream, now);
-
                 if (stream.session.connection_address != dst_endpoint.address()) {
                     continue;
                 }
@@ -635,6 +633,7 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                 packet.timestamp = view.timestamp();
                 packet.seq = view.sequence_number();
                 packet.data_len = static_cast<uint16_t>(payload.size_bytes());
+                packet.recv_time = recv_time;
                 std::memcpy(packet.payload.data(), payload.data(), payload.size_bytes());
 
                 auto state = stream.state.load(std::memory_order_relaxed);
@@ -642,6 +641,16 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                     stream.state.store(StreamState::receiving, std::memory_order_relaxed);
                 } else if (state != StreamState::no_consumer) {
                     stream.state.store(StreamState::no_consumer, std::memory_order_relaxed);
+                }
+
+                {
+                    // This block compares the rtp timestamp against the recv_time converted to PTP scale.
+                    const auto& local_clock = ptp_instance_subscriber.get_local_clock();
+                    if (local_clock.is_locked()) {
+                        auto ptp_time = local_clock.get_adjusted_time(recv_time);
+                        auto rtp_time = ptp_time.from_rtp_timestamp(packet.timestamp, reader.audio_format.sample_rate);
+                        TRACY_PLOT("receive latency (ms)", ptp_time.to_milliseconds_double() - rtp_time.to_milliseconds_double());
+                    }
                 }
 
                 while (auto seq = stream.packets_too_old.pop()) {
@@ -731,18 +740,18 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
         const auto format = reader.audio_format;
 
         if (format.byte_order != AudioFormat::ByteOrder::be) {
-            RAV_ERROR("Unexpected byte order");
+            RAV_LOG_ERROR("Unexpected byte order");
             return std::nullopt;
         }
 
         if (format.ordering != AudioFormat::ChannelOrdering::interleaved) {
-            RAV_ERROR("Unexpected channel ordering");
+            RAV_LOG_ERROR("Unexpected channel ordering");
             return std::nullopt;
         }
 
         if (format.num_channels != output_buffer.num_channels()) {
             // Channel mapping/mixing is not implemented and an equal amount of channels is expected. Ignoring silently.
-            RAV_ERROR("Unexpected number of channels");
+            RAV_LOG_ERROR("Unexpected number of channels");
             return std::nullopt;
         }
 
@@ -761,7 +770,7 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
                 reinterpret_cast<int16_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(), output_buffer.data()
             );
             if (!ok) {
-                RAV_WARNING("Failed to convert audio data");
+                RAV_LOG_WARNING("Failed to convert audio data");
             }
         } else if (format.encoding == AudioEncoding::pcm_s24) {
             const auto ok = AudioData::convert<
@@ -769,10 +778,10 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
                 reinterpret_cast<int24_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(), output_buffer.data()
             );
             if (!ok) {
-                RAV_WARNING("Failed to convert audio data");
+                RAV_LOG_WARNING("Failed to convert audio data");
             }
         } else {
-            RAV_ERROR("Unsupported encoding");
+            RAV_LOG_ERROR("Unsupported encoding");
             return std::nullopt;
         }
 

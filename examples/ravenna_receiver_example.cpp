@@ -62,7 +62,7 @@ std::optional<PaDeviceIndex> portaudio_find_device_index_for_name(const std::str
 
 void portaudio_print_devices() {
     portaudio_iterate_devices([](PaDeviceIndex index, const PaDeviceInfo& info) {
-        RAV_INFO("[{}]: {}", index, info.name);
+        RAV_LOG_INFO("[{}]: {}", index, info.name);
         return true;
     });
 }
@@ -99,7 +99,7 @@ class Portaudio {
 
     ~Portaudio() {
         if (const auto error = Pa_Terminate(); error != paNoError) {
-            RAV_ERROR("PortAudio failed to terminate! Error: {}", Pa_GetErrorText(error));
+            RAV_LOG_ERROR("PortAudio failed to terminate! Error: {}", Pa_GetErrorText(error));
         }
     }
 };
@@ -141,7 +141,7 @@ class PortaudioStream {
 
         start();
 
-        RAV_TRACE("Opened PortAudio stream for device: {}", audio_device_name);
+        RAV_LOG_TRACE("Opened PortAudio stream for device: {}", audio_device_name);
     }
 
     void start() const {
@@ -156,7 +156,7 @@ class PortaudioStream {
             return;
         }
         if (const auto error = Pa_StopStream(stream_); error != paNoError) {
-            RAV_ERROR("PortAudio failed to stop stream! Error: {}", Pa_GetErrorText(error));
+            RAV_LOG_ERROR("PortAudio failed to stop stream! Error: {}", Pa_GetErrorText(error));
         }
     }
 
@@ -165,7 +165,7 @@ class PortaudioStream {
             return;
         }
         if (const auto error = Pa_CloseStream(stream_); error != paNoError) {
-            RAV_ERROR("PortAudio failed to close stream! Error: {}", Pa_GetErrorText(error));
+            RAV_LOG_ERROR("PortAudio failed to close stream! Error: {}", Pa_GetErrorText(error));
         }
         stream_ = nullptr;
     }
@@ -205,7 +205,7 @@ class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public ra
 
     void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::ReaderParameters& parameters) override {
         if (parameters.streams.empty()) {
-            RAV_WARNING("No streams available");
+            RAV_LOG_WARNING("No streams available");
             return;
         }
 
@@ -216,7 +216,7 @@ class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public ra
         audio_format_ = parameters.audio_format;
         const auto sample_format = portaudio_get_sample_format_for_audio_format(audio_format_);
         if (!sample_format.has_value()) {
-            RAV_TRACE("Skipping stream update because audio format is invalid: {}", audio_format_.to_string());
+            RAV_LOG_TRACE("Skipping stream update because audio format is invalid: {}", audio_format_.to_string());
             return;
         }
         portaudio_stream_.open_output_stream(
@@ -252,7 +252,7 @@ class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public ra
         }
 
         const auto ptp_ts =
-            static_cast<uint32_t>(get_local_clock().now().to_samples(audio_format_.sample_rate)) - k_delay;
+            static_cast<uint32_t>(get_local_clock().now().to_rtp_timestamp(audio_format_.sample_rate)) - k_delay;
 
         // First we try to read data
         auto rtp_ts =
@@ -272,7 +272,7 @@ class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public ra
         if (static_cast<uint32_t>(std::abs(drift)) > frame_count * 2) {
             rtp_ts =
                 ravenna_node_.read_data_realtime(receiver_id_, static_cast<uint8_t*>(output), buffer_size, ptp_ts, {});
-            RAV_WARNING("Re-aligned stream by {} samples", -drift);
+            RAV_LOG_WARNING("Re-aligned stream by {} samples", -drift);
             drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(*rtp_ts));
         }
 
@@ -332,7 +332,7 @@ int main(int const argc, char* argv[]) {
 
     auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface);
     if (iface == nullptr) {
-        RAV_ERROR("No network interface found with search string: {}", interface);
+        RAV_LOG_ERROR("No network interface found with search string: {}", interface);
         return -1;
     }
 

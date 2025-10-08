@@ -38,7 +38,7 @@ class socket_event {
     virtual ~socket_event() {
         if (event_ != WSA_INVALID_EVENT) {
             if (WSACloseEvent(event_) == false) {
-                RAV_ERROR("WSACloseEvent failed");
+                RAV_LOG_ERROR("WSACloseEvent failed");
             }
         }
     }

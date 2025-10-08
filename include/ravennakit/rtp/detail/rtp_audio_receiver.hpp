@@ -22,6 +22,7 @@
 #include "ravennakit/core/sync/atomic_rw_lock.hpp"
 #include "ravennakit/core/util/id.hpp"
 #include "ravennakit/core/util/safe_function.hpp"
+#include "ravennakit/ptp/ptp_instance.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/container/static_vector.hpp>
@@ -207,6 +208,7 @@ struct AudioReceiver {
         uint32_t timestamp;
         uint16_t seq;
         uint16_t data_len;
+        uint64_t recv_time;
         std::array<uint8_t, aes67::constants::k_max_payload> payload;
     };
 
@@ -247,6 +249,8 @@ struct AudioReceiver {
 
     /// Function for leaving a multicast group. Can be overridden to alter behaviour. Used for unit testing.
     SafeFunction<bool(udp_socket&, ip_address_v4, ip_address_v4)> leave_multicast_group;
+
+    ptp::Instance::Subscriber ptp_instance_subscriber;
 
     static constexpr auto k_max_num_sessions = k_max_num_readers * k_max_num_redundant_sessions;
 

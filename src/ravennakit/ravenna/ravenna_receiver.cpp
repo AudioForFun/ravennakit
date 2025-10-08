@@ -25,16 +25,16 @@ namespace {
 
 bool is_connection_info_valid(const rav::sdp::ConnectionInfoField& conn) {
     if (conn.network_type != rav::sdp::NetwType::internet) {
-        RAV_WARNING("Unsupported network type in connection_info_field");
+        RAV_LOG_WARNING("Unsupported network type in connection_info_field");
         return false;
     }
     if (!(conn.address_type == rav::sdp::AddrType::ipv4 || conn.address_type == rav::sdp::AddrType::ipv6)) {
-        RAV_WARNING("Unsupported network type in connection_info_field");
+        RAV_LOG_WARNING("Unsupported network type in connection_info_field");
         return false;
     }
     if (auto& num_addrs = conn.number_of_addresses) {
         if (num_addrs > 1) {
-            RAV_WARNING("Unsupported number of addresses in connection_info_field");
+            RAV_LOG_WARNING("Unsupported number of addresses in connection_info_field");
             return false;
         }
     }
@@ -85,7 +85,7 @@ tl::expected<rav::rtp::AudioReceiver::StreamInfo, std::string> create_stream_fro
     }
 
     if (packet_time_frames == 0) {
-        RAV_WARNING("No ptime attribute found, falling back to framecount");
+        RAV_LOG_WARNING("No ptime attribute found, falling back to framecount");
         const auto framecount = media_description.ravenna_framecount;
         if (!framecount.has_value()) {
             return tl::unexpected("No framecount attribute found");
@@ -110,13 +110,13 @@ tl::expected<rav::rtp::AudioReceiver::StreamInfo, std::string> create_stream_fro
     const auto& source_filters = media_description.source_filters;
     if (!source_filters.empty()) {
         if (filter.add_filters(source_filters) == 0) {
-            RAV_WARNING("No suitable source filters found in SDP");
+            RAV_LOG_WARNING("No suitable source filters found in SDP");
         }
     } else {
         const auto& sdp_source_filters = sdp.source_filters;
         if (!sdp_source_filters.empty()) {
             if (filter.add_filters(sdp_source_filters) == 0) {
-                RAV_WARNING("No suitable source filters found in SDP");
+                RAV_LOG_WARNING("No suitable source filters found in SDP");
             }
         }
     }
@@ -232,7 +232,7 @@ rav::RavennaReceiver::~RavennaReceiver() {
     std::ignore = rtsp_client_.unsubscribe_from_all_sessions(this);
     if (nmos_node_ != nullptr) {
         if (!nmos_node_->remove_receiver(&nmos_receiver_)) {
-            RAV_ERROR("Failed to remove NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
+            RAV_LOG_ERROR("Failed to remove NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
         }
     }
 }
@@ -240,23 +240,23 @@ rav::RavennaReceiver::~RavennaReceiver() {
 void rav::RavennaReceiver::on_announced(const RavennaRtspClient::AnnouncedEvent& event) {
     try {
         RAV_ASSERT(event.session_name == configuration_.session_name, "Expecting session_name to match");
-        RAV_TRACE("SDP updated for session '{}'", configuration_.session_name);
+        RAV_LOG_TRACE("SDP updated for session '{}'", configuration_.session_name);
         handle_announced_sdp(event.sdp);
     } catch (const std::exception& e) {
-        RAV_ERROR("Failed to process SDP for session '{}': {}", configuration_.session_name, e.what());
+        RAV_LOG_ERROR("Failed to process SDP for session '{}': {}", configuration_.session_name, e.what());
     }
 }
 
 void rav::RavennaReceiver::handle_announced_sdp(const sdp::SessionDescription& sdp) {
     if (!configuration_.auto_update_sdp) {
-        RAV_ERROR("auto_update_sdp is false, not expecting to receive SDP updates");
+        RAV_LOG_ERROR("auto_update_sdp is false, not expecting to receive SDP updates");
         return;
     }
 
     auto config = configuration_;
     config.sdp = sdp;
     if (!set_configuration(config)) {
-        RAV_ERROR("Failed to set configuration from announced SDP");
+        RAV_LOG_ERROR("Failed to set configuration from announced SDP");
     }
 }
 
@@ -272,7 +272,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_nmos() {
     if (nmos_node_ != nullptr) {
         RAV_ASSERT(nmos_receiver_.is_valid(), "NMOS receiver must be valid at this point");
         if (!nmos_node_->add_or_update_receiver(&nmos_receiver_)) {
-            RAV_ERROR("Failed to update NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
+            RAV_LOG_ERROR("Failed to update NMOS receiver with ID: {}", boost::uuids::to_string(nmos_receiver_.id));
             return tl::unexpected("Failed to update NMOS receiver");
         }
     }
@@ -284,7 +284,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::update_rtsp() {
 
     if (configuration_.enabled && configuration_.auto_update_sdp) {
         if (!rtsp_client_.subscribe_to_session(this, configuration_.session_name)) {
-            RAV_ERROR("Failed to subscribe to session '{}'", configuration_.session_name);
+            RAV_LOG_ERROR("Failed to subscribe to session '{}'", configuration_.session_name);
             return tl::unexpected("Failed to subscribe to session");
         }
     }
@@ -387,7 +387,7 @@ tl::expected<void, std::string> rav::RavennaReceiver::set_configuration(Configur
                 network_interface_config_.get_array_of_interface_addresses<rtp::AudioReceiver::k_max_num_redundant_sessions>()
             );
             if (!ok) {
-                RAV_ERROR("Failed to add RTP reader");
+                RAV_LOG_ERROR("Failed to add RTP reader");
             }
         }
     }
@@ -427,7 +427,7 @@ bool rav::RavennaReceiver::subscribe(Subscriber* subscriber) {
             }
             const auto state = rtp_audio_receiver_.get_stream_state(id_, 0);
             if (!state) {
-                RAV_ERROR("Failed to get state for stream {}", reader_parameters_.streams[i].session.to_string());
+                RAV_LOG_ERROR("Failed to get state for stream {}", reader_parameters_.streams[i].session.to_string());
                 continue;
             }
             subscriber->ravenna_receiver_stream_state_updated(reader_parameters_.streams[i], *state);
@@ -467,7 +467,7 @@ void rav::RavennaReceiver::set_network_interface_config(NetworkInterfaceConfig n
     }
     network_interface_config_ = std::move(network_interface_config);
     if (auto ok = update_nmos(); !ok) {
-        RAV_ERROR("Failed to update NMOS after setting network interface config: {}", ok.error());
+        RAV_LOG_ERROR("Failed to update NMOS after setting network interface config: {}", ok.error());
     }
 }
 
@@ -479,12 +479,12 @@ rav::create_rtp_receiver_parameters(const sdp::SessionDescription& sdp) {
 
     for (auto& media_description : sdp.media_descriptions) {
         if (media_description.media_type != "audio") {
-            RAV_WARNING("Unsupported media type: {}", media_description.media_type);
+            RAV_LOG_WARNING("Unsupported media type: {}", media_description.media_type);
             continue;
         }
 
         if (media_description.protocol != "RTP/AVP") {
-            RAV_WARNING("Unsupported protocol {}", media_description.protocol);
+            RAV_LOG_WARNING("Unsupported protocol {}", media_description.protocol);
             continue;
         }
 
@@ -495,21 +495,21 @@ rav::create_rtp_receiver_parameters(const sdp::SessionDescription& sdp) {
         for (auto& format : media_description.formats) {
             selected_audio_format = rav::sdp::make_audio_format(format);
             if (!selected_audio_format) {
-                RAV_WARNING("Not a supported audio format: {}", rav::sdp::to_string(format));
+                RAV_LOG_WARNING("Not a supported audio format: {}", rav::sdp::to_string(format));
                 continue;
             }
             break;
         }
 
         if (!selected_audio_format) {
-            RAV_WARNING("No supported audio format found");
+            RAV_LOG_WARNING("No supported audio format found");
             continue;
         }
 
         auto stream = create_stream_from_media_description(media_description, sdp, *selected_audio_format);
 
         if (!stream) {
-            RAV_WARNING("Failed to create stream from media description: {}", stream.error());
+            RAV_LOG_WARNING("Failed to create stream from media description: {}", stream.error());
             continue;
         }
 
@@ -521,18 +521,18 @@ rav::create_rtp_receiver_parameters(const sdp::SessionDescription& sdp) {
         if (auto mid = media_description.mid) {
             const auto group = sdp.group;
             if (!group) {
-                RAV_WARNING("No group found for mid '{}'", *mid);
+                RAV_LOG_WARNING("No group found for mid '{}'", *mid);
                 break;  // No group found, treating the found stream as the primary
             }
 
             if (group->type != sdp::Group::Type::dup) {
-                RAV_WARNING("Unsupported group type: {}", static_cast<int>(group->type));
+                RAV_LOG_WARNING("Unsupported group type: {}", static_cast<int>(group->type));
                 break;  // Unsupported group type
             }
 
             auto tags = group->tags;
             if (std::find(tags.begin(), tags.end(), *mid) == tags.end()) {
-                RAV_WARNING("Mid '{}' not found in group tags", *mid);
+                RAV_LOG_WARNING("Mid '{}' not found in group tags", *mid);
                 break;  // Mid not found in group tags
             }
 
@@ -541,12 +541,12 @@ rav::create_rtp_receiver_parameters(const sdp::SessionDescription& sdp) {
             for (auto& tag : tags) {
                 auto* media_desc = find_media_description_by_mid(sdp, tag);
                 if (!media_desc) {
-                    RAV_WARNING("Media description with mid '{}' not found", tag);
+                    RAV_LOG_WARNING("Media description with mid '{}' not found", tag);
                     continue;
                 }
                 auto dup_stream = create_stream_from_media_description(*media_desc, sdp, *selected_audio_format);
                 if (!dup_stream) {
-                    RAV_WARNING("Failed to create stream from media description: {}", dup_stream.error());
+                    RAV_LOG_WARNING("Failed to create stream from media description: {}", dup_stream.error());
                     continue;
                 }
                 if (stream_index == parameters.streams.size()) {

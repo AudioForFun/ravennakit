@@ -61,7 +61,7 @@ size_t rav::receive_from_socket(
                 boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(dest_addr.s_addr)), socket.local_endpoint(ec).port());
 
             if (ec) {
-                RAV_ERROR("Failed to get port from local endpoint");
+                RAV_LOG_ERROR("Failed to get port from local endpoint");
             }
 
             char dest_ip[INET_ADDRSTRLEN];
@@ -95,7 +95,7 @@ size_t rav::receive_from_socket(
     msg.msg_flags = 0;
 
     const ssize_t received_bytes = recvmsg(socket.native_handle(), &msg, 0);
-    recv_time = rav::clock::now_monotonic_high_resolution_ns();
+    recv_time = clock::now_monotonic_high_resolution_ns();
     if (received_bytes < 0) {
         ec = boost::system::error_code(errno, boost::system::system_category());
         return 0;
@@ -152,13 +152,13 @@ void rav::ExtendedUdpSocket::Impl::set_dscp_value(const int value) {
 #if RAV_WINDOWS
     if (!qos_flow_.has_socket()) {
         if (!qos_flow_.add_socket_to_flow(socket_)) {
-            RAV_ERROR("Failed to add socket to flow");
+            RAV_LOG_ERROR("Failed to add socket to flow");
             return;
         }
     }
 
     if (!qos_flow_.set_dscp_value(value)) {
-        RAV_ERROR("Failed to set DSCP value on flow");
+        RAV_LOG_ERROR("Failed to set DSCP value on flow");
         return;
     }
 #else
@@ -186,11 +186,11 @@ void rav::ExtendedUdpSocket::Impl::send(const uint8_t* data, const size_t size, 
     boost::system::error_code ec;
     const auto sent = socket_.send_to(boost::asio::buffer(data, size), endpoint, 0, ec);
     if (ec) {
-        RAV_ERROR("Failed to send data: {}", ec.message());
+        RAV_LOG_ERROR("Failed to send data: {}", ec.message());
         return;
     }
     if (sent != size) {
-        RAV_ERROR("Failed to send all data");
+        RAV_LOG_ERROR("Failed to send all data");
         return;
     }
 }
@@ -207,15 +207,15 @@ void rav::ExtendedUdpSocket::Impl::stop() {
     boost::system::error_code ec;
     socket_.close(ec);
     if (ec) {
-        RAV_ERROR("Failed to close socket: {}", ec.message());
+        RAV_LOG_ERROR("Failed to close socket: {}", ec.message());
     }
 
-    RAV_TRACE("Stopped extended udp socket");
+    RAV_LOG_TRACE("Stopped extended udp socket");
 }
 
 void rav::ExtendedUdpSocket::Impl::start(HandlerType handler) {
     if (handler_) {
-        RAV_WARNING("RTP receiver is already running");
+        RAV_LOG_WARNING("RTP receiver is already running");
         return;
     }
 
@@ -223,7 +223,7 @@ void rav::ExtendedUdpSocket::Impl::start(HandlerType handler) {
 
     async_receive();
 
-    RAV_TRACE("Started extended udp socket on {}:{}", socket_.local_endpoint().address().to_string(), socket_.local_endpoint().port());
+    RAV_LOG_TRACE("Started extended udp socket on {}:{}", socket_.local_endpoint().address().to_string(), socket_.local_endpoint().port());
 }
 
 rav::ExtendedUdpSocket::Impl::Impl(boost::asio::io_context& io_context, const boost::asio::ip::udp::endpoint& endpoint) :
@@ -241,19 +241,19 @@ void rav::ExtendedUdpSocket::Impl::async_receive() {
         TRACY_ZONE_SCOPED;
         if (ec) {
             if (ec == boost::asio::error::operation_aborted) {
-                RAV_TRACE("Operation aborted");
+                RAV_LOG_TRACE("Operation aborted");
                 return;
             }
             if (ec == boost::asio::error::eof) {
-                RAV_TRACE("EOF");
+                RAV_LOG_TRACE("EOF");
                 return;
             }
-            RAV_ERROR("Read error: {}. Closing connection.", ec.message());
+            RAV_LOG_ERROR("Read error: {}. Closing connection.", ec.message());
             return;
         }
 
         if (self->handler_ == nullptr) {
-            RAV_TRACE("No handler. Closing connection.");
+            RAV_LOG_TRACE("No handler. Closing connection.");
             return;
         }
 
@@ -261,7 +261,7 @@ void rav::ExtendedUdpSocket::Impl::async_receive() {
             const auto available = self->socket_.available(ec);
 
             if (ec) {
-                RAV_ERROR("Read error: {}. Closing connection.", ec.message());
+                RAV_LOG_ERROR("Read error: {}. Closing connection.", ec.message());
                 return;
             }
 
@@ -275,7 +275,7 @@ void rav::ExtendedUdpSocket::Impl::async_receive() {
             const auto bytes_received = receive_from_socket(self->socket_, self->recv_data_, src_endpoint, dst_endpoint, recv_time, ec);
 
             if (ec) {
-                RAV_ERROR("Read error: {}. Closing connection.", ec.message());
+                RAV_LOG_ERROR("Read error: {}. Closing connection.", ec.message());
                 return;
             }
             if (bytes_received == 0) {
@@ -285,7 +285,7 @@ void rav::ExtendedUdpSocket::Impl::async_receive() {
             if (self->handler_) {
                 self->handler_({self->recv_data_.data(), bytes_received, src_endpoint, dst_endpoint, recv_time});
             } else {
-                RAV_ERROR("No handler available. Closing connection.");
+                RAV_LOG_ERROR("No handler available. Closing connection.");
                 return;
             }
         }
@@ -300,17 +300,17 @@ boost::system::error_code rav::ExtendedUdpSocket::Impl::join_multicast_group(
     socket_.set_option(boost::asio::ip::multicast::join_group(multicast_address.to_v4(), interface_address.to_v4()), ec);
 
     if (ec) {
-        RAV_ERROR("Failed to join multicast group: {}", ec.message());
+        RAV_LOG_ERROR("Failed to join multicast group: {}", ec.message());
         return ec;
     }
 
     const auto local_endpoint = socket_.local_endpoint(ec);
     if (ec) {
-        RAV_ERROR("Failed to get local endpoint: {}", ec.message());
+        RAV_LOG_ERROR("Failed to get local endpoint: {}", ec.message());
         return ec;
     }
 
-    RAV_TRACE("Joined multicast group: {} on {}:{}", multicast_address.to_string(), interface_address.to_string(), local_endpoint.port());
+    RAV_LOG_TRACE("Joined multicast group: {} on {}:{}", multicast_address.to_string(), interface_address.to_string(), local_endpoint.port());
 
     return {};
 }
@@ -321,17 +321,17 @@ boost::system::error_code rav::ExtendedUdpSocket::Impl::leave_multicast_group(
     boost::system::error_code ec;
     socket_.set_option(boost::asio::ip::multicast::leave_group(multicast_address, interface_address), ec);
     if (ec) {
-        RAV_ERROR("Failed to leave multicast group: {}", ec.message());
+        RAV_LOG_ERROR("Failed to leave multicast group: {}", ec.message());
         return ec;
     }
 
     const auto local_endpoint = socket_.local_endpoint(ec);
     if (ec) {
-        RAV_ERROR("Failed to get local endpoint: {}", ec.message());
+        RAV_LOG_ERROR("Failed to get local endpoint: {}", ec.message());
         return ec;
     }
 
-    RAV_TRACE("Left multicast group: {} on {}:{}", multicast_address.to_string(), interface_address.to_string(), local_endpoint.port());
+    RAV_LOG_TRACE("Left multicast group: {} on {}:{}", multicast_address.to_string(), interface_address.to_string(), local_endpoint.port());
 
     return {};
 }
@@ -349,7 +349,7 @@ boost::system::error_code rav::ExtendedUdpSocket::join_multicast_group(
     const boost::asio::ip::address_v4& multicast_address, const boost::asio::ip::address_v4& interface_address
 ) const {
     if (impl_ == nullptr) {
-        RAV_WARNING("No implementation available");
+        RAV_LOG_WARNING("No implementation available");
         return {};
     }
     return impl_->join_multicast_group(multicast_address, interface_address);
@@ -359,7 +359,7 @@ boost::system::error_code rav::ExtendedUdpSocket::leave_multicast_group(
     const boost::asio::ip::address_v4& multicast_address, const boost::asio::ip::address_v4& interface_address
 ) const {
     if (impl_ == nullptr) {
-        RAV_WARNING("No implementation available");
+        RAV_LOG_WARNING("No implementation available");
         return {};
     }
     return impl_->leave_multicast_group(multicast_address, interface_address);
@@ -368,7 +368,7 @@ boost::system::error_code rav::ExtendedUdpSocket::leave_multicast_group(
 boost::system::error_code
 rav::ExtendedUdpSocket::set_multicast_outbound_interface(const boost::asio::ip::address_v4& interface_address) const {
     if (impl_ == nullptr) {
-        RAV_WARNING("No implementation available");
+        RAV_LOG_WARNING("No implementation available");
         return {};
     }
     return impl_->set_multicast_outbound_interface(interface_address);
@@ -376,7 +376,7 @@ rav::ExtendedUdpSocket::set_multicast_outbound_interface(const boost::asio::ip::
 
 boost::system::error_code rav::ExtendedUdpSocket::set_multicast_loopback(const bool enable) const {
     if (impl_ == nullptr) {
-        RAV_WARNING("No implementation available");
+        RAV_LOG_WARNING("No implementation available");
         return {};
     }
     return impl_->set_multicast_loopback(enable);

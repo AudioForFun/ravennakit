@@ -63,15 +63,15 @@ int main(int const argc, char* argv[]) {
     const auto advertiser = rav::dnssd::Advertiser::create(io_context);
 
     if (advertiser == nullptr) {
-        RAV_ERROR("Error: no dnssd advertiser implementation available for this platform");
+        RAV_LOG_ERROR("Error: no dnssd advertiser implementation available for this platform");
         return -1;
     }
 
     advertiser->on_error = [](const auto& error_message) {
-        RAV_ERROR("Advertiser error: {}", error_message);
+        RAV_LOG_ERROR("Advertiser error: {}", error_message);
     };
     advertiser->on_name_conflict = [](const auto* reg_type, const auto* name) {
-        RAV_CRITICAL("Name conflict: {} {}", reg_type, name);
+        RAV_LOG_CRITICAL("Name conflict: {} {}", reg_type, name);
     };
 
     const auto service_id = advertiser->register_service(
@@ -82,7 +82,7 @@ int main(int const argc, char* argv[]) {
         io_context.run();
     });
 
-    RAV_INFO("Enter key=value to update the TXT record, or q to exit...");
+    RAV_LOG_INFO("Enter key=value to update the TXT record, or q to exit...");
 
     std::string cmd;
     while (true) {
@@ -100,11 +100,11 @@ int main(int const argc, char* argv[]) {
                 // Schedule the updates on the io_context thread because the advertiser is not thread-safe.
                 boost::asio::post(io_context, [=, &advertiser] {
                     advertiser->update_txt_record(service_id, txt_record);
-                    RAV_INFO("Updated txt record");
+                    RAV_LOG_INFO("Updated txt record");
                 });
             }
         } catch (const std::exception& e) {
-            RAV_ERROR("Failed to update txt record: {}", e.what());
+            RAV_LOG_ERROR("Failed to update txt record: {}", e.what());
         }
     }
 

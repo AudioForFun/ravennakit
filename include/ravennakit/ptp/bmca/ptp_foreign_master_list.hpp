@@ -48,7 +48,7 @@ class ForeignMasterList {
             // IEEE 1588-2019: 9.3.2.5.b If message is not the most recent one, it is not qualified.
             if (e->most_recent_announce_message) {
                 if (announce_message.header.sequence_id < e->most_recent_announce_message->header.sequence_id) {
-                    RAV_WARNING("Discarding announce message because it is not the most recent one");
+                    RAV_LOG_WARNING("Discarding announce message because it is not the most recent one");
                     return;
                 }
             }

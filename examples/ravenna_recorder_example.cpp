@@ -47,7 +47,7 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
         const bool is_recording = wav_writer_.get() != nullptr;
         if (wav_writer_) {
             if (!wav_writer_->finalize()) {
-                RAV_ERROR("Failed to finalize wav file");
+                RAV_LOG_ERROR("Failed to finalize wav file");
             }
             wav_writer_.reset();
         }
@@ -55,7 +55,7 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
             file_output_stream_.reset();
         }
         if (is_recording) {
-            RAV_INFO("Closed audio recording");
+            RAV_LOG_INFO("Closed audio recording");
         }
     }
 
@@ -71,12 +71,12 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
         }
 
         if (parameters.streams.empty()) {
-            RAV_WARNING("No streams available");
+            RAV_LOG_WARNING("No streams available");
             return;
         }
 
         if (!parameters.audio_format.is_valid()) {
-            RAV_WARNING("Invalid audio format");
+            RAV_LOG_WARNING("Invalid audio format");
             return;
         }
 
@@ -131,7 +131,7 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
                 rav::swap_bytes(audio_data_.data(), audio_data_.size(), audio_format_.bytes_per_sample());
             }
             if (!wav_writer_->write_audio_data(audio_data_.data(), audio_data_.size())) {
-                RAV_ERROR("Failed to write audio data");
+                RAV_LOG_ERROR("Failed to write audio data");
             }
         }
     }
@@ -150,18 +150,18 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
 
     void start_recording() {
         if (!audio_format_.is_valid()) {
-            RAV_ERROR("Invalid audio format");
+            RAV_LOG_ERROR("Invalid audio format");
             return;
         }
 
         if (session_name_.empty()) {
-            RAV_ERROR("No session name");
+            RAV_LOG_ERROR("No session name");
             return;
         }
 
         auto file_path = rav::File(session_name_ + ".wav").absolute();
 
-        RAV_INFO("Start recording stream to: \"{}\" to file: {}", session_name_, file_path.to_string());
+        RAV_LOG_INFO("Start recording stream to: \"{}\" to file: {}", session_name_, file_path.to_string());
 
         file_output_stream_ = std::make_unique<rav::FileOutputStream>(file_path);
         wav_writer_ = std::make_unique<rav::WavAudioFormat::Writer>(
@@ -203,7 +203,7 @@ int main(int const argc, char* argv[]) {
 
     auto* iface = rav::NetworkInterfaceList::get_system_interfaces().find_by_string(interface);
     if (iface == nullptr) {
-        RAV_ERROR("No network interface found with search string: {}", interface);
+        RAV_LOG_ERROR("No network interface found with search string: {}", interface);
         return -1;
     }
 
@@ -221,7 +221,7 @@ int main(int const argc, char* argv[]) {
         config.session_name = stream_name;
         auto id = node.create_receiver(config).get();
         if (!id) {
-            RAV_ERROR("Failed to create receiver: {}", id.error());
+            RAV_LOG_ERROR("Failed to create receiver: {}", id.error());
             return -1;
         }
         recorders.emplace_back(std::make_unique<StreamRecorder>(node, *id));

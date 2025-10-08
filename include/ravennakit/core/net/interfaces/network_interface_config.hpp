@@ -15,8 +15,6 @@
 #include "ravennakit/core/json.hpp"
 #include "ravennakit/core/string_parser.hpp"
 #include "ravennakit/core/net/asio/asio_helpers.hpp"
-#include "ravennakit/rtp/detail/rtp_audio_receiver.hpp"
-#include "ravennakit/rtp/detail/rtp_audio_sender.hpp"
 
 #include <vector>
 

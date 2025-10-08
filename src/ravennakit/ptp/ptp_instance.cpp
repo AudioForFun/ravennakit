@@ -158,7 +158,7 @@ tl::expected<void, rav::ptp::Error> rav::ptp::Instance::update_ports(const std::
 
     for (auto num : ports_no_longer_in_use) {
         if (!remove_port(num)) {
-            RAV_ERROR("Failed to remove port {}", num);
+            RAV_LOG_ERROR("Failed to remove port {}", num);
         }
     }
 
@@ -182,7 +182,7 @@ bool rav::ptp::Instance::remove_port(uint16_t port_number) {
     if (it != ports_.end()) {
         ports_.erase(it, ports_.end());
         default_ds_.number_ports = static_cast<uint16_t>(ports_.size());
-        RAV_TRACE("Removed port {}, new total amount of ports: {}", port_number, default_ds_.number_ports);
+        RAV_LOG_TRACE("Removed port {}, new total amount of ports: {}", port_number, default_ds_.number_ports);
 
         for (auto* s : subscribers_) {
             s->ptp_port_removed(port_number);
@@ -246,7 +246,7 @@ bool rav::ptp::Instance::set_recommended_state(
 
     if (state_decision_code == StateDecisionCode::s1) {
         if (!announce_message) {
-            RAV_ERROR("State decision code is S1 needs announcement message");
+            RAV_LOG_ERROR("State decision code is S1 needs announcement message");
             return false;
         }
 
@@ -269,7 +269,7 @@ bool rav::ptp::Instance::set_recommended_state(
         time_properties_ds_.time_source = announce_message->time_source;
 
         if (parent_changed || gm_changed) {
-            RAV_INFO("{}", parent_ds_.to_string());
+            RAV_LOG_INFO("{}", parent_ds_.to_string());
             for (auto* s : subscribers_) {
                 s->ptp_parent_changed(parent_ds_);
             }
@@ -290,7 +290,7 @@ void rav::ptp::Instance::execute_state_decision_event() {
 
     // IEEE1588-2019: 9.2.6.9
     if (all_ports_initializing) {
-        RAV_TRACE("Not executing state decision event because all ports are in initializing state");
+        RAV_LOG_TRACE("Not executing state decision event because all ports are in initializing state");
         return;
     }
 
@@ -318,14 +318,14 @@ bool rav::ptp::Instance::should_process_ptp_messages(const MessageHeader& header
     // IEEE1588-2019: 9.5.2.1
     // Comparing the clock identity, because each port of this instance should have (has) the same clock identity.
     if (header.source_port_identity.clock_identity == default_ds_.clock_identity) {
-        RAV_TRACE("Discarding message from own instance: {}", header.to_string());
+        RAV_LOG_TRACE("Discarding message from own instance: {}", header.to_string());
         return false;
     }
 
     // IEEE1588-2019: 9.1
     // Unless the alternate master option is active, messages from alternate masters should be discarded.
     if (header.flags.alternate_master_flag) {
-        RAV_TRACE("Discarding message with alternate master flag: {}", header.to_string());
+        RAV_LOG_TRACE("Discarding message with alternate master flag: {}", header.to_string());
         return false;
     }
 
@@ -367,7 +367,7 @@ void rav::ptp::Instance::update_local_ptp_clock(const Measurement<double>& measu
     if (std::fabs(measurement.offset_from_master) >= Stats::k_clock_step_threshold_seconds) {
         local_clock_.step(measurement.offset_from_master);
         ptp_stats_.offset_from_master.reset();
-        RAV_TRACE("Stepping clock: offset_from_master={}", measurement.offset_from_master);
+        RAV_LOG_TRACE("Stepping clock: offset_from_master={}", measurement.offset_from_master);
     } else {
         // Add the measurement to the offset statistics in any case to allow the outlier filtering to dynamically adjust.
         ptp_stats_.offset_from_master.add(measurement.offset_from_master);
@@ -394,7 +394,7 @@ void rav::ptp::Instance::update_local_ptp_clock(const Measurement<double>& measu
             TRACY_PLOT("Frequency ratio", local_clock_.get_frequency_ratio());
 
             if (stats_callback_throttle_.update()) {
-                RAV_TRACE(
+                RAV_LOG_TRACE(
                     "Clock stats: offset_from_master=[min={}, max={}], ratio={}, ignored_outliers={}",
                     ptp_stats_.filtered_offset.min() * 1000.0, ptp_stats_.filtered_offset.max() * 1000.0,
                     local_clock_.get_frequency_ratio(), ptp_stats_.ignored_outliers
@@ -437,7 +437,7 @@ void rav::ptp::Instance::schedule_state_decision_timer() {
             return;
         }
         if (error) {
-            RAV_ERROR("State decision timer error: {}", error.message());
+            RAV_LOG_ERROR("State decision timer error: {}", error.message());
             return;
         }
         execute_state_decision_event();

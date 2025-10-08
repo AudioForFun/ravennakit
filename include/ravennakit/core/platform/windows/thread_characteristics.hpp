@@ -28,7 +28,7 @@ struct WindowsThreadCharacteristics {
     WindowsThreadCharacteristics(const LPCSTR task_name = TEXT("Pro Audio")) {
         h_task = AvSetMmThreadCharacteristics(task_name, &task_index);
         if (h_task == nullptr) {
-            RAV_ERROR("Failed to set thread priority");
+            RAV_LOG_ERROR("Failed to set thread priority");
         }
     }
 

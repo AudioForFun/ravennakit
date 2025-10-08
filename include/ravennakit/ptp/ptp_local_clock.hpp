@@ -43,6 +43,16 @@ class LocalClock {
     }
 
     /**
+     * Returns the adjusted time of the clock, which is the time in the timescale of the grand master clock.
+     * @param host_time_nanos The host time in nanoseconds.
+     * @return The adjusted time in the timescale of the grand master clock.
+     */
+    [[nodiscard]] Timestamp get_adjusted_time(const uint64_t host_time_nanos) const {
+        TRACY_ZONE_SCOPED;
+        return get_adjusted_time(Timestamp(host_time_nanos));
+    }
+
+    /**
      * Adjusts the correction of this clock by adding the given shift and frequency ratio.
      * @param offset_from_master The shift to apply to the clock.
      */

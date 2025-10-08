@@ -37,11 +37,11 @@ class qos_flow {
         if (qos_handle_) {
             if (flow_id_) {
                 if (!QOSRemoveSocketFromFlow(qos_handle_, 0, flow_id_, 0)) {
-                    RAV_ERROR("Failed to close QOS flow");
+                    RAV_LOG_ERROR("Failed to close QOS flow");
                 }
             }
             if (!QOSCloseHandle(qos_handle_)) {
-                RAV_ERROR("Failed to close QOS handle");
+                RAV_LOG_ERROR("Failed to close QOS handle");
             }
         }
     }
@@ -63,12 +63,12 @@ class qos_flow {
         boost::system::error_code ec;
         auto endpoint = socket.local_endpoint(ec);
         if (ec) {
-            RAV_ERROR("Failed to get local endpoint");
+            RAV_LOG_ERROR("Failed to get local endpoint");
             return false;
         }
         auto local_address = endpoint.address();
         if (!local_address.is_v4()) {
-            RAV_ERROR("Socket must be ipv4");  // ipv6 not supported at the moment but can be.
+            RAV_LOG_ERROR("Socket must be ipv4");  // ipv6 not supported at the moment but can be.
             return false;
         }
 
@@ -79,7 +79,7 @@ class qos_flow {
         sockaddr4->sin_addr.s_addr = htonl(local_address.to_v4().to_uint());
 
         if (!QOSAddSocketToFlow(qos_handle_, native_socket_handle, &sockaddr, QOSTrafficTypeBestEffort, QOS_NON_ADAPTIVE_FLOW, &flow_id_)) {
-            RAV_ERROR("Failed to add socket to flow");
+            RAV_LOG_ERROR("Failed to add socket to flow");
             return false;
         }
 
@@ -93,17 +93,17 @@ class qos_flow {
      */
     bool set_dscp_value(DWORD value) {
         if (qos_handle_ == nullptr) {
-            RAV_ERROR("Invalid QOS handle");
+            RAV_LOG_ERROR("Invalid QOS handle");
             return false;
         }
 
         if (flow_id_ == 0) {
-            RAV_ERROR("Invalid QOS flow id");
+            RAV_LOG_ERROR("Invalid QOS flow id");
             return false;
         }
 
         if (!QOSSetFlow(qos_handle_, flow_id_, QOSSetOutgoingDSCPValue, sizeof(value), &value, 0, nullptr)) {
-            RAV_ERROR("QOSSetFlow failed with error: {}", GetLastError());
+            RAV_LOG_ERROR("QOSSetFlow failed with error: {}", GetLastError());
             return false;
         }
 

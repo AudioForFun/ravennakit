@@ -92,6 +92,7 @@ def build_macos_for_arch(args, build_config: Config, path_to_build: Path, arch: 
 
     cmake.option('RAV_ABORT_ON_ASSERT', 'ON')
     cmake.option('RAV_BENCHMARKS', 'ON')
+    cmake.option('RAV_ENABLE_DEBUG', 'ON')
 
     if spdlog:
         cmake.option('RAV_ENABLE_SPDLOG', 'ON')
@@ -142,6 +143,7 @@ def build_windows(args, arch, build_config: Config, subfolder: str, spdlog: bool
 
     cmake.option('RAV_ABORT_ON_ASSERT', 'ON')
     cmake.option('RAV_BENCHMARKS', 'ON')
+    cmake.option('RAV_ENABLE_DEBUG', 'ON')
 
     if spdlog:
         cmake.option('RAV_ENABLE_SPDLOG', 'ON')
@@ -173,6 +175,7 @@ def build_linux(args, arch, build_config: Config, subfolder: str, spdlog: bool =
 
     cmake.option('RAV_ABORT_ON_ASSERT', 'ON')
     cmake.option('RAV_BENCHMARKS', 'ON')
+    cmake.option('RAV_ENABLE_DEBUG', 'ON')
 
     if spdlog:
         cmake.option('RAV_ENABLE_SPDLOG', 'ON')
@@ -219,6 +222,8 @@ def build_android(args, arch, build_config: Config, subfolder: str, spdlog: bool
 
     if spdlog:
         cmake.option('RAV_ENABLE_SPDLOG', 'ON')
+
+    cmake.option('RAV_ENABLE_DEBUG', 'ON')
 
     cmake.configure()
     cmake.build()

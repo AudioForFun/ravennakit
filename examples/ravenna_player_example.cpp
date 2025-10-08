@@ -84,7 +84,7 @@ class WavFilePlayer {
             return;
         }
 
-        const auto ptp_ts = static_cast<uint32_t>(clock.now().to_samples(audio_format_.sample_rate));
+        const auto ptp_ts = static_cast<uint32_t>(clock.now().to_rtp_timestamp(audio_format_.sample_rate));
         // Positive means audio device is ahead of the PTP clock, negative means behind
         const auto drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(rtp_ts_));
 
@@ -104,12 +104,12 @@ class WavFilePlayer {
 
         auto result = reader_->read_audio_data(audio_buffer_.data(), audio_buffer_.size());
         if (!result) {
-            RAV_ERROR("Failed to read audio data: {}", rav::InputStream::to_string(result.error()));
+            RAV_LOG_ERROR("Failed to read audio data: {}", rav::InputStream::to_string(result.error()));
             return;
         }
         const auto num_read = result.value();
         if (num_read == 0) {
-            RAV_ERROR("No bytes read");
+            RAV_LOG_ERROR("No bytes read");
         }
 
         if (audio_format_.byte_order == rav::AudioFormat::ByteOrder::le) {
@@ -120,7 +120,7 @@ class WavFilePlayer {
         if (!ravenna_node_.send_data_realtime(
                 id_, rav::BufferView(audio_buffer_.data(), num_read).const_view(), rtp_ts_
             )) {
-            RAV_ERROR("Failed to send audio data");
+            RAV_LOG_ERROR("Failed to send audio data");
         }
 
         rtp_ts_ += static_cast<uint32_t>(num_read) / audio_format_.bytes_per_frame();
@@ -163,7 +163,7 @@ int main(int const argc, char* argv[]) {
 
     const auto network_config = rav::parse_network_interface_config_from_string(interfaces);
     if (!network_config) {
-        RAV_ERROR("Failed to parse network interface config");
+        RAV_LOG_ERROR("Failed to parse network interface config");
         return 1;
     }
 

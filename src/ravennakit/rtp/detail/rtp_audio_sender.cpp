@@ -46,14 +46,14 @@ bool setup_writer(
     for (size_t i = 0; i < writer.sockets.size(); ++i) {
         if (!writer.sockets[i].is_open()) {
             if (const auto ec = setup_socket(writer.sockets[i])) {
-                RAV_ERROR("Failed to open socket for sending: {}", ec.message());
+                RAV_LOG_ERROR("Failed to open socket for sending: {}", ec.message());
                 return false;
             }
         }
         boost::system::error_code ec;
         writer.sockets[i].set_option(boost::asio::ip::multicast::outbound_interface(interfaces[i]), ec);
         if (ec) {
-            RAV_ERROR("Failed to set outbound interface: {}", ec.message());
+            RAV_LOG_ERROR("Failed to set outbound interface: {}", ec.message());
         }
     }
 
@@ -96,7 +96,7 @@ void reset_writer(rav::rtp::AudioSender::Writer& writer) {
             boost::system::error_code ec;
             socket.close(ec);
             if (ec) {
-                RAV_ERROR("Failed to close socket: {}", ec.message());
+                RAV_LOG_ERROR("Failed to close socket: {}", ec.message());
             }
         }
     }
@@ -138,7 +138,7 @@ bool schedule_data_for_sending_realtime(
         rtp_packet.encode(writer.intermediate_send_buffer.data(), size_per_packet, writer.rtp_packet_buffer);
 
         if (writer.rtp_packet_buffer.size() > rav::aes67::constants::k_max_payload) {
-            RAV_ERROR("Exceeding max payload: {}", writer.rtp_packet_buffer.size());
+            RAV_LOG_ERROR("Exceeding max payload: {}", writer.rtp_packet_buffer.size());
             return false;
         }
 
@@ -148,12 +148,12 @@ bool schedule_data_for_sending_realtime(
         std::memcpy(packet.payload.data(), writer.rtp_packet_buffer.data(), writer.rtp_packet_buffer.size());
 
         if (writer.outgoing_data.push(packet)) {
-            // RAV_TRACE(
+            // RAV_LOG_TRACE(
             // "Scheduled RTP packet: {} bytes, timestamp: {}, seq: {}", writer.rtp_packet_buffer.size(),
             // packet.rtp_timestamp, rtp_packet.get_sequence_number().value()
             // );
         } else {
-            RAV_ERROR(
+            RAV_LOG_ERROR(
                 "Failed to schedule RTP packet: {} bytes, timestamp: {}, seq: {}", writer.rtp_packet_buffer.size(), packet.rtp_timestamp,
                 rtp_packet.get_sequence_number().value()
             );
@@ -185,7 +185,7 @@ rav::rtp::AudioSender::~AudioSender() {
 bool rav::rtp::AudioSender::add_writer(const Id id, const WriterParameters& parameters, const ArrayOfAddresses& interfaces) {
     for (auto& writer : writers) {
         if (writer.id == id) {
-            RAV_WARNING("A writer for given id already exists");
+            RAV_LOG_WARNING("A writer for given id already exists");
             return false;
         }
     }
@@ -193,7 +193,7 @@ bool rav::rtp::AudioSender::add_writer(const Id id, const WriterParameters& para
     for (auto& writer : writers) {
         const auto guard = writer.rw_lock.lock_exclusive();
         if (!guard) {
-            RAV_ERROR("Failed to exclusively lock writer");
+            RAV_LOG_ERROR("Failed to exclusively lock writer");
             return false;
         }
 
@@ -201,7 +201,7 @@ bool rav::rtp::AudioSender::add_writer(const Id id, const WriterParameters& para
             continue;  // In use already
         }
 
-        RAV_TRACE("Adding writer {}", id.value());
+        RAV_LOG_TRACE("Adding writer {}", id.value());
         return setup_writer(writer, id, parameters, interfaces);
     }
 
@@ -213,10 +213,10 @@ bool rav::rtp::AudioSender::remove_writer(const Id id) {
         if (writer.id == id) {
             const auto guard = writer.rw_lock.lock_exclusive();
             if (!guard) {
-                RAV_ERROR("Failed to exclusively lock writer");
+                RAV_LOG_ERROR("Failed to exclusively lock writer");
                 return false;
             }
-            RAV_TRACE("Removing writer {}", writer.id.value());
+            RAV_LOG_TRACE("Removing writer {}", writer.id.value());
             reset_writer(writer);
             return true;
         }
@@ -229,7 +229,7 @@ bool rav::rtp::AudioSender::set_interfaces(const ArrayOfAddresses& interfaces) {
     for (auto& writer : writers) {
         const auto guard = writer.rw_lock.lock_exclusive();
         if (!guard) {
-            RAV_ERROR("Failed to exclusively lock writer");
+            RAV_LOG_ERROR("Failed to exclusively lock writer");
             return false;
         }
 
@@ -243,7 +243,7 @@ bool rav::rtp::AudioSender::set_interfaces(const ArrayOfAddresses& interfaces) {
             boost::system::error_code ec;
             writer.sockets[i].set_option(boost::asio::ip::multicast::outbound_interface(interfaces[i]), ec);
             if (ec) {
-                RAV_ERROR("Failed to set interface: {}", ec.message());
+                RAV_LOG_ERROR("Failed to set interface: {}", ec.message());
             }
         }
     }
@@ -282,15 +282,15 @@ void rav::rtp::AudioSender::send_outgoing_packets() {
                     boost::asio::buffer(packet->payload.data(), packet->payload_size_bytes), writer.destinations[j], 0, ec
                 );
                 if (set_error(*this, ec)) {
-                    RAV_ERROR("Failed to send RTP packet: {}", ec.message());
+                    RAV_LOG_ERROR("Failed to send RTP packet: {}", ec.message());
                 }
 
                 rtp::PacketView rtp_packet_view(packet->payload.data(), packet->payload_size_bytes);
                 if (!rtp_packet_view.validate()) {
-                    RAV_ERROR("Failed to validate RTP packet");
+                    RAV_LOG_ERROR("Failed to validate RTP packet");
                 }
 
-                // RAV_TRACE(
+                // RAV_LOG_TRACE(
                 // "Send RTP packet:      {} bytes, timestamp: {}, seq: {}", writer.rtp_packet_buffer.size(),
                 // rtp_packet_view.timestamp(), rtp_packet_view.sequence_number()
                 // );
@@ -331,17 +331,17 @@ bool rav::rtp::AudioSender::send_audio_data_realtime(
         }
 
         if (input_buffer.find_max_abs() > 1.0f) {
-            RAV_WARNING("Audio overload");
+            RAV_LOG_WARNING("Audio overload");
         }
 
         if (input_buffer.num_frames() > k_max_num_frames) {
-            RAV_WARNING("Input buffer size exceeds maximum size");
+            RAV_LOG_WARNING("Input buffer size exceeds maximum size");
             return false;
         }
 
         auto audio_format = writer.audio_format;
         if (audio_format.num_channels != input_buffer.num_channels()) {
-            RAV_ERROR("Channel mismatch: expected {}, got {}", audio_format.num_channels, input_buffer.num_channels());
+            RAV_LOG_ERROR("Channel mismatch: expected {}, got {}", audio_format.num_channels, input_buffer.num_channels());
             return false;
         }
 
@@ -354,7 +354,7 @@ bool rav::rtp::AudioSender::send_audio_data_realtime(
                 reinterpret_cast<int16_t*>(intermediate_buffer.data()), 0, 0
             );
             if (!ok) {
-                RAV_WARNING("Failed to convert audio data");
+                RAV_LOG_WARNING("Failed to convert audio data");
             }
         } else if (audio_format.encoding == AudioEncoding::pcm_s24) {
             const auto ok = AudioData::convert<
@@ -363,10 +363,10 @@ bool rav::rtp::AudioSender::send_audio_data_realtime(
                 reinterpret_cast<int24_t*>(intermediate_buffer.data()), 0, 0
             );
             if (!ok) {
-                RAV_WARNING("Failed to convert audio data");
+                RAV_LOG_WARNING("Failed to convert audio data");
             }
         } else {
-            RAV_ERROR("Unsupported encoding");
+            RAV_LOG_ERROR("Unsupported encoding");
             return false;
         }
 

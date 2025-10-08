@@ -262,7 +262,7 @@ void rav::HttpClient::Session::on_read(boost::beast::error_code ec, std::size_t 
 
         // not_connected happens sometimes, so don't bother reporting it.
         if (ec && ec != boost::beast::errc::not_connected) {
-            RAV_ERROR("HttpClient::Session::on_read: Error closing socket: {}", ec.message());
+            RAV_LOG_ERROR("HttpClient::Session::on_read: Error closing socket: {}", ec.message());
         }
 
         if (!owner_->requests_.empty()) {

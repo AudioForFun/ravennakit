@@ -49,12 +49,12 @@ int main() {
     // Start the server
     const auto result = server.start("127.0.0.1", 8080);
     if (result.has_error()) {
-        RAV_ERROR("Error starting server: {}", result.error().message());
+        RAV_LOG_ERROR("Error starting server: {}", result.error().message());
         return 1;
     }
 
-    RAV_INFO("Server started at http://{}", server.get_address_string());
-    RAV_INFO("Visit http://{}/shutdown to stop the server", server.get_address_string());
+    RAV_LOG_INFO("Server started at http://{}", server.get_address_string());
+    RAV_LOG_INFO("Visit http://{}/shutdown to stop the server", server.get_address_string());
 
     // Run the io_context to start accepting connections
     io_context.run();

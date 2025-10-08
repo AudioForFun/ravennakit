@@ -41,19 +41,19 @@ int main(int const argc, char* argv[]) {
     rav::rtsp::Client client(io_context);
 
     client.on_connect_event = [path, &client](const rav::rtsp::Connection::ConnectEvent&) {
-        RAV_INFO("Connected, send DESCRIBE request");
+        RAV_LOG_INFO("Connected, send DESCRIBE request");
         client.async_describe(path);
     };
 
     client.on_request_event = [](const rav::rtsp::Connection::RequestEvent& event) {
-        RAV_INFO(
+        RAV_LOG_INFO(
             "{}\n{}", event.rtsp_request.to_debug_string(true),
             rav::string_replace(event.rtsp_request.data, "\r\n", "\n")
         );
     };
 
     client.on_response_event = [](const rav::rtsp::Connection::ResponseEvent& event) {
-        RAV_INFO(
+        RAV_LOG_INFO(
             "{}\n{}", event.rtsp_response.to_debug_string(true),
             rav::string_replace(event.rtsp_response.data, "\r\n", "\n")
         );

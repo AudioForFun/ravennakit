@@ -66,7 +66,7 @@ rav::RavennaSender::RavennaSender(
     };
 
     if (!ptp_instance_.subscribe(this)) {
-        RAV_ERROR("Failed to subscribe to PTP instance");
+        RAV_LOG_ERROR("Failed to subscribe to PTP instance");
     }
 
     generate_auto_addresses_if_needed(false);
@@ -76,7 +76,7 @@ rav::RavennaSender::~RavennaSender() {
     std::ignore = rtp_audio_sender_.remove_writer(id_);
 
     if (!ptp_instance_.unsubscribe(this)) {
-        RAV_ERROR("Failed to unsubscribe from PTP instance");
+        RAV_LOG_ERROR("Failed to unsubscribe from PTP instance");
     }
 
     if (advertisement_id_.is_valid()) {
@@ -87,13 +87,13 @@ rav::RavennaSender::~RavennaSender() {
 
     if (nmos_node_ != nullptr) {
         if (!nmos_node_->remove_sender(&nmos_sender_)) {
-            RAV_ERROR("Failed to remove NMOS receiver with ID: {}", boost::uuids::to_string(nmos_sender_.id));
+            RAV_LOG_ERROR("Failed to remove NMOS receiver with ID: {}", boost::uuids::to_string(nmos_sender_.id));
         }
         if (!nmos_node_->remove_flow(&nmos_flow_)) {
-            RAV_ERROR("Failed to remove NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
+            RAV_LOG_ERROR("Failed to remove NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
         }
         if (!nmos_node_->remove_source(&nmos_source_)) {
-            RAV_ERROR("Failed to remove NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
+            RAV_LOG_ERROR("Failed to remove NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
         }
     }
 }
@@ -269,13 +269,13 @@ void rav::RavennaSender::set_nmos_node(nmos::Node* nmos_node) {
         RAV_ASSERT(nmos_flow_.is_valid(), "NMOS flow must be valid at this point");
         RAV_ASSERT(nmos_source_.is_valid(), "NMOS source must be valid at this point");
         if (!nmos_node_->add_or_update_source(&nmos_source_)) {
-            RAV_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
+            RAV_LOG_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
         }
         if (!nmos_node_->add_or_update_flow(&nmos_flow_)) {
-            RAV_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
+            RAV_LOG_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
         }
         if (!nmos_node_->add_or_update_sender(&nmos_sender_)) {
-            RAV_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
+            RAV_LOG_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
         }
     }
 }
@@ -366,12 +366,12 @@ void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) 
 
     const auto sdp = build_sdp();  // Should the SDP be cached and updated on changes?
     if (!sdp) {
-        RAV_ERROR("Failed to build SDP: {}", sdp.error());
+        RAV_LOG_ERROR("Failed to build SDP: {}", sdp.error());
         event.rtsp_connection.async_send_response(error_response);
         return;
     }
 
-    // RAV_TRACE("SDP:\n{}", rav::sdp::to_string(*sdp, "\n").value_or("n/a"));
+    // RAV_LOG_TRACE("SDP:\n{}", rav::sdp::to_string(*sdp, "\n").value_or("n/a"));
 
     auto response = rtsp::Response(200, "OK", rav::sdp::to_string(*sdp).value_or("n/a"));
     if (const auto* cseq = event.rtsp_request.rtsp_headers.get("cseq")) {
@@ -399,13 +399,13 @@ void rav::RavennaSender::send_announce() const {
     }
 
     if (network_interface_config_.empty()) {
-        RAV_ERROR("No interface addresses set");
+        RAV_LOG_ERROR("No interface addresses set");
         return;
     }
 
     auto sdp = build_sdp();
     if (!sdp) {
-        RAV_ERROR("Failed to encode SDP: {}", sdp.error());
+        RAV_LOG_ERROR("Failed to encode SDP: {}", sdp.error());
         return;
     }
 
@@ -437,7 +437,7 @@ void rav::RavennaSender::update_nmos() {
             if (iface != nullptr) {
                 nmos_sender_.interface_bindings.push_back(*iface);
             } else {
-                RAV_WARNING("No interface for rank {}", dst.interface_by_rank.to_ordinal_latin());
+                RAV_LOG_WARNING("No interface for rank {}", dst.interface_by_rank.to_ordinal_latin());
             }
         }
     }
@@ -453,13 +453,13 @@ void rav::RavennaSender::update_nmos() {
 
     if (nmos_node_ != nullptr) {
         if (!nmos_node_->add_or_update_source(&nmos_source_)) {
-            RAV_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
+            RAV_LOG_ERROR("Failed to add NMOS source with ID: {}", boost::uuids::to_string(nmos_source_.id));
         }
         if (!nmos_node_->add_or_update_flow(&nmos_flow_)) {
-            RAV_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
+            RAV_LOG_ERROR("Failed to add NMOS flow with ID: {}", boost::uuids::to_string(nmos_flow_.id));
         }
         if (!nmos_node_->add_or_update_sender(&nmos_sender_)) {
-            RAV_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
+            RAV_LOG_ERROR("Failed to add NMOS sender with ID: {}", boost::uuids::to_string(nmos_sender_.id));
         }
     }
 }
@@ -468,7 +468,7 @@ void rav::RavennaSender::update_advertisement() {
     RAV_ASSERT(rtsp_path_by_id_.empty() == rtsp_path_by_name_.empty(), "Paths should be either both empty or both set");
 
     if (!rtsp_path_by_id_.empty()) {
-        RAV_TRACE("Unregistering RTSP path handler");
+        RAV_LOG_TRACE("Unregistering RTSP path handler");
         rtsp_server_.unregister_handler(this);
         rtsp_path_by_name_.clear();
         rtsp_path_by_id_.clear();
@@ -476,7 +476,7 @@ void rav::RavennaSender::update_advertisement() {
 
     // Stop DNS-SD advertisement
     if (advertisement_id_.is_valid()) {
-        RAV_TRACE("Unregistering sender advertisement");
+        RAV_LOG_TRACE("Unregistering sender advertisement");
         advertiser_.unregister_service(advertisement_id_);
         advertisement_id_ = {};
     }
@@ -492,13 +492,13 @@ void rav::RavennaSender::update_advertisement() {
         rtsp_path_by_name_ = fmt::format("/by-name/{}", configuration_.session_name);
         rtsp_path_by_id_ = fmt::format("/by-id/{}", id_.to_string());
 
-        RAV_TRACE("Registering RTSP path handler for paths {} and {}", rtsp_path_by_name_, rtsp_path_by_id_);
+        RAV_LOG_TRACE("Registering RTSP path handler for paths {} and {}", rtsp_path_by_name_, rtsp_path_by_id_);
         rtsp_server_.register_handler(rtsp_path_by_name_, this);
         rtsp_server_.register_handler(rtsp_path_by_id_, this);
     }
 
     if (!advertisement_id_.is_valid()) {
-        RAV_TRACE("Registering sender advertisement");
+        RAV_LOG_TRACE("Registering sender advertisement");
         advertisement_id_ = advertiser_.register_service(
             "_rtsp._tcp,_ravenna_session", configuration_.session_name.c_str(), nullptr, rtsp_server_.port(), {}, false, false
         );
@@ -624,7 +624,7 @@ bool rav::RavennaSender::generate_auto_addresses_if_needed(std::vector<Destinati
             if (iface != nullptr) {
                 auto addr = network_interface_config_.get_interface_ipv4_address(dst.interface_by_rank.value());
                 if (addr.is_unspecified()) {
-                    RAV_WARNING("Invalid interface address for rank {}", dst.interface_by_rank.value());
+                    RAV_LOG_WARNING("Invalid interface address for rank {}", dst.interface_by_rank.value());
                     continue;
                 }
                 // Construct a multicast address from the interface address
@@ -636,7 +636,7 @@ bool rav::RavennaSender::generate_auto_addresses_if_needed(std::vector<Destinati
                 );
                 changed = true;
 
-                RAV_TRACE(
+                RAV_LOG_TRACE(
                     "Generated {} multicast address {}", dst.interface_by_rank.to_ordinal_latin(), dst.endpoint.address().to_string()
                 );
             }
@@ -663,7 +663,7 @@ void rav::RavennaSender::restart_streaming() const {
     }
     const auto interfaces = network_interface_config_.get_array_of_interface_addresses<rtp::AudioSender::k_max_num_redundant_sessions>();
     if (!rtp_audio_sender_.add_writer(id_, params, interfaces)) {
-        RAV_ERROR("Failed to add writer");
+        RAV_LOG_ERROR("Failed to add writer");
     }
 }
 

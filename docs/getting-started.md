@@ -45,27 +45,27 @@ The following code snippet shows how to set up a RAVENNA node:
 ```cpp
 struct ravenna_node_subscriber final: rav::ravenna_node::subscriber, rav::rtp::rtp_stream_receiver::subscriber {
     void ravenna_node_discovered(const rav::dnssd::dnssd_browser::service_resolved& event) override {
-        RAV_INFO("RAVENNA node discovered: {}", event.description.to_string());
+        RAV_LOG_INFO("RAVENNA node discovered: {}", event.description.to_string());
     }
 
     void ravenna_node_removed(const rav::dnssd::dnssd_browser::service_removed& event) override {
-        RAV_INFO("RAVENNA node removed: {}", event.description.to_string());
+        RAV_LOG_INFO("RAVENNA node removed: {}", event.description.to_string());
     }
 
     void ravenna_session_discovered(const rav::dnssd::dnssd_browser::service_resolved& event) override {
-        RAV_INFO("RAVENNA session discovered: {}", event.description.to_string());
+        RAV_LOG_INFO("RAVENNA session discovered: {}", event.description.to_string());
     }
 
     void ravenna_session_removed(const rav::dnssd::dnssd_browser::service_removed& event) override {
-        RAV_INFO("RAVENNA session removed: {}", event.description.to_string());
+        RAV_LOG_INFO("RAVENNA session removed: {}", event.description.to_string());
     }
 
     void ravenna_receiver_added(const rav::ravenna_receiver& receiver) override {
-        RAV_INFO("RAVENNA receiver added for: {}", receiver.get_session_name());
+        RAV_LOG_INFO("RAVENNA receiver added for: {}", receiver.get_session_name());
     }
 
     void rtp_stream_receiver_updated(const rav::rtp::rtp_stream_receiver::stream_updated_event& event) override {
-        RAV_INFO("Stream updated: {}", event.to_string());
+        RAV_LOG_INFO("Stream updated: {}", event.to_string());
     }
 };
 

@@ -189,7 +189,7 @@ class rav::HttpServer::Listener: public std::enable_shared_from_this<Listener> {
             boost::beast::error_code ec;
             acceptor_.close(ec);
             if (ec) {
-                RAV_ERROR("Error closing acceptor: {}", ec.message());
+                RAV_LOG_ERROR("Error closing acceptor: {}", ec.message());
             }
         }
     }
@@ -280,28 +280,28 @@ size_t rav::HttpServer::get_client_count() const {
 void rav::HttpServer::on_accept(boost::asio::ip::tcp::socket socket) {
     auto session = std::make_shared<ClientSession>(std::move(socket), this);
     session->start();
-    RAV_TRACE("Accepted new connection from {}", session->get_remote_address_string());
+    RAV_LOG_TRACE("Accepted new connection from {}", session->get_remote_address_string());
     client_sessions_.push_back(std::move(session));
 }
 
 void rav::HttpServer::on_listener_error(const boost::beast::error_code& ec, std::string_view what) const {
-    RAV_ERROR("Listener error: {}: {}", what, ec.message());
+    RAV_LOG_ERROR("Listener error: {}: {}", what, ec.message());
 }
 
 void rav::HttpServer::on_client_error(const boost::beast::error_code& ec, std::string_view what) const {
     if (ec == boost::beast::error::timeout) {
-        RAV_TRACE("Client timeout: {}", ec.message());
+        RAV_LOG_TRACE("Client timeout: {}", ec.message());
     } else {
-        RAV_ERROR("Client error: {}: {}", what, ec.message());
+        RAV_LOG_ERROR("Client error: {}: {}", what, ec.message());
     }
 }
 
 boost::beast::http::message_generator
 rav::HttpServer::on_request(const boost::beast::http::request<boost::beast::http::string_body>& request) {
     if (!request.body().empty()) {
-        RAV_INFO("{} {} {}", request.method_string(), request.target(), request.body().c_str());
+        RAV_LOG_INFO("{} {} {}", request.method_string(), request.target(), request.body().c_str());
     } else {
-        RAV_INFO("{} {}", request.method_string(), request.target());
+        RAV_LOG_INFO("{} {}", request.method_string(), request.target());
     }
 
     try {
@@ -315,12 +315,12 @@ rav::HttpServer::on_request(const boost::beast::http::request<boost::beast::http
             (*match)(request, response, parameters);
             auto result_int = response.result_int();
             if (result_int >= 200 && result_int < 300) {
-                RAV_INFO(
+                RAV_LOG_INFO(
                     "{} {} {}", result_int, response.reason(),
                     !response.body().empty() ? rav::string_replace(response.body(), "\r\n", "<crlf>") : ""
                 );
             } else {
-                RAV_WARNING("{} {} {}", result_int, response.reason(), !response.body().empty() ? response.body().c_str() : "");
+                RAV_LOG_WARNING("{} {} {}", result_int, response.reason(), !response.body().empty() ? response.body().c_str() : "");
             }
             return response;
         }
@@ -331,15 +331,15 @@ rav::HttpServer::on_request(const boost::beast::http::request<boost::beast::http
         res.keep_alive(request.keep_alive());
         res.body() = std::string("No matching handler");
         res.prepare_payload();
-        RAV_WARNING("Response: {} {}", res.result_int(), res.reason());
+        RAV_LOG_WARNING("Response: {} {}", res.result_int(), res.reason());
         return res;
     } catch (const std::exception& e) {
-        RAV_ERROR("Exception in handler: {}", e.what());
+        RAV_LOG_ERROR("Exception in handler: {}", e.what());
         Response res {boost::beast::http::status::internal_server_error, request.version()};
         res.set(boost::beast::http::field::content_type, "text/plain");
         res.body() = "Internal server error";
         res.prepare_payload();
-        RAV_WARNING("Response: {} {}", res.result_int(), res.reason());
+        RAV_LOG_WARNING("Response: {} {}", res.result_int(), res.reason());
         return res;
     }
 }
@@ -350,7 +350,7 @@ void rav::HttpServer::remove_client_session(const ClientSession* session) {
             client_sessions_.begin(), client_sessions_.end(),
             [session](const auto& s) {
                 if (s.get() == session) {
-                    RAV_TRACE("Removing client session");
+                    RAV_LOG_TRACE("Removing client session");
                     return true;
                 }
                 return false;

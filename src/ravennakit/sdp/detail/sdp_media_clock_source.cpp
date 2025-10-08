@@ -52,7 +52,7 @@ tl::expected<rav::sdp::MediaClockSource, std::string> rav::sdp::parse_media_cloc
             if (mode == "direct") {
                 clock.mode = MediaClockSource::ClockMode::direct;
             } else {
-                RAV_WARNING("Unsupported media clock mode: {}", *mode);
+                RAV_LOG_WARNING("Unsupported media clock mode: {}", *mode);
                 return tl::unexpected("media_clock: unsupported media clock mode");
             }
         } else {

@@ -55,12 +55,12 @@ class Ringbuffer {
         RAV_ASSERT(payload.size_bytes() > 0, "Payload size must be greater than 0.");
 
         if (payload.size_bytes() % bytes_per_frame_ != 0) {
-            RAV_ERROR("Payload size must be a multiple of bytes per frame.");
+            RAV_LOG_ERROR("Payload size must be a multiple of bytes per frame.");
             return false;
         }
 
         if (payload.size_bytes() > buffer_.size()) {
-            RAV_ERROR("Payload size is larger than the buffer size.");
+            RAV_LOG_ERROR("Payload size is larger than the buffer size.");
             return false;
         }
 
@@ -95,12 +95,12 @@ class Ringbuffer {
         RAV_ASSERT(buffer_size > 0, "Buffer size must be greater than 0.");
 
         if (buffer_size % bytes_per_frame_ != 0) {
-            RAV_WARNING("Buffer size must be a multiple of bytes per frame.");
+            RAV_LOG_WARNING("Buffer size must be a multiple of bytes per frame.");
             return false;
         }
 
         if (buffer_size > buffer_.size()) {
-            RAV_WARNING("Buffer size is larger than the buffer size.");
+            RAV_LOG_WARNING("Buffer size is larger than the buffer size.");
             return false;
         }
 

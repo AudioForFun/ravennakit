@@ -30,18 +30,18 @@ int main(const int argc, const char* argv[]) {
     rav::nmos::Node node(io_context, ptp_instance);
     auto result = node.set_configuration(config, true);
     if (!result) {
-        RAV_ERROR("Failed to set NMOS node configuration: {}", result.error());
+        RAV_LOG_ERROR("Failed to set NMOS node configuration: {}", result.error());
         return 1;
     }
 
     if (argc < 2) {
-        RAV_ERROR("Please specify an argument listing the network interfaces to use.");
+        RAV_LOG_ERROR("Please specify an argument listing the network interfaces to use.");
         return 1;
     }
 
     auto network_config = rav::parse_network_interface_config_from_string(argv[1]);
     if (!network_config) {
-        RAV_ERROR("Invalid network interface(s): {}", result.error());
+        RAV_LOG_ERROR("Invalid network interface(s): {}", result.error());
         return 1;
     }
 
@@ -136,23 +136,23 @@ int main(const int argc, const char* argv[]) {
     std::string url =
         fmt::format("http://{}:{}", node.get_local_endpoint().address().to_string(), node.get_local_endpoint().port());
 
-    RAV_INFO("NMOS node started at {}", url);
+    RAV_LOG_INFO("NMOS node started at {}", url);
 
     url += "/x-nmos";
-    RAV_INFO("{}", url);
+    RAV_LOG_INFO("{}", url);
 
     url += "/node";
-    RAV_INFO("{}", url);
+    RAV_LOG_INFO("{}", url);
 
     url += "/v1.3";
-    RAV_INFO("{}", url);
+    RAV_LOG_INFO("{}", url);
 
     url += "/";
-    RAV_INFO("{}", url);
+    RAV_LOG_INFO("{}", url);
 
     boost::asio::signal_set signals(io_context, SIGINT, SIGTERM);
     signals.async_wait([&](const boost::system::error_code&, int) {
-        RAV_INFO("Stopping NMOS node...");
+        RAV_LOG_INFO("Stopping NMOS node...");
         io_context.stop();
     });
 

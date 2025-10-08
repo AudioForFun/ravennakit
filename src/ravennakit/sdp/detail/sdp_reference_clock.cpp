@@ -110,7 +110,7 @@ tl::expected<rav::sdp::ReferenceClock, std::string> rav::sdp::parse_reference_cl
         return ref_clock;
     }
 
-    RAV_WARNING("reference_clock: ignoring clock source: {}", *source);
+    RAV_LOG_WARNING("reference_clock: ignoring clock source: {}", *source);
 
     return tl::unexpected("reference_clock: unsupported source");
 }
