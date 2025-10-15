@@ -368,7 +368,7 @@ std::optional<uint32_t> read_data_from_reader_realtime(
         }
     }
 
-    TRACY_PLOT("Buffer", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())) - num_frames);
+    TRACY_PLOT("RTP Receive buffer", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())) - num_frames);
 
     const auto read_at = reader.next_ts_to_read.value();
     if (!reader.receive_buffer.read(read_at, buffer, buffer_size, true)) {
