@@ -549,7 +549,7 @@ void rav::ptp::Port::handle_sync_message(SyncMessage sync_message, BufferView<co
         } else {
             syncs_until_delay_req_--;
         }
-    } else if (port_ds_.delay_mechanism == DelayMechanism::e2e) {
+    } else if (port_ds_.delay_mechanism == DelayMechanism::p2p) {
         TODO("Implement P2P delay mechanism");
     } else {
         RAV_ASSERT_FALSE("Unknown delay mechanism");
