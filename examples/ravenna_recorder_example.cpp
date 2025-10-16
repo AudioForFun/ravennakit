@@ -120,9 +120,7 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
         }
 
         for (int i = 0; i < 10; ++i) {
-            const auto ts = ravenna_node_.read_data_realtime(
-                receiver_id_, audio_data_.data(), audio_data_.size(), std::nullopt, delay_
-            );
+            const auto ts = ravenna_node_.read_data_realtime(receiver_id_, audio_data_.data(), audio_data_.size(), std::nullopt, delay_);
             if (!ts) {
                 return;
             }
@@ -165,8 +163,8 @@ class StreamRecorder: public rav::RavennaReceiver::Subscriber {
 
         file_output_stream_ = std::make_unique<rav::FileOutputStream>(file_path);
         wav_writer_ = std::make_unique<rav::WavAudioFormat::Writer>(
-            *file_output_stream_, rav::WavAudioFormat::FormatCode::pcm, audio_format_.sample_rate,
-            audio_format_.num_channels, audio_format_.bytes_per_sample() * 8
+            *file_output_stream_, rav::WavAudioFormat::FormatCode::pcm, audio_format_.sample_rate, audio_format_.num_channels,
+            audio_format_.bytes_per_sample() * 8
         );
         audio_data_.resize(k_block_size * audio_format_.bytes_per_frame());
         delay_ = audio_format_.sample_rate * k_delay_ms / 1000;
@@ -234,7 +232,7 @@ int main(int const argc, char* argv[]) {
             for (const auto& recorder : recorders) {
                 recorder->process_audio();
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(1)); // Keep this small enough
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));  // Keep this small enough
         }
     });
 
