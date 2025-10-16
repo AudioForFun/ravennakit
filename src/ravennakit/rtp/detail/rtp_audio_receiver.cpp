@@ -368,7 +368,7 @@ std::optional<uint32_t> read_data_from_reader_realtime(
         }
     }
 
-    TRACY_PLOT("Buffer", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())) - num_frames);
+    TRACY_PLOT("RTP Receive buffer", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())) - num_frames);
 
     const auto read_at = reader.next_ts_to_read.value();
     if (!reader.receive_buffer.read(read_at, buffer, buffer_size, true)) {
@@ -648,7 +648,7 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
                     const auto& local_clock = ptp_instance_subscriber.get_local_clock();
                     if (local_clock.is_locked()) {
                         auto ptp_time = local_clock.get_adjusted_time(recv_time);
-                        auto rtp_time = ptp_time.from_rtp_timestamp(packet.timestamp, reader.audio_format.sample_rate);
+                        [[maybe_unused]] auto rtp_time = ptp_time.from_rtp_timestamp32(packet.timestamp, reader.audio_format.sample_rate);
                         TRACY_PLOT("receive latency (ms)", ptp_time.to_milliseconds_double() - rtp_time.to_milliseconds_double());
                     }
                 }
@@ -721,7 +721,7 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_data_realtime(
 }
 
 std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
-    const Id id, AudioBufferView<float> output_buffer, const std::optional<uint32_t> at_timestamp,
+    const Id id, AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp,
     const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;

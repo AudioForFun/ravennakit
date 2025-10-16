@@ -133,8 +133,7 @@ int main(const int argc, const char* argv[]) {
 
     node.set_network_interface_config(*network_config);
 
-    std::string url =
-        fmt::format("http://{}:{}", node.get_local_endpoint().address().to_string(), node.get_local_endpoint().port());
+    std::string url = fmt::format("http://{}:{}", node.get_local_endpoint().address().to_string(), node.get_local_endpoint().port());
 
     RAV_LOG_INFO("NMOS node started at {}", url);
 

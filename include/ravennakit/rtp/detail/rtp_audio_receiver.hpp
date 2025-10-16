@@ -179,7 +179,7 @@ struct AudioReceiver {
      * @return The timestamp at which the data was read, or std::nullopt if an error occurred.
      */
     [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
-        Id id, AudioBufferView<float> output_buffer, std::optional<uint32_t> at_timestamp, std::optional<uint32_t> require_delay
+        Id id, AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp, std::optional<uint32_t> require_delay
     );
 
     /**

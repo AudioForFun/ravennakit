@@ -21,20 +21,16 @@ int main() {
     // Create a server instance
     rav::HttpServer server(io_context);
 
-    server.get(
-        "/",
-        [](const rav::HttpServer::Request&, rav::HttpServer::Response& response, rav::PathMatcher::Parameters&) {
-            response.result(boost::beast::http::status::ok);
-            response.set(boost::beast::http::field::content_type, "text/plain");
-            response.body() = "Hello, World!";
-            response.prepare_payload();
-        }
-    );
+    server.get("/", [](const rav::HttpServer::Request&, rav::HttpServer::Response& response, rav::PathMatcher::Parameters&) {
+        response.result(boost::beast::http::status::ok);
+        response.set(boost::beast::http::field::content_type, "text/plain");
+        response.body() = "Hello, World!";
+        response.prepare_payload();
+    });
 
     server.get(
         "/shutdown",
-        [&io_context,
-         &server](const rav::HttpServer::Request&, rav::HttpServer::Response& response, rav::PathMatcher::Parameters&) {
+        [&io_context, &server](const rav::HttpServer::Request&, rav::HttpServer::Response& response, rav::PathMatcher::Parameters&) {
             response.result(boost::beast::http::status::ok);
             response.set(boost::beast::http::field::content_type, "text/plain");
             response.body() = "Shutting down server...";

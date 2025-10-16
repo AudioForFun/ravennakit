@@ -304,6 +304,13 @@ class AudioBufferView {
         return AudioBufferView(channels_, num_channels_, num_frames);
     }
 
+    /**
+     * @return A new AudioBufferView pointing to the same data, but const.
+     */
+    AudioBufferView<std::add_const_t<T>> const_view() const {
+        return AudioBufferView<std::add_const_t<T>>(channels_, num_channels_, num_frames_);
+    }
+
   protected:
     /**
      * Updates the channel pointers, number of channels and number of frames.

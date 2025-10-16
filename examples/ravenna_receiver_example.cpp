@@ -115,8 +115,8 @@ class PortaudioStream {
     }
 
     void open_output_stream(
-        const std::string& audio_device_name, const double sample_rate, const int channel_count,
-        const uint32_t sample_format, PaStreamCallback* callback, void* user_data
+        const std::string& audio_device_name, const double sample_rate, const int channel_count, const uint32_t sample_format,
+        PaStreamCallback* callback, void* user_data
     ) {
         close();
 
@@ -132,8 +132,7 @@ class PortaudioStream {
         output_params.suggestedLatency = Pa_GetDeviceInfo(*device_index)->defaultLowOutputLatency;
         output_params.hostApiSpecificStreamInfo = nullptr;
 
-        const auto error =
-            Pa_OpenStream(&stream_, nullptr, &output_params, sample_rate, k_block_size, paNoFlag, callback, user_data);
+        const auto error = Pa_OpenStream(&stream_, nullptr, &output_params, sample_rate, k_block_size, paNoFlag, callback, user_data);
 
         if (error != paNoError) {
             RAV_THROW_EXCEPTION("PortAudio failed to open stream! Error: {}", Pa_GetErrorText(error));
@@ -176,9 +175,7 @@ class PortaudioStream {
 
 class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public rav::ptp::Instance::Subscriber {
   public:
-    explicit RavennaReceiverExample(
-        rav::RavennaNode& ravenna_node, const std::string& stream_name, std::string audio_device_name
-    ) :
+    explicit RavennaReceiverExample(rav::RavennaNode& ravenna_node, const std::string& stream_name, std::string audio_device_name) :
         ravenna_node_(ravenna_node), audio_device_name_(std::move(audio_device_name)) {
         rav::RavennaReceiver::Configuration config;
         config.enabled = true;
@@ -251,12 +248,10 @@ class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public ra
             return paContinue;
         }
 
-        const auto ptp_ts =
-            static_cast<uint32_t>(get_local_clock().now().to_rtp_timestamp(audio_format_.sample_rate)) - k_delay;
+        const auto ptp_ts = get_local_clock().now().to_rtp_timestamp32(audio_format_.sample_rate) - k_delay;
 
         // First we try to read data
-        auto rtp_ts =
-            ravenna_node_.read_data_realtime(receiver_id_, static_cast<uint8_t*>(output), buffer_size, {}, {});
+        auto rtp_ts = ravenna_node_.read_data_realtime(receiver_id_, static_cast<uint8_t*>(output), buffer_size, {}, {});
 
         // If reading data fails (which is expected when no audio callbacks have been made for a while) we output
         // silence.
@@ -270,8 +265,7 @@ class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public ra
         // If the drift becomes too big, we reset the timestamp to the current time to realign incoming data with the
         // audio callbacks
         if (static_cast<uint32_t>(std::abs(drift)) > frame_count * 2) {
-            rtp_ts =
-                ravenna_node_.read_data_realtime(receiver_id_, static_cast<uint8_t*>(output), buffer_size, ptp_ts, {});
+            rtp_ts = ravenna_node_.read_data_realtime(receiver_id_, static_cast<uint8_t*>(output), buffer_size, ptp_ts, {});
             RAV_LOG_WARNING("Re-aligned stream by {} samples", -drift);
             drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(*rtp_ts));
         }
@@ -290,9 +284,7 @@ class RavennaReceiverExample: public rav::RavennaReceiver::Subscriber, public ra
         const PaStreamCallbackFlags statusFlags, void* userData
     ) {
         RAV_ASSERT(userData, "userData is null");
-        return static_cast<RavennaReceiverExample*>(userData)->stream_callback(
-            input, output, frameCount, timeInfo, statusFlags
-        );
+        return static_cast<RavennaReceiverExample*>(userData)->stream_callback(input, output, frameCount, timeInfo, statusFlags);
     }
 };
 

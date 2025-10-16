@@ -27,8 +27,7 @@ constexpr uint32_t k_delay = 480;
 /// Helper class which forwards virtual calls to rav::SafeFunction.
 class RavennaReceiverSubscriber: public rav::RavennaReceiver::Subscriber {
   public:
-    rav::SafeFunction<void(const rav::rtp::AudioReceiver::ReaderParameters& parameters)>
-        on_ravenna_receiver_parameters_updated;
+    rav::SafeFunction<void(const rav::rtp::AudioReceiver::ReaderParameters& parameters)> on_ravenna_receiver_parameters_updated;
 
     void ravenna_receiver_parameters_updated(const rav::rtp::AudioReceiver::ReaderParameters& parameters) override {
         on_ravenna_receiver_parameters_updated(parameters);
@@ -54,10 +53,7 @@ int main(int const argc, char* argv[]) {
     app.add_option("stream_name", stream_name, "The name of the stream to loop back")->required();
 
     std::string interfaces;
-    app.add_option(
-        "--interfaces", interfaces,
-        R"(The interfaces to use. Example 1: "en1,en2", example 2: "192.168.1.1,192.168.2.1")"
-    );
+    app.add_option("--interfaces", interfaces, R"(The interfaces to use. Example 1: "en1,en2", example 2: "192.168.1.1,192.168.2.1")");
 
     CLI11_PARSE(app, argc, argv);
 
@@ -81,50 +77,50 @@ int main(int const argc, char* argv[]) {
     std::vector<uint8_t> buffer;
 
     RavennaReceiverSubscriber receiver_subscriber;
-    receiver_subscriber.on_ravenna_receiver_parameters_updated =
-        [&ravenna_node, &buffer, &stream_name, &sender_id](const rav::rtp::AudioReceiver::ReaderParameters& parameters) {
-            if (parameters.streams.empty()) {
-                RAV_LOG_WARNING("No streams available");
+    receiver_subscriber.on_ravenna_receiver_parameters_updated = [&ravenna_node, &buffer, &stream_name,
+                                                                  &sender_id](const rav::rtp::AudioReceiver::ReaderParameters& parameters) {
+        if (parameters.streams.empty()) {
+            RAV_LOG_WARNING("No streams available");
+            return;
+        }
+
+        if (!parameters.is_valid()) {
+            return;
+        }
+
+        buffer.resize(parameters.audio_format.bytes_per_frame() * parameters.streams.front().packet_time_frames);
+
+        rav::RavennaSender::Configuration sender_config;
+        sender_config.session_name = stream_name + "_loopback";
+        sender_config.audio_format = parameters.audio_format;
+        sender_config.enabled = true;
+        sender_config.payload_type = 98;
+        sender_config.ttl = 15;
+        sender_config.packet_time = rav::aes67::PacketTime::ms_1();  // TODO: Update dynamically
+
+        for (size_t i = 0; i < parameters.streams.size(); ++i) {
+            if (parameters.streams[i].is_valid()) {
+                rav::RavennaSender::Destination destination {
+                    rav::Rank(static_cast<uint8_t>(i)), boost::asio::ip::udp::endpoint {{}, 5004}, true
+                };
+                sender_config.destinations.emplace_back(destination);
+            }
+        }
+
+        if (!sender_id.is_valid()) {
+            const auto result = ravenna_node.create_sender(sender_config).get();
+            if (!result) {
+                RAV_LOG_ERROR("Failed to create sender");
                 return;
             }
-
-            if (!parameters.is_valid()) {
-                return;
+            sender_id = *result;
+        } else {
+            auto result = ravenna_node.update_sender_configuration(sender_id, sender_config).get();
+            if (!result) {
+                RAV_LOG_ERROR("Failed to update sender: {}", result.error());
             }
-
-            buffer.resize(parameters.audio_format.bytes_per_frame() * parameters.streams.front().packet_time_frames);
-
-            rav::RavennaSender::Configuration sender_config;
-            sender_config.session_name = stream_name + "_loopback";
-            sender_config.audio_format = parameters.audio_format;
-            sender_config.enabled = true;
-            sender_config.payload_type = 98;
-            sender_config.ttl = 15;
-            sender_config.packet_time = rav::aes67::PacketTime::ms_1();  // TODO: Update dynamically
-
-            for (size_t i = 0; i < parameters.streams.size(); ++i) {
-                if (parameters.streams[i].is_valid()) {
-                    rav::RavennaSender::Destination destination {
-                        rav::Rank(static_cast<uint8_t>(i)), boost::asio::ip::udp::endpoint {{}, 5004}, true
-                    };
-                    sender_config.destinations.emplace_back(destination);
-                }
-            }
-
-            if (!sender_id.is_valid()) {
-                const auto result = ravenna_node.create_sender(sender_config).get();
-                if (!result) {
-                    RAV_LOG_ERROR("Failed to create sender");
-                    return;
-                }
-                sender_id = *result;
-            } else {
-                auto result = ravenna_node.update_sender_configuration(sender_id, sender_config).get();
-                if (!result) {
-                    RAV_LOG_ERROR("Failed to update sender: {}", result.error());
-                }
-            }
-        };
+        }
+    };
 
     ravenna_node.subscribe_to_receiver(receiver_id, &receiver_subscriber).wait();
 

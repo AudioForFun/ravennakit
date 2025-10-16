@@ -421,7 +421,7 @@ std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
 }
 
 std::optional<uint32_t> rav::RavennaNode::read_audio_data_realtime(
-    const Id receiver_id, const AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp,
+    const Id receiver_id, AudioBufferView<float>& output_buffer, const std::optional<uint32_t> at_timestamp,
     const std::optional<uint32_t> require_delay
 ) {
     TRACY_ZONE_SCOPED;

@@ -46,17 +46,11 @@ int main(int const argc, char* argv[]) {
     };
 
     client.on_request_event = [](const rav::rtsp::Connection::RequestEvent& event) {
-        RAV_LOG_INFO(
-            "{}\n{}", event.rtsp_request.to_debug_string(true),
-            rav::string_replace(event.rtsp_request.data, "\r\n", "\n")
-        );
+        RAV_LOG_INFO("{}\n{}", event.rtsp_request.to_debug_string(true), rav::string_replace(event.rtsp_request.data, "\r\n", "\n"));
     };
 
     client.on_response_event = [](const rav::rtsp::Connection::ResponseEvent& event) {
-        RAV_LOG_INFO(
-            "{}\n{}", event.rtsp_response.to_debug_string(true),
-            rav::string_replace(event.rtsp_response.data, "\r\n", "\n")
-        );
+        RAV_LOG_INFO("{}\n{}", event.rtsp_response.to_debug_string(true), rav::string_replace(event.rtsp_response.data, "\r\n", "\n"));
     };
 
     client.async_connect(host, port);

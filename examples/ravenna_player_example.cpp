@@ -33,9 +33,7 @@ static constexpr uint32_t k_frames_per_read = 1024;
  */
 class WavFilePlayer {
   public:
-    explicit WavFilePlayer(
-        rav::RavennaNode& ravenna_node, const rav::File& file_to_play, const std::string& session_name
-    ) :
+    explicit WavFilePlayer(rav::RavennaNode& ravenna_node, const rav::File& file_to_play, const std::string& session_name) :
         ravenna_node_(ravenna_node) {
         if (!file_to_play.exists()) {
             throw std::runtime_error("File does not exist: " + file_to_play.path().string());
@@ -84,7 +82,7 @@ class WavFilePlayer {
             return;
         }
 
-        const auto ptp_ts = static_cast<uint32_t>(clock.now().to_rtp_timestamp(audio_format_.sample_rate));
+        const auto ptp_ts = clock.now().to_rtp_timestamp32(audio_format_.sample_rate);
         // Positive means audio device is ahead of the PTP clock, negative means behind
         const auto drift = rav::WrappingUint32(ptp_ts).diff(rav::WrappingUint32(rtp_ts_));
 
@@ -117,9 +115,7 @@ class WavFilePlayer {
             rav::swap_bytes(audio_buffer_.data(), num_read, audio_format_.bytes_per_sample());
         }
 
-        if (!ravenna_node_.send_data_realtime(
-                id_, rav::BufferView(audio_buffer_.data(), num_read).const_view(), rtp_ts_
-            )) {
+        if (!ravenna_node_.send_data_realtime(id_, rav::BufferView(audio_buffer_.data(), num_read).const_view(), rtp_ts_)) {
             RAV_LOG_ERROR("Failed to send audio data");
         }
 
@@ -155,9 +151,7 @@ int main(int const argc, char* argv[]) {
     app.add_option("files", file_paths, "The files to stream")->required();
 
     std::string interfaces;
-    app.add_option(
-        "--interfaces", interfaces, R"(The interfaces to use. Examples: "en1,en2" "192.168.1.1,192.168.2.1")"
-    );
+    app.add_option("--interfaces", interfaces, R"(The interfaces to use. Examples: "en1,en2" "192.168.1.1,192.168.2.1")");
 
     CLI11_PARSE(app, argc, argv);
 

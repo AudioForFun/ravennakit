@@ -258,7 +258,7 @@ struct Timestamp {
     /**
      * Converts the timestamp to an RTP timestamp.
      * @param frequency The frequency, which is the sample rate for audio.
-     * @return The RTP timestamp.
+     * @return The 64 bit RTP timestamp.
      */
     [[nodiscard]] uint64_t to_rtp_timestamp(const uint32_t frequency) const {
         RAV_ASSERT(seconds_ + 1 <= std::numeric_limits<decltype(seconds_)>::max() / frequency, "Overflow in seconds_ * sample_rate");
@@ -266,16 +266,35 @@ struct Timestamp {
     }
 
     /**
-     * Converts an RTP timestamp to a PTP timestamp. The most significant bits of the current Timestamp are taken to form a full 64 bit
-     * RTP timestamp, after which it's converted to a PTP timestamp.
+     * Converts the timestamp to an RTP timestamp and returns the lowest 4 bytes, as used in RTP packets.
+     * @param frequency The frequency, which is the sample rate for audio.
+     * @return The 32 bit RTP timestamp containing the 4 least significant bytes.
+     */
+    [[nodiscard]] uint32_t to_rtp_timestamp32(const uint32_t frequency) const {
+        return static_cast<uint32_t>(to_rtp_timestamp(frequency));
+    }
+
+    /**
+     * Converts a full 64 bit RTP timestamp to a PTP timestamp.
      * @param rtp_timestamp The RTP timestamp.
      * @param frequency The frequency of the RTP time.
      * @return The reconstructed PTP timestamp.
      */
-    [[nodiscard]] Timestamp from_rtp_timestamp(const uint32_t rtp_timestamp, const uint32_t frequency) const {
-        const uint64_t ts_samples_full = (to_rtp_timestamp(frequency) & 0xFFFFFFFF00000000ULL) | rtp_timestamp;
-        const auto seconds = static_cast<double>(ts_samples_full) / frequency;
+    [[nodiscard]] static Timestamp from_rtp_timestamp(const uint64_t rtp_timestamp, const uint32_t frequency) {
+        const auto seconds = static_cast<double>(rtp_timestamp) / frequency;
         return Timestamp(static_cast<uint64_t>(seconds * 1'000'000'000.0));
+    }
+
+    /**
+     * Converts an 4-byte RTP timestamp to a PTP timestamp. The most significant bits of the current Timestamp are taken to form a full 64
+     * bit RTP timestamp, after which it's converted to a PTP timestamp.
+     * @param rtp_timestamp The RTP timestamp.
+     * @param frequency The frequency of the RTP time.
+     * @return The reconstructed PTP timestamp.
+     */
+    [[nodiscard]] Timestamp from_rtp_timestamp32(const uint32_t rtp_timestamp, const uint32_t frequency) const {
+        const uint64_t ts_samples_full = (to_rtp_timestamp(frequency) & 0xFFFFFFFF00000000ULL) | rtp_timestamp;
+        return from_rtp_timestamp(ts_samples_full, frequency);
     }
 
     /**

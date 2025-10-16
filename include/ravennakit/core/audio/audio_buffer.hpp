@@ -19,6 +19,10 @@
 
 namespace rav {
 
+/**
+ * A dynamically sizeable buffer to store non-interleaved audio, along with an array of pointers to the beginning of each channel.
+ * @tparam T The sample type.
+ */
 template<class T>
 class AudioBuffer: public AudioBufferView<T> {
   public:

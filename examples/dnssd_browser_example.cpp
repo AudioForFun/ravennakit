@@ -10,8 +10,7 @@ int main(const int argc, char* argv[]) {
     rav::do_system_checks();
 
     if (argc < 2) {
-        std::cout << "Expected an argument which specifies the service type to browse for (example: _http._tcp)"
-                  << std::endl;
+        std::cout << "Expected an argument which specifies the service type to browse for (example: _http._tcp)" << std::endl;
         return -1;
     }
 
@@ -39,7 +38,7 @@ int main(const int argc, char* argv[]) {
     browser->on_address_removed = [](const auto& desc, const auto& address, const auto& interface_index) {
         RAV_LOG_INFO("Address removed ({}): {} on interface {}", address, desc.to_string(), interface_index);
     };
-    browser->on_error = [](const auto& error_message){
+    browser->on_error = [](const auto& error_message) {
         RAV_LOG_ERROR("Error: {}", error_message);
     };
 

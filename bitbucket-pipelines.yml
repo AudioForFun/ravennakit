@@ -91,14 +91,6 @@ pipelines:
           - step: *build-android
           - step: *build-dist
       - step: *upload-docs-to-webhost
-  branches:
-    main:
-      - parallel:
-          - step: *build-macos
-          - step: *build-windows
-          - step: *build-linux
-          - step: *build-android
-          - step: *build-dist
   custom:
     all:
       - parallel:

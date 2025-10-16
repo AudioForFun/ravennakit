@@ -258,8 +258,7 @@ class RavennaNode {
      * @copydoc rtp::AudioReceiver::read_audio_data_realtime
      */
     [[nodiscard]] std::optional<uint32_t> read_audio_data_realtime(
-        Id receiver_id, const AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp,
-        std::optional<uint32_t> require_delay
+        Id receiver_id, AudioBufferView<float>& output_buffer, std::optional<uint32_t> at_timestamp, std::optional<uint32_t> require_delay
     );
 
     /**

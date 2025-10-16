@@ -74,9 +74,8 @@ int main(int const argc, char* argv[]) {
         RAV_LOG_CRITICAL("Name conflict: {} {}", reg_type, name);
     };
 
-    const auto service_id = advertiser->register_service(
-        args[0], "Test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true, true
-    );
+    const auto service_id =
+        advertiser->register_service(args[0], "Test service", nullptr, static_cast<uint16_t>(port_number), txt_record, true, true);
 
     std::thread io_context_thread([&io_context] {
         io_context.run();
