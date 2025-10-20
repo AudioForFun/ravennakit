@@ -348,23 +348,15 @@ bool rav::rtp::AudioSender::send_audio_data_realtime(
         auto& intermediate_buffer = writer.intermediate_audio_buffer;
 
         if (audio_format.encoding == AudioEncoding::pcm_s16) {
-            const auto ok = AudioData::convert<
-                float, AudioData::ByteOrder::Ne, int16_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
+            AudioData::convert<float, AudioData::ByteOrder::Ne, int16_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
                 input_buffer.data(), input_buffer.num_frames(), input_buffer.num_channels(),
                 reinterpret_cast<int16_t*>(intermediate_buffer.data()), 0, 0
             );
-            if (!ok) {
-                RAV_LOG_WARNING("Failed to convert audio data");
-            }
         } else if (audio_format.encoding == AudioEncoding::pcm_s24) {
-            const auto ok = AudioData::convert<
-                float, AudioData::ByteOrder::Ne, int24_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
+            AudioData::convert<float, AudioData::ByteOrder::Ne, int24_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
                 input_buffer.data(), input_buffer.num_frames(), input_buffer.num_channels(),
                 reinterpret_cast<int24_t*>(intermediate_buffer.data()), 0, 0
             );
-            if (!ok) {
-                RAV_LOG_WARNING("Failed to convert audio data");
-            }
         } else {
             RAV_LOG_ERROR("Unsupported encoding");
             return false;

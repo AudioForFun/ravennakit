@@ -50,19 +50,11 @@ class Ringbuffer {
      * @return true if the data was written, false if the payload is not a multiple of bytes_per_frame_ or if the
      * payload is larger than the buffer size.
      */
-    bool write(const uint32_t at_timestamp, const BufferView<const uint8_t>& payload) {
-        RAV_ASSERT(payload.data() != nullptr, "Payload data must not be nullptr.");
-        RAV_ASSERT(payload.size_bytes() > 0, "Payload size must be greater than 0.");
-
-        if (payload.size_bytes() % bytes_per_frame_ != 0) {
-            RAV_LOG_ERROR("Payload size must be a multiple of bytes per frame.");
-            return false;
-        }
-
-        if (payload.size_bytes() > buffer_.size()) {
-            RAV_LOG_ERROR("Payload size is larger than the buffer size.");
-            return false;
-        }
+    void write(const uint32_t at_timestamp, const BufferView<const uint8_t>& payload) {
+        RAV_ASSERT_DEBUG(payload.data() != nullptr, "Payload data must not be nullptr.");
+        RAV_ASSERT_DEBUG(payload.size_bytes() > 0, "Payload size must be greater than 0.");
+        RAV_ASSERT_DEBUG(payload.size_bytes() % bytes_per_frame_ == 0, "Payload size must be a multiple of bytes_per_frame_.");
+        RAV_ASSERT_DEBUG(payload.size_bytes() <= buffer_.size(), "Payload size too big");
 
         const Fifo::Position position(static_cast<size_t>(at_timestamp) * bytes_per_frame_, buffer_.size(), payload.size());
 
@@ -77,8 +69,6 @@ class Ringbuffer {
         if (end_ts > next_ts_) {
             next_ts_ = end_ts;
         }
-
-        return true;
     }
 
     /**
@@ -90,19 +80,11 @@ class Ringbuffer {
      * @param clear_data If true, the data in the buffer will be cleared after reading.
      * @returns true if buffer_size bytes were read, or false if buffer_size bytes couldn't be read.
      */
-    bool read(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size, const bool clear_data = false) {
-        RAV_ASSERT(buffer != nullptr, "Buffer must not be nullptr.");
-        RAV_ASSERT(buffer_size > 0, "Buffer size must be greater than 0.");
-
-        if (buffer_size % bytes_per_frame_ != 0) {
-            RAV_LOG_WARNING("Buffer size must be a multiple of bytes per frame.");
-            return false;
-        }
-
-        if (buffer_size > buffer_.size()) {
-            RAV_LOG_WARNING("Buffer size is larger than the buffer size.");
-            return false;
-        }
+    void read(const uint32_t at_timestamp, uint8_t* buffer, const size_t buffer_size, const bool clear_data = false) {
+        RAV_ASSERT_DEBUG(buffer != nullptr, "Buffer must not be nullptr.");
+        RAV_ASSERT_DEBUG(buffer_size > 0, "Buffer size must be greater than 0.");
+        RAV_ASSERT_DEBUG(buffer_size % bytes_per_frame_ == 0, "Payload size must be a multiple of bytes_per_frame_.");
+        RAV_ASSERT_DEBUG(buffer_size <= buffer_.size(), "Payload size too big");
 
         const Fifo::Position position(static_cast<size_t>(at_timestamp) * bytes_per_frame_, buffer_.size(), buffer_size);
 
@@ -118,8 +100,6 @@ class Ringbuffer {
                 std::fill_n(buffer_.data(), position.size2, ground_value_);
             }
         }
-
-        return true;
     }
 
     /**

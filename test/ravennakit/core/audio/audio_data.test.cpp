@@ -30,13 +30,9 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int16_t, 4> src {1, 2, 3, 4};
             std::array<int16_t, 4> dst {};
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t,
-                    rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
             REQUIRE(dst == std::array<int16_t, 4> {1, 2, 3, 4});
         }
@@ -45,13 +41,9 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int32_t, 4> src {1, 2, 3, 4};
             std::array<int32_t, 4> dst {};
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int32_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int32_t,
-                    rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
-            );
+            rav::AudioData::convert<
+                int32_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int32_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
             REQUIRE(dst == std::array<int32_t, 4> {1, 2, 3, 4});
         }
@@ -60,12 +52,10 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int16_t, 4> src {1, 2, 3, 4};
             std::array<int16_t, 4> dst {};
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved, int16_t,
-                    rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved, int16_t,
+                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved>(
+                src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
             REQUIRE(dst == std::array<int16_t, 4> {1, 2, 3, 4});
@@ -75,13 +65,12 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int32_t, 4> src {1, 2, 3, 4};
             std::array<int32_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int32_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved, int32_t,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int32_t, 4> {1, 2, 3, 4});
         }
 
@@ -89,13 +78,10 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int16_t, 4> src {1, 2, 3, 4};
             std::array<int16_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int16_t, 4> {1, 3, 2, 4});
         }
 
@@ -103,13 +89,10 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int32_t, 4> src {1, 2, 3, 4};
             std::array<int32_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
-                int32_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int32_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int32_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int32_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Noninterleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int32_t, 4> {1, 3, 2, 4});
         }
 
@@ -117,13 +100,12 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int16_t, 4> src {1, 2, 3, 4};
             std::array<int16_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved, int16_t,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int16_t, 4> {1, 3, 2, 4});
         }
 
@@ -131,13 +113,12 @@ TEST_CASE("rav::AudioData") {
             constexpr std::array<int32_t, 4> src {1, 2, 3, 4};
             std::array<int32_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int32_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved, int32_t,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int32_t, 4> {1, 3, 2, 4});
         }
 
@@ -147,13 +128,12 @@ TEST_CASE("rav::AudioData") {
             rav::VectorBuffer<int16_t> src({-32768, 32767, 0, -32767});
             rav::VectorBuffer<int32_t> dst(4);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved, int32_t,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Noninterleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read() == -2147483648LL);
             REQUIRE(dst.read() == 2147418112LL);
             REQUIRE(dst.read() == 0);
@@ -169,13 +149,9 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({1, 2, 3, 4});
             rav::VectorBuffer<int16_t> dst(4);
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                    rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
             REQUIRE(dst.read_le() == 1);
             REQUIRE(dst.read_le() == 2);
@@ -188,13 +164,9 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({1, 2, 3, 4});
             rav::VectorBuffer<int16_t> dst(4);
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                    rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Ne,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
             REQUIRE(dst.read() == 1);
             REQUIRE(dst.read() == 2);
@@ -207,13 +179,9 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({1, 2, 3, 4});
             rav::VectorBuffer<int16_t> dst(4);
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                    rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
             REQUIRE(dst.read_be() == 1);
             REQUIRE(dst.read_be() == 2);
@@ -226,13 +194,9 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({1, 2, 3, 4});
             rav::VectorBuffer<int16_t> dst(4);
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t,
-                    rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
             REQUIRE(dst.read_be() == 1);
             REQUIRE(dst.read_be() == 2);
@@ -245,13 +209,9 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({1, 2, 3, 4});
             rav::VectorBuffer<int16_t> dst(4);
 
-            REQUIRE(
-                rav::AudioData::convert<
-                    int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t,
-                    rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
-                    src.data(), src.size(), dst.data(), dst.size(), 2
-                )
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Ne,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
             REQUIRE(dst.read() == 1);
             REQUIRE(dst.read() == 2);
@@ -267,8 +227,7 @@ TEST_CASE("rav::AudioData") {
             constexpr int16_t src = std::numeric_limits<int16_t>::min();
             int16_t dst {};
 
-            rav::AudioData::convert_sample<
-                int16_t, rav::AudioData::ByteOrder::Be, int16_t, rav::AudioData::ByteOrder::Le>(&src, &dst);
+            rav::AudioData::convert_sample<int16_t, rav::AudioData::ByteOrder::Be, int16_t, rav::AudioData::ByteOrder::Le>(&src, &dst);
 
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[0] == 0x80);
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[1] == 0x0);
@@ -278,8 +237,7 @@ TEST_CASE("rav::AudioData") {
             constexpr int16_t src = std::numeric_limits<int16_t>::max();
             int16_t dst {};
 
-            rav::AudioData::convert_sample<
-                int16_t, rav::AudioData::ByteOrder::Be, int16_t, rav::AudioData::ByteOrder::Le>(&src, &dst);
+            rav::AudioData::convert_sample<int16_t, rav::AudioData::ByteOrder::Be, int16_t, rav::AudioData::ByteOrder::Le>(&src, &dst);
 
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[0] == 0x7f);
             REQUIRE(reinterpret_cast<uint8_t*>(&dst)[1] == 0xff);
@@ -293,13 +251,10 @@ TEST_CASE("rav::AudioData") {
             rav::VectorBuffer<uint8_t> src({0, 255, 128, 0});
             std::array<int8_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
-                uint8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int8_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                uint8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int8_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int8_t, 4> {-128, 127, 0, -128});
         }
 
@@ -307,13 +262,10 @@ TEST_CASE("rav::AudioData") {
             rav::VectorBuffer<uint8_t> src({0, 255, 128, 0});
             std::array<int8_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
-                uint8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int8_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                uint8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int8_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int8_t, 4> {-128, 127, 0, -128});
         }
 
@@ -321,13 +273,10 @@ TEST_CASE("rav::AudioData") {
             rav::VectorBuffer<uint8_t> src({0, 255, 128, 0});
             std::array<int8_t, 4> dst {};
 
-            auto result = rav::AudioData::convert<
-                uint8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int8_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                uint8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int8_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst == std::array<int8_t, 4> {-128, 127, 0, -128});
         }
     }
@@ -338,13 +287,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-128, 127, 0, -127});
             rav::VectorBuffer<int16_t> dst(4);
 
-            auto result = rav::AudioData::convert<
-                int8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -32768);
             REQUIRE(dst.read_be() == 32512);
             REQUIRE(dst.read_be() == 0);
@@ -356,13 +302,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-128, 127, 0, -127});
             rav::VectorBuffer<int16_t> dst(4);
 
-            auto result = rav::AudioData::convert<
-                int8_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int8_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -32768);
             REQUIRE(dst.read_be() == 32512);
             REQUIRE(dst.read_be() == 0);
@@ -374,13 +317,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-128, 127, 0, -127});
             rav::VectorBuffer<int16_t> dst(4);
 
-            auto result = rav::AudioData::convert<
-                int8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int8_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst.read_le() == -32768);
             REQUIRE(dst.read_le() == 32512);
             REQUIRE(dst.read_le() == 0);
@@ -394,13 +334,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -32767});
             rav::VectorBuffer<rav::int24_t> dst(4);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -8388608);
             REQUIRE(dst.read_be() == 8388352);
             REQUIRE(dst.read_be() == 0);
@@ -412,13 +351,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-32768, 32767, 0, -32767});
             rav::VectorBuffer<rav::int24_t> dst(4);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -8388608);
             REQUIRE(dst.read_be() == 8388352);
             REQUIRE(dst.read_be() == 0);
@@ -430,13 +368,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -32767});
             rav::VectorBuffer<rav::int24_t> dst(4);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 2
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_le() == -8388608);
             REQUIRE(dst.read_le() == 8388352);
             REQUIRE(dst.read_le() == 0);
@@ -450,13 +387,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -32768});
             rav::VectorBuffer<int32_t> dst(4);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int32_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int32_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000LL));
             REQUIRE(dst.read_be() == 0x7fff0000LL);
             REQUIRE(dst.read_be() == 0);
@@ -468,13 +402,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -32768});
             rav::VectorBuffer<int32_t> dst(4);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int32_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int32_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst.read_le() == static_cast<int32_t>(-0x80000000LL));
             REQUIRE(dst.read_le() == 0x7fff0000LL);
             REQUIRE(dst.read_le() == 0);
@@ -486,13 +417,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-32768, 32767, 0, -32768});
             rav::VectorBuffer<int32_t> dst(4);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int32_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 2
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int32_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 2);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == static_cast<int32_t>(-0x80000000LL));
             REQUIRE(dst.read_be() == 0x7fff0000LL);
             REQUIRE(dst.read_be() == 0);
@@ -506,13 +434,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -15000, 15000});
             rav::VectorBuffer<float> dst(src.size());
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_be(), -1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +0.f, f32_tolerance));
@@ -525,13 +450,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -15000, 15000});
             rav::VectorBuffer<float> dst(src.size());
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_le(), -1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +0.f, f32_tolerance));
@@ -544,13 +466,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -15000, 15000});
             rav::VectorBuffer<float> dst(src.size());
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float,
-                rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float, rav::AudioData::ByteOrder::Ne,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read(), -1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read(), +1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read(), +0.f, f32_tolerance));
@@ -565,13 +484,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-8388608, 8388607, 0, -4194304, 4194304});
             rav::VectorBuffer<float> dst(src.size());
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 rav::int24_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_be(), -1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +0.f, f32_tolerance));
@@ -584,13 +502,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-8388608, 8388607, 0, -4194304, 4194304});
             rav::VectorBuffer<float> dst(src.size());
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 rav::int24_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_le(), -1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +0.f, f32_tolerance));
@@ -603,13 +520,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-8388608, 8388607, 0, -4194304, 4194304});
             rav::VectorBuffer<float> dst(src.size());
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 rav::int24_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, float,
                 rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read(), -1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read(), +1.f, f32_tolerance));
             REQUIRE(rav::is_within(dst.read(), +0.f, f32_tolerance));
@@ -624,13 +540,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -15000, 15000});
             rav::VectorBuffer<double> dst(src.size());
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_be(), -1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +0.0, f64_tolerance));
@@ -643,13 +556,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -15000, 15000});
             rav::VectorBuffer<double> dst(src.size());
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_le(), -1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +0.0, f64_tolerance));
@@ -662,13 +572,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-32768, 32767, 0, -15000, 15000});
             rav::VectorBuffer<double> dst(src.size());
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double,
-                rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double, rav::AudioData::ByteOrder::Ne,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read(), -1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read(), +1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read(), +0.0, f64_tolerance));
@@ -683,13 +590,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-8388608, 8388607, 0, -4194304, 4194304});
             rav::VectorBuffer<double> dst(src.size());
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 rav::int24_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_be(), -1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_be(), +0.0, f64_tolerance));
@@ -702,13 +608,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-8388608, 8388607, 0, -4194304, 4194304});
             rav::VectorBuffer<double> dst(src.size());
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 rav::int24_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read_le(), -1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read_le(), +0.0, f64_tolerance));
@@ -721,13 +626,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-8388608, 8388607, 0, -4194304, 4194304});
             rav::VectorBuffer<double> dst(src.size());
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 rav::int24_t, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, double,
                 rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(rav::is_within(dst.read(), -1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read(), +1.0, f64_tolerance));
             REQUIRE(rav::is_within(dst.read(), +0.0, f64_tolerance));
@@ -742,13 +646,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<int16_t> dst(3);
 
-            auto result = rav::AudioData::convert<
-                float, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                float, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -32767);
             REQUIRE(dst.read_be() == 32767);
             REQUIRE(dst.read_be() == 0);
@@ -759,13 +660,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<int16_t> dst(3);
 
-            auto result = rav::AudioData::convert<
-                float, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                float, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(dst.read_le() == -32767);
             REQUIRE(dst.read_le() == 32767);
             REQUIRE(dst.read_le() == 0);
@@ -776,13 +674,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-1.f, 1.f, 0.f});
             rav::VectorBuffer<int16_t> dst(3);
 
-            auto result = rav::AudioData::convert<
-                float, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                float, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -32767);
             REQUIRE(dst.read_be() == 32767);
             REQUIRE(dst.read_be() == 0);
@@ -795,13 +690,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<rav::int24_t> dst(3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 float, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
             REQUIRE(dst.read_be() == 8388607);
             REQUIRE(dst.read_be() == 0);
@@ -812,13 +706,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<rav::int24_t> dst(3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 float, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_le() == -8388607);
             REQUIRE(dst.read_le() == 8388607);
             REQUIRE(dst.read_le() == 0);
@@ -829,13 +722,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-1.f, 1.f, 0.f});
             rav::VectorBuffer<rav::int24_t> dst(3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 float, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
             REQUIRE(dst.read_be() == 8388607);
             REQUIRE(dst.read_be() == 0);
@@ -848,13 +740,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<int16_t> dst(3);
 
-            auto result = rav::AudioData::convert<
-                double, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                double, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -32767);
             REQUIRE(dst.read_be() == 32767);
             REQUIRE(dst.read_be() == 0);
@@ -865,13 +754,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<int16_t> dst(3);
 
-            auto result = rav::AudioData::convert<
-                double, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                double, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Le,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(dst.read_le() == -32767);
             REQUIRE(dst.read_le() == 32767);
             REQUIRE(dst.read_le() == 0);
@@ -882,13 +768,10 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-1.f, 1.f, 0.f});
             rav::VectorBuffer<int16_t> dst(3);
 
-            auto result = rav::AudioData::convert<
-                double, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
-                src.data(), src.size(), dst.data(), dst.size(), 1
-            );
+            rav::AudioData::convert<
+                double, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Be,
+                rav::AudioData::Interleaving::Interleaved>(src.data(), src.size(), dst.data(), dst.size(), 1);
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -32767);
             REQUIRE(dst.read_be() == 32767);
             REQUIRE(dst.read_be() == 0);
@@ -901,13 +784,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<rav::int24_t> dst(3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 double, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
             REQUIRE(dst.read_be() == 8388607);
             REQUIRE(dst.read_be() == 0);
@@ -918,13 +800,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_be({-1.f, 1.f, 0.f});
             rav::VectorBuffer<rav::int24_t> dst(3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 double, rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_le() == -8388607);
             REQUIRE(dst.read_le() == 8388607);
             REQUIRE(dst.read_le() == 0);
@@ -935,13 +816,12 @@ TEST_CASE("rav::AudioData") {
             src.push_back_le({-1.f, 1.f, 0.f});
             rav::VectorBuffer<rav::int24_t> dst(3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 double, rav::AudioData::ByteOrder::Le, rav::AudioData::Interleaving::Interleaved, rav::int24_t,
                 rav::AudioData::ByteOrder::Be, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.size(), dst.data(), dst.size(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst.read_be() == -8388607);
             REQUIRE(dst.read_be() == 8388607);
             REQUIRE(dst.read_be() == 0);
@@ -955,11 +835,11 @@ TEST_CASE("rav::AudioData") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::AudioBuffer<int16_t> dst(2, 3);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Ne>(src.data(), 3, 2, dst.data());
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Ne>(
+                src.data(), 3, 2, dst.data()
+            );
 
-            REQUIRE(result);
             REQUIRE(dst[0][0] == 1);
             REQUIRE(dst[0][1] == 3);
             REQUIRE(dst[0][2] == 5);
@@ -972,11 +852,11 @@ TEST_CASE("rav::AudioData") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::AudioBuffer<int16_t> dst(2, 4);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Ne>(src.data(), 3, 2, dst.data(), 0, 1);
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Ne>(
+                src.data(), 3, 2, dst.data(), 0, 1
+            );
 
-            REQUIRE(result);
             REQUIRE(dst[0][0] == 0);
             REQUIRE(dst[0][1] == 1);
             REQUIRE(dst[0][2] == 3);
@@ -991,11 +871,11 @@ TEST_CASE("rav::AudioData") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6, 7, 8};
             rav::AudioBuffer<int16_t> dst(2, 3);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved, int16_t,
-                rav::AudioData::ByteOrder::Ne>(src.data(), 3, 2, dst.data(), 1, 0);
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved, int16_t, rav::AudioData::ByteOrder::Ne>(
+                src.data(), 3, 2, dst.data(), 1, 0
+            );
 
-            REQUIRE(result);
             REQUIRE(dst[0][0] == 3);
             REQUIRE(dst[0][1] == 5);
             REQUIRE(dst[0][2] == 7);
@@ -1008,11 +888,10 @@ TEST_CASE("rav::AudioData") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::AudioBuffer<int16_t> dst(2, 3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Noninterleaved, int16_t,
                 rav::AudioData::ByteOrder::Ne>(src.data(), 3, 2, dst.data());
 
-            REQUIRE(result);
             REQUIRE(dst[0][0] == 1);
             REQUIRE(dst[0][1] == 2);
             REQUIRE(dst[0][2] == 3);
@@ -1025,11 +904,10 @@ TEST_CASE("rav::AudioData") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6};
             rav::AudioBuffer<int16_t> dst(2, 4);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Noninterleaved, int16_t,
                 rav::AudioData::ByteOrder::Ne>(src.data(), 3, 2, dst.data(), 0, 1);
 
-            REQUIRE(result);
             REQUIRE(dst[0][0] == 0);
             REQUIRE(dst[0][1] == 1);
             REQUIRE(dst[0][2] == 2);
@@ -1044,11 +922,10 @@ TEST_CASE("rav::AudioData") {
             std::vector<int16_t> src {1, 2, 3, 4, 5, 6, 7, 8};
             rav::AudioBuffer<int16_t> dst(2, 3);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Noninterleaved, int16_t,
                 rav::AudioData::ByteOrder::Ne>(src.data(), 3, 2, dst.data(), 1, 0);
 
-            REQUIRE(result);
             REQUIRE(dst[0][0] == 3);
             REQUIRE(dst[0][1] == 4);
             REQUIRE(dst[0][2] == 5);
@@ -1070,13 +947,11 @@ TEST_CASE("rav::AudioData") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne,
-                rav::AudioData::Interleaving::Interleaved>(
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.num_frames(), src.num_channels(), dst.data(), 0
             );
 
-            REQUIRE(result);
             REQUIRE(dst[0] == 1);
             REQUIRE(dst[1] == 4);
             REQUIRE(dst[2] == 2);
@@ -1098,13 +973,11 @@ TEST_CASE("rav::AudioData") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne,
-                rav::AudioData::Interleaving::Interleaved>(
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.num_frames() - 1, src.num_channels(), dst.data(), 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst[0] == 2);
             REQUIRE(dst[1] == 6);
             REQUIRE(dst[2] == 3);
@@ -1124,13 +997,11 @@ TEST_CASE("rav::AudioData") {
 
             std::vector<int16_t> dst(8);
 
-            auto result = rav::AudioData::convert<
-                int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne,
-                rav::AudioData::Interleaving::Interleaved>(
+            rav::AudioData::convert<
+                int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne, rav::AudioData::Interleaving::Interleaved>(
                 src.data(), src.num_frames(), src.num_channels(), dst.data(), 0, 1
             );
 
-            REQUIRE(result);
             REQUIRE(dst[0] == 0);
             REQUIRE(dst[1] == 0);
             REQUIRE(dst[2] == 1);
@@ -1152,13 +1023,10 @@ TEST_CASE("rav::AudioData") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne,
-                rav::AudioData::Interleaving::Noninterleaved>(
-                src.data(), src.num_frames(), src.num_channels(), dst.data(), 0
-            );
+                rav::AudioData::Interleaving::Noninterleaved>(src.data(), src.num_frames(), src.num_channels(), dst.data(), 0);
 
-            REQUIRE(result);
             REQUIRE(dst[0] == 1);
             REQUIRE(dst[1] == 2);
             REQUIRE(dst[2] == 3);
@@ -1180,13 +1048,10 @@ TEST_CASE("rav::AudioData") {
 
             std::vector<int16_t> dst(6);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne,
-                rav::AudioData::Interleaving::Noninterleaved>(
-                src.data(), src.num_frames() - 1, src.num_channels(), dst.data(), 1
-            );
+                rav::AudioData::Interleaving::Noninterleaved>(src.data(), src.num_frames() - 1, src.num_channels(), dst.data(), 1);
 
-            REQUIRE(result);
             REQUIRE(dst[0] == 2);
             REQUIRE(dst[1] == 3);
             REQUIRE(dst[2] == 4);
@@ -1206,13 +1071,10 @@ TEST_CASE("rav::AudioData") {
 
             std::vector<int16_t> dst(8);
 
-            auto result = rav::AudioData::convert<
+            rav::AudioData::convert<
                 int16_t, rav::AudioData::ByteOrder::Ne, int16_t, rav::AudioData::ByteOrder::Ne,
-                rav::AudioData::Interleaving::Noninterleaved>(
-                src.data(), src.num_frames(), src.num_channels(), dst.data(), 0, 1
-            );
+                rav::AudioData::Interleaving::Noninterleaved>(src.data(), src.num_frames(), src.num_channels(), dst.data(), 0, 1);
 
-            REQUIRE(result);
             REQUIRE(dst[0] == 0);
             REQUIRE(dst[1] == 0);
             REQUIRE(dst[2] == 1);
@@ -1229,14 +1091,12 @@ TEST_CASE("rav::AudioData") {
         std::vector<int16_t> de_interleaved {1, 3, 5, 2, 4, 6};
         std::vector<int16_t> buffer {0, 0, 0, 0, 0, 0};
         rav::AudioData::de_interleave(
-            rav::BufferView(interleaved).reinterpret<uint8_t>(), rav::BufferView(buffer).reinterpret<uint8_t>(), 2,
-            sizeof(int16_t)
+            rav::BufferView(interleaved).reinterpret<uint8_t>(), rav::BufferView(buffer).reinterpret<uint8_t>(), 2, sizeof(int16_t)
         );
         REQUIRE(buffer == de_interleaved);
 
-       rav::AudioData::interleave(
-            rav::BufferView(de_interleaved).reinterpret<uint8_t>(), rav::BufferView(buffer).reinterpret<uint8_t>(), 2,
-            sizeof(int16_t), 3
+        rav::AudioData::interleave(
+            rav::BufferView(de_interleaved).reinterpret<uint8_t>(), rav::BufferView(buffer).reinterpret<uint8_t>(), 2, sizeof(int16_t), 3
         );
         REQUIRE(buffer == interleaved);
     }
