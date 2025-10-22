@@ -16,6 +16,7 @@
 #include "ravennakit/rtp/rtp_packet_view.hpp"
 
 #include <utility>
+#include <tuple>
 
 namespace rav::rtp {
 

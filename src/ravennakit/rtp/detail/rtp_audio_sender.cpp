@@ -137,8 +137,9 @@ bool schedule_data_for_sending_realtime(
         writer.rtp_packet_buffer.clear();
         rtp_packet.encode(writer.intermediate_send_buffer.data(), size_per_packet, writer.rtp_packet_buffer);
 
+        RAV_ASSERT_DEBUG(writer.rtp_packet_buffer.size() <= rav::aes67::constants::k_max_payload, "Packet payload overflow");
+
         if (writer.rtp_packet_buffer.size() > rav::aes67::constants::k_max_payload) {
-            RAV_LOG_ERROR("Exceeding max payload: {}", writer.rtp_packet_buffer.size());
             return false;
         }
 
@@ -147,16 +148,8 @@ bool schedule_data_for_sending_realtime(
         packet.payload_size_bytes = static_cast<uint32_t>(writer.rtp_packet_buffer.size());
         std::memcpy(packet.payload.data(), writer.rtp_packet_buffer.data(), writer.rtp_packet_buffer.size());
 
-        if (writer.outgoing_data.push(packet)) {
-            // RAV_LOG_TRACE(
-            // "Scheduled RTP packet: {} bytes, timestamp: {}, seq: {}", writer.rtp_packet_buffer.size(),
-            // packet.rtp_timestamp, rtp_packet.get_sequence_number().value()
-            // );
-        } else {
-            RAV_LOG_ERROR(
-                "Failed to schedule RTP packet: {} bytes, timestamp: {}, seq: {}", writer.rtp_packet_buffer.size(), packet.rtp_timestamp,
-                rtp_packet.get_sequence_number().value()
-            );
+        if (!writer.outgoing_data.push(packet)) {
+            writer.num_packets_failed_to_schedule.fetch_add(1, std::memory_order_relaxed);
         }
 
         rtp_packet.sequence_number_inc(1);
@@ -267,8 +260,8 @@ void rav::rtp::AudioSender::send_outgoing_packets() {
                 return;  // Nothing to do here
             }
 
-            RAV_ASSERT(packet->payload_size_bytes <= aes67::constants::k_max_payload, "Payload size exceeds maximum");
-            RAV_ASSERT(packet->payload_size_bytes > 0, "Packet is empty");
+            RAV_ASSERT_DEBUG(packet->payload_size_bytes <= aes67::constants::k_max_payload, "Payload size exceeds maximum");
+            RAV_ASSERT_DEBUG(packet->payload_size_bytes > 0, "Packet is empty");
 
             for (size_t j = 0; j < writer.destinations.size(); j++) {
                 if (writer.destinations[j].address().is_unspecified()) {
@@ -277,23 +270,16 @@ void rav::rtp::AudioSender::send_outgoing_packets() {
                 if (writer.destinations[j].port() == 0) {
                     continue;
                 }
+
                 boost::system::error_code ec;
                 writer.sockets[j].send_to(
                     boost::asio::buffer(packet->payload.data(), packet->payload_size_bytes), writer.destinations[j], 0, ec
                 );
                 if (set_error(*this, ec)) {
-                    RAV_LOG_ERROR("Failed to send RTP packet: {}", ec.message());
+                    writer.num_packets_failed_to_send.fetch_add(1, std::memory_order_relaxed);
                 }
 
-                rtp::PacketView rtp_packet_view(packet->payload.data(), packet->payload_size_bytes);
-                if (!rtp_packet_view.validate()) {
-                    RAV_LOG_ERROR("Failed to validate RTP packet");
-                }
-
-                // RAV_LOG_TRACE(
-                // "Send RTP packet:      {} bytes, timestamp: {}, seq: {}", writer.rtp_packet_buffer.size(),
-                // rtp_packet_view.timestamp(), rtp_packet_view.sequence_number()
-                // );
+                RAV_ASSERT_DEBUG(PacketView(packet->payload.data(), packet->payload_size_bytes).validate(), "Packet validation failed");
             }
         }
     }
@@ -330,44 +316,29 @@ bool rav::rtp::AudioSender::send_audio_data_realtime(
             continue;
         }
 
-        if (input_buffer.find_max_abs() > 1.0f) {
-            RAV_LOG_WARNING("Audio overload");
-        }
-
         if (input_buffer.num_frames() > k_max_num_frames) {
-            RAV_LOG_WARNING("Input buffer size exceeds maximum size");
+            RAV_ASSERT_DEBUG(false, "Input buffer size exceeds maximum");
             return false;
         }
 
-        auto audio_format = writer.audio_format;
+        const auto audio_format = writer.audio_format;
         if (audio_format.num_channels != input_buffer.num_channels()) {
-            RAV_LOG_ERROR("Channel mismatch: expected {}, got {}", audio_format.num_channels, input_buffer.num_channels());
+            RAV_ASSERT_DEBUG(false, "Channel mismatch");
             return false;
         }
 
         auto& intermediate_buffer = writer.intermediate_audio_buffer;
 
         if (audio_format.encoding == AudioEncoding::pcm_s16) {
-            const auto ok = AudioData::convert<
-                float, AudioData::ByteOrder::Ne, int16_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
+            AudioData::convert<float, AudioData::ByteOrder::Ne, int16_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
                 input_buffer.data(), input_buffer.num_frames(), input_buffer.num_channels(),
                 reinterpret_cast<int16_t*>(intermediate_buffer.data()), 0, 0
             );
-            if (!ok) {
-                RAV_LOG_WARNING("Failed to convert audio data");
-            }
         } else if (audio_format.encoding == AudioEncoding::pcm_s24) {
-            const auto ok = AudioData::convert<
-                float, AudioData::ByteOrder::Ne, int24_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
+            AudioData::convert<float, AudioData::ByteOrder::Ne, int24_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved>(
                 input_buffer.data(), input_buffer.num_frames(), input_buffer.num_channels(),
                 reinterpret_cast<int24_t*>(intermediate_buffer.data()), 0, 0
             );
-            if (!ok) {
-                RAV_LOG_WARNING("Failed to convert audio data");
-            }
-        } else {
-            RAV_LOG_ERROR("Unsupported encoding");
-            return false;
         }
 
         return schedule_data_for_sending_realtime(

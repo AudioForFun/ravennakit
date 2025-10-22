@@ -117,6 +117,8 @@ struct AudioSender {
         Id id;
         std::array<udp_endpoint, k_max_num_redundant_sessions> destinations;
         std::array<udp_socket, k_max_num_redundant_sessions> sockets;
+        std::atomic<size_t> num_packets_failed_to_schedule {0};  // TODO: Report somewhere
+        std::atomic<size_t> num_packets_failed_to_send {0};      // TODO: Report somewhere
 
         // Audio thread:
         ByteBuffer rtp_packet_buffer;

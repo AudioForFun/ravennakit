@@ -31,16 +31,6 @@ class AudioBufferView {
         channels_(channels), num_channels_(num_channels), num_frames_(num_frames) {}
 
     /**
-     * Accesses the channel at the given index.
-     * @param channel_index The index of the channel to get.
-     * @return A pointer to the beginning of the channel.
-     */
-    const T* operator[](size_t channel_index) const {
-        RAV_ASSERT(channel_index < AudioBufferView<T>::num_channels(), "Channel index out of bounds");
-        return channels_[channel_index];
-    }
-
-    /**
      * Compares two audio buffers for equality. It does this by comparing the actual contents. If both audio buffers are
      * empty, they are considered equal.
      * @param lhs Left hand side audio buffer.
@@ -90,8 +80,19 @@ class AudioBufferView {
      * @param channel_index The index of the channel to get.
      * @return A pointer to the beginning of the channel.
      */
+    const T* operator[](size_t channel_index) const {
+        RAV_ASSERT_DEBUG(channel_index < AudioBufferView<T>::num_channels(), "Channel index out of bounds");
+        return channels_[channel_index];
+    }
+
+    /**
+     * Accesses the channel at the given index
+     * Does not perform bounds checking.
+     * @param channel_index The index of the channel to get.
+     * @return A pointer to the beginning of the channel.
+     */
     T* operator[](size_t channel_index) {
-        RAV_ASSERT(channel_index < num_channels_, "Channel index out of bounds");
+        RAV_ASSERT_DEBUG(channel_index < num_channels_, "Channel index out of bounds");
         return channels_[channel_index];
     }
 
@@ -118,8 +119,8 @@ class AudioBufferView {
      * @param value The value to set.
      */
     void set_sample(size_t channel_index, size_t frame_index, T value) {
-        RAV_ASSERT(channel_index < num_channels_, "Channel index out of bounds");
-        RAV_ASSERT(frame_index < num_frames_, "Frame index out of bounds");
+        RAV_ASSERT_DEBUG(channel_index < num_channels_, "Channel index out of bounds");
+        RAV_ASSERT_DEBUG(frame_index < num_frames_, "Frame index out of bounds");
         channels_[channel_index][frame_index] = value;
     }
 
@@ -146,19 +147,20 @@ class AudioBufferView {
     }
 
     /**
-     * Clear a range of samples in a channel.
+     * Clear a range of samples in a channel, without bounds checking.
      * @param channel_index The index of the channel.
      * @param start_sample The index of the first frame to clear.
      * @param num_samples_to_clear The number of samples to clear.
      */
     void clear(const size_t channel_index, const size_t start_sample, const size_t num_samples_to_clear) {
-        RAV_ASSERT(channel_index < num_channels(), "Channel index out of bounds");
-        RAV_ASSERT(start_sample + num_samples_to_clear <= num_frames(), "Sample index out of bounds");
+        RAV_ASSERT_DEBUG(channel_index < num_channels(), "Channel index out of bounds");
+        RAV_ASSERT_DEBUG(start_sample + num_samples_to_clear <= num_frames(), "Sample index out of bounds");
         clear_audio_data(channels_[channel_index] + start_sample, channels_[channel_index] + start_sample + num_samples_to_clear);
     }
 
     /**
      * Copies data from all channels of src into all channels of this buffer.
+     * Make sure the number of channels and frames match.
      * @param dst_start_frame The index of the start frame.
      * @param num_frames_to_copy The number of frames to copy.
      * @param src The source data to copy from.
@@ -169,22 +171,22 @@ class AudioBufferView {
         const size_t dst_start_frame, const size_t num_frames_to_copy, const T* const* src, const size_t src_num_channels,
         const size_t src_start_frame = 0
     ) {
-        RAV_ASSERT(src_num_channels == num_channels(), "Number of channels mismatch");
+        RAV_ASSERT_DEBUG(src_num_channels == num_channels(), "Number of channels mismatch");
         for (size_t i = 0; i < std::min(src_num_channels, num_channels()); ++i) {
             copy_from(i, dst_start_frame, num_frames_to_copy, src[i] + src_start_frame);
         }
     }
 
     /**
-     * Copies data from src into this buffer.
+     * Copies data from src into this buffer, without bounds checking.
      * @param dst_channel_index The index of the destination channel.
      * @param dst_start_sample The index of the start frame in the destination channel.
      * @param num_samples_to_copy The number of samples to copy.
      * @param src The source data to copy from.
      */
     void copy_from(const size_t dst_channel_index, const size_t dst_start_sample, const size_t num_samples_to_copy, const T* src) {
-        RAV_ASSERT(dst_channel_index < num_channels(), "Channel index out of bounds");
-        RAV_ASSERT(dst_start_sample + num_samples_to_copy <= num_frames(), "Sample index out of bounds");
+        RAV_ASSERT_DEBUG(dst_channel_index < num_channels(), "Channel index out of bounds");
+        RAV_ASSERT_DEBUG(dst_start_sample + num_samples_to_copy <= num_frames(), "Sample index out of bounds");
 
         if (num_samples_to_copy == 0) {
             return;
@@ -205,7 +207,7 @@ class AudioBufferView {
         const size_t src_start_frame, const size_t num_frames, T* const* dst, const size_t dst_num_channels,
         const size_t dst_start_frame = 0
     ) {
-        RAV_ASSERT(dst_num_channels == num_channels(), "Number of channels mismatch");
+        RAV_ASSERT_DEBUG(dst_num_channels == num_channels(), "Number of channels mismatch");
         for (size_t i = 0; i < std::min(num_channels(), dst_num_channels); ++i) {
             copy_to(i, src_start_frame, num_frames, dst[i] + dst_start_frame);
         }
@@ -219,8 +221,8 @@ class AudioBufferView {
      * @param dst The destination data to copy to.
      */
     void copy_to(const size_t src_channel_index, const size_t src_start_sample, const size_t num_samples_to_copy, T* dst) {
-        RAV_ASSERT(src_channel_index < num_channels(), "Channel index out of bounds");
-        RAV_ASSERT(src_start_sample + num_samples_to_copy <= num_frames(), "Sample index out of bounds");
+        RAV_ASSERT_DEBUG(src_channel_index < num_channels(), "Channel index out of bounds");
+        RAV_ASSERT_DEBUG(src_start_sample + num_samples_to_copy <= num_frames(), "Sample index out of bounds");
 
         if (num_samples_to_copy == 0) {
             return;
@@ -234,7 +236,7 @@ class AudioBufferView {
      * @param other The other audio buffer view.
      * @return True if the audio buffer view is valid and the number of channels and frames match, false otherwise.
      */
-    bool add(const AudioBufferView& other) {
+    [[nodiscard]] bool add(const AudioBufferView& other) {
         static_assert(std::is_floating_point_v<T>, "Not supported for integer types");
 
         if (num_channels_ != other.num_channels_ || num_frames_ != other.num_frames_) {
@@ -288,20 +290,20 @@ class AudioBufferView {
 
     /**
      * Returns a copy of this view with given number of channels.
-     * @param num_channels The number of channels.
+     * @param num_channels The number of channels. Limited to the current amount of channels.
      * @return A copy of this view with the given number of channels.
      */
-    AudioBufferView with_num_channels(size_t num_channels) {
-        return AudioBufferView(channels_, num_channels, num_frames_);
+    AudioBufferView with_num_channels(const size_t num_channels) {
+        return AudioBufferView(channels_, std::min(num_channels, num_channels_), num_frames_);
     }
 
     /**
      * Returns a copy of this view with given number of frames.
-     * @param num_frames The number of frames.
+     * @param num_frames The number of frames, limited by the current amount of frames.
      * @return A copy of this view with the given number of frames.
      */
-    AudioBufferView with_num_frames(size_t num_frames) {
-        return AudioBufferView(channels_, num_channels_, num_frames);
+    AudioBufferView with_num_frames(const size_t num_frames) {
+        return AudioBufferView(channels_, num_channels_, std::min(num_frames, num_frames_));
     }
 
     /**

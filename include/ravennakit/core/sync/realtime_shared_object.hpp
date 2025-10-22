@@ -65,7 +65,7 @@ class RealtimeSharedObject {
          * @return A reference to the contained object. Reference is only valid if the value is not nullptr.
          */
         T& operator*() {
-            RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+            RAV_ASSERT_DEBUG(value_ != nullptr, "Value is nullptr");
             return *value_;
         }
 
@@ -73,7 +73,7 @@ class RealtimeSharedObject {
          * @return A reference to the contained object. Reference is only valid if the value is not nullptr.
          */
         const T& operator*() const {
-            RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+            RAV_ASSERT_DEBUG(value_ != nullptr, "Value is nullptr");
             return *value_;
         }
 
@@ -81,7 +81,7 @@ class RealtimeSharedObject {
          * @return A pointer to the contained object, or nullptr if the value is nullptr.
          */
         T* operator->() {
-            RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+            RAV_ASSERT_DEBUG(value_ != nullptr, "Value is nullptr");
             return value_;
         }
 
@@ -89,7 +89,7 @@ class RealtimeSharedObject {
          * @return A pointer to the contained object, or nullptr if the value is nullptr.
          */
         const T* operator->() const {
-            RAV_ASSERT(value_ != nullptr, "Value is nullptr");
+            RAV_ASSERT_DEBUG(value_ != nullptr, "Value is nullptr");
             return value_;
         }
 
@@ -186,6 +186,14 @@ class RealtimeSharedObject {
         }
 
         return false;
+    }
+
+    /**
+     * Resets the object to contain a new, default constructed object.
+     * @return True if resetting succeeded, or false if not.
+     */
+    [[nodiscard]] bool reset() {
+        return update(std::make_unique<T>());
     }
 
   private:

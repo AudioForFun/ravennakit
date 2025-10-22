@@ -144,6 +144,22 @@ void reset_reader(rav::rtp::AudioReceiver::Reader& reader) {
     RAV_ASSERT(parameters.audio_format.is_valid(), "Invalid format");
     RAV_ASSERT(reader.rw_lock.is_locked_exclusively(), "Expecting the reader to be locked exclusively");
 
+    if (parameters.audio_format.byte_order != rav::AudioFormat::ByteOrder::be) {
+        RAV_LOG_ERROR("Unsupported byte order");
+        return false;
+    }
+
+    if (parameters.audio_format.ordering != rav::AudioFormat::ChannelOrdering::interleaved) {
+        RAV_LOG_ERROR("Unsupported channel ordering");
+        return false;
+    }
+
+    if (!(parameters.audio_format.encoding == rav::AudioEncoding::pcm_s16 || parameters.audio_format.encoding == rav::AudioEncoding::pcm_s24
+        )) {
+        RAV_LOG_ERROR("Unsupported encoding type");
+        return false;
+    }
+
     reader.id = id;
 
     for (size_t i = 0; i < reader.streams.size(); ++i) {
@@ -281,7 +297,7 @@ void close_unused_sockets(rav::rtp::AudioReceiver& receiver) {
 void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
     TRACY_ZONE_SCOPED;
 
-    RAV_ASSERT(reader.rw_lock.is_locked_shared(), "Reader must be shared locked");
+    RAV_ASSERT_DEBUG(reader.rw_lock.is_locked_shared(), "Reader must be shared locked");
 
     for (auto& stream : reader.streams) {
         if (stream.state.load(std::memory_order_relaxed) == rav::rtp::AudioReceiver::StreamState::no_consumer) {
@@ -301,7 +317,6 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
             auto packet_most_recent_ts = rav::WrappingUint32(rtp_packet->timestamp + num_frames - 1);
 
             if (!reader.most_recent_ts.has_value()) {
-                RAV_LOG_TRACE("First packet at: {}", packet_timestamp.value());
                 reader.most_recent_ts = packet_most_recent_ts;
                 reader.receive_buffer.set_next_ts(packet_timestamp.value());
                 reader.next_ts_to_read = packet_timestamp;
@@ -313,28 +328,20 @@ void do_realtime_maintenance(rav::rtp::AudioReceiver::Reader& reader) {
 
             // Determine whether whole packet is too old
             if (packet_timestamp + stream.packet_time_frames <= reader.next_ts_to_read) {
-                // RAV_LOG_WARNING("Packet too late: seq={}, ts={}", packet->seq, packet->timestamp);
                 TRACY_MESSAGE("Packet too late - skipping");
-                if (!stream.packets_too_old.push(rtp_packet->seq)) {
-                    RAV_LOG_ERROR("Packet not enqueued to packets_too_old");
-                }
+                std::ignore = stream.packets_too_old.push(rtp_packet->seq);
                 continue;
             }
 
             // Determine whether part of the packet is too old
             if (packet_timestamp < reader.next_ts_to_read) {
                 TRACY_MESSAGE("Packet partly too late - not skipping");
-                if (!stream.packets_too_old.push(rtp_packet->seq)) {
-                    RAV_LOG_ERROR("Packet not enqueued to packets_too_old");
-                }
+                std::ignore = stream.packets_too_old.push(rtp_packet->seq);
                 // Still process the packet since it contains data that is not outdated
             }
 
             reader.receive_buffer.clear_until(rtp_packet->timestamp);
-
-            if (!reader.receive_buffer.write(rtp_packet->timestamp, {rtp_packet->payload.data(), rtp_packet->data_len})) {
-                RAV_LOG_ERROR("Packet not written to buffer");
-            }
+            reader.receive_buffer.write(rtp_packet->timestamp, {rtp_packet->payload.data(), rtp_packet->data_len});
         }
     }
 }
@@ -345,11 +352,10 @@ std::optional<uint32_t> read_data_from_reader_realtime(
 ) {
     TRACY_ZONE_SCOPED;
 
-    RAV_ASSERT(reader.rw_lock.is_locked_shared(), "Reader must be shared locked");
+    RAV_ASSERT_DEBUG(reader.rw_lock.is_locked_shared(), "Reader must be shared locked");
 
     if (at_timestamp.has_value()) {
-        // Updating before do_realtime_maintenance to have the most accurate next_to_to_read
-        reader.next_ts_to_read = *at_timestamp;
+        reader.next_ts_to_read = *at_timestamp;  // Updating before do_realtime_maintenance to have the most accurate next_to_to_read
     }
 
     do_realtime_maintenance(reader);
@@ -358,7 +364,7 @@ std::optional<uint32_t> read_data_from_reader_realtime(
         return {};  // No data has been received yet
     }
 
-    RAV_ASSERT(reader.most_recent_ts.has_value(), "Should have a value, since first_packet_timestamp is set");
+    RAV_ASSERT_DEBUG(reader.most_recent_ts.has_value(), "Should have a value, since first_packet_timestamp is set");
 
     const auto num_frames = static_cast<uint32_t>(buffer_size) / reader.audio_format.bytes_per_frame();
 
@@ -371,11 +377,7 @@ std::optional<uint32_t> read_data_from_reader_realtime(
     TRACY_PLOT("RTP Receive buffer", static_cast<int64_t>(reader.next_ts_to_read.diff(reader.receive_buffer.get_next_ts())) - num_frames);
 
     const auto read_at = reader.next_ts_to_read.value();
-    if (!reader.receive_buffer.read(read_at, buffer, buffer_size, true)) {
-        TRACY_MESSAGE("Failed to read data from ringbuffer");
-        return std::nullopt;
-    }
-
+    reader.receive_buffer.read(read_at, buffer, buffer_size, true);
     reader.next_ts_to_read += num_frames;
 
     return read_at;
@@ -590,15 +592,11 @@ void rav::rtp::AudioReceiver::read_incoming_packets() {
 
         const auto payload = view.payload_data();
         if (payload.size_bytes() == 0) {
-            // RAV_LOG_WARNING("Received packet with empty payload");
-            // TODO: Report error
-            return;
+            return;  // Received packet with empty payload
         }
 
         if (payload.size_bytes() > std::numeric_limits<uint16_t>::max()) {
-            // RAV_LOG_WARNING("Payload size exceeds maximum size");
-            // TODO: Report error
-            return;
+            return;  // Payload size exceeds maximum size
         }
 
         for (auto& reader : readers) {
@@ -726,7 +724,8 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
 ) {
     TRACY_ZONE_SCOPED;
 
-    RAV_ASSERT(output_buffer.is_valid(), "Buffer must be valid");
+    RAV_ASSERT_DEBUG(id.is_valid(), "Id should be valid");
+    RAV_ASSERT_DEBUG(output_buffer.is_valid(), "Buffer must be valid");
 
     for (auto& reader : readers) {
         const auto guard = reader.rw_lock.try_lock_shared();
@@ -739,19 +738,8 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
 
         const auto format = reader.audio_format;
 
-        if (format.byte_order != AudioFormat::ByteOrder::be) {
-            RAV_LOG_ERROR("Unexpected byte order");
-            return std::nullopt;
-        }
-
-        if (format.ordering != AudioFormat::ChannelOrdering::interleaved) {
-            RAV_LOG_ERROR("Unexpected channel ordering");
-            return std::nullopt;
-        }
-
         if (format.num_channels != output_buffer.num_channels()) {
             // Channel mapping/mixing is not implemented and an equal amount of channels is expected. Ignoring silently.
-            RAV_LOG_ERROR("Unexpected number of channels");
             return std::nullopt;
         }
 
@@ -765,24 +753,13 @@ std::optional<uint32_t> rav::rtp::AudioReceiver::read_audio_data_realtime(
         }
 
         if (format.encoding == AudioEncoding::pcm_s16) {
-            const auto ok = AudioData::convert<
-                int16_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved, float, AudioData::ByteOrder::Ne>(
+            AudioData::convert<int16_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved, float, AudioData::ByteOrder::Ne>(
                 reinterpret_cast<int16_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(), output_buffer.data()
             );
-            if (!ok) {
-                RAV_LOG_WARNING("Failed to convert audio data");
-            }
         } else if (format.encoding == AudioEncoding::pcm_s24) {
-            const auto ok = AudioData::convert<
-                int24_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved, float, AudioData::ByteOrder::Ne>(
+            AudioData::convert<int24_t, AudioData::ByteOrder::Be, AudioData::Interleaving::Interleaved, float, AudioData::ByteOrder::Ne>(
                 reinterpret_cast<int24_t*>(buffer.data()), output_buffer.num_frames(), output_buffer.num_channels(), output_buffer.data()
             );
-            if (!ok) {
-                RAV_LOG_WARNING("Failed to convert audio data");
-            }
-        } else {
-            RAV_LOG_ERROR("Unsupported encoding");
-            return std::nullopt;
         }
 
         return read_at;
