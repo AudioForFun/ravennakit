@@ -16,12 +16,16 @@
 
 #include <utility>
 
+namespace rav {
+
 inline bool operator==(const rav::RavennaNode::Configuration& lhs, const rav::RavennaNode::Configuration& rhs) {
     return lhs.enable_dnssd_node_advertisement == rhs.enable_dnssd_node_advertisement
         && lhs.enable_dnssd_session_advertisement == rhs.enable_dnssd_session_advertisement
         && lhs.enable_dnssd_node_discovery == rhs.enable_dnssd_node_discovery
         && lhs.enable_dnssd_session_discovery == rhs.enable_dnssd_session_discovery;
 }
+
+}  // namespace rav
 
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
