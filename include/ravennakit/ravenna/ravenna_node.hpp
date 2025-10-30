@@ -34,11 +34,36 @@ namespace rav {
 class RavennaNode {
   public:
     /**
+     * Holds the configuration of the node.
+     */
+    struct Configuration {
+        /// When true, the RAVENNA node will advertise itself using dns-sd.
+        bool enable_dnssd_node_advertisement {true};
+
+        /// When true, the RAVENNA node will discover other nodes using dns-sd.
+        bool enable_dnssd_node_discovery {true};
+
+        /// When true, the RAVENNA node will advertise senders using dns-sd.
+        bool enable_dnssd_session_advertisement {true};
+
+        /// When true, the RAVENNA node will discover sessions (streams) using dns-sd.
+        bool enable_dnssd_session_discovery {true};
+    };
+
+    /**
      * Base class for classes which want to receive updates from the ravenna node.
      */
     class Subscriber: public RavennaBrowser::Subscriber {
       public:
         ~Subscriber() override = default;
+
+        /**
+         * Called when the configuration of the RavennaNode is updated.
+         * @param configuration The updated configuration.
+         */
+        virtual void ravenna_node_configuration_updated(const Configuration& configuration) {
+            std::ignore = configuration;
+        }
 
         /**
          * Called when a receiver is added to the node, or when subscribing.
@@ -54,7 +79,7 @@ class RavennaNode {
          * Called from the maintenance thread.
          * @param receiver_id The id of the receiver.
          */
-        virtual void ravenna_receiver_removed(Id receiver_id) {
+        virtual void ravenna_receiver_removed(const Id receiver_id) {
             std::ignore = receiver_id;
         }
 
@@ -89,7 +114,7 @@ class RavennaNode {
          * @param status The updated NMOS node state.
          * @param registry_info The updated NMOS registry information.
          */
-        virtual void nmos_node_status_changed(nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
+        virtual void nmos_node_status_changed(const nmos::Node::Status status, const nmos::Node::StatusInfo& registry_info) {
             std::ignore = status;
             std::ignore = registry_info;
         }
@@ -289,6 +314,13 @@ class RavennaNode {
     [[nodiscard]] std::future<void> set_network_interface_config(NetworkInterfaceConfig interface_config);
 
     /**
+     * Sets the configuration for this node, state will be updated accordingly.
+     * @param config The new configuration.
+     * @return A future that will be set when the operation is complete.
+     */
+    std::future<void> set_configuration(Configuration config);
+
+    /**
      * @return True if this method is called on the maintenance thread, false otherwise.
      */
     [[nodiscard]] bool is_maintenance_thread() const;
@@ -345,6 +377,7 @@ class RavennaNode {
 
   private:
     boost::asio::io_context io_context_;
+    Configuration configuration_;
     rtp::AudioReceiver rtp_receiver_ {io_context_};
     rtp::AudioSender rtp_sender_ {io_context_};
     std::atomic<bool> keep_going_ {true};

@@ -16,6 +16,13 @@
 
 #include <utility>
 
+inline bool operator==(const rav::RavennaNode::Configuration& lhs, const rav::RavennaNode::Configuration& rhs) {
+    return lhs.enable_dnssd_node_advertisement == rhs.enable_dnssd_node_advertisement
+        && lhs.enable_dnssd_session_advertisement == rhs.enable_dnssd_session_advertisement
+        && lhs.enable_dnssd_node_discovery == rhs.enable_dnssd_node_discovery
+        && lhs.enable_dnssd_session_discovery == rhs.enable_dnssd_session_discovery;
+}
+
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
     advertiser_ = dnssd::Advertiser::create(io_context_);
@@ -284,6 +291,7 @@ std::future<void> rav::RavennaNode::subscribe(Subscriber* subscriber) {
         for (const auto& sender : senders_) {
             subscriber->ravenna_sender_added(*sender);
         }
+        subscriber->ravenna_node_configuration_updated(configuration_);
         subscriber->network_interface_config_updated(network_interface_config_);
         subscriber->nmos_node_config_updated(nmos_node_.get_configuration());
         subscriber->nmos_node_status_changed(nmos_node_.get_status(), nmos_node_.get_registry_info());
@@ -383,8 +391,8 @@ std::future<void> rav::RavennaNode::unsubscribe_from_ptp_instance(ptp::Instance:
 }
 
 std::future<tl::expected<void, std::string>> rav::RavennaNode::set_ptp_instance_configuration(ptp::Instance::Configuration update) {
-    auto work = [this, u = std::move(update)]() -> tl::expected<void, std::string> {
-        auto result = ptp_instance_.set_configuration(u);
+    auto work = [this, update]() -> tl::expected<void, std::string> {
+        auto result = ptp_instance_.set_configuration(update);
         if (!result) {
             return tl::unexpected(fmt::format("Failed to set PTP instance configuration: {}", result.error()));
         }
@@ -480,6 +488,19 @@ std::future<void> rav::RavennaNode::set_network_interface_config(NetworkInterfac
         }
 
         RAV_LOG_INFO("{}", config.to_string());
+    };
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
+}
+
+std::future<void> rav::RavennaNode::set_configuration(Configuration config) {
+    auto work = [this, config] {
+        if (config == configuration_) {
+            return;
+        }
+        configuration_ = config;
+        for (auto* s : subscribers_) {
+            s->ravenna_node_configuration_updated(configuration_);
+        }
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
