@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.19.0] - November 24, 2025
+
+### Added
+
+- A method to RavennaSender and RavennaNode to get the SDP for a sender.
+
+### Fixed
+
+- Audio conversions from floating point to integer are now clipped to [-1, 1].
+
 ## [v0.18.0] - November 1, 2025
 
 ### Added
