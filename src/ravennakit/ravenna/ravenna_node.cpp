@@ -28,7 +28,6 @@ inline bool operator==(const rav::RavennaNode::Configuration& lhs, const rav::Ra
 
 rav::RavennaNode::RavennaNode() :
     rtsp_server_(io_context_, boost::asio::ip::tcp::endpoint(boost::asio::ip::address_v4::any(), 0)), ptp_instance_(io_context_) {
-
     nmos_device_.id = boost::uuids::random_generator()();
     if (!nmos_node_.add_or_update_device(&nmos_device_)) {
         RAV_LOG_ERROR("Failed to add NMOS device with ID: {}", boost::uuids::to_string(nmos_device_.id));
@@ -442,6 +441,19 @@ std::optional<uint32_t> rav::RavennaNode::read_audio_data_realtime(
 ) {
     TRACY_ZONE_SCOPED;
     return rtp_receiver_.read_audio_data_realtime(receiver_id, output_buffer, at_timestamp, require_delay);
+}
+
+std::future<tl::expected<rav::sdp::SessionDescription, std::string>> rav::RavennaNode::get_sdp_for_sender(Id sender_id) {
+    TRACY_ZONE_SCOPED;
+    auto work = [this, sender_id]() -> tl::expected<sdp::SessionDescription, std::string> {
+        for (const auto& sender : senders_) {
+            if (sender->get_id() == sender_id) {
+                return sender->generate_sdp();
+            }
+        }
+        return tl::unexpected("Sender not found");
+    };
+    return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
 
 bool rav::RavennaNode::send_data_realtime(const Id sender_id, const BufferView<const uint8_t> buffer, const uint32_t timestamp) {

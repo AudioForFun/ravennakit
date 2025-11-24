@@ -58,7 +58,7 @@ rav::RavennaSender::RavennaSender(
     };
 
     nmos_sender_.get_transport_file = [this]() -> tl::expected<sdp::SessionDescription, nmos::ApiError> {
-        auto sdp = build_sdp();
+        auto sdp = generate_sdp();
         if (!sdp) {
             return tl::unexpected(nmos::ApiError(http::status::internal_server_error, sdp.error()));
         }
@@ -390,7 +390,7 @@ void rav::RavennaSender::on_request(const rtsp::Connection::RequestEvent event) 
         error_response.rtsp_headers.set(*cseq);
     }
 
-    const auto sdp = build_sdp();  // Should the SDP be cached and updated on changes?
+    const auto sdp = generate_sdp();  // Should the SDP be cached and updated on changes?
     if (!sdp) {
         RAV_LOG_ERROR("Failed to build SDP: {}", sdp.error());
         event.rtsp_connection.async_send_response(error_response);
@@ -429,7 +429,7 @@ void rav::RavennaSender::send_announce() const {
         return;
     }
 
-    auto sdp = build_sdp();
+    auto sdp = generate_sdp();
     if (!sdp) {
         RAV_LOG_ERROR("Failed to encode SDP: {}", sdp.error());
         return;
@@ -535,7 +535,7 @@ void rav::RavennaSender::update_advertisement() {
     }
 }
 
-tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::build_sdp() const {
+tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::generate_sdp() const {
     if (configuration_.session_name.empty()) {
         return tl::unexpected("Session name not set");
     }
@@ -590,10 +590,6 @@ tl::expected<rav::sdp::SessionDescription, std::string> rav::RavennaSender::buil
     for (auto& dst : configuration_.destinations) {
         if (!dst.enabled) {
             continue;
-        }
-
-        if (dst.endpoint.address().is_unspecified()) {
-            return tl::unexpected("Destination endpoint is unspecified");
         }
 
         std::string dst_address_str = dst.endpoint.address().to_string();

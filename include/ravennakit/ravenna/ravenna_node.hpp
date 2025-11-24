@@ -184,6 +184,13 @@ class RavennaNode {
     );
 
     /**
+     * Get the SDP for the sender with the given id. This function will generate the SDP based on the current state of the receiver.
+     * @param sender_id The id of the sender to get the SDP for.
+     * @return The SDP for the sender.
+     */
+    std::future<tl::expected<sdp::SessionDescription, std::string>> get_sdp_for_sender(Id sender_id);
+
+    /**
      * Get the SDP for the receiver with the given id.
      * TODO: Deprecate and signal sdp changes through RavennaReceiver::Subscriber
      * @param receiver_id The id of the receiver to get the SDP for.
