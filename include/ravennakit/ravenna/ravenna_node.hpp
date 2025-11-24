@@ -410,6 +410,11 @@ class RavennaNode {
     void update_ravenna_browser();
 };
 
+/**
+ * @returns A string representation of RavennaNode::Configuration.
+ */
+std::string to_string(const RavennaNode::Configuration& configuration);
+
 }  // namespace rav
 
 /**

@@ -752,4 +752,15 @@ inline RavennaNode::Configuration tag_invoke(const boost::json::value_to_tag<Rav
     return config;
 }
 
+std::string to_string(const RavennaNode::Configuration& configuration) {
+    auto tof = [](const bool b) {
+        return b ? "true" : "false";
+    };
+    return fmt::format(
+        "enable_dnssd_node_discovery={}, enable_dnssd_session_advertisement={}, enable_dnssd_session_discovery={}",
+        tof(configuration.enable_dnssd_node_discovery), tof(configuration.enable_dnssd_session_advertisement),
+        tof(configuration.enable_dnssd_session_discovery)
+    );
+}
+
 }  // namespace rav

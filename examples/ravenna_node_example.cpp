@@ -1,48 +1,13 @@
-# Getting started
+/*
+ * Owllab License Agreement
+ *
+ * This software is provided by Owllab and may not be used, copied, modified,
+ * merged, published, distributed, sublicensed, or sold without a valid and
+ * explicit agreement with Owllab.
+ *
+ * Copyright (c) 2025 Owllab. All rights reserved.
+ */
 
-## Integrating using CMake
-
-The easiest and recommended way of integration RAVENNAKIT into your project is by using CMake. The following steps are
-required:
-
-1. Copy the RAVENNAKIT source code into the source tree of your project.
-2. Make the dependencies available through `find_package()` as RAVENNAKIT will try to link the dependencies using the
-   CMake `find_package()` command. Recommended is to use vcpkg. See [dependencies](dependencies.md) for more details.
-3. Call add_subdirectory() in your CMakeLists.txt file.:
-
-```cmake
-add_subdirectory(path/to/ravennakit)
-``` 
-
-Then call target_link_libraries() to link your target against the RAVENNAKIT library:
-
-```cmake
-target_link_libraries(your_target PRIVATE ravennakit)
-```
-
-## Manually integrating RAVENNAKIT
-
-It is possible to manually integrate RAVENNAKIT into your project. This requires some manual steps and is not as trivial
-as the CMake approach:
-
-1. Copy the RAVENNAKIT source code into the source tree of your project.
-2. Add the RAVENNAKIT source files to your project (path/to/ravennakit/include/** and path/to/ravennakit/src/**)
-3. Link the required dependencies to your project. Visit the [dependencies](dependencies.md) documentation for more details.
-
-## Build configurations and options
-
-To influence how RAVENNAKIT is built, several variables can be set. Head over to the [options](options.md)
-documentation for more details.
-
-## Setting up a RavennaNode
-
-The easiest way to get started is to use the `rav::RavennaNode` class. This class offers the highest available 
-abstraction of a RAVENNA node and provides a simple API to set up streams and to configure the node. It basically acts 
-like a virtual RAVENNA node. Using this class also makes it easier to deal with cross thread boundaries.
-
-The following code snippet shows how to set up a RAVENNA node:
-
-```cpp
 #include "ravennakit/ravenna/ravenna_node.hpp"
 #include "ravennakit/core/system.hpp"
 
@@ -130,6 +95,3 @@ int main([[maybe_unused]] int const argc, [[maybe_unused]] char* argv[]) {
 
     return 0;
 }
-``` 
-
-For more detailed examples on how to set up a RAVENNA node, see [examples/](../examples).

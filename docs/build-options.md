@@ -1,7 +1,7 @@
-# Options
+# Build options
 
-Several variables can be set to influence how the library is built or run.
-The following tables lists the available options:
+Several variables can be set to influence how the library is built and environment variable can be used to influence
+runtime behavior. The following tables lists the available options:
 
 ## CMake options
 
