@@ -176,6 +176,12 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     void set_advertiser(dnssd::Advertiser* advertiser);
 
     /**
+     * Generates and returns the SDP as string.
+     * @return A result containing either an error or the SDP text.
+     */
+    [[nodiscard]] tl::expected<sdp::SessionDescription, std::string> generate_sdp() const;
+
+    /**
      * @return A JSON representation of the sender.
      */
     boost::json::object to_boost_json() const;
@@ -238,7 +244,6 @@ class RavennaSender: public rtsp::Server::PathHandler, public ptp::Instance::Sub
     void send_announce() const;
     void update_nmos();
     void update_advertisement();
-    [[nodiscard]] tl::expected<sdp::SessionDescription, std::string> build_sdp() const;
     void generate_auto_addresses_if_needed(bool notify_subscribers);
     bool generate_auto_addresses_if_needed(std::vector<Destination>& destinations) const;
     void restart_streaming() const;
