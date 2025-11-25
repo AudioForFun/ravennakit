@@ -4,7 +4,7 @@
 //
 
 #include "ravennakit/core/file.hpp"
-#include "ravennakit/core/util/paths.hpp"
+#include "ravennakit/core/util/common_paths.hpp"
 #include "ravennakit/core/util/uri.hpp"
 
 #include <fmt/format.h>
@@ -20,12 +20,12 @@ void print(const char* subject, const std::filesystem::path& path) {
 }  // namespace
 
 int main() {
-    print("Home", rav::paths::home());
-    print("Desktop", rav::paths::desktop());
-    print("Documents", rav::paths::documents());
-    print("Downloads", rav::paths::downloads());
-    print("Pictures", rav::paths::pictures());
-    print("Application data", rav::paths::application_data());
-    print("Cache", rav::paths::cache());
+    print("Home", rav::common_paths::home());
+    print("Desktop", rav::common_paths::desktop());
+    print("Documents", rav::common_paths::documents());
+    print("Downloads", rav::common_paths::downloads());
+    print("Pictures", rav::common_paths::pictures());
+    print("Application data", rav::common_paths::application_data());
+    print("Cache", rav::common_paths::cache());
     print("Temporary std", std::filesystem::temp_directory_path());
 }

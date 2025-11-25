@@ -7,7 +7,7 @@
 
 #include <filesystem>
 
-namespace rav::paths {
+namespace rav::common_paths {
 
 /**
  * @return The path to the users home folder, or an empty path if the home folder could not be determined.

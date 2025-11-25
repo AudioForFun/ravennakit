@@ -4,7 +4,7 @@
 //
 
 #include "ravennakit/core/env.hpp"
-#include "ravennakit/core/util/paths.hpp"
+#include "ravennakit/core/util/common_paths.hpp"
 
 #include "ravennakit/core/assert.hpp"
 #include "ravennakit/core/file.hpp"
@@ -135,7 +135,7 @@ inline std::filesystem::path resolve_xdg_folder(const char* type, std::filesyste
 
 #endif
 
-std::filesystem::path rav::paths::home() {
+std::filesystem::path rav::common_paths::home() {
 #if RAV_POSIX
     return get_home();
 #elif RAV_WINDOWS
@@ -146,7 +146,7 @@ std::filesystem::path rav::paths::home() {
 #endif
 }
 
-std::filesystem::path rav::paths::desktop() {
+std::filesystem::path rav::common_paths::desktop() {
 #if RAV_MACOS
     const auto home = get_home();
     if (home.empty()) {
@@ -163,7 +163,7 @@ std::filesystem::path rav::paths::desktop() {
 #endif
 }
 
-std::filesystem::path rav::paths::documents() {
+std::filesystem::path rav::common_paths::documents() {
 #if RAV_MACOS
     const auto home = get_home();
     if (home.empty()) {
@@ -180,7 +180,7 @@ std::filesystem::path rav::paths::documents() {
 #endif
 }
 
-std::filesystem::path rav::paths::pictures() {
+std::filesystem::path rav::common_paths::pictures() {
 #if RAV_MACOS
     const auto home = get_home();
     if (home.empty()) {
@@ -197,7 +197,7 @@ std::filesystem::path rav::paths::pictures() {
 #endif
 }
 
-std::filesystem::path rav::paths::downloads() {
+std::filesystem::path rav::common_paths::downloads() {
 #if RAV_MACOS
     const auto home = get_home();
     if (home.empty()) {
@@ -214,7 +214,7 @@ std::filesystem::path rav::paths::downloads() {
 #endif
 }
 
-std::filesystem::path rav::paths::application_data() {
+std::filesystem::path rav::common_paths::application_data() {
 #if RAV_MACOS
     const auto home = get_home();
     if (home.empty()) {
@@ -231,7 +231,7 @@ std::filesystem::path rav::paths::application_data() {
 #endif
 }
 
-std::filesystem::path rav::paths::cache() {
+std::filesystem::path rav::common_paths::cache() {
 #if RAV_MACOS
     const auto home = get_home();
     if (home.empty()) {
