@@ -11,7 +11,6 @@
 #pragma once
 
 #include "ravennakit/core/assert.hpp"
-#include "ravennakit/core/constants.hpp"
 
 #include <memory>
 #include <mutex>
