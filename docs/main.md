@@ -9,15 +9,28 @@ The SDK is written in C++17, and targets systems running macOS, Windows and Linu
 
 For a higher level overview visit [ravennakit.com](https://ravennakit.com).
 
-## Early Access
+## Commercial Support & Licensing
 
-RAVENNAKIT is currently being developed. Want to get early access? Shoot us a [message](https://ravennakit.com/contact/).
+The SDK is released under the AGPLv3 license. This ensures that the core remains open and that improvements can be
+shared with the community. If AGPLv3 works for your project, you are free to use the SDK under its terms.
 
-## Licensing
+If you cannot or do not want to open source your product under AGPLv3 a commercial license is available. This license
+allows you to:
 
-RAVENNAKIT is a commercially licensed product that grants full access to the source code with no vendor lock-in — you're
-free to leave at any time. An optional annual renewal is available for ongoing updates and
-support. [Contact us](https://ravennakit.com/contact/) for more details.
+- Use the SDK in proprietary products without the copyleft requirements of AGPLv3.
+- Keep your application source code closed while still benefiting from the SDK.
+- Optionally bundle the SDK as part of a larger commercial offering.
+
+### Commercial Support
+
+If you are integrating AES67 / RAVENNA / ST2110-30 into a product and want to reduce risk and time-to-market, we can
+help with:
+
+- Integration support. Guidance and hands-on help integrating the SDK into your existing architecture.
+- Feature development & extensions. Development of new features, protocol extensions, or optimizations specific to your
+  use case.
+- Performance & reliability tuning. Profiling, troubleshooting, and improving latency, robustness, and scalability in
+  real-world network conditions.
 
 ## Selecting the correct version
 
