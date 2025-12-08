@@ -3,4 +3,4 @@
 	url = https://github.com/microsoft/vcpkg.git
 [submodule "submodules/build_tools"]
 	path = submodules/build_tools
-	url = git@github.com:ruurdadema/build_tools.git
+	url = https://github.com/ruurdadema/build_tools.git
