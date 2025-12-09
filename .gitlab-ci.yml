@@ -4,8 +4,9 @@ variables:
   
 stages:        
   - build
+  - deploy
 
-build-macos:  
+build-macos:
   variables:
     CI_DEBUG_TRACE: "true"
   tags:
@@ -17,7 +18,7 @@ build-macos:
     - python3 -m pip install pygit2 boto3
     - python3 -u build.py --path-to-build build-macos --build-number $CI_PIPELINE_IID --asan --tsan
 
-build-windows:  
+build-windows:
   variables:
     CI_DEBUG_TRACE: "true"
   tags:
@@ -27,7 +28,7 @@ build-windows:
     - python -m pip install pygit2 boto3
     - python -u build.py --path-to-build build-windows --build-number "$env:CI_PIPELINE_IID"
 
-build-linux:  
+build-linux:
   tags:
     - docker
   stage: build
@@ -40,7 +41,7 @@ build-linux:
     - python3 -m pip install pygit2 boto3
     - python3 -u build.py --path-to-build build-linux --build-number $CI_PIPELINE_IID
 
-build-android:  
+build-android:
   tags:
     - macos
   stage: build
@@ -58,3 +59,31 @@ build-dist:
     - git submodule update --recursive --init
     - python3 -m pip install pygit2 boto3 requests
     - python3 -u build.py --dist --path-to-build build-dist --build-number $CI_PIPELINE_IID --upload --spaces-key $SPACES_KEY --spaces-secret $SPACES_SECRET
+    - rm -R build-dist/dist
+  artifacts:
+    paths:
+      - build-dist
+    expire_in: 1 week
+
+upload-docs-to-webhost:
+  tags:
+    - docker
+  stage: deploy
+  when: manual
+  only:
+    - tags
+  image: python:latest
+  needs:
+    - job: build-dist
+      artifacts: true
+  script:
+    - echo "$RAVENNAKIT_COM_SSH_PRIVATE_KEY" | base64 -d > sshprivatekey # Generated with `cat private_key | base64 -w0`
+    - chmod 400 sshprivatekey
+    - eval "$(ssh-agent -s)"
+    - ssh-add sshprivatekey
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -p $RAVENNAKIT_COM_SSH_PORT $RAVENNAKIT_COM_HOST >> ~/.ssh/known_hosts
+    - chmod 600 ~/.ssh/known_hosts
+    - python3 -m pip install pygit2
+    - python3 scripts/upload_docs.py --path-to-build build-dist --username $RAVENNAKIT_COM_USER --hostname $RAVENNAKIT_COM_HOST --ssh-port $RAVENNAKIT_COM_SSH_PORT --remote-path $RAVENNAKIT_COM_REMOTE_PATH
