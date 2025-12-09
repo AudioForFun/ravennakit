@@ -7,8 +7,6 @@ stages:
   - deploy
 
 build-macos:
-  variables:
-    CI_DEBUG_TRACE: "true"
   tags:
     - macos
   stage: build
@@ -19,8 +17,6 @@ build-macos:
     - python3 -u build.py --path-to-build build-macos --build-number $CI_PIPELINE_IID --asan --tsan
 
 build-windows:
-  variables:
-    CI_DEBUG_TRACE: "true"
   tags:
     - windows
   stage: build
