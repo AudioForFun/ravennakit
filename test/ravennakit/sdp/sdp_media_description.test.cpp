@@ -70,19 +70,19 @@ TEST_CASE("rav::sdp::MediaDescription") {
             REQUIRE(format3.clock_rate == 0);
             REQUIRE(format3.num_channels == 0);
 
-            media->parse_attribute("a=rtpmap:98 L16/48000/2");
+            REQUIRE(media->parse_attribute("a=rtpmap:98 L16/48000/2").has_value());
             REQUIRE(format1.payload_type == 98);
             REQUIRE(format1.encoding_name == "L16");
             REQUIRE(format1.clock_rate == 48000);
             REQUIRE(format1.num_channels == 2);
 
-            media->parse_attribute("a=rtpmap:99 L16/96000/2");
+            REQUIRE(media->parse_attribute("a=rtpmap:99 L16/96000/2").has_value());
             REQUIRE(format2.payload_type == 99);
             REQUIRE(format2.encoding_name == "L16");
             REQUIRE(format2.clock_rate == 96000);
             REQUIRE(format2.num_channels == 2);
 
-            media->parse_attribute("a=rtpmap:100 L24/44100");
+            REQUIRE(media->parse_attribute("a=rtpmap:100 L24/44100").has_value());
             REQUIRE(format3.payload_type == 100);
             REQUIRE(format3.encoding_name == "L24");
             REQUIRE(format3.clock_rate == 44100);
@@ -108,7 +108,7 @@ TEST_CASE("rav::sdp::MediaDescription") {
             auto media = rav::sdp::parse_media_description("m=audio 5004/2 RTP/AVP 98 99 100");
             REQUIRE(media);
             REQUIRE_FALSE(media->max_ptime.has_value());
-            media->parse_attribute("a=maxptime:60.5");
+            REQUIRE(media->parse_attribute("a=maxptime:60.5").has_value());
             REQUIRE(media->max_ptime.has_value());
             REQUIRE(rav::is_within(*media->max_ptime, 60.5f, 0.0001f));
         }
@@ -117,7 +117,7 @@ TEST_CASE("rav::sdp::MediaDescription") {
             auto media = rav::sdp::parse_media_description("m=audio 5004/2 RTP/AVP 98 99 100");
             REQUIRE(media);
             REQUIRE_FALSE(media->media_clock.has_value());
-            media->parse_attribute("a=mediaclk:direct=5 rate=48000/1");
+            REQUIRE(media->parse_attribute("a=mediaclk:direct=5 rate=48000/1").has_value());
             REQUIRE(media->media_clock.has_value());
             const auto& clock = media->media_clock.value();
             REQUIRE(clock.mode == rav::sdp::MediaClockSource::ClockMode::direct);
@@ -131,7 +131,7 @@ TEST_CASE("rav::sdp::MediaDescription") {
             auto media = rav::sdp::parse_media_description("m=audio 5004/2 RTP/AVP 98 99 100");
             REQUIRE(media);
             REQUIRE_FALSE(media->media_clock.has_value());
-            media->parse_attribute("a=clock-deviation:1001/1000");
+            REQUIRE(media->parse_attribute("a=clock-deviation:1001/1000").has_value());
             REQUIRE(media->ravenna_clock_deviation.has_value());
             REQUIRE(media->ravenna_clock_deviation.value().numerator == 1001);
             REQUIRE(media->ravenna_clock_deviation.value().denominator == 1000);
