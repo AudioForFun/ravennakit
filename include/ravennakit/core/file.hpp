@@ -69,8 +69,10 @@ inline tl::expected<std::string, Error> read_file_as_string(const std::filesyste
 
     std::ifstream stream;
 
-    stream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
     stream.open(file, std::ios::binary | std::ios::ate);
+    if (stream.fail()) {
+        return tl::unexpected(Error::file_does_not_exist);
+    }
     if (!stream.is_open()) {
         if (!std::filesystem::exists(file)) {
             return tl::unexpected(Error::file_does_not_exist);

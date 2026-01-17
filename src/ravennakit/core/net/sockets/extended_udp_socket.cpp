@@ -94,7 +94,11 @@ size_t rav::receive_from_socket(
     TRACY_ZONE_SCOPED;
     sockaddr_in src_addr {};
     iovec iov[1];
+#if RAV_LINUX
+    char ctrl_buf[CMSG_SPACE(sizeof(in_pktinfo))];
+#else
     char ctrl_buf[CMSG_SPACE(sizeof(in_addr))];
+#endif
     msghdr msg {};
 
     iov[0].iov_base = data_buf.data();
@@ -118,8 +122,13 @@ size_t rav::receive_from_socket(
     // Extract the destination IP from the control message
     for (cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
         if (cmsg->cmsg_level == IPPROTO_IP && cmsg->cmsg_type == IP_RECVDSTADDR_PKTINFO) {
+#if RAV_LINUX
+            const auto* pi = reinterpret_cast<struct in_pktinfo*>(CMSG_DATA(cmsg));
+            dst_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(pi->ipi_addr.s_addr)), ntohs(src_addr.sin_port));
+#else
             const auto* dst_addr = reinterpret_cast<struct in_addr*>(CMSG_DATA(cmsg));
             dst_endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4(ntohl(dst_addr->s_addr)), ntohs(src_addr.sin_port));
+#endif
         }
     }
 
