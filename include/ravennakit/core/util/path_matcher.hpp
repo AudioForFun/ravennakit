@@ -32,7 +32,6 @@
 #include <fmt/ostream.h>
 
 namespace rav {
-
 /**
  * A simple path matcher that matches paths against patterns.
  * For example, it can be used to match URLs against patterns like "/user/{id}" or "/user/ **".
@@ -214,6 +213,14 @@ class PathMatcher {
     }
 };
 
+}  // namespace rav
+
+// Make PathMatcher::Error printable with fmt
+template<>
+struct fmt::formatter<rav::PathMatcher::Error>: ostream_formatter {};
+
+namespace rav {
+
 // Make PathMatcher::Error compatible with ostream
 inline std::ostream& operator<<(std::ostream& os, const PathMatcher::Error err) {
     switch (err) {
@@ -233,7 +240,3 @@ BOOST_NORETURN BOOST_NOINLINE inline void throw_exception_from_error(PathMatcher
 }
 
 }  // namespace rav
-
-// Make PathMatcher::Error printable with fmt
-template<>
-struct fmt::formatter<rav::PathMatcher::Error>: ostream_formatter {};
