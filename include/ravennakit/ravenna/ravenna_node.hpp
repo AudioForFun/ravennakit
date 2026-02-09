@@ -220,6 +220,20 @@ class RavennaNode {
      * @return The SDP text for the receiver.
      */
     [[nodiscard]] std::future<std::optional<std::string>> get_sdp_text_for_receiver(Id receiver_id);
+ 
+    /**
+     * Subscribe to SDP announcements for a session.
+     * @param subscriber The subscriber to notify.
+     * @param session_name The session name to subscribe to.
+     */
+    void subscribe_to_session_async(RavennaRtspClient::Subscriber* subscriber,
+                                    std::string session_name);
+
+    /**
+     * Unsubscribe a subscriber from all sessions.
+     * @param subscriber The subscriber to remove.
+     */
+    void unsubscribe_from_all_sessions_async(const RavennaRtspClient::Subscriber* subscriber);
 
     // MARK: Senders
 

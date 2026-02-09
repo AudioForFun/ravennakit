@@ -440,6 +440,20 @@ std::future<std::optional<std::string>> rav::RavennaNode::get_sdp_text_for_recei
     };
     return boost::asio::dispatch(io_context_, boost::asio::use_future(work));
 }
+ 
+void rav::RavennaNode::subscribe_to_session_async(RavennaRtspClient::Subscriber* subscriber,
+                                                  std::string session_name) {
+    boost::asio::post(io_context_, [this, subscriber, session_name = std::move(session_name)]() mutable {
+        (void)rtsp_client_.subscribe_to_session(subscriber, session_name);
+    });
+}
+
+void rav::RavennaNode::unsubscribe_from_all_sessions_async(
+    const RavennaRtspClient::Subscriber* subscriber) {
+    boost::asio::post(io_context_, [this, subscriber]() {
+        (void)rtsp_client_.unsubscribe_from_all_sessions(subscriber);
+    });
+}
 
 std::optional<uint32_t> rav::RavennaNode::read_data_realtime(
     const Id receiver_id, uint8_t* buffer, const size_t buffer_size, const std::optional<uint32_t> at_timestamp,
