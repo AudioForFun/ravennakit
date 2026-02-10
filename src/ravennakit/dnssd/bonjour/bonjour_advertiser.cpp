@@ -69,7 +69,9 @@ void rav::dnssd::BonjourAdvertiser::unregister_service(Id id) {
 void rav::dnssd::BonjourAdvertiser::async_process_results() {
     service_socket_.async_wait(boost::asio::ip::tcp::socket::wait_read, [this](const boost::system::error_code& ec) {
         if (ec) {
-            if (ec != boost::asio::error::operation_aborted) {
+            if (ec != boost::asio::error::operation_aborted &&
+                ec != boost::asio::error::connection_reset &&
+                ec != boost::asio::error::not_connected) {
                 RAV_LOG_ERROR("Error in async_wait_for_results: {}", ec.message());
             }
             return;
