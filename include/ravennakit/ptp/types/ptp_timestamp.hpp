@@ -32,8 +32,22 @@
 #include "ravennakit/core/types/uint48.hpp"
 
 #include <ctime>
+#include <atomic>
 
 namespace rav::ptp {
+
+inline std::atomic<bool>& underflow_verbose_logging_enabled_ref() {
+    static std::atomic<bool> enabled {false};
+    return enabled;
+}
+
+inline void set_underflow_verbose_logging(const bool enabled) {
+    underflow_verbose_logging_enabled_ref().store(enabled, std::memory_order_relaxed);
+}
+
+inline bool underflow_verbose_logging_enabled() {
+    return underflow_verbose_logging_enabled_ref().load(std::memory_order_relaxed);
+}
 
 /**
  * A PTP timestamp, consisting of a seconds and nanoseconds part.
@@ -112,7 +126,7 @@ struct Timestamp {
                 nanoseconds_ -= 1'000'000'000;
             }
             if (s_abs > seconds_) {
-                RAV_LOG_WARNING("ptp_timestamp underflow");
+                log_underflow_throttled();
                 // TODO: This case should be reported to the caller
                 *this = {};  // Prevent underflow
                 return;
@@ -147,7 +161,7 @@ struct Timestamp {
 
             if (n_abs > nanoseconds_) {
                 if (seconds_ < 1) {
-                    RAV_LOG_WARNING("ptp_timestamp underflow");
+                    log_underflow_throttled();
                     // TODO: This case should be reported to the caller
                     *this = {};  // Prevent underflow
                     return;
@@ -346,6 +360,18 @@ struct Timestamp {
     }
 
   private:
+    static void log_underflow_throttled() {
+        if (underflow_verbose_logging_enabled()) {
+            RAV_LOG_WARNING("ptp_timestamp underflow");
+            return;
+        }
+        static std::atomic<uint32_t> counter {0};
+        const uint32_t count = counter.fetch_add(1, std::memory_order_relaxed) + 1u;
+        if (count == 1u || (count % 1024u) == 0u) {
+            RAV_LOG_WARNING("ptp_timestamp underflow");
+        }
+    }
+
     uint64_t seconds_ {};      // 6 bytes (48 bits) on the wire
     uint32_t nanoseconds_ {};  // 4 bytes (32 bits) on the wire [0, 1'000'000'000).
 };
