@@ -35,9 +35,35 @@
 #include "ravennakit/core/util/defer.hpp"
 
 #include <fmt/core.h>
+#include <cstdlib>
+#include <string>
 #include <utility>
 
 namespace {
+
+[[nodiscard]] int get_receive_buffer_size_bytes() {
+    // Mission-critical default: 1 MiB receive buffer per RTP socket.
+    // Can be overridden with RAV_RTP_RECVBUF_BYTES.
+    constexpr int kDefaultBytes = 1024 * 1024;
+    constexpr int kMinBytes = 64 * 1024;
+    constexpr int kMaxBytes = 16 * 1024 * 1024;
+    const char* raw = std::getenv("RAV_RTP_RECVBUF_BYTES");
+    if (raw == nullptr || *raw == '\0') {
+        return kDefaultBytes;
+    }
+    try {
+        const long long parsed = std::stoll(raw);
+        if (parsed < kMinBytes) {
+            return kMinBytes;
+        }
+        if (parsed > kMaxBytes) {
+            return kMaxBytes;
+        }
+        return static_cast<int>(parsed);
+    } catch (...) {
+        return kDefaultBytes;
+    }
+}
 
 [[nodiscard]] bool setup_socket(boost::asio::ip::udp::socket& socket, const uint16_t port) {
     const auto endpoint = boost::asio::ip::udp::endpoint(boost::asio::ip::address_v4::any(), port);
@@ -45,6 +71,7 @@ namespace {
     try {
         socket.open(boost::asio::ip::udp::v4());
         socket.set_option(boost::asio::ip::udp::socket::reuse_address(true));
+        socket.set_option(boost::asio::socket_base::receive_buffer_size(get_receive_buffer_size_bytes()));
         socket.bind(endpoint);
         socket.non_blocking(true);
         socket.set_option(boost::asio::detail::socket_option::integer<IPPROTO_IP, IP_RECVDSTADDR_PKTINFO>(1));
